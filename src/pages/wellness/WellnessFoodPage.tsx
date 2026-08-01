@@ -4,7 +4,6 @@ import {
   Apple,
   ArrowLeft,
   Camera,
-  ChevronDown,
   Flame,
   ImagePlus,
   Leaf,
@@ -18,9 +17,7 @@ import {
 import { toast } from "sonner";
 import {
   analyzeFoodPhoto,
-  factDotClass,
   foodPhotoToDataUrl,
-  scoreDotClass,
   type FoodScanResult,
   type NutrientFact,
 } from "@/lib/wellness-food-scan";
@@ -92,8 +89,8 @@ export default function WellnessFoodPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">
-              Product & plate scan
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-600/80">
+              Nourish · YAJ coach
             </p>
             <h1 className="text-lg font-black tracking-tight">Food Scan</h1>
           </div>
@@ -102,10 +99,11 @@ export default function WellnessFoodPage() {
 
       <div className="space-y-4 px-4 pt-4">
         {!result ? (
-          <section className="rounded-2xl border border-stone-100 bg-stone-50 px-4 py-3">
+          <section className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-emerald-50/80 via-white to-teal-50/50 px-4 py-3">
             <p className="text-sm leading-relaxed text-stone-600">
               Scan a <span className="font-bold text-stone-900">barcode</span>, nutrition label, or
-              full plate. YAJ scores the product and breaks down nutrients — like Yuka.
+              full plate. YAJ builds a Nourish Score with calm coaching — what’s working, what to
+              go easy on, and a clear next step.
             </p>
             <p className="mt-1 text-[11px] text-stone-400">
               Estimates / public product data only — not medical advice.
@@ -234,7 +232,7 @@ export default function WellnessFoodPage() {
           </div>
         </section>
 
-        {result ? <YukaResultCard result={result} preview={preview} /> : null}
+        {result ? <NourishScoreCard result={result} preview={preview} /> : null}
       </div>
 
       <input
@@ -262,7 +260,14 @@ export default function WellnessFoodPage() {
   );
 }
 
-function YukaResultCard({
+function nourishStroke(score: number) {
+  if (score >= 75) return "#10b981";
+  if (score >= 50) return "#14b8a6";
+  if (score >= 30) return "#f59e0b";
+  return "#f97316";
+}
+
+function NourishScoreCard({
   result,
   preview,
 }: {
@@ -270,66 +275,118 @@ function YukaResultCard({
   preview: string | null;
 }) {
   const thumb = result.image_url || preview;
+  const r = 46;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, result.score));
+  const offset = c - (pct / 100) * c;
+  const stroke = nourishStroke(result.score);
+  const perServing = result.serving_size
+    ? `per serving (${result.serving_size})`
+    : "per serving";
 
   return (
-    <section className="space-y-6 pb-4">
-      {/* Header like Yuka */}
-      <div className="flex gap-3">
-        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-stone-100 ring-1 ring-stone-200">
-          {thumb ? (
-            <img src={thumb} alt="" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-2xl">🍽️</div>
-          )}
+    <section className="overflow-hidden rounded-[1.85rem] border border-emerald-100 bg-gradient-to-b from-white via-white to-emerald-50/40 shadow-sm">
+      <div className="px-5 pt-5">
+        <div className="flex gap-3">
+          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-emerald-50 ring-1 ring-emerald-100">
+            {thumb ? (
+              <img src={thumb} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center text-emerald-700">
+                <Apple className="h-7 w-7" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600/80">
+              {result.source === "open_food_facts" ? "Product match" : "Plate estimate"}
+              {result.barcode ? ` · ${result.barcode}` : ""}
+            </p>
+            <h2 className="mt-0.5 truncate text-lg font-black tracking-tight text-stone-900">
+              {result.title}
+            </h2>
+            {result.brand ? <p className="truncate text-sm text-stone-500">{result.brand}</p> : null}
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="text-[17px] font-black leading-snug text-stone-900">{result.title}</h2>
-          {result.brand ? <p className="mt-0.5 text-sm text-stone-500">{result.brand}</p> : null}
-          <div className="mt-2 flex items-center gap-2">
-            <span className={`h-2.5 w-2.5 rounded-full ${scoreDotClass(result.rating)}`} />
-            <span className="text-xl font-black tabular-nums">{result.score}/100</span>
-            <span className="text-sm text-stone-500">{result.rating_label}</span>
+
+        <div className="mt-5 flex items-center gap-5">
+          <div className="relative h-[112px] w-[112px] shrink-0">
+            <svg viewBox="0 0 112 112" className="h-full w-full -rotate-90">
+              <circle cx="56" cy="56" r={r} fill="none" stroke="#e7e5e4" strokeWidth="9" />
+              <circle
+                cx="56"
+                cy="56"
+                r={r}
+                fill="none"
+                stroke={stroke}
+                strokeWidth="9"
+                strokeLinecap="round"
+                strokeDasharray={c}
+                strokeDashoffset={offset}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-black tabular-nums leading-none text-stone-900">
+                {result.score}
+              </span>
+              <span className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-stone-400">
+                / 100
+              </span>
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-emerald-600">
+              Nourish Score
+            </p>
+            <p className="mt-1 text-xl font-black tracking-tight text-stone-900">
+              {result.rating_label}
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-stone-600">{result.summary}</p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-[1.35rem] border border-emerald-100 bg-white/90 px-4 py-3.5 shadow-sm">
+          <div className="flex items-start gap-2.5">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-white">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-600">
+                YAJ says · {result.should_eat_label}
+              </p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-stone-700">
+                {result.guidance}
+              </p>
+              {result.calories_serving != null ? (
+                <p className="mt-2 text-xs font-semibold text-stone-500">
+                  ~{Math.round(result.calories_serving)} Cal
+                  {result.serving_size ? ` · ${result.serving_size}` : ""}
+                </p>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-2xl bg-stone-50 px-4 py-3">
-        <p className="text-sm font-bold text-stone-900">{result.should_eat_label}</p>
-        <p className="mt-1 text-sm leading-relaxed text-stone-600">{result.summary}</p>
-        {result.calories_serving != null ? (
-          <p className="mt-2 text-xs font-semibold text-stone-500">
-            ~{Math.round(result.calories_serving)} Cal
-            {result.serving_size ? ` · ${result.serving_size}` : ""}
-          </p>
-        ) : null}
-      </div>
-
-      {result.negatives.length > 0 ? (
-        <FactSection
-          title="Negatives"
-          context={result.serving_size ? `per serving (${result.serving_size})` : "per serving"}
-          facts={result.negatives}
-        />
-      ) : null}
-
       {result.positives.length > 0 ? (
-        <FactSection
-          title="Positives"
-          context={result.serving_size ? `per serving (${result.serving_size})` : "per serving"}
-          facts={result.positives}
-        />
+        <InsightGroup title="What’s working" accent="emerald" context={perServing} facts={result.positives} />
+      ) : null}
+      {result.negatives.length > 0 ? (
+        <InsightGroup title="Go easy on" accent="amber" context={perServing} facts={result.negatives} />
       ) : null}
 
       {result.recommendations.length > 0 ? (
-        <div>
-          <h3 className="text-base font-black">Recommendations</h3>
-          <ul className="mt-2 space-y-2">
-            {result.recommendations.map((r) => (
+        <div className="mt-2 border-t border-emerald-100/80 px-5 py-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-emerald-600/80">
+            YAJ ideas
+          </p>
+          <ul className="mt-2.5 space-y-2">
+            {result.recommendations.map((rec) => (
               <li
-                key={r}
-                className="rounded-xl border border-stone-100 bg-stone-50 px-3 py-2.5 text-sm font-semibold text-stone-700"
+                key={rec}
+                className="rounded-2xl border border-emerald-100 bg-emerald-50/50 px-3.5 py-2.5 text-sm font-semibold text-stone-700"
               >
-                {r}
+                {rec}
               </li>
             ))}
           </ul>
@@ -337,54 +394,65 @@ function YukaResultCard({
       ) : null}
 
       {result.ingredients ? (
-        <div>
-          <h3 className="text-base font-black">Ingredients</h3>
+        <div className="border-t border-emerald-100/80 px-5 py-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-stone-400">
+            Ingredients
+          </p>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">{result.ingredients}</p>
         </div>
       ) : null}
 
-      <p className="text-center text-[11px] leading-relaxed text-stone-400">{result.disclaimer}</p>
-      <p className="text-center text-[10px] text-stone-300">
-        Source: {result.source === "open_food_facts" ? "Open Food Facts" : "YAJ vision estimate"}
-        {result.barcode ? ` · ${result.barcode}` : ""}
+      <p className="border-t border-emerald-100/80 px-5 py-3 text-center text-[11px] leading-relaxed text-stone-400">
+        {result.disclaimer}
       </p>
     </section>
   );
 }
 
-function FactSection({
+function InsightGroup({
   title,
+  accent,
   context,
   facts,
 }: {
   title: string;
+  accent: "emerald" | "amber";
   context: string;
   facts: NutrientFact[];
 }) {
+  const wrap =
+    accent === "emerald"
+      ? "border-emerald-100/80 bg-emerald-50/30"
+      : "border-amber-100/80 bg-amber-50/25";
+  const label = accent === "emerald" ? "text-emerald-700" : "text-amber-700";
+  const iconBg =
+    accent === "emerald" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700";
+
   return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between gap-2">
-        <h3 className="text-base font-black">{title}</h3>
+    <div className={`mt-4 border-t px-5 py-4 ${wrap}`}>
+      <div className="mb-3 flex items-baseline justify-between gap-2">
+        <p className={`text-[11px] font-bold uppercase tracking-[0.14em] ${label}`}>{title}</p>
         <p className="text-[11px] text-stone-400">{context}</p>
       </div>
-      <div className="divide-y divide-stone-100 rounded-2xl border border-stone-100">
+      <ul className="space-y-2.5">
         {facts.map((f) => (
-          <div key={f.id + f.title} className="flex items-center gap-3 px-3 py-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-stone-50 text-stone-600">
+          <li
+            key={f.id + f.title}
+            className="flex items-start gap-3 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 shadow-sm"
+          >
+            <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
               <FactIcon icon={f.icon} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold text-stone-900">{f.title}</p>
-              <p className="text-xs text-stone-500">{f.subtitle}</p>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-bold text-stone-900">{f.title}</p>
+                <p className="shrink-0 text-sm font-semibold tabular-nums text-stone-500">{f.value}</p>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-stone-500">{f.subtitle}</p>
             </div>
-            <div className="flex shrink-0 items-center gap-2">
-              <span className="text-sm font-semibold text-stone-800">{f.value}</span>
-              <span className={`h-2.5 w-2.5 rounded-full ${factDotClass(f.tone)}`} />
-              <ChevronDown className="h-4 w-4 text-stone-300" />
-            </div>
-          </div>
+          </li>
         ))}
-      </div>
+      </ul>
     </div>
   );
 }

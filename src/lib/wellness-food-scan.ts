@@ -1,5 +1,5 @@
 /**
- * YAJ Food Scan — Yuka-style product + plate analysis.
+ * YAJ Food Scan — Nourish Score product + plate analysis.
  * 1) Barcode → Open Food Facts (no edge function required)
  * 2) Fallback → Ask YAJ vision (already deployed)
  */
@@ -411,7 +411,7 @@ function ratingFromScore(score: number): { rating: FoodRating; rating_label: str
   return { rating: "bad", rating_label: "Bad" };
 }
 
-const AI_JSON_PROMPT = `You are YAJ Food Scan (Yuka-style wellness helper, NOT a doctor).
+const AI_JSON_PROMPT = `You are YAJ Food Scan — a calm Nourish Score wellness coach (NOT a doctor).
 Look at the photo. It may be a packaged product (barcode / nutrition label) or a plate of food.
 Return STRICT JSON only:
 

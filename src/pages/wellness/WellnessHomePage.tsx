@@ -69,14 +69,6 @@ const PILLARS = [
     tone: "from-teal-800/70 to-stone-900",
     Icon: Sprout,
   },
-  {
-    id: "food",
-    label: "Food Scan",
-    blurb: "Scan barcode or plate · Yuka-style score",
-    path: "/wellness/food",
-    tone: "from-amber-800/80 to-stone-900",
-    Icon: Camera,
-  },
 ] as const;
 
 /** Explore → Wellness home — Go gate, dashboard, pillars. */
@@ -316,6 +308,29 @@ export default function WellnessHomePage() {
             })}
           </div>
         </section>
+
+        {/* Food Scan — featured between check-in and wellness score */}
+        <button
+          type="button"
+          onClick={() => nav("/wellness/food")}
+          className="relative w-full overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-amber-800 via-orange-950 to-stone-900 p-5 text-left text-amber-50 shadow-[0_18px_40px_-24px_rgba(120,60,20,0.55)] active:scale-[0.99]"
+        >
+          <div className="pointer-events-none absolute -right-6 -top-8 h-32 w-32 rounded-full bg-amber-300/15 blur-2xl" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-20 w-20 rounded-full bg-orange-200/10 blur-xl" />
+          <Camera className="absolute right-4 top-4 h-5 w-5 text-amber-100/45" strokeWidth={1.75} />
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200/80">
+            Nourish
+          </p>
+          <h2 className="mt-1 font-display text-xl font-bold tracking-tight text-white">
+            Food Scan
+          </h2>
+          <p className="mt-1.5 max-w-[16rem] text-sm leading-relaxed text-amber-50/75">
+            Snap a snack or plate — YAJ gives a gentle nourish score and coach guidance.
+          </p>
+          <span className="mt-4 inline-flex items-center rounded-full bg-amber-200 px-4 py-2 text-xs font-black text-amber-950">
+            Open scanner →
+          </span>
+        </button>
 
         {/* Daily Wellness Score */}
         <section className="rounded-[1.75rem] border border-teal-200/60 bg-gradient-to-br from-white via-[#f3faf7] to-[#e8f5f0] p-5 shadow-[0_18px_40px_-28px_rgba(15,80,70,0.4)]">
