@@ -16,7 +16,7 @@ import AudioEqualizerBackground from "@/components/AudioEqualizerBackground";
 import { incrementBattleViews } from "@/hooks/use-likes";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
-import BattleLiveMeter from "@/components/battle/BattleLiveMeter";
+import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
 import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
 import BattleVsMark from "@/components/battle/BattleVsMark";
@@ -871,85 +871,24 @@ const MusicBattlePlayerPage = () => {
       </div>
       )}
 
-      {/* ── CROWD MOMENTUM ── */}
-      <div className="px-3 pb-3 pt-1">
-        <div className={`rounded-[1.4rem] border px-3.5 py-3.5 shadow-sm backdrop-blur-sm ${
-          finalMinute
-            ? "border-rose-500/40 bg-rose-950/25"
-            : "border-border/70 bg-card/80"
-        }`}>
-          <BattleLiveMeter
-            leftName={leftName}
-            rightName={rightName}
-            leftPct={leftPct}
-            rightPct={rightPct}
-            totalVotes={total}
-            live={uiStatus === "live" || uiStatus === "ending"}
-            finalMinute={finalMinute}
-            momentum={momentum}
-          />
-        </div>
-      </div>
-
-      {/* ── VOTE BUTTONS ── */}
-      <div className="px-4 pb-3 flex gap-3">
+      {/* ── NEON VOTE BAR (tap a side — YAJ slides toward the leader) ── */}
+      <div className="px-4 pb-3 pt-1">
         {battle.status !== "active" && !ended ? (
-          <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
+          <div className="rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
             Voting opens when both artists join
           </div>
-        ) : ended ? (
-          <div className="flex-1 rounded-2xl bg-muted py-3.5 text-center text-sm font-bold text-muted-foreground opacity-70">
-            Voting closed — you can still like the battle
-          </div>
         ) : (
-          <>
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={() => voteMutation.mutate("left")}
-              disabled={!canVoteLeft}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
-                hasVotedLeft
-                  ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
-                  : canVoteLeft
-                    ? "bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/25"
-                    : "bg-muted text-muted-foreground opacity-60"
-              }`}
-            >
-              {hasVotedLeft ? <Check className="h-4 w-4" /> : <ThumbsUp className="h-4 w-4" />}
-              {!canVoteLeft
-                ? "Your side"
-                : hasVotedLeft
-                  ? `You voted ${firstName(leftName, "A")}`
-                  : `Vote ${firstName(leftName, "A")}`}
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.96 }}
-              onClick={() => voteMutation.mutate("right")}
-              disabled={!canVoteRight}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-black transition-all ${
-                hasVotedRight
-                  ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-                  : canVoteRight
-                    ? "bg-rose-500/15 text-rose-300 ring-1 ring-rose-500/30 hover:bg-rose-500/25"
-                    : "bg-muted text-muted-foreground opacity-60"
-              }`}
-            >
-              {hasVotedRight ? <Check className="h-4 w-4" /> : <Flame className="h-4 w-4" />}
-              {!canVoteRight
-                ? "Your side"
-                : hasVotedRight
-                  ? `You voted ${firstName(rightName, "B")}`
-                  : `Vote ${firstName(rightName, "B")}`}
-            </motion.button>
-          </>
+          <BattleNeonVoteBar
+            leftPct={leftPct}
+            size="md"
+            interactive={!ended && battle.status === "active"}
+            disabledLeft={!canVoteLeft || ended}
+            disabledRight={!canVoteRight || ended}
+            onVoteLeft={() => voteMutation.mutate("left")}
+            onVoteRight={() => voteMutation.mutate("right")}
+          />
         )}
       </div>
-      {isParticipant && !ended && battle.status === "active" ? (
-        <p className="px-4 pb-2 text-center text-[11px] font-semibold text-muted-foreground">
-          You can vote for your opponent — not yourself.
-        </p>
-      ) : null}
 
       {battleId && (uiStatus === "live" || uiStatus === "ending" || uiStatus === "ended") ? (
         <div className="px-4 pb-6">

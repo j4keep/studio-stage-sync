@@ -3,13 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Bookmark,
-  Check,
   Forward,
   HandHeart,
   Heart,
   MessageCircle,
   Send,
-  ThumbsUp,
   Users,
   X,
 } from "lucide-react";
@@ -17,7 +15,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
-import BattleWavyMeter from "@/components/battle/BattleWavyMeter";
+import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import { MOBILE_COMMENTS_VIDEO_HEIGHT } from "@/components/feed/PostCommentsSheet";
 import {
@@ -412,9 +410,6 @@ export default function BattleFeedSlide({
     (battle?.status === "active" || uiStatus === "live" || uiStatus === "ending") &&
     !!(battle?.opponent_media_url || battle?.opponent_cover_url);
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
-  const userVote = (votes as any[]).find((v) => v.user_id === uid);
-  const hasVotedLeft = userVote?.voted_for === battle?.challenger_id;
-  const hasVotedRight = userVote?.voted_for === battle?.opponent_id;
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, { ended, votingOpen });
   const rightVoteGate = canUserVoteForSide(uid, battle?.opponent_id, { ended, votingOpen });
 
@@ -624,47 +619,6 @@ export default function BattleFeedSlide({
     );
   };
 
-  const voteBtn = (side: "left" | "right") => {
-    const name = side === "left" ? leftName : rightName;
-    const votesN = side === "left" ? tally.leftVotes : tally.rightVotes;
-    const gate = side === "left" ? leftVoteGate : rightVoteGate;
-    const hasVoted = side === "left" ? hasVotedLeft : hasVotedRight;
-    const accent = side === "left" ? "sky" : "rose";
-
-    return (
-      <button
-        type="button"
-        disabled={ended || (!gate.allowed && !hasVoted)}
-        onClick={(e) => {
-          e.stopPropagation();
-          voteMutation.mutate(side);
-        }}
-        className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-[11px] font-black transition-all ${
-          hasVoted
-            ? accent === "sky"
-              ? "bg-sky-500 text-white"
-              : "bg-rose-500 text-white"
-            : gate.allowed && !ended
-              ? accent === "sky"
-                ? "bg-sky-500/25 text-sky-100 ring-1 ring-sky-400/40"
-                : "bg-rose-500/25 text-rose-100 ring-1 ring-rose-400/40"
-              : "bg-white/10 text-white/40"
-        }`}
-      >
-        {hasVoted ? <Check className="h-3.5 w-3.5" /> : <ThumbsUp className="h-3.5 w-3.5" />}
-        <span className="truncate">
-          {ended
-            ? `${formatCompact(votesN)}`
-            : hasVoted
-              ? `Voted · ${formatCompact(votesN)}`
-              : gate.reason === "You can't vote for yourself"
-                ? "Your side"
-                : `Vote ${firstName(name)} · ${formatCompact(votesN)}`}
-        </span>
-      </button>
-    );
-  };
-
   return (
     <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-black text-white">
       {/* Portrait media boxes — double-tap a side to expand / minimize */}
@@ -785,13 +739,15 @@ export default function BattleFeedSlide({
               </p>
             </div>
 
-            <div className="space-y-1">
-              <BattleWavyMeter leftPct={tally.leftPct} size="sm" />
-              <div className="flex gap-2">
-                {voteBtn("left")}
-                {voteBtn("right")}
-              </div>
-            </div>
+            <BattleNeonVoteBar
+              leftPct={tally.leftPct}
+              size="md"
+              interactive={!ended && votingOpen}
+              disabledLeft={!leftVoteGate.allowed}
+              disabledRight={!rightVoteGate.allowed}
+              onVoteLeft={() => voteMutation.mutate("left")}
+              onVoteRight={() => voteMutation.mutate("right")}
+            />
 
             <div className="seek-area pt-0.5" role="slider" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
               <div className="relative h-[2px] w-full rounded-full bg-white/20">

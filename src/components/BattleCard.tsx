@@ -7,11 +7,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
-import BattleWavyMeter from "@/components/battle/BattleWavyMeter";
+import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import {
   battleCategoryFromMedia,
   formatClockMmSs,
-  formatCompact,
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
@@ -318,12 +317,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
       </div>
 
       <div className="space-y-2.5 px-3.5 pb-3.5 pt-1">
-        <div className="flex items-center justify-between gap-2 text-[11px] font-bold">
-          <span className="tabular-nums text-[#3b82f6]">{tally.leftPct}%</span>
-          <span className="text-white/50">{formatCompact(tally.total)} votes</span>
-          <span className="tabular-nums text-[#e11d48]">{tally.rightPct}%</span>
-        </div>
-        <BattleWavyMeter leftPct={tally.leftPct} size="sm" />
+        <BattleNeonVoteBar leftPct={tally.leftPct} size="sm" interactive={false} />
         <button
           type="button"
           onClick={(e) => {
@@ -338,7 +332,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
             ? "Enter Arena"
             : onOpen
               ? "Open battle"
-              : "Cast your vote"}
+              : "Open battle"}
         </button>
       </div>
     </motion.div>
