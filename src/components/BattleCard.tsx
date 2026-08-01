@@ -1,20 +1,33 @@
 import { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Clock, Crown, MessageCircle, Send, Play, Pause, Heart, Eye, Share2 } from "lucide-react";
+import {
+  Trash2,
+  Clock,
+  MessageCircle,
+  Send,
+  Play,
+  Pause,
+  Heart,
+  Eye,
+  Share2,
+  BadgeCheck,
+  TrendingUp,
+  Zap,
+  Gift,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Slider } from "@/components/ui/slider";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
-import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
-import BattleLiveMeter from "@/components/battle/BattleLiveMeter";
-import BattleVsMark from "@/components/battle/BattleVsMark";
 import {
+  battleCategoryFromMedia,
   computeVoteMomentum,
+  firstName,
   formatClockMmSs,
   formatCompact,
   formatCountdown,
@@ -124,6 +137,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       const { data } = await supabase.from("battle_votes").select("*").eq("battle_id", battle.id);
       return data || [];
     },
+    refetchInterval: isActive && !isExpired ? 8000 : false,
   });
   const participantIds = [battle.challenger_id, battle.opponent_id].filter(Boolean);
   const audienceVotes = votes.filter((v: any) => !participantIds.includes(v.user_id));
@@ -133,6 +147,46 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
   const challengerPct = totalVotes > 0 ? Math.round((challengerVotes / totalVotes) * 100) : 50;
   const opponentPct = totalVotes > 0 ? 100 - challengerPct : 50;
   const winner = totalVotes === 0 ? null : challengerVotes > opponentVotes ? "left" : challengerVotes < opponentVotes ? "right" : "tied";
+  const isParticipant = !!user?.id && participantIds.includes(user.id);
+
+  const leftVoterIds = useMemo(
+    () =>
+      [...new Set(
+        audienceVotes
+          .filter((v: any) => v.voted_for === battle.challenger_id)
+          .map((v: any) => v.user_id),
+      )].slice(0, 4) as string[],
+    [audienceVotes, battle.challenger_id],
+  );
+  const rightVoterIds = useMemo(
+    () =>
+      [...new Set(
+        audienceVotes
+          .filter((v: any) => v.voted_for === battle.opponent_id)
+          .map((v: any) => v.user_id),
+      )].slice(0, 4) as string[],
+    [audienceVotes, battle.opponent_id],
+  );
+  const supporterIds = useMemo(
+    () => [...new Set([...leftVoterIds, ...rightVoterIds])],
+    [leftVoterIds, rightVoterIds],
+  );
+
+  const { data: supporterProfiles = [] } = useQuery({
+    queryKey: ["battle-supporters", battle.id, supporterIds.join(",")],
+    queryFn: async () => {
+      if (!supporterIds.length) return [];
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, avatar_url, display_name")
+        .in("user_id", supporterIds);
+      return data || [];
+    },
+    enabled: supporterIds.length > 0,
+  });
+  const supporterMap = new Map(
+    (supporterProfiles as any[]).map((p) => [p.user_id, p]),
+  );
 
   // Comments
   const { data: battleComments = [] } = useQuery({
@@ -323,21 +377,49 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
     battle.opponent_id,
     participantIds as string[],
   );
-  const endsLabel =
-    uiStatus === "ended"
-      ? "Battle finished"
-      : uiStatus === "waiting" || uiStatus === "open"
-        ? "Waiting to start"
-        : finalMinute
-          ? `FINAL · ${formatClockMmSs(msLeft)}`
-          : `${formatCountdown(msLeft)} left`;
+  const cat = battleCategoryFromMedia(battle.media_type);
+  const leadPct = Math.abs(challengerPct - opponentPct);
+  const leadName = winner === "right" ? firstName(opponentName) : firstName(challengerName);
+  const timerLabel = finalMinute
+    ? formatClockMmSs(msLeft)
+    : timeLeft || (msLeft > 0 ? formatCountdown(msLeft) : "Ended");
+  const watchingLabel = formatCompact(Math.max(battle.views || 0, totalVotes * 3));
+
+  const renderSupporters = (ids: string[], count: number, side: "left" | "right") => (
+    <div className={`mt-2 flex items-center gap-1.5 ${side === "right" ? "justify-end" : ""}`}>
+      <div className={`flex ${side === "right" ? "flex-row-reverse" : ""}`}>
+        {(ids.length ? ids : [null, null, null]).slice(0, 3).map((id, i) => {
+          const p = id ? supporterMap.get(id) : null;
+          return (
+            <div
+              key={`${side}-${id || i}`}
+              className={`h-6 w-6 overflow-hidden rounded-full bg-muted ring-2 ring-[#0b0b10] ${
+                i > 0 ? (side === "right" ? "mr-[-6px]" : "ml-[-6px]") : ""
+              }`}
+            >
+              {p?.avatar_url ? (
+                <img src={p.avatar_url} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-[8px] font-bold text-muted-foreground">
+                  {(p?.display_name || "?")[0]}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <span className={`text-[10px] font-bold ${side === "left" ? "text-sky-300" : "text-rose-300"}`}>
+        +{formatCompact(Math.max(count, ids.length))}
+      </span>
+    </div>
+  );
 
   return (
     <motion.div
       layout
       onClick={() => {}}
-      className={`overflow-hidden rounded-[1.5rem] border bg-gradient-to-b from-card to-background shadow-[0_22px_50px_-28px_rgba(0,0,0,0.7)] transition-all duration-300 ${
-        finalMinute ? "border-rose-500/50 shadow-[0_0_28px_rgba(244,63,94,0.25)]" : "border-border/70"
+      className={`overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0b0b10] text-white shadow-[0_24px_60px_-28px_rgba(88,28,255,0.45)] transition-all duration-300 ${
+        finalMinute ? "ring-1 ring-rose-500/50" : ""
       } ${isFullscreen ? "fixed inset-2 z-50 flex flex-col" : ""}`}
       style={isFullscreen ? { maxHeight: "calc(100vh - 16px)" } : {}}
     >
@@ -352,129 +434,150 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </>
       )}
 
-      {/* Event scoreboard */}
-      <div className={`px-3.5 pb-2 pt-3 ${finalMinute ? "bg-rose-500/10" : ""}`}>
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
-              <BattleStatusBadge status={finalMinute ? "ending" : uiStatus} />
-            </div>
-            <h3 className="mt-1.5 truncate text-base font-black tracking-tight text-foreground">
-              {battle.title}
-            </h3>
-            <p className={`mt-0.5 flex items-center gap-1 text-[11px] font-bold ${finalMinute ? "text-rose-400" : "text-muted-foreground"}`}>
-              <Clock className="h-3 w-3" />
-              {endsLabel}
-              <span className="text-muted-foreground"> · {formatCompact(totalVotes)} votes</span>
-            </p>
-          </div>
-          {user?.id === battle.challenger_id && (
-            <button
-              onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(); }}
-              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-              aria-label="Delete battle"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-          )}
-        </div>
+      {/* Status bar — matches mockup */}
+      <div className="flex items-center gap-2 px-3.5 pb-1 pt-3">
+        <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.08em] text-violet-300 ring-1 ring-violet-400/30">
+          {cat.emoji} {cat.label} Battle
+        </span>
+        <BattleStatusBadge status={finalMinute ? "ending" : uiStatus} />
+        <span className="ml-auto flex items-center gap-1 text-[10px] font-bold text-white/55">
+          <Clock className="h-3 w-3" />
+          {uiStatus === "waiting" || uiStatus === "open" ? "Waiting" : `${timerLabel} remaining`}
+        </span>
+        <span className="text-[10px] font-bold text-white/45">{watchingLabel} watching</span>
+        {user?.id === battle.challenger_id && (
+          <button
+            onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(); }}
+            className="rounded-full p-1 text-white/40 hover:text-rose-400"
+            aria-label="Delete battle"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
-      {/* Collectible matchup */}
-      <div className="px-3 pb-1">
-        <div className="mb-2 flex items-center justify-between px-1">
-          <p className="truncate text-xs font-black tracking-tight text-sky-400">{challengerName.toUpperCase()}</p>
-          <BattleVsMark size="sm" finalMinute={finalMinute} />
-          <p className="truncate text-right text-xs font-black tracking-tight text-rose-400">{opponentName.toUpperCase()}</p>
+      {/* Neon VS matchup */}
+      <div className="relative px-3 pb-2 pt-2">
+        <div className="mb-2 grid grid-cols-2 gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-sky-400">
+              {challengerName.toUpperCase()}
+            </p>
+            <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] font-semibold text-white/70">
+              <span className="truncate">{battle.challenger_title || battle.title || "Entry"}</span>
+              {battle.challenger_media_url || battle.challenger_cover_url ? (
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+              ) : null}
+            </p>
+          </div>
+          <div className="min-w-0 text-right">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-rose-400">
+              {opponentName.toUpperCase()}
+            </p>
+            <p className="mt-0.5 flex items-center justify-end gap-1 truncate text-[11px] font-semibold text-white/70">
+              {battle.opponent_media_url || battle.opponent_cover_url ? (
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+              ) : null}
+              <span className="truncate">{battle.opponent_title || (battle.opponent_id ? "Waiting…" : "Open slot")}</span>
+            </p>
+          </div>
         </div>
 
         <button
+          type="button"
           onTouchEnd={handleTouchEnd}
           onClick={handleClick}
-          className="relative grid w-full grid-cols-2 gap-2.5"
-          style={{ minHeight: isFullscreen ? 300 : 220 }}
+          className="relative block w-full"
         >
-          <div
-            className={`relative overflow-hidden rounded-[1.2rem] ${
-              winner === "left" && totalVotes > 0 && uiStatus !== "ended"
-                ? "shadow-[0_0_22px_rgba(56,189,248,0.45)] ring-2 ring-sky-400/70"
-                : "shadow-lg ring-1 ring-white/10"
-            }`}
-            style={{ minHeight: isFullscreen ? 300 : 220 }}
-          >
-            {battle.challenger_cover_url ? (
-              <img src={battle.challenger_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-500/30 to-sky-900/40">
-                <span className="text-4xl opacity-40">🎵</span>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
-            {winner === "left" && totalVotes > 0 && uiStatus !== "ended" && (
-              <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5">
-                <Crown className="h-2.5 w-2.5 text-black" />
-                <span className="text-[8px] font-black text-black">LEADING</span>
-              </div>
-            )}
-            <div className="absolute bottom-0 left-0 right-0 z-10 p-3">
-              <p className="truncate text-sm font-black text-white">{challengerName}</p>
-              <p className="truncate text-[10px] text-white/60">{battle.challenger_title || "Entry"}</p>
-            </div>
+          {/* energy split glow */}
+          <div className="pointer-events-none absolute inset-y-2 left-1/2 z-20 w-px -translate-x-1/2 bg-gradient-to-b from-sky-400 via-white to-rose-400 shadow-[0_0_18px_rgba(255,255,255,0.65)]" />
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
+            <motion.div
+              animate={{
+                boxShadow: [
+                  "0 0 12px rgba(255,255,255,0.45)",
+                  "0 0 28px rgba(167,139,250,0.8)",
+                  "0 0 12px rgba(255,255,255,0.45)",
+                ],
+              }}
+              transition={{ repeat: Infinity, duration: 1.6 }}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-black font-black tracking-[0.18em] text-white ring-2 ring-white/80"
+            >
+              VS
+            </motion.div>
           </div>
 
-          <div
-            className={`relative overflow-hidden rounded-[1.2rem] ${
-              winner === "right" && totalVotes > 0 && uiStatus !== "ended"
-                ? "shadow-[0_0_22px_rgba(251,113,133,0.45)] ring-2 ring-rose-400/70"
-                : "shadow-lg ring-1 ring-white/10"
-            }`}
-            style={{ minHeight: isFullscreen ? 300 : 220 }}
-          >
-            {battle.opponent_cover_url ? (
-              <img src={battle.opponent_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-rose-500/30 to-rose-950/40">
-                <span className="text-4xl opacity-40">{battle.opponent_id ? "🎵" : "❓"}</span>
+          <div className="grid grid-cols-2 gap-2.5">
+            <div>
+              <div
+                className="relative aspect-square overflow-hidden rounded-2xl shadow-[0_0_24px_rgba(56,189,248,0.35)] ring-[3px] ring-sky-400/80"
+              >
+                {battle.challenger_cover_url ? (
+                  <img src={battle.challenger_cover_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-sky-600/40 to-sky-950">
+                    <span className="text-4xl opacity-50">🎵</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                <p className="absolute inset-x-2 bottom-8 truncate text-center font-black uppercase italic tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                  style={{ fontSize: "clamp(14px, 4.2vw, 22px)" }}
+                >
+                  {(battle.challenger_title || "READY").split(" ")[0]}
+                </p>
+                <span className="absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur">
+                  <Play className="ml-0.5 h-3.5 w-3.5" fill="currentColor" />
+                </span>
               </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
-            {winner === "right" && totalVotes > 0 && uiStatus !== "ended" && (
-              <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5">
-                <Crown className="h-2.5 w-2.5 text-black" />
-                <span className="text-[8px] font-black text-black">LEADING</span>
+              {renderSupporters(leftVoterIds, challengerVotes, "left")}
+            </div>
+
+            <div>
+              <div
+                className={`relative aspect-square overflow-hidden rounded-2xl ring-[3px] ${
+                  battle.opponent_cover_url
+                    ? "shadow-[0_0_24px_rgba(251,113,133,0.35)] ring-rose-400/80"
+                    : "shadow-none ring-rose-400/35"
+                }`}
+              >
+                {battle.opponent_cover_url ? (
+                  <img src={battle.opponent_cover_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-950/80 to-black px-3 text-center">
+                    <span className="text-3xl opacity-50">❓</span>
+                    <p className="mt-2 text-[11px] font-bold text-white/60">
+                      {isPending ? "Waiting for opponent" : "Open challenge"}
+                    </p>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+                {battle.opponent_title ? (
+                  <p
+                    className="absolute inset-x-2 bottom-8 truncate text-center font-black uppercase italic tracking-wide text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]"
+                    style={{ fontSize: "clamp(14px, 4.2vw, 22px)" }}
+                  >
+                    {battle.opponent_title.split(" ")[0]}
+                  </p>
+                ) : null}
+                {battle.opponent_cover_url ? (
+                  <span className="absolute bottom-2 left-2 flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur">
+                    <Play className="ml-0.5 h-3.5 w-3.5" fill="currentColor" />
+                  </span>
+                ) : null}
               </div>
-            )}
-            <div className="absolute bottom-0 left-0 right-0 z-10 p-3 text-right">
-              <p className="truncate text-sm font-black text-white">{opponentName}</p>
-              <p className="truncate text-[10px] text-white/60">{battle.opponent_title || "Waiting..."}</p>
+              {renderSupporters(rightVoterIds, opponentVotes, "right")}
             </div>
           </div>
-
-          {isActive && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-stone-900 shadow-xl">
-                <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
-              </div>
-            </div>
-          )}
-          {!isActive && uiStatus !== "ended" && (
-            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-              <div className="rounded-full bg-black/70 px-3 py-1.5 backdrop-blur-sm">
-                <span className="text-[10px] font-bold text-white">Waiting for opponent</span>
-              </div>
-            </div>
-          )}
         </button>
       </div>
 
       {isActive && battle.media_type === "audio" && !isExpired && (
-        <div className="space-y-1 px-4 py-2" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
+        <div className="space-y-1 px-4 py-1" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
           <div className="flex items-center gap-2">
-            <button onClick={togglePlay} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/20">
-              {isPlaying ? <Pause className="h-3 w-3 text-primary" fill="currentColor" /> : <Play className="ml-0.5 h-3 w-3 text-primary" fill="currentColor" />}
+            <button onClick={togglePlay} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-500/25">
+              {isPlaying ? <Pause className="h-3 w-3 text-violet-200" fill="currentColor" /> : <Play className="ml-0.5 h-3 w-3 text-violet-200" fill="currentColor" />}
             </button>
-            <span className="min-w-[2rem] font-mono text-[9px] text-muted-foreground">{fmt(currentTime)}</span>
+            <span className="min-w-[2rem] font-mono text-[9px] text-white/50">{fmt(currentTime)}</span>
             <Slider
               value={[duration > 0 ? (currentTime / duration) * 100 : 0]}
               onValueChange={handleSeek}
@@ -483,101 +586,160 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               className="seek-area flex-1"
               role="slider"
             />
-            <span className="min-w-[2rem] text-right font-mono text-[9px] text-muted-foreground">{fmt(duration)}</span>
+            <span className="min-w-[2rem] text-right font-mono text-[9px] text-white/50">{fmt(duration)}</span>
           </div>
         </div>
       )}
 
-      <div className="px-3.5 py-3">
-        <BattleLiveMeter
-          leftName={challengerName}
-          rightName={opponentName}
-          leftPct={challengerPct}
-          rightPct={opponentPct}
-          totalVotes={totalVotes}
-          live={uiStatus === "live" || uiStatus === "ending"}
-          compact
-          finalMinute={finalMinute}
-          momentum={momentum}
-        />
+      {/* Crowd Momentum */}
+      <div className="px-3.5 pb-3 pt-1">
+        <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-300">
+          🔥 Crowd Momentum
+        </p>
+        <div className="mt-1.5 flex items-end justify-between">
+          <motion.p
+            key={`lp-${challengerPct}`}
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            className="text-3xl font-black tabular-nums text-sky-400"
+          >
+            {challengerPct}%
+          </motion.p>
+          <motion.p
+            key={`rp-${opponentPct}`}
+            initial={{ scale: 1.1 }}
+            animate={{ scale: 1 }}
+            className="text-3xl font-black tabular-nums text-rose-400"
+          >
+            {opponentPct}%
+          </motion.p>
+        </div>
+        <div className="relative mt-2 h-3.5 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
+          <motion.div
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-sky-300"
+            animate={{ width: `${challengerPct}%` }}
+            transition={{ type: "spring", stiffness: 170, damping: 20 }}
+            style={{ filter: "drop-shadow(0 0 8px rgba(56,189,248,0.65))" }}
+          />
+          <motion.div
+            className="absolute inset-y-0 right-0 bg-gradient-to-l from-rose-500 via-orange-400 to-rose-300"
+            animate={{ width: `${opponentPct}%` }}
+            transition={{ type: "spring", stiffness: 170, damping: 20 }}
+            style={{ filter: "drop-shadow(0 0 8px rgba(251,113,133,0.65))" }}
+          />
+          <motion.div
+            className="absolute top-1/2 z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_16px_rgba(251,191,36,0.8)]"
+            animate={{ left: `${Math.max(8, Math.min(92, challengerPct))}%` }}
+            transition={{ type: "spring", stiffness: 180, damping: 18 }}
+          >
+            ⚡
+          </motion.div>
+        </div>
+        <p className="mt-1.5 text-center text-[11px] font-bold text-white/50">
+          {formatCompact(totalVotes)} votes
+          {momentum.trending !== "none" ? ` · ${momentum.label}` : ""}
+        </p>
+
+        {/* Leading callout + CTA */}
+        <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#12162a] px-3 py-2.5 ring-1 ring-violet-500/20">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2">
+              <TrendingUp className="mt-0.5 h-4 w-4 shrink-0 text-sky-400" />
+              <p className="text-xs font-semibold leading-snug text-white/85">
+                {uiStatus === "waiting" || uiStatus === "open"
+                  ? "Battle created — waiting for the opponent to join the arena."
+                  : totalVotes === 0
+                    ? "Crowd is warming up — cast the first vote!"
+                    : winner === "tied"
+                      ? "Dead heat — every vote can flip this battle."
+                      : `${leadName} is leading by ${leadPct}% · Keep voting — every vote counts!`}
+              </p>
+            </div>
+          </div>
+          {canAccept && !battle.opponent_media_url ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }}
+              className="shrink-0 rounded-full bg-violet-500 px-3 py-2 text-[11px] font-black text-white shadow-[0_0_18px_rgba(139,92,246,0.55)]"
+            >
+              Enter Arena
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500 px-3 py-2 text-[11px] font-black text-white shadow-[0_0_18px_rgba(139,92,246,0.55)]"
+            >
+              <Zap className="h-3.5 w-3.5" />
+              Cast your vote
+            </button>
+          )}
+        </div>
       </div>
 
-      {canAccept && !battle.opponent_media_url && (
-        <div className="border-t border-border px-4 py-3">
-          {isPending && user?.id === battle.opponent_id && (
-            <p className="mb-2 text-center text-xs font-bold text-primary">🥊 You&apos;ve been challenged!</p>
-          )}
-          <p className="mb-3 text-center text-[11px] text-muted-foreground">
-            Open the battle player to upload your entry ({battle.media_type} only, max {battle.max_duration_minutes || 45} min).
-          </p>
-          <button
-            onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-bold gradient-primary text-primary-foreground"
-          >
-            <Play className="h-4 w-4" fill="currentColor" /> Enter the Arena
-          </button>
-        </div>
-      )}
-
-      <div className="flex items-center gap-3 border-t border-border px-3.5 py-2.5">
-        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+      {/* Stats + share */}
+      <div className="flex items-center gap-3 border-t border-white/10 px-3.5 py-2.5">
+        <span className="flex items-center gap-1 text-xs text-white/55">
           <Eye className="h-4 w-4" /> {formatCompact(battle.views || 0)}
         </span>
-        <button onClick={toggleBattleLike} className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Heart className={`h-4 w-4 ${battleLiked ? "fill-red-500 text-red-500" : ""}`} />
+        <button onClick={toggleBattleLike} className="flex items-center gap-1 text-xs text-white/55">
+          <Heart className={`h-4 w-4 ${battleLiked ? "fill-rose-500 text-rose-500" : ""}`} />
           {formatCompact(battleLikesCount)}
         </button>
-        <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-xs text-muted-foreground">
+        <button onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }} className="flex items-center gap-1 text-xs text-white/55">
           <MessageCircle className="h-4 w-4" /> {formatCompact(battleComments.length)}
         </button>
-        <span className="text-xs font-semibold text-muted-foreground">
-          🗳 {formatCompact(totalVotes)}
+        <span className="flex items-center gap-1 text-xs text-white/55">
+          <Gift className="h-4 w-4" /> {formatCompact(Math.max(0, Math.round(totalVotes / 4)))}
         </span>
         <button
-          onClick={(e) => { e.stopPropagation(); navigate(`/battle/${battle.id}`); }}
-          className="ml-auto rounded-full bg-foreground px-3 py-1.5 text-[11px] font-black text-background"
+          onClick={handleBattleShare}
+          className="ml-auto inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-white/80 ring-1 ring-white/10"
         >
-          Vote
-        </button>
-        <button onClick={handleBattleShare} className="text-muted-foreground" aria-label="Share">
-          <Share2 className="h-4 w-4" />
+          <Share2 className="h-3.5 w-3.5" /> Share Battle
         </button>
       </div>
+
+      {isParticipant ? (
+        <div className="bg-white/5 px-3.5 py-2 text-center text-[11px] font-semibold text-white/45">
+          🔒 Participants cannot vote in their own battle.
+        </div>
+      ) : null}
 
       {/* Comments */}
       <AnimatePresence>
         {expanded && (
-          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-border" onClick={(e) => e.stopPropagation()}>
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden border-t border-white/10" onClick={(e) => e.stopPropagation()}>
             <div className="max-h-48 space-y-2 overflow-y-auto px-4 py-3">
-              {battleComments.length === 0 && <p className="py-4 text-center text-xs text-muted-foreground">No comments yet</p>}
+              {battleComments.length === 0 && <p className="py-4 text-center text-xs text-white/40">No comments yet</p>}
               {battleComments.map((c: any) => {
                 const cp = commentProfileMap.get(c.user_id) || profileMap.get(c.user_id) as any;
                 return (
                   <div key={c.id} className="flex items-start gap-2">
-                    <div className="h-6 w-6 shrink-0 rounded-full bg-muted overflow-hidden">
-                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground">{(cp?.display_name || "U")[0]}</div>}
+                    <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-white/10">
+                      {cp?.avatar_url ? <img src={cp.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white/50">{(cp?.display_name || "U")[0]}</div>}
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold text-muted-foreground">{cp?.display_name || "User"}</span>
-                      <p className="text-xs text-foreground">{c.content}</p>
+                      <span className="text-[10px] font-bold text-white/45">{cp?.display_name || "User"}</span>
+                      <p className="text-xs text-white/90">{c.content}</p>
                     </div>
                   </div>
                 );
               })}
               <div ref={commentsEndRef} />
             </div>
-            <div className="flex gap-1.5 overflow-x-auto border-t border-border px-4 py-1.5 scrollbar-hide">
+            <div className="flex gap-1.5 overflow-x-auto border-t border-white/10 px-4 py-1.5 scrollbar-hide">
               {EMOJIS.map(e => (
-                <button key={e} onClick={() => commentMutation.mutate(e)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted/50 text-sm hover:bg-muted">{e}</button>
+                <button key={e} onClick={() => commentMutation.mutate(e)} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-sm hover:bg-white/15">{e}</button>
               ))}
             </div>
-            <div className="flex gap-2 border-t border-border px-4 py-2">
+            <div className="flex gap-2 border-t border-white/10 px-4 py-2">
               <Input placeholder="Drop a comment..." value={comment} onChange={(e) => setComment(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && comment.trim()) commentMutation.mutate(comment.trim()); }}
-                className="h-8 text-xs" />
+                className="h-8 border-white/10 bg-white/5 text-xs text-white" />
               <button onClick={() => comment.trim() && commentMutation.mutate(comment.trim())} disabled={!comment.trim()}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary disabled:opacity-50">
-                <Send className="h-3.5 w-3.5 text-primary-foreground" />
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-500 disabled:opacity-50">
+                <Send className="h-3.5 w-3.5 text-white" />
               </button>
             </div>
           </motion.div>
