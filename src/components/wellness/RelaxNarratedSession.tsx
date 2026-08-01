@@ -38,7 +38,7 @@ export default function RelaxNarratedSession({ session, onClose, onComplete }: P
       abortRef.current = true;
       stopWellnessSpeak();
     };
-  }, [session.id]);
+  }, [session.id, session.steps]);
 
   useEffect(() => {
     if (done || !running || !step) return;
