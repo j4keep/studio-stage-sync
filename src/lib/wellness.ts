@@ -601,7 +601,7 @@ export function recommendForMood(mood: MoodId, hour = new Date().getHours()): We
         title: "Nature sound",
         reason: "Soft background while you breathe.",
         pillar: "sleep",
-        path: "/wellness/sleep?sound=nature",
+        path: "/wellness/sleep?sound=forest-birds",
       },
     ],
     low: [
