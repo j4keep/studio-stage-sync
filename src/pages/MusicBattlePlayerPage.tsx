@@ -19,8 +19,11 @@ import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
 import BattleLiveMeter from "@/components/battle/BattleLiveMeter";
 import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
 import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
+import BattleVsMark from "@/components/battle/BattleVsMark";
 import {
+  computeVoteMomentum,
   firstName,
+  formatClockMmSs,
   formatCompact,
   formatCountdown,
   getBattleExpiresAt,
@@ -98,6 +101,16 @@ const MusicBattlePlayerPage = () => {
     enabled: !!battle?.challenger_id,
   });
 
+  const expiresMs = battle?.expires_at
+    ? new Date(battle.expires_at).getTime() - Date.now()
+    : null;
+  const finalMinuteLive =
+    !!battle &&
+    battle.status === "active" &&
+    expiresMs != null &&
+    expiresMs > 0 &&
+    expiresMs <= 60_000;
+
   const { data: votes = [] } = useQuery({
     queryKey: ["battle-votes", battleId],
     queryFn: async () => {
@@ -108,6 +121,7 @@ const MusicBattlePlayerPage = () => {
       return data || [];
     },
     enabled: !!battleId,
+    refetchInterval: finalMinuteLive ? 2500 : 8000,
   });
 
   const isParticipant = user?.id === battle?.challenger_id || user?.id === battle?.opponent_id;
@@ -486,12 +500,23 @@ const MusicBattlePlayerPage = () => {
   const ended = battle.status === "ended" || battle.status === "completed" || battle.status === "expired" || timeLeft === "ENDED";
   const uiStatus = getBattleUiStatus(battle);
   const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
+  const finalMinute = !ended && msLeft > 0 && msLeft <= 60_000 && battle.status === "active";
   const leftName = leftProfile.display_name || "Artist A";
   const rightName = rightProfile.display_name || "Artist B";
   const showWinnerCard = ended && total > 0;
+  const momentum = computeVoteMomentum(
+    audienceVotes,
+    battle.challenger_id,
+    battle.opponent_id,
+    participantIds as string[],
+  );
 
     return (
-    <div className="min-h-screen flex flex-col relative overflow-hidden bg-background">
+    <div
+      className={`relative flex min-h-screen flex-col overflow-hidden bg-background ${
+        finalMinute ? "battle-final-minute" : ""
+      }`}
+    >
       {/* ── EQUALIZER BACKGROUND ── */}
       <AudioEqualizerBackground
         mediaElement={activeArtist === "left" ? (audioLeftRef.current || videoLeftRef.current) : (audioRightRef.current || videoRightRef.current)}
@@ -505,41 +530,49 @@ const MusicBattlePlayerPage = () => {
         </>
       )}
 
-      {/* ── HEADER ── */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border">
-        <button onClick={() => navigate(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-black tracking-tight text-foreground">Arena</h1>
-          <p className="text-[10px] font-semibold text-muted-foreground">Creators Battle</p>
+      {/* ── EVENT SCOREBOARD ── */}
+      <div className={`border-b px-4 pb-3 pt-3 ${finalMinute ? "border-rose-500/40 bg-rose-950/20" : "border-border/80 bg-background/80"}`}>
+        <div className="mb-2.5 flex items-center gap-2">
+          <button onClick={() => navigate(-1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
+            <ArrowLeft className="h-4 w-4 text-foreground" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
+              <BattleStatusBadge status={finalMinute ? "ending" : uiStatus} />
+            </div>
+          </div>
+          <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-xs font-black ${
+            finalMinute ? "bg-rose-500 text-white" : "bg-muted text-foreground"
+          }`}>
+            <Clock className="h-3.5 w-3.5" />
+            {finalMinute ? formatClockMmSs(msLeft) : (timeLeft || formatCountdown(msLeft))}
+          </div>
         </div>
-        <BattleStatusBadge status={uiStatus} />
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock className="w-3.5 h-3.5" />
-          <span className="font-mono font-bold">{timeLeft || formatCountdown(msLeft)}</span>
-        </div>
-      </div>
 
-      {/* ── BATTLE TITLE ── */}
-      <div className="px-4 py-3 text-center">
-        <div className="mb-2 flex items-center justify-center gap-2">
-          <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
-        </div>
-        <p className="text-base font-black tracking-tight text-foreground">{battle.title}</p>
-        <p className="mt-1 text-xs font-semibold text-muted-foreground">
-          {firstName(leftName)} <span className="text-muted-foreground/50">VS</span> {firstName(rightName)}
-          {!ended && msLeft > 0 ? ` · ${formatCountdown(msLeft)} left` : ""}
-        </p>
-        <div className="mt-2 flex items-center justify-center gap-3 text-[11px] font-semibold text-muted-foreground">
+        <h1 className="text-xl font-black tracking-tight text-foreground">{battle.title}</h1>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold text-muted-foreground">
+          <span className="text-foreground">{formatCompact(total)} votes</span>
           <span>👁 {formatCompact(battle.views || 0)}</span>
           <span>❤️ {formatCompact(battle.likes_count || 0)}</span>
-          <span>🗳 {formatCompact(total)}</span>
+          {!ended && msLeft > 0 ? <span>{formatCountdown(msLeft)} remaining</span> : null}
         </div>
       </div>
 
+      {finalMinute ? (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-4 mt-3 overflow-hidden rounded-2xl border border-rose-500/50 bg-gradient-to-r from-rose-600 to-orange-500 px-4 py-3 text-center text-white shadow-[0_0_30px_rgba(244,63,94,0.45)]"
+        >
+          <p className="text-[11px] font-black uppercase tracking-[0.2em]">🔥 Final Minute</p>
+          <p className="mt-0.5 font-mono text-2xl font-black tabular-nums">{formatClockMmSs(msLeft)}</p>
+          <p className="text-[11px] font-semibold text-white/85">Voting closes soon — momentum updates faster</p>
+        </motion.div>
+      ) : null}
+
       {showWinnerCard ? (
-        <div className="px-4 pb-3">
+        <div className="px-4 pb-2 pt-3">
           <BattleWinnerCelebration
             winnerName={winner === "right" ? rightName : leftName}
             winnerPct={winner === "right" ? rightPct : leftPct}
@@ -553,20 +586,31 @@ const MusicBattlePlayerPage = () => {
 
       {/* ── MAIN BATTLE AREA ── */}
       <div
-        className={`flex-1 flex flex-col items-center justify-center relative transition-all duration-300 ${
-          expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-4"
+        className={`relative flex flex-1 flex-col items-center justify-center transition-all duration-300 ${
+          expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-3 pt-3"
         }`}
       >
+        {!expandedSide ? (
+          <div className="mb-2 flex w-full items-center justify-between px-1">
+            <p className="truncate text-sm font-black tracking-tight text-sky-400">{firstName(leftName).toUpperCase()}</p>
+            <BattleVsMark size="sm" finalMinute={finalMinute} />
+            <p className="truncate text-right text-sm font-black tracking-tight text-rose-400">{firstName(rightName).toUpperCase()}</p>
+          </div>
+        ) : null}
 
-        {/* SPLIT SCREEN */}
-        <div className={`w-full flex gap-2 relative transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[280px]"}`}>
+        {/* SPLIT SCREEN — collectible cards */}
+        <div className={`relative flex w-full gap-3 transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[300px]"}`}>
 
           {/* LEFT ARTIST */}
           <div
-            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+            className={`relative overflow-hidden rounded-[1.35rem] transition-all duration-500 ${
               expandedSide === "left" ? "flex-[3]" : expandedSide === "right" ? "hidden" : "flex-1"
+            } ${
+              winner === "left" && total > 0 && !ended
+                ? "shadow-[0_0_28px_rgba(56,189,248,0.45)] ring-2 ring-sky-400/70"
+                : "shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/10"
             }`}
-            style={{ opacity: !expandedSide && activeArtist === "right" ? 0.5 : 1 }}
+            style={{ opacity: !expandedSide && activeArtist === "right" ? 0.72 : 1 }}
           >
             <AnimatePresence>
               {winner === "left" && total > 0 && (
@@ -688,10 +732,14 @@ const MusicBattlePlayerPage = () => {
 
           {/* RIGHT ARTIST */}
           <div
-            className={`rounded-2xl overflow-hidden relative transition-all duration-500 ${
+            className={`relative overflow-hidden rounded-[1.35rem] transition-all duration-500 ${
               expandedSide === "right" ? "flex-[3]" : expandedSide === "left" ? "hidden" : "flex-1"
+            } ${
+              winner === "right" && total > 0 && !ended
+                ? "shadow-[0_0_28px_rgba(251,113,133,0.45)] ring-2 ring-rose-400/70"
+                : "shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/10"
             }`}
-            style={{ opacity: !expandedSide && activeArtist === "left" ? 0.5 : 1 }}
+            style={{ opacity: !expandedSide && activeArtist === "left" ? 0.72 : 1 }}
           >
             <AnimatePresence>
               {winner === "right" && total > 0 && (
@@ -797,9 +845,13 @@ const MusicBattlePlayerPage = () => {
       </div>
       )}
 
-      {/* ── LIVE BATTLE METER ── */}
-      <div className="px-4 pb-3">
-        <div className="rounded-[1.35rem] border border-border/70 bg-card/70 px-3.5 py-3.5 shadow-sm backdrop-blur-sm">
+      {/* ── CROWD MOMENTUM ── */}
+      <div className="px-3 pb-3 pt-1">
+        <div className={`rounded-[1.4rem] border px-3.5 py-3.5 shadow-sm backdrop-blur-sm ${
+          finalMinute
+            ? "border-rose-500/40 bg-rose-950/25"
+            : "border-border/70 bg-card/80"
+        }`}>
           <BattleLiveMeter
             leftName={leftName}
             rightName={rightName}
@@ -807,6 +859,8 @@ const MusicBattlePlayerPage = () => {
             rightPct={rightPct}
             totalVotes={total}
             live={uiStatus === "live" || uiStatus === "ending"}
+            finalMinute={finalMinute}
+            momentum={momentum}
           />
         </div>
       </div>
@@ -865,6 +919,17 @@ const MusicBattlePlayerPage = () => {
       ) : (
         <div className="pb-6" />
       )}
+
+      <style>{`
+        .battle-final-minute {
+          box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.55);
+          animation: battle-final-pulse 1s ease-in-out infinite;
+        }
+        @keyframes battle-final-pulse {
+          0%, 100% { box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.35); }
+          50% { box-shadow: inset 0 0 0 3px rgba(244, 63, 94, 0.85), 0 0 40px rgba(244, 63, 94, 0.25); }
+        }
+      `}</style>
 
       {canAccept && (
         <div className="px-6 pb-8">

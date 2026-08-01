@@ -12,7 +12,10 @@ import { Slider } from "@/components/ui/slider";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
 import BattleLiveMeter from "@/components/battle/BattleLiveMeter";
+import BattleVsMark from "@/components/battle/BattleVsMark";
 import {
+  computeVoteMomentum,
+  formatClockMmSs,
   formatCompact,
   formatCountdown,
   getBattleExpiresAt,
@@ -313,20 +316,29 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
 
   const uiStatus = getBattleUiStatus(battle);
   const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
+  const finalMinute = isActive && !isExpired && msLeft > 0 && msLeft <= 60_000;
+  const momentum = computeVoteMomentum(
+    audienceVotes,
+    battle.challenger_id,
+    battle.opponent_id,
+    participantIds as string[],
+  );
   const endsLabel =
     uiStatus === "ended"
       ? "Battle finished"
       : uiStatus === "waiting" || uiStatus === "open"
         ? "Waiting to start"
-        : `Ends in ${formatCountdown(msLeft)}`;
+        : finalMinute
+          ? `FINAL · ${formatClockMmSs(msLeft)}`
+          : `${formatCountdown(msLeft)} left`;
 
   return (
     <motion.div
       layout
       onClick={() => {}}
-      className={`overflow-hidden rounded-[1.4rem] border border-border/80 bg-card shadow-[0_18px_40px_-28px_rgba(0,0,0,0.55)] transition-all duration-300 ${
-        isFullscreen ? "fixed inset-2 z-50 flex flex-col" : ""
-      }`}
+      className={`overflow-hidden rounded-[1.5rem] border bg-gradient-to-b from-card to-background shadow-[0_22px_50px_-28px_rgba(0,0,0,0.7)] transition-all duration-300 ${
+        finalMinute ? "border-rose-500/50 shadow-[0_0_28px_rgba(244,63,94,0.25)]" : "border-border/70"
+      } ${isFullscreen ? "fixed inset-2 z-50 flex flex-col" : ""}`}
       style={isFullscreen ? { maxHeight: "calc(100vh - 16px)" } : {}}
     >
       {isFullscreen && (
@@ -340,49 +352,57 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
         </>
       )}
 
-      {/* Event header */}
-      <div className="flex items-start justify-between gap-2 px-3.5 pb-2 pt-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
-            <BattleStatusBadge status={uiStatus} />
+      {/* Event scoreboard */}
+      <div className={`px-3.5 pb-2 pt-3 ${finalMinute ? "bg-rose-500/10" : ""}`}>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <BattleCategoryChip mediaType={battle.media_type} className="bg-muted text-foreground ring-border" />
+              <BattleStatusBadge status={finalMinute ? "ending" : uiStatus} />
+            </div>
+            <h3 className="mt-1.5 truncate text-base font-black tracking-tight text-foreground">
+              {battle.title}
+            </h3>
+            <p className={`mt-0.5 flex items-center gap-1 text-[11px] font-bold ${finalMinute ? "text-rose-400" : "text-muted-foreground"}`}>
+              <Clock className="h-3 w-3" />
+              {endsLabel}
+              <span className="text-muted-foreground"> · {formatCompact(totalVotes)} votes</span>
+            </p>
           </div>
-          <h3 className="mt-1.5 truncate text-[15px] font-black tracking-tight text-foreground">
-            {battle.title}
-          </h3>
-          <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
-            <Clock className="h-3 w-3" />
-            {endsLabel}
-            {timeLeft && uiStatus === "live" ? (
-              <span className="font-mono text-primary"> · {timeLeft}</span>
-            ) : null}
-          </p>
+          {user?.id === battle.challenger_id && (
+            <button
+              onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(); }}
+              className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
+              aria-label="Delete battle"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          )}
         </div>
-        {user?.id === battle.challenger_id && (
-          <button
-            onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(); }}
-            className="rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-destructive"
-            aria-label="Delete battle"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
       </div>
 
-      {/* VS hero covers */}
-      <button
-        onTouchEnd={handleTouchEnd}
-        onClick={handleClick}
-        className="relative mx-3 mb-1 block w-[calc(100%-1.5rem)] overflow-hidden rounded-[1.15rem]"
-        style={{ minHeight: isFullscreen ? 300 : 240 }}
-      >
-        <div className="absolute inset-x-0 top-2 z-20 flex items-center justify-center pointer-events-none">
-          <span className="rounded-full bg-black/55 px-3 py-1 text-[11px] font-black tracking-[0.2em] text-white backdrop-blur-md">
-            VS
-          </span>
+      {/* Collectible matchup */}
+      <div className="px-3 pb-1">
+        <div className="mb-2 flex items-center justify-between px-1">
+          <p className="truncate text-xs font-black tracking-tight text-sky-400">{challengerName.toUpperCase()}</p>
+          <BattleVsMark size="sm" finalMinute={finalMinute} />
+          <p className="truncate text-right text-xs font-black tracking-tight text-rose-400">{opponentName.toUpperCase()}</p>
         </div>
-        <div className="grid h-full grid-cols-2" style={{ minHeight: isFullscreen ? 300 : 240 }}>
-          <div className="relative overflow-hidden">
+
+        <button
+          onTouchEnd={handleTouchEnd}
+          onClick={handleClick}
+          className="relative grid w-full grid-cols-2 gap-2.5"
+          style={{ minHeight: isFullscreen ? 300 : 220 }}
+        >
+          <div
+            className={`relative overflow-hidden rounded-[1.2rem] ${
+              winner === "left" && totalVotes > 0 && uiStatus !== "ended"
+                ? "shadow-[0_0_22px_rgba(56,189,248,0.45)] ring-2 ring-sky-400/70"
+                : "shadow-lg ring-1 ring-white/10"
+            }`}
+            style={{ minHeight: isFullscreen ? 300 : 220 }}
+          >
             {battle.challenger_cover_url ? (
               <img src={battle.challenger_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
             ) : (
@@ -390,28 +410,27 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                 <span className="text-4xl opacity-40">🎵</span>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-            {activeArtist === "left" && isPlaying && (
-              <motion.div
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                className="pointer-events-none absolute inset-0"
-                style={{ boxShadow: "inset 0 0 30px 4px rgba(56,189,248,0.45)" }}
-              />
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
             {winner === "left" && totalVotes > 0 && uiStatus !== "ended" && (
               <div className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5">
                 <Crown className="h-2.5 w-2.5 text-black" />
-                <span className="text-[8px] font-black text-black">WINNING</span>
+                <span className="text-[8px] font-black text-black">LEADING</span>
               </div>
             )}
             <div className="absolute bottom-0 left-0 right-0 z-10 p-3">
-              <p className="truncate text-base font-black text-white">{challengerName}</p>
+              <p className="truncate text-sm font-black text-white">{challengerName}</p>
               <p className="truncate text-[10px] text-white/60">{battle.challenger_title || "Entry"}</p>
             </div>
           </div>
 
-          <div className="relative overflow-hidden border-l border-white/15">
+          <div
+            className={`relative overflow-hidden rounded-[1.2rem] ${
+              winner === "right" && totalVotes > 0 && uiStatus !== "ended"
+                ? "shadow-[0_0_22px_rgba(251,113,133,0.45)] ring-2 ring-rose-400/70"
+                : "shadow-lg ring-1 ring-white/10"
+            }`}
+            style={{ minHeight: isFullscreen ? 300 : 220 }}
+          >
             {battle.opponent_cover_url ? (
               <img src={battle.opponent_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
             ) : (
@@ -419,43 +438,35 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
                 <span className="text-4xl opacity-40">{battle.opponent_id ? "🎵" : "❓"}</span>
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
-            {activeArtist === "right" && isPlaying && (
-              <motion.div
-                animate={{ opacity: [0.3, 0.6, 0.3] }}
-                transition={{ repeat: Infinity, duration: 1.5 }}
-                className="pointer-events-none absolute inset-0"
-                style={{ boxShadow: "inset 0 0 30px 4px rgba(251,113,133,0.45)" }}
-              />
-            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-transparent" />
             {winner === "right" && totalVotes > 0 && uiStatus !== "ended" && (
               <div className="absolute right-2 top-2 z-10 flex items-center gap-1 rounded-full bg-amber-400 px-2 py-0.5">
                 <Crown className="h-2.5 w-2.5 text-black" />
-                <span className="text-[8px] font-black text-black">WINNING</span>
+                <span className="text-[8px] font-black text-black">LEADING</span>
               </div>
             )}
             <div className="absolute bottom-0 left-0 right-0 z-10 p-3 text-right">
-              <p className="truncate text-base font-black text-white">{opponentName}</p>
+              <p className="truncate text-sm font-black text-white">{opponentName}</p>
               <p className="truncate text-[10px] text-white/60">{battle.opponent_title || "Waiting..."}</p>
             </div>
           </div>
-        </div>
 
-        {isActive && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-stone-900 shadow-xl">
-              <Play className="ml-0.5 h-6 w-6" fill="currentColor" />
+          {isActive && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-stone-900 shadow-xl">
+                <Play className="ml-0.5 h-5 w-5" fill="currentColor" />
+              </div>
             </div>
-          </div>
-        )}
-        {!isActive && uiStatus !== "ended" && (
-          <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-            <div className="rounded-full bg-black/65 px-3 py-1.5 backdrop-blur-sm">
-              <span className="text-[10px] font-bold text-white">Waiting for opponent</span>
+          )}
+          {!isActive && uiStatus !== "ended" && (
+            <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+              <div className="rounded-full bg-black/70 px-3 py-1.5 backdrop-blur-sm">
+                <span className="text-[10px] font-bold text-white">Waiting for opponent</span>
+              </div>
             </div>
-          </div>
-        )}
-      </button>
+          )}
+        </button>
+      </div>
 
       {isActive && battle.media_type === "audio" && !isExpired && (
         <div className="space-y-1 px-4 py-2" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
@@ -486,6 +497,8 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           totalVotes={totalVotes}
           live={uiStatus === "live" || uiStatus === "ending"}
           compact
+          finalMinute={finalMinute}
+          momentum={momentum}
         />
       </div>
 

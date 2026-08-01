@@ -93,6 +93,74 @@ export function crowdLeanText(
   return `Crowd is leaning toward ${leader}`;
 }
 
+export type VoteMomentum = {
+  leftGain: number;
+  rightGain: number;
+  label: string;
+  trending: "left" | "right" | "tied" | "none";
+};
+
+/** Recent vote surge from battle_votes.created_at — UI-only trend signal. */
+export function computeVoteMomentum(
+  votes: Array<{ voted_for?: string | null; created_at?: string | null; user_id?: string | null }>,
+  leftId?: string | null,
+  rightId?: string | null,
+  participantIds: string[] = [],
+  windowMs = 60_000,
+): VoteMomentum {
+  if (!leftId && !rightId) {
+    return { leftGain: 0, rightGain: 0, label: "Waiting for votes", trending: "none" };
+  }
+  const cutoff = Date.now() - windowMs;
+  const recent = votes.filter((v) => {
+    if (!v.created_at) return false;
+    if (v.user_id && participantIds.includes(v.user_id)) return false;
+    return new Date(v.created_at).getTime() >= cutoff;
+  });
+  const leftGain = leftId ? recent.filter((v) => v.voted_for === leftId).length : 0;
+  const rightGain = rightId ? recent.filter((v) => v.voted_for === rightId).length : 0;
+
+  if (leftGain === 0 && rightGain === 0) {
+    return { leftGain, rightGain, label: "Momentum building…", trending: "none" };
+  }
+  if (leftGain === rightGain) {
+    return {
+      leftGain,
+      rightGain,
+      label: `Both sides surged +${leftGain} in the last minute`,
+      trending: "tied",
+    };
+  }
+  if (leftGain > rightGain) {
+    return {
+      leftGain,
+      rightGain,
+      label: `🔥 Hot streak · +${leftGain} votes in the last minute`,
+      trending: "left",
+    };
+  }
+  return {
+    leftGain,
+    rightGain,
+    label: `⚡ Comeback watch · +${rightGain} votes in the last minute`,
+    trending: "right",
+  };
+}
+
+/** Display-only ranking reward for the winner ceremony (not persisted). */
+export function rankingPointsForWin(winnerPct: number, totalVotes: number, tied = false): number {
+  if (tied || totalVotes <= 0) return 0;
+  const margin = Math.max(0, winnerPct - (100 - winnerPct));
+  return Math.round(12 + margin * 0.4 + Math.min(25, totalVotes / 40));
+}
+
+export function formatClockMmSs(msLeft: number): string {
+  if (msLeft <= 0) return "00:00";
+  const m = Math.floor(msLeft / 60000);
+  const s = Math.floor((msLeft % 60000) / 1000);
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export type BattleFeedSectionId =
   | "trending"
   | "ending_soon"
