@@ -25,9 +25,7 @@ const bg = {
 } as const;
 
 const TOP_PICKS: ExploreItem[] = [
-  { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
-  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
-  { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
+  { label: "Battles", emoji: "⚔️", background: bg.yellow, route: "/battles" },
   {
     label: "Wellness",
     subtitle: "Sleep · Move · Relax",
@@ -35,13 +33,15 @@ const TOP_PICKS: ExploreItem[] = [
     background: bg.green,
     route: "/wellness",
   },
+  { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
+  { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
+  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
   { label: "Community", emoji: "🏠", background: bg.blue, route: "/circle" },
   { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
   { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
   { label: "Services", emoji: "🟰", background: bg.slate },
   { label: "YAJ TV", emoji: "📺", background: bg.red, route: "/tv/watch" },
   { label: "Games", emoji: "🎮", background: bg.indigo },
-  { label: "Battles", emoji: "⚔️", background: bg.yellow, route: "/battles" },
   { label: "Events", emoji: "🎪", background: bg.orange },
 ];
 
