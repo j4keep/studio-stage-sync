@@ -249,14 +249,15 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
           onClick={handleClick}
           className="relative block w-full"
         >
+          {/* Portrait boxes match post thumbs (4/5) — not short landscape strips */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
             <div
-              className="relative aspect-square overflow-hidden rounded-2xl shadow-[0_0_24px_rgba(37,99,235,0.35)] ring-[3px] ring-[#2563eb]/80"
+              className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900 shadow-[0_0_24px_rgba(37,99,235,0.35)] ring-[3px] ring-[#2563eb]/80"
             >
               {battle.challenger_cover_url ? (
-                <img src={battle.challenger_cover_url} alt="" className="h-full w-full object-cover" />
+                <img src={battle.challenger_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-sky-600/40 to-sky-950">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-600/40 to-sky-950">
                   <span className="text-4xl opacity-50">🎵</span>
                 </div>
               )}
@@ -286,16 +287,16 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
             </div>
 
             <div
-              className={`relative aspect-square overflow-hidden rounded-2xl ring-[3px] ${
+              className={`relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900 ring-[3px] ${
                 battle.opponent_cover_url
                   ? "shadow-[0_0_24px_rgba(225,29,72,0.35)] ring-[#e11d48]/80"
                   : "shadow-none ring-[#e11d48]/35"
               }`}
             >
               {battle.opponent_cover_url ? (
-                <img src={battle.opponent_cover_url} alt="" className="h-full w-full object-cover" />
+                <img src={battle.opponent_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full flex-col items-center justify-center bg-gradient-to-br from-rose-950/80 to-black px-3 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-rose-950/80 to-black px-3 text-center">
                   <span className="text-3xl opacity-50">❓</span>
                   <p className="mt-2 text-[11px] font-bold text-white/60">
                     {isPending ? "Waiting for opponent" : "Open challenge"}

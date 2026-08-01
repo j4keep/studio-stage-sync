@@ -465,9 +465,11 @@ export default function BattleFeedSlide({
 
     return (
       <div
-        className={`relative min-h-0 flex-1 overflow-hidden ${
-          side === "left" ? "border-r border-white/10" : ""
-        } ${isActiveSide && playing ? "opacity-100" : "opacity-80"}`}
+        className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ${
+          side === "left" ? "ring-[#2563eb]/70" : "ring-[#e11d48]/70"
+        } ${isActiveSide && playing ? "opacity-100" : "opacity-85"} ${
+          showComments ? "aspect-[3/4] max-h-full" : "aspect-[3/4] max-h-[min(52dvh,420px)]"
+        }`}
       >
         <button
           type="button"
@@ -484,16 +486,16 @@ export default function BattleFeedSlide({
             src={mediaUrl}
             playsInline
             preload={isActive ? "auto" : "none"}
-            className={`h-full w-full ${showComments ? "object-contain bg-black" : "object-cover"}`}
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : cover ? (
           <img
             src={cover}
             alt=""
-            className={`h-full w-full ${showComments ? "object-contain bg-black" : "object-cover"}`}
+            className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-neutral-900 text-xs text-white/50">
+          <div className="absolute inset-0 flex items-center justify-center bg-neutral-900 text-xs text-white/50">
             Waiting…
           </div>
         )}
@@ -506,7 +508,7 @@ export default function BattleFeedSlide({
           />
         ) : null}
 
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/75 via-transparent to-black/25" />
+        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
 
         {!showComments ? (
           <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
@@ -583,23 +585,26 @@ export default function BattleFeedSlide({
 
   return (
     <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-black text-white">
-      {/* Full-bleed arena */}
+      {/* Portrait media boxes (same language as arena / post thumbs) — not stretched full-bleed */}
       <div
-        className="absolute inset-x-0 top-0 overflow-hidden transition-all duration-300"
+        className="absolute inset-x-0 top-0 flex flex-col items-center justify-center px-2 transition-all duration-300"
         style={
           showComments
             ? { height: MOBILE_COMMENTS_VIDEO_HEIGHT }
-            : { bottom: 0, height: "100%" }
+            : {
+                top: "calc(env(safe-area-inset-top) + 2.75rem)",
+                bottom: "calc(13.75rem + env(safe-area-inset-bottom, 0px))",
+              }
         }
       >
-        <div className="flex h-full w-full">
+        <div className="relative flex w-full max-w-lg items-center justify-center gap-1.5">
           {renderCompetitor("left")}
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+            <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+              VS
+            </span>
+          </div>
           {renderCompetitor("right")}
-        </div>
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-          <span className="rounded-full bg-black/65 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/20">
-            VS
-          </span>
         </div>
       </div>
 
