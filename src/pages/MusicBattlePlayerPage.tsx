@@ -592,14 +592,13 @@ const MusicBattlePlayerPage = () => {
       >
         {!expandedSide ? (
           <div className="mb-2 flex w-full items-center justify-between px-1">
-            <p className="truncate text-sm font-black tracking-tight text-sky-400">{firstName(leftName).toUpperCase()}</p>
-            <BattleVsMark size="sm" finalMinute={finalMinute} />
-            <p className="truncate text-right text-sm font-black tracking-tight text-rose-400">{firstName(rightName).toUpperCase()}</p>
+            <p className="truncate text-sm font-black tracking-tight text-[#2563eb]">{firstName(leftName).toUpperCase()}</p>
+            <p className="truncate text-right text-sm font-black tracking-tight text-[#e11d48]">{firstName(rightName).toUpperCase()}</p>
           </div>
         ) : null}
 
-        {/* SPLIT SCREEN — collectible cards */}
-        <div className={`relative flex w-full gap-3 transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[300px]"}`}>
+        {/* SPLIT SCREEN — collectible cards with VS in the middle */}
+        <div className={`relative flex w-full items-center gap-1.5 transition-all duration-300 ${expandedSide ? "min-h-[85vh]" : "min-h-[300px]"}`}>
 
           {/* LEFT ARTIST */}
           <div
@@ -607,7 +606,7 @@ const MusicBattlePlayerPage = () => {
               expandedSide === "left" ? "flex-[3]" : expandedSide === "right" ? "hidden" : "flex-1"
             } ${
               winner === "left" && total > 0 && !ended
-                ? "shadow-[0_0_28px_rgba(56,189,248,0.45)] ring-2 ring-sky-400/70"
+                ? "shadow-[0_0_28px_rgba(37,99,235,0.45)] ring-2 ring-[#2563eb]/70"
                 : "shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/10"
             }`}
             style={{ opacity: !expandedSide && activeArtist === "right" ? 0.72 : 1 }}
@@ -674,9 +673,16 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
 
+          {/* VS between the two competitor screens */}
+          {!expandedSide ? (
+            <div className="relative z-30 flex shrink-0 items-center justify-center px-0.5">
+              <BattleVsMark size="sm" finalMinute={finalMinute} />
+            </div>
+          ) : null}
+
           {/* CENTER PLAY BUTTON — hidden when a side is expanded or battle not active */}
           {!expandedSide && battle.status === "active" && (
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-40">
+          <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
               animate={isPlaying
@@ -736,7 +742,7 @@ const MusicBattlePlayerPage = () => {
               expandedSide === "right" ? "flex-[3]" : expandedSide === "left" ? "hidden" : "flex-1"
             } ${
               winner === "right" && total > 0 && !ended
-                ? "shadow-[0_0_28px_rgba(251,113,133,0.45)] ring-2 ring-rose-400/70"
+                ? "shadow-[0_0_28px_rgba(225,29,72,0.45)] ring-2 ring-[#e11d48]/70"
                 : "shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/10"
             }`}
             style={{ opacity: !expandedSide && activeArtist === "left" ? 0.72 : 1 }}

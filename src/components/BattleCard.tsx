@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { useEffect, useMemo } from "react";
 import { Slider } from "@/components/ui/slider";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
+import BattleWavyMeter from "@/components/battle/BattleWavyMeter";
 import {
   battleCategoryFromMedia,
   computeVoteMomentum,
@@ -460,23 +461,23 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
       <div className="relative px-3 pb-2 pt-2">
         <div className="mb-2 grid grid-cols-2 gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-black tracking-[0.04em] text-sky-400">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-[#3b82f6]">
               {challengerName.toUpperCase()}
             </p>
             <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] font-semibold text-white/70">
               <span className="truncate">{battle.challenger_title || battle.title || "Entry"}</span>
               {battle.challenger_media_url || battle.challenger_cover_url ? (
-                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-400" />
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#3b82f6]" />
               ) : null}
             </p>
           </div>
           <div className="min-w-0 text-right">
-            <p className="truncate text-[11px] font-black tracking-[0.04em] text-rose-400">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-[#e11d48]">
               {opponentName.toUpperCase()}
             </p>
             <p className="mt-0.5 flex items-center justify-end gap-1 truncate text-[11px] font-semibold text-white/70">
               {battle.opponent_media_url || battle.opponent_cover_url ? (
-                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-rose-400" />
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#e11d48]" />
               ) : null}
               <span className="truncate">{battle.opponent_title || (battle.opponent_id ? "Waiting…" : "Open slot")}</span>
             </p>
@@ -489,28 +490,10 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
           onClick={handleClick}
           className="relative block w-full"
         >
-          {/* energy split glow */}
-          <div className="pointer-events-none absolute inset-y-2 left-1/2 z-20 w-px -translate-x-1/2 bg-gradient-to-b from-sky-400 via-white to-rose-400 shadow-[0_0_18px_rgba(255,255,255,0.65)]" />
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
-            <motion.div
-              animate={{
-                boxShadow: [
-                  "0 0 12px rgba(255,255,255,0.45)",
-                  "0 0 28px rgba(167,139,250,0.8)",
-                  "0 0 12px rgba(255,255,255,0.45)",
-                ],
-              }}
-              transition={{ repeat: Infinity, duration: 1.6 }}
-              className="flex h-12 w-12 items-center justify-center rounded-full bg-black font-black tracking-[0.18em] text-white ring-2 ring-white/80"
-            >
-              VS
-            </motion.div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
             <div>
               <div
-                className="relative aspect-square overflow-hidden rounded-2xl shadow-[0_0_24px_rgba(56,189,248,0.35)] ring-[3px] ring-sky-400/80"
+                className="relative aspect-square overflow-hidden rounded-2xl shadow-[0_0_24px_rgba(37,99,235,0.35)] ring-[3px] ring-[#2563eb]/80"
               >
                 {battle.challenger_cover_url ? (
                   <img src={battle.challenger_cover_url} alt="" className="h-full w-full object-cover" />
@@ -532,12 +515,29 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
               {renderSupporters(leftVoterIds, challengerVotes, "left")}
             </div>
 
+            {/* VS sits in the gutter between the two screens */}
+            <div className="relative z-20 flex items-center justify-center self-center pb-8">
+              <motion.div
+                animate={{
+                  boxShadow: [
+                    "0 0 10px rgba(37,99,235,0.35)",
+                    "0 0 22px rgba(225,29,72,0.45)",
+                    "0 0 10px rgba(37,99,235,0.35)",
+                  ],
+                }}
+                transition={{ repeat: Infinity, duration: 1.8 }}
+                className="flex h-11 w-11 items-center justify-center rounded-full bg-black font-black tracking-[0.16em] text-white ring-2 ring-white/85"
+              >
+                VS
+              </motion.div>
+            </div>
+
             <div>
               <div
                 className={`relative aspect-square overflow-hidden rounded-2xl ring-[3px] ${
                   battle.opponent_cover_url
-                    ? "shadow-[0_0_24px_rgba(251,113,133,0.35)] ring-rose-400/80"
-                    : "shadow-none ring-rose-400/35"
+                    ? "shadow-[0_0_24px_rgba(225,29,72,0.35)] ring-[#e11d48]/80"
+                    : "shadow-none ring-[#e11d48]/35"
                 }`}
               >
                 {battle.opponent_cover_url ? (
@@ -601,7 +601,7 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
             key={`lp-${challengerPct}`}
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
-            className="text-3xl font-black tabular-nums text-sky-400"
+            className="text-3xl font-black tabular-nums text-[#3b82f6]"
           >
             {challengerPct}%
           </motion.p>
@@ -609,31 +609,13 @@ const BattleCard = ({ battle }: { battle: Battle }) => {
             key={`rp-${opponentPct}`}
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
-            className="text-3xl font-black tabular-nums text-rose-400"
+            className="text-3xl font-black tabular-nums text-[#e11d48]"
           >
             {opponentPct}%
           </motion.p>
         </div>
-        <div className="relative mt-2 h-3.5 overflow-hidden rounded-full bg-white/5 ring-1 ring-white/10">
-          <motion.div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-sky-500 via-cyan-400 to-sky-300"
-            animate={{ width: `${challengerPct}%` }}
-            transition={{ type: "spring", stiffness: 170, damping: 20 }}
-            style={{ filter: "drop-shadow(0 0 8px rgba(56,189,248,0.65))" }}
-          />
-          <motion.div
-            className="absolute inset-y-0 right-0 bg-gradient-to-l from-rose-500 via-orange-400 to-rose-300"
-            animate={{ width: `${opponentPct}%` }}
-            transition={{ type: "spring", stiffness: 170, damping: 20 }}
-            style={{ filter: "drop-shadow(0 0 8px rgba(251,113,133,0.65))" }}
-          />
-          <motion.div
-            className="absolute top-1/2 z-10 flex h-6 w-6 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-amber-300 text-amber-950 shadow-[0_0_16px_rgba(251,191,36,0.8)]"
-            animate={{ left: `${Math.max(8, Math.min(92, challengerPct))}%` }}
-            transition={{ type: "spring", stiffness: 180, damping: 18 }}
-          >
-            ⚡
-          </motion.div>
+        <div className="mt-2">
+          <BattleWavyMeter leftPct={challengerPct} size="sm" />
         </div>
         <p className="mt-1.5 text-center text-[11px] font-bold text-white/50">
           {formatCompact(totalVotes)} votes
