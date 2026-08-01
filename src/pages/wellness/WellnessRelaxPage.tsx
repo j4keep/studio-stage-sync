@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Play } from "lucide-react";
+import { ArrowLeft, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import AmbientSoundPlayer from "@/components/wellness/AmbientSoundPlayer";
 import BreathExperienceCard, {
@@ -114,6 +114,16 @@ export default function WellnessRelaxPage() {
   };
 
   const openSound = (id: string) => {
+    // Tap the playing sound again → stop it completely.
+    if (dockTrack?.id === id && dockPlaying) {
+      dismissDock();
+      return;
+    }
+    // Tap the paused docked sound → resume.
+    if (dockTrack?.id === id && !dockPlaying) {
+      toggleDock();
+      return;
+    }
     const t = getAmbientTrack(id);
     if (!t) {
       toast.error("Sound unavailable");
@@ -244,14 +254,16 @@ export default function WellnessRelaxPage() {
           <div className="mt-3 grid grid-cols-3 gap-2">
             {RELAX_SOUND_CARDS.map((s) => {
               const fav = favs.includes(s.id);
-              const active = dockTrack?.id === s.id && dockPlaying;
+              const selected = dockTrack?.id === s.id;
+              const playing = selected && dockPlaying;
               return (
                 <button
                   key={s.id}
                   type="button"
                   onClick={() => openSound(s.id)}
+                  aria-label={playing ? `Stop ${s.title}` : `Play ${s.title}`}
                   className={`relative flex flex-col items-center rounded-2xl border px-2 py-3.5 text-center transition ${
-                    active
+                    selected
                       ? "border-teal-300/50 bg-teal-400/15"
                       : "border-white/10 bg-white/5 active:bg-white/10"
                   }`}
@@ -261,9 +273,22 @@ export default function WellnessRelaxPage() {
                   ) : null}
                   <span className="text-2xl">{s.emoji}</span>
                   <span className="mt-1.5 text-[11px] font-bold leading-tight">{s.title}</span>
-                  <span className="mt-1 flex h-6 w-6 items-center justify-center rounded-full bg-teal-400/90 text-teal-950">
-                    <Play className="ml-0.5 h-3 w-3 fill-current" />
+                  <span
+                    className={`mt-1 flex h-6 w-6 items-center justify-center rounded-full ${
+                      playing ? "bg-white text-teal-950" : "bg-teal-400/90 text-teal-950"
+                    }`}
+                  >
+                    {playing ? (
+                      <Square className="h-2.5 w-2.5 fill-current" />
+                    ) : (
+                      <Play className="ml-0.5 h-3 w-3 fill-current" />
+                    )}
                   </span>
+                  {playing ? (
+                    <span className="mt-1 text-[9px] font-bold uppercase tracking-wide text-teal-200/80">
+                      Tap to stop
+                    </span>
+                  ) : null}
                 </button>
               );
             })}

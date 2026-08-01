@@ -28,7 +28,7 @@ export default function RelaxNowPlayingBar({
   onDismiss,
 }: Props) {
   return (
-    <div className="fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[80]">
+    <div className="feed-bottom-offset fixed inset-x-3 z-[80]">
       <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#10221e]/95 px-3 py-2.5 shadow-[0_16px_40px_-18px_rgba(0,0,0,0.75)] backdrop-blur-xl">
         <button
           type="button"
@@ -67,7 +67,7 @@ export default function RelaxNowPlayingBar({
           type="button"
           onClick={onDismiss}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70"
-          aria-label="Dismiss player"
+          aria-label="Stop and close"
         >
           <X className="h-4 w-4" />
         </button>
