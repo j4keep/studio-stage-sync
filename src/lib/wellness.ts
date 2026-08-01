@@ -20,7 +20,25 @@ export type HabitId =
   | "stretch"
   | "screen_break"
   | "read"
-  | "meal_prep";
+  | "meal_prep"
+  | "electrolytes"
+  | "stand_up"
+  | "mobility"
+  | "veggies"
+  | "fruit"
+  | "lean_protein"
+  | "healthy_breakfast"
+  | "no_sugary_drinks"
+  | "healthy_snacks"
+  | "less_processed"
+  | "eat_slowly"
+  | "balanced_plate"
+  | "wind_down"
+  | "no_screens"
+  | "meditate"
+  | "gratitude"
+  | "breathing"
+  | "journal";
 
 export const MOODS: { id: MoodId; label: string; emoji: string }[] = [
   { id: "great", label: "Great", emoji: "☀️" },
@@ -54,19 +72,39 @@ export function moodVoicePrompt(mood: MoodId): string {
   }
 }
 
+export type HabitProgressKey = "water" | "move" | "sleep" | "mindful" | "food";
+
 export const HABIT_OPTIONS: {
   id: HabitId;
   label: string;
   hint: string;
-  progressKey: "water" | "move" | "sleep" | "mindful";
+  progressKey: HabitProgressKey;
 }[] = [
-  { id: "water", label: "Drink more water", hint: "Sip through the day", progressKey: "water" },
+  { id: "water", label: "Drink water", hint: "Aim for your daily glass goal", progressKey: "water" },
+  { id: "electrolytes", label: "Electrolytes", hint: "Balance hydration when you need it", progressKey: "water" },
   { id: "walk", label: "Walk daily", hint: "Even 10 minutes counts", progressKey: "move" },
-  { id: "bed_earlier", label: "Go to bed earlier", hint: "Gentle wind-down", progressKey: "sleep" },
-  { id: "stretch", label: "Stretch", hint: "Loosen up once today", progressKey: "move" },
-  { id: "screen_break", label: "Take screen breaks", hint: "Eyes and mind rest", progressKey: "mindful" },
-  { id: "read", label: "Read", hint: "A few pages is enough", progressKey: "mindful" },
-  { id: "meal_prep", label: "Meal preparation", hint: "One simple prep step", progressKey: "water" },
+  { id: "stretch", label: "Stretch", hint: "5 gentle minutes", progressKey: "move" },
+  { id: "stand_up", label: "Stand up", hint: "Break up long sitting", progressKey: "move" },
+  { id: "mobility", label: "Mobility", hint: "Easy joints and hips", progressKey: "move" },
+  { id: "veggies", label: "Eat more vegetables", hint: "Add color to a meal", progressKey: "food" },
+  { id: "fruit", label: "Eat fruit today", hint: "One serving is enough", progressKey: "food" },
+  { id: "lean_protein", label: "Choose lean protein", hint: "Chicken, fish, beans, tofu…", progressKey: "food" },
+  { id: "healthy_breakfast", label: "Healthy breakfast", hint: "Start the day with intention", progressKey: "food" },
+  { id: "no_sugary_drinks", label: "Avoid sugary drinks", hint: "Choose water or unsweetened", progressKey: "food" },
+  { id: "healthy_snacks", label: "Healthy snacks", hint: "Fruit, yogurt, nuts", progressKey: "food" },
+  { id: "less_processed", label: "Reduce processed foods", hint: "One whole-food swap", progressKey: "food" },
+  { id: "eat_slowly", label: "Eat slowly", hint: "Put the fork down between bites", progressKey: "food" },
+  { id: "balanced_plate", label: "Balanced plate", hint: "Veg · protein · healthy carb", progressKey: "food" },
+  { id: "meal_prep", label: "Meal prep", hint: "One simple prep step", progressKey: "food" },
+  { id: "bed_earlier", label: "Earlier bedtime", hint: "Gentle wind-down", progressKey: "sleep" },
+  { id: "wind_down", label: "Wind down", hint: "Quiet minutes before bed", progressKey: "sleep" },
+  { id: "no_screens", label: "No screens before bed", hint: "Put devices away", progressKey: "sleep" },
+  { id: "screen_break", label: "Screen break", hint: "Eyes and mind rest", progressKey: "mindful" },
+  { id: "meditate", label: "Meditate", hint: "2–5 calm minutes", progressKey: "mindful" },
+  { id: "gratitude", label: "Gratitude", hint: "Name one good thing", progressKey: "mindful" },
+  { id: "breathing", label: "Breathing", hint: "A few slow breaths", progressKey: "mindful" },
+  { id: "read", label: "Reading", hint: "A few pages is enough", progressKey: "mindful" },
+  { id: "journal", label: "Journal", hint: "One honest sentence", progressKey: "mindful" },
 ];
 
 /** Ambient track id (see wellness-ambient-catalog). Legacy aliases still resolve. */
@@ -346,6 +384,10 @@ export type DayProgress = {
   mindfulMinutes: number;
   habitsDone: HabitId[];
   sleepScore?: 1 | 2 | 3 | 4 | 5;
+  /** Optional meal building blocks checked on the Healthy Plate card. */
+  plateChecks?: string[];
+  /** ISO timestamps of when habits were last completed today. */
+  habitCompletedAt?: Partial<Record<HabitId, string>>;
 };
 
 /** Presentation used for the YAJ Wellness Coach avatar (not medical sex). */
@@ -407,6 +449,8 @@ export function emptyDay(date = todayKey()): DayProgress {
     sleepRoutine: false,
     mindfulMinutes: 0,
     habitsDone: [],
+    plateChecks: [],
+    habitCompletedAt: {},
   };
 }
 
@@ -449,6 +493,8 @@ export function loadWellnessState(): WellnessState {
         ...d,
         waterCups: typeof d.waterCups === "number" ? d.waterCups : d.water ? 1 : 0,
         habitsDone: [...(d.habitsDone || [])],
+        plateChecks: Array.isArray(d.plateChecks) ? [...d.plateChecks] : [],
+        habitCompletedAt: { ...(d.habitCompletedAt || {}) },
       };
     }
     return {
@@ -513,9 +559,12 @@ export function getTodayProgress(state?: WellnessState): DayProgress {
 export function patchToday(mutator: (day: DayProgress, state: WellnessState) => void): WellnessState {
   const state = loadWellnessState();
   const key = todayKey();
-  const day = {
-    ...(state.days[key] || emptyDay(key)),
-    habitsDone: [...(state.days[key]?.habitsDone || [])],
+  const prev = state.days[key] || emptyDay(key);
+  const day: DayProgress = {
+    ...prev,
+    habitsDone: [...(prev.habitsDone || [])],
+    plateChecks: [...(prev.plateChecks || [])],
+    habitCompletedAt: { ...(prev.habitCompletedAt || {}) },
   };
   mutator(day, state);
   state.days[key] = day;
