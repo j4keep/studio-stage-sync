@@ -69,6 +69,7 @@ export default function BattleFeedSlide({
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState("");
   const [activeSide, setActiveSide] = useState<"left" | "right">("left");
+  const [expandedSide, setExpandedSide] = useState<"left" | "right" | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
@@ -84,6 +85,10 @@ export default function BattleFeedSlide({
   const viewedRef = useRef(false);
   const activeSideRef = useRef<"left" | "right">("left");
   const autoStartedRef = useRef<string | null>(null);
+  const lastTapRef = useRef(0);
+  const lastTapSideRef = useRef<"left" | "right" | null>(null);
+  const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchHandledRef = useRef(false);
 
   const mediaType = (battle?.media_type || "audio").toLowerCase();
 
@@ -96,6 +101,7 @@ export default function BattleFeedSlide({
     setLikesCount(battle?.likes_count || 0);
     setShowComments(false);
     setSaved(false);
+    setExpandedSide(null);
     onScrollLockChange?.(false);
     autoStartedRef.current = null;
   }, [battle?.id, battle?.isLiked, battle?.likes_count, onScrollLockChange]);
@@ -178,6 +184,62 @@ export default function BattleFeedSlide({
     },
     [pauseAll, playSide, playing],
   );
+
+  /** Single tap = play/pause that side. Double tap = expand / minimize that card. */
+  const handleArtistTap = useCallback(
+    (side: "left" | "right") => {
+      const nowTs = Date.now();
+      const isDoubleTap =
+        lastTapSideRef.current === side && nowTs - lastTapRef.current < 320;
+
+      lastTapRef.current = nowTs;
+      lastTapSideRef.current = side;
+
+      if (isDoubleTap) {
+        if (singleTapTimerRef.current) {
+          clearTimeout(singleTapTimerRef.current);
+          singleTapTimerRef.current = null;
+        }
+        setExpandedSide((prev) => (prev === side ? null : side));
+        return;
+      }
+
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+      singleTapTimerRef.current = setTimeout(() => {
+        singleTapTimerRef.current = null;
+        toggleSide(side);
+      }, 280);
+    },
+    [toggleSide],
+  );
+
+  const handleArtistTouchEnd = useCallback(
+    (e: React.TouchEvent, side: "left" | "right") => {
+      e.stopPropagation();
+      e.preventDefault();
+      touchHandledRef.current = true;
+      handleArtistTap(side);
+    },
+    [handleArtistTap],
+  );
+
+  const handleArtistClick = useCallback(
+    (e: React.MouseEvent, side: "left" | "right") => {
+      e.stopPropagation();
+      if (touchHandledRef.current) {
+        touchHandledRef.current = false;
+        return;
+      }
+      handleArtistTap(side);
+    },
+    [handleArtistTap],
+  );
+
+  useEffect(() => {
+    return () => {
+      if (singleTapTimerRef.current) clearTimeout(singleTapTimerRef.current);
+    };
+  }, []);
 
   // Autoplay when the slide becomes active (like a regular feed post).
   useEffect(() => {
@@ -266,6 +328,7 @@ export default function BattleFeedSlide({
 
   const openComments = useCallback(() => {
     onScrollLockChange?.(true);
+    setExpandedSide(null);
     setShowComments(true);
   }, [onScrollLockChange]);
 
@@ -461,23 +524,36 @@ export default function BattleFeedSlide({
     const mediaUrl = side === "left" ? battle?.challenger_media_url : battle?.opponent_media_url;
     const votesN = side === "left" ? tally.leftVotes : tally.rightVotes;
     const isActiveSide = activeSide === side;
+    const isExpanded = expandedSide === side;
+    const isHidden = expandedSide != null && expandedSide !== side;
     const userId = side === "left" ? battle?.challenger_id : battle?.opponent_id;
 
     return (
       <div
-        className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ${
+        className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 transition-all duration-300 ${
           side === "left" ? "ring-[#2563eb]/70" : "ring-[#e11d48]/70"
         } ${isActiveSide && playing ? "opacity-100" : "opacity-85"} ${
-          showComments ? "aspect-[3/4] max-h-full" : "aspect-[3/4] max-h-[min(52dvh,420px)]"
+          isHidden
+            ? "hidden"
+            : isExpanded
+              ? "h-full w-full max-h-full max-w-lg"
+              : showComments
+                ? "min-w-0 flex-1 aspect-[3/4] max-h-full"
+                : "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]"
         }`}
       >
         <button
           type="button"
           className="absolute inset-0 z-[1]"
           aria-label={
-            isActiveSide && playing ? `Pause ${firstName(name)}` : `Play ${firstName(name)}`
+            isExpanded
+              ? `Minimize ${firstName(name)}`
+              : isActiveSide && playing
+                ? `Pause ${firstName(name)}`
+                : `Play ${firstName(name)}`
           }
-          onClick={() => toggleSide(side)}
+          onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
+          onClick={(e) => handleArtistClick(e, side)}
         />
 
         {mediaType === "video" && mediaUrl ? (
@@ -509,6 +585,12 @@ export default function BattleFeedSlide({
         ) : null}
 
         <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+
+        {isExpanded ? (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
+            Double-tap to minimize
+          </div>
+        ) : null}
 
         {!showComments ? (
           <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
@@ -585,25 +667,36 @@ export default function BattleFeedSlide({
 
   return (
     <div ref={rootRef} className="relative h-full w-full overflow-hidden bg-black text-white">
-      {/* Portrait media boxes (same language as arena / post thumbs) — not stretched full-bleed */}
+      {/* Portrait media boxes — double-tap a side to expand / minimize */}
       <div
         className="absolute inset-x-0 top-0 flex flex-col items-center justify-center px-2 transition-all duration-300"
         style={
           showComments
             ? { height: MOBILE_COMMENTS_VIDEO_HEIGHT }
-            : {
-                top: "calc(env(safe-area-inset-top) + 2.75rem)",
-                bottom: "calc(13.75rem + env(safe-area-inset-bottom, 0px))",
-              }
+            : expandedSide
+              ? {
+                  top: "calc(env(safe-area-inset-top) + 2.75rem)",
+                  bottom: "calc(13.75rem + env(safe-area-inset-bottom, 0px))",
+                }
+              : {
+                  top: "calc(env(safe-area-inset-top) + 2.75rem)",
+                  bottom: "calc(13.75rem + env(safe-area-inset-bottom, 0px))",
+                }
         }
       >
-        <div className="relative flex w-full max-w-lg items-center justify-center gap-1.5">
+        <div
+          className={`relative flex w-full max-w-lg items-center justify-center gap-1.5 ${
+            expandedSide ? "h-full" : ""
+          }`}
+        >
           {renderCompetitor("left")}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-            <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
-              VS
-            </span>
-          </div>
+          {!expandedSide ? (
+            <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+              <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+                VS
+              </span>
+            </div>
+          ) : null}
           {renderCompetitor("right")}
         </div>
       </div>
