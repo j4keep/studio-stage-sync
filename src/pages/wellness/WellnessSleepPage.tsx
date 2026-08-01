@@ -100,17 +100,6 @@ export default function WellnessSleepPage() {
       </header>
 
       <div className="relative space-y-6 px-4 pt-5">
-        <section className="overflow-hidden rounded-[1.6rem] bg-gradient-to-br from-sky-500/20 via-indigo-500/10 to-transparent p-4 ring-1 ring-white/10">
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300/90">
-            YAJ Sleep Player
-          </p>
-          <h2 className="mt-1 text-xl font-black tracking-tight">Royalty-free ambience</h2>
-          <p className="mt-1 text-xs leading-relaxed text-slate-300">
-            Mixkit loops + on-device noise — App Store safe. Tap a card for the full player: loop,
-            fade timer, custom mix, and optional YAJ voice guide.
-          </p>
-        </section>
-
         <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 scrollbar-none">
           <Chip
             active={category === "all"}
@@ -184,13 +173,7 @@ export default function WellnessSleepPage() {
             <li>· Mix layers (rain + thunder + fireplace…)</li>
             <li>· Fade-out timer: 15 / 30 / 45 / 60 min</li>
             <li>· Sparkle button: YAJ whispers a short wind-down</li>
-            <li>· Sources: Mixkit License + on-device procedural noise</li>
           </ul>
-          <p className="mt-3 text-[10px] text-slate-500">
-            Tip: drop your own royalty-free MP3s in{" "}
-            <code className="text-slate-400">public/audio/sleep/</code> later — the catalog already
-            supports local paths.
-          </p>
         </section>
 
         <section>
@@ -235,10 +218,6 @@ export default function WellnessSleepPage() {
           <p className="mt-2 text-[10px] text-slate-500">1 = rough · 5 = rested</p>
         </section>
 
-        <p className="text-[11px] text-slate-500">
-          Library size: {AMBIENT_TRACKS.length} royalty-free sounds across Sleep, Relax, Meditation,
-          Focus, and Deep Sleep.
-        </p>
       </div>
 
       {playerTrack ? (
