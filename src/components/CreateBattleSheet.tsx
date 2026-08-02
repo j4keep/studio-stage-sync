@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,9 @@ import { Music, Video, Search, X, Clock, Image, Mic, ChevronLeft, ChevronRight, 
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
+import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
+import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
+import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 
 const STEPS = ["Type", "Title", "Opponent", "Upload", "Review"] as const;
 
@@ -46,6 +49,9 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoSongFile, setPhotoSongFile] = useState<File | null>(null);
+  const [photoSongChecking, setPhotoSongChecking] = useState(false);
+  const [photoSongTrim, setPhotoSongTrim] = useState<{ file: File; durationSec: number } | null>(null);
+  const photoSongInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
@@ -75,6 +81,40 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     },
     enabled: opponentSearch.trim().length >= 1 && !selectedOpponent,
   });
+
+  const handlePhotoSongChange = async (file: File | null) => {
+    if (!file) {
+      setPhotoSongFile(null);
+      setPhotoSongTrim(null);
+      return;
+    }
+    setPhotoSongChecking(true);
+    try {
+      const result = await preparePhotoBattleSong(file);
+      if (result.kind === "needs_trim") {
+        setPhotoSongFile(null);
+        setPhotoSongTrim({ file: result.file, durationSec: result.durationSec });
+        toast({
+          title: "Trim your song to 30s",
+          description: "Photo battles only play a short clip under your photo.",
+        });
+        return;
+      }
+      setPhotoSongTrim(null);
+      setPhotoSongFile(result.file);
+    } catch (err) {
+      setPhotoSongFile(null);
+      setPhotoSongTrim(null);
+      toast({
+        title: "Couldn't read song",
+        description: err instanceof Error ? err.message : "Try another audio file",
+        variant: "destructive",
+      });
+      if (photoSongInputRef.current) photoSongInputRef.current.value = "";
+    } finally {
+      setPhotoSongChecking(false);
+    }
+  };
 
   const handleMediaFileChange = async (file: File | null) => {
     setMediaFile(file);
@@ -225,7 +265,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   };
 
   const isSubmitDisabled = () => {
-    if (loading || !title.trim() || !trackTitle.trim() || !selectedOpponent) return true;
+    if (loading || photoSongChecking || !!photoSongTrim || !title.trim() || !trackTitle.trim() || !selectedOpponent) return true;
     if (isPhotoBattle) return !photoFile;
     return !mediaFile || (mediaType === "audio" && !coverFile) || (mediaDurationMin !== null && mediaDurationMin > maxDuration);
   };
@@ -235,7 +275,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     if (step === 1) return !!title.trim() && !!trackTitle.trim();
     if (step === 2) return !!selectedOpponent;
     if (step === 3) {
-      if (isPhotoBattle) return !!photoFile;
+      if (isPhotoBattle) return !!photoFile && !photoSongChecking && !photoSongTrim;
       return !!mediaFile && (mediaType !== "audio" || !!coverFile) && !(mediaDurationMin !== null && mediaDurationMin > maxDuration);
     }
     return !isSubmitDisabled();
@@ -426,14 +466,24 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   </div>
                   <div>
                     <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Music className="h-3.5 w-3.5" /> Add a song (optional)
+                      <Music className="h-3.5 w-3.5" /> Add a {PHOTO_BATTLE_SONG_MAX_SEC}s song clip (optional)
                     </label>
                     <input
+                      ref={photoSongInputRef}
                       type="file"
                       accept="audio/*,.mp3,.wav,.flac,.m4a"
-                      onChange={(e) => setPhotoSongFile(e.target.files?.[0] || null)}
+                      onChange={(e) => void handlePhotoSongChange(e.target.files?.[0] || null)}
                       className="w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
                     />
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Longer tracks open a trimmer so you pick a {PHOTO_BATTLE_SONG_MAX_SEC}s section.
+                    </p>
+                    {photoSongChecking && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">Checking song length…</p>
+                    )}
+                    {photoSongFile && (
+                      <p className="mt-1 text-[10px] text-primary">🎵 {photoSongFile.name} · clip ready</p>
+                    )}
                   </div>
                 </>
               ) : (
@@ -503,6 +553,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 {!isPhotoBattle && (
                   <p><span className="text-muted-foreground">Max duration:</span> <span className="font-bold">{maxDuration} min</span></p>
                 )}
+                {isPhotoBattle && photoSongFile && (
+                  <p>
+                    <span className="text-muted-foreground">Song clip:</span>{" "}
+                    <span className="font-bold">{photoSongFile.name}</span>
+                  </p>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 Ready to send the challenge? Your opponent uploads next — then the crowd votes.
@@ -543,6 +599,25 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           </div>
         </div>
       </SheetContent>
+
+      <PhotoBattleSongTrimSheet
+        open={!!photoSongTrim}
+        file={photoSongTrim?.file ?? null}
+        durationSec={photoSongTrim?.durationSec ?? 0}
+        onOpenChange={(next) => {
+          if (!next) {
+            setPhotoSongTrim(null);
+            if (!photoSongFile && photoSongInputRef.current) {
+              photoSongInputRef.current.value = "";
+            }
+          }
+        }}
+        onConfirm={(clipped) => {
+          setPhotoSongFile(clipped);
+          setPhotoSongTrim(null);
+          toast({ title: "30s clip ready", description: "Your photo battle song is trimmed." });
+        }}
+      />
     </Sheet>
   );
 };

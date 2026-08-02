@@ -20,6 +20,9 @@ import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
 import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
 import BattleVsMark from "@/components/battle/BattleVsMark";
+import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
+import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
+import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   computeVoteMomentum,
   firstName,
@@ -55,6 +58,9 @@ const MusicBattlePlayerPage = () => {
   const [acceptMediaFile, setAcceptMediaFile] = useState<File | null>(null);
   const [acceptCoverFile, setAcceptCoverFile] = useState<File | null>(null);
   const [acceptSongFile, setAcceptSongFile] = useState<File | null>(null);
+  const [acceptSongChecking, setAcceptSongChecking] = useState(false);
+  const [acceptSongTrim, setAcceptSongTrim] = useState<{ file: File; durationSec: number } | null>(null);
+  const acceptSongInputRef = useRef<HTMLInputElement | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [showAcceptVoiceover, setShowAcceptVoiceover] = useState(false);
   const [hasAcceptVoiceover, setHasAcceptVoiceover] = useState(false);
@@ -272,10 +278,43 @@ const MusicBattlePlayerPage = () => {
     handleArtistTap(side);
   }, [handleArtistTap]);
 
+  const handleAcceptPhotoSongChange = async (file: File | null) => {
+    if (!file) {
+      setAcceptSongFile(null);
+      setAcceptSongTrim(null);
+      return;
+    }
+    setAcceptSongChecking(true);
+    try {
+      const result = await preparePhotoBattleSong(file);
+      if (result.kind === "needs_trim") {
+        setAcceptSongFile(null);
+        setAcceptSongTrim({ file: result.file, durationSec: result.durationSec });
+        toast.message("Trim your song to 30s", {
+          description: "Photo battles only play a short clip under your photo.",
+        });
+        return;
+      }
+      setAcceptSongTrim(null);
+      setAcceptSongFile(result.file);
+    } catch (err) {
+      setAcceptSongFile(null);
+      setAcceptSongTrim(null);
+      toast.error(err instanceof Error ? err.message : "Couldn't read song");
+      if (acceptSongInputRef.current) acceptSongInputRef.current.value = "";
+    } finally {
+      setAcceptSongChecking(false);
+    }
+  };
+
   const handleAcceptBattle = useCallback(async () => {
     if (!user || !battle || !acceptTrackTitle.trim() || !acceptMediaFile) return;
     if (battle.media_type === "audio" && !acceptCoverFile) {
       toast.error("Audio battles need cover art");
+      return;
+    }
+    if (acceptSongTrim || acceptSongChecking) {
+      toast.error("Finish trimming your 30s song clip first");
       return;
     }
 
@@ -389,7 +428,18 @@ const MusicBattlePlayerPage = () => {
     } finally {
       setAccepting(false);
     }
-  }, [acceptCoverFile, acceptMediaFile, acceptTrackTitle, battle, navigate, refreshBattleViews, user]);
+  }, [
+    acceptCoverFile,
+    acceptMediaFile,
+    acceptSongChecking,
+    acceptSongFile,
+    acceptSongTrim,
+    acceptTrackTitle,
+    battle,
+    navigate,
+    refreshBattleViews,
+    user,
+  ]);
 
   // Fix webm Infinity duration by seeking to end trick
   const resolveWebmDuration = useCallback((el: HTMLMediaElement) => {
@@ -938,15 +988,24 @@ const MusicBattlePlayerPage = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">🎵 Add a song (optional)</label>
+                    <label className="mb-1 block text-xs text-muted-foreground">
+                      🎵 Add a {PHOTO_BATTLE_SONG_MAX_SEC}s song clip (optional)
+                    </label>
                     <input
+                      ref={acceptSongInputRef}
                       type="file"
                       accept="audio/*,.mp3,.wav,.flac,.m4a"
-                      onChange={(event) => setAcceptSongFile(event.target.files?.[0] || null)}
+                      onChange={(event) => void handleAcceptPhotoSongChange(event.target.files?.[0] || null)}
                       className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
                     />
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Longer tracks open a trimmer so you pick a {PHOTO_BATTLE_SONG_MAX_SEC}s section.
+                    </p>
+                    {acceptSongChecking && (
+                      <p className="mt-1 text-[10px] text-muted-foreground">Checking song length…</p>
+                    )}
                     {acceptSongFile && (
-                      <p className="mt-1 text-[10px] text-muted-foreground">🎵 {acceptSongFile.name}</p>
+                      <p className="mt-1 text-[10px] text-primary">🎵 {acceptSongFile.name} · clip ready</p>
                     )}
                   </div>
                 </>
@@ -1004,7 +1063,14 @@ const MusicBattlePlayerPage = () => {
               <motion.button
                 whileTap={{ scale: 0.98 }}
                 onClick={handleAcceptBattle}
-                disabled={accepting || !acceptTrackTitle.trim() || !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile)}
+                disabled={
+                  accepting ||
+                  acceptSongChecking ||
+                  !!acceptSongTrim ||
+                  !acceptTrackTitle.trim() ||
+                  !acceptMediaFile ||
+                  (battle.media_type === "audio" && !acceptCoverFile)
+                }
                 className="w-full rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
               >
                 {accepting ? "Uploading..." : "Accept Challenge"}
@@ -1013,6 +1079,25 @@ const MusicBattlePlayerPage = () => {
           </div>
         </div>
       )}
+
+      <PhotoBattleSongTrimSheet
+        open={!!acceptSongTrim}
+        file={acceptSongTrim?.file ?? null}
+        durationSec={acceptSongTrim?.durationSec ?? 0}
+        onOpenChange={(next) => {
+          if (!next) {
+            setAcceptSongTrim(null);
+            if (!acceptSongFile && acceptSongInputRef.current) {
+              acceptSongInputRef.current.value = "";
+            }
+          }
+        }}
+        onConfirm={(clipped) => {
+          setAcceptSongFile(clipped);
+          setAcceptSongTrim(null);
+          toast.success("30s clip ready");
+        }}
+      />
     </div>
   );
 };
