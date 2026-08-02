@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
+import BattleLiveStage from "@/components/battle/BattleLiveStage";
 import { MOBILE_COMMENTS_VIDEO_HEIGHT } from "@/components/feed/PostCommentsSheet";
 import {
   canUserVoteForSide,
@@ -407,7 +408,10 @@ export default function BattleFeedSlide({
   const ended = uiStatus === "ended";
   const msLeft = getBattleExpiresAt(battle || {}).getTime() - now;
   const votingOpen =
-    (battle?.status === "active" || uiStatus === "live" || uiStatus === "ending") &&
+    (battle?.status === "active" ||
+      uiStatus === "live" ||
+      uiStatus === "ending" ||
+      uiStatus === "countdown") &&
     !!(battle?.opponent_media_url || battle?.opponent_cover_url);
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, { ended, votingOpen });
@@ -499,12 +503,17 @@ export default function BattleFeedSlide({
 
   const leftCover = battle?.challenger_cover_url || battle?.challenger_media_url;
   const rightCover = battle?.opponent_cover_url || battle?.opponent_media_url;
+  const msToStart = battle?.scheduled_start_at
+    ? new Date(battle.scheduled_start_at).getTime() - now
+    : 0;
   const timerLabel =
     ended || msLeft <= 0
       ? "Ended"
-      : msLeft <= 60_000
-        ? formatClockMmSs(msLeft)
-        : formatCountdown(msLeft);
+      : uiStatus === "countdown"
+        ? `Starts ${formatCountdown(msToStart)}`
+        : msLeft <= 60_000
+          ? formatClockMmSs(msLeft)
+          : formatCountdown(msLeft);
   const nowPlayingName = activeSide === "left" ? leftName : rightName;
 
   const formatCount = (value: number) => {
@@ -638,6 +647,31 @@ export default function BattleFeedSlide({
                 }
         }
       >
+        {mediaType === "live" ? (
+          <div className="relative w-full max-w-lg">
+            {isActive ? (
+              <BattleLiveStage
+                battle={battle}
+                leftName={leftName}
+                rightName={rightName}
+                compact
+              />
+            ) : (
+              <div className="flex gap-2">
+                <div className="relative min-w-0 flex-1 aspect-[3/4] overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 ring-cyan-300/90">
+                  {leftCover ? (
+                    <img src={leftCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : null}
+                </div>
+                <div className="relative min-w-0 flex-1 aspect-[3/4] overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 ring-pink-400/90">
+                  {rightCover ? (
+                    <img src={rightCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                  ) : null}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
         <div
           className={`relative flex w-full max-w-lg items-center justify-center gap-1.5 ${
             expandedSide ? "h-full" : ""
@@ -653,6 +687,7 @@ export default function BattleFeedSlide({
           ) : null}
           {renderCompetitor("right")}
         </div>
+        )}
       </div>
 
       {/* Minimal top status (no play button) */}

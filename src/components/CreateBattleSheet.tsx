@@ -5,13 +5,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "@/hooks/use-toast";
-import { Music, Video, Search, X, Clock, Image, Mic, ChevronLeft, ChevronRight, Rocket } from "lucide-react";
+import { Music, Video, Search, X, Clock, Image, Mic, ChevronLeft, ChevronRight, Rocket, Radio } from "lucide-react";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { Slider } from "@/components/ui/slider";
 import VoiceoverRecorder from "@/components/VoiceoverRecorder";
 import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
 import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
+import {
+  LIVE_BATTLE_DURATIONS_MIN,
+  defaultLiveStartLocal,
+} from "@/lib/battle-live";
 
 const STEPS = ["Type", "Title", "Opponent", "Upload", "Review"] as const;
 
@@ -44,7 +48,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const queryClient = useQueryClient();
   const [title, setTitle] = useState("");
   const [trackTitle, setTrackTitle] = useState("");
-  const [mediaType, setMediaType] = useState<"audio" | "video" | "photo">("audio");
+  const [mediaType, setMediaType] = useState<"audio" | "video" | "photo" | "live">("audio");
   const [mediaFile, setMediaFile] = useState<File | null>(null);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -59,9 +63,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
+  const [liveStartLocal, setLiveStartLocal] = useState(defaultLiveStartLocal);
+  const [liveDurationMin, setLiveDurationMin] = useState<number>(15);
   const [step, setStep] = useState(0);
   
   const isPhotoBattle = mediaType === "photo";
+  const isLiveBattle = mediaType === "live";
 
   useEffect(() => {
     if (!open) setStep(0);
@@ -142,6 +149,20 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         toast({ title: "Missing photo", description: "Please upload your photo for the battle.", variant: "destructive" });
         return;
       }
+    } else if (isLiveBattle) {
+      if (!coverFile) {
+        toast({ title: "Cover picture required", description: "Live debates need a cover image.", variant: "destructive" });
+        return;
+      }
+      const startAt = new Date(liveStartLocal);
+      if (Number.isNaN(startAt.getTime()) || startAt.getTime() < Date.now() - 60_000) {
+        toast({ title: "Pick a start time", description: "Choose when the live debate should begin.", variant: "destructive" });
+        return;
+      }
+      if (liveDurationMin < 5) {
+        toast({ title: "Debate too short", description: "Live debates need at least a few minutes.", variant: "destructive" });
+        return;
+      }
     } else {
       if (!mediaFile) {
         toast({ title: "Missing media", description: `Please upload a ${mediaType === "audio" ? "song" : "video"} first.`, variant: "destructive" });
@@ -162,6 +183,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     try {
       let mediaUrl = "";
       let coverUrl = "";
+      let scheduledStartAt: string | null = null;
+      let expiresAt: string | null = null;
 
       if (isPhotoBattle && photoFile) {
         // For photo battles, the photo IS the cover
@@ -190,6 +213,23 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             mediaUrl = getR2DownloadUrl(songResult.data.key);
           }
         }
+      } else if (isLiveBattle && coverFile) {
+        const ext = coverFile.name.split(".").pop();
+        const coverResult = await uploadToR2(coverFile, {
+          folder: `battles/covers/${user.id}`,
+          fileName: `${Date.now()}.${ext}`,
+          mimeType: coverFile.type,
+        });
+        if (coverResult.success && coverResult.data) {
+          coverUrl = getR2DownloadUrl(coverResult.data.key);
+        } else {
+          toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
+          setLoading(false);
+          return;
+        }
+        const startAt = new Date(liveStartLocal);
+        scheduledStartAt = startAt.toISOString();
+        expiresAt = new Date(startAt.getTime() + liveDurationMin * 60 * 1000).toISOString();
       } else {
         if (mediaFile) {
           const fileExtension = mediaFile.name.split(".").pop();
@@ -234,9 +274,15 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_media_url: mediaUrl || null,
         challenger_cover_url: coverUrl || null,
         status: "pending",
-        max_duration_minutes: isPhotoBattle ? 0 : maxDuration,
+        max_duration_minutes: isPhotoBattle ? 0 : isLiveBattle ? liveDurationMin : maxDuration,
         battle_background: null,
-      });
+        ...(isLiveBattle
+          ? {
+              scheduled_start_at: scheduledStartAt,
+              expires_at: expiresAt,
+            }
+          : {}),
+      } as any);
 
       if (insertError) throw insertError;
 
@@ -255,6 +301,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setOpponentSearch("");
       setMaxDuration(20);
       setMediaDurationMin(null);
+      setLiveStartLocal(defaultLiveStartLocal());
+      setLiveDurationMin(15);
       
     } catch (err: any) {
       console.error("[Battle] Create failed:", err);
@@ -267,6 +315,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const isSubmitDisabled = () => {
     if (loading || photoSongChecking || !!photoSongTrim || !title.trim() || !trackTitle.trim() || !selectedOpponent) return true;
     if (isPhotoBattle) return !photoFile;
+    if (isLiveBattle) return !coverFile || !liveStartLocal;
     return !mediaFile || (mediaType === "audio" && !coverFile) || (mediaDurationMin !== null && mediaDurationMin > maxDuration);
   };
 
@@ -276,6 +325,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     if (step === 2) return !!selectedOpponent;
     if (step === 3) {
       if (isPhotoBattle) return !!photoFile && !photoSongChecking && !photoSongTrim;
+      if (isLiveBattle) return !!coverFile && !!liveStartLocal;
       return !!mediaFile && (mediaType !== "audio" || !!coverFile) && !(mediaDurationMin !== null && mediaDurationMin > maxDuration);
     }
     return !isSubmitDisabled();
@@ -307,11 +357,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           {step === 0 && (
             <div>
               <p className="mb-3 text-sm font-bold text-foreground">Choose battle type</p>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {([
                   { id: "audio" as const, label: "Audio", emoji: "🎵", Icon: Music },
                   { id: "video" as const, label: "Video", emoji: "🎥", Icon: Video },
                   { id: "photo" as const, label: "Photo", emoji: "📷", Icon: Image },
+                  { id: "live" as const, label: "Live", emoji: "🔴", Icon: Radio },
                 ]).map((t) => (
                   <button
                     key={t.id}
@@ -323,6 +374,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                         setCoverFile(null);
                         setMediaDurationMin(null);
                         setPhotoSongFile(null);
+                      } else if (t.id === "live") {
+                        setMediaFile(null);
+                        setPhotoFile(null);
+                        setPhotoSongFile(null);
+                        setMediaDurationMin(null);
+                        setLiveStartLocal(defaultLiveStartLocal());
                       } else {
                         setPhotoFile(null);
                       }
@@ -338,7 +395,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   </button>
                 ))}
               </div>
-              {!isPhotoBattle && (
+              {isLiveBattle && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  FaceTime-style debate on the post page. Pick a cover, start time, and how long it runs — after it ends, the replay stays on the post.
+                </p>
+              )}
+              {!isPhotoBattle && !isLiveBattle && (
                 <div className="mt-4">
                   <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
                     <Clock className="h-3.5 w-3.5" /> Max duration per entry
@@ -367,10 +429,16 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                  {isPhotoBattle ? "Your caption" : "Your track title"}
+                  {isPhotoBattle ? "Your caption" : isLiveBattle ? "Your debate topic / stance" : "Your track title"}
                 </label>
                 <Input
-                  placeholder={isPhotoBattle ? 'e.g. "Fresh fit 🔥"' : "Name your entry"}
+                  placeholder={
+                    isPhotoBattle
+                      ? 'e.g. "Fresh fit 🔥"'
+                      : isLiveBattle
+                        ? "What you're debating"
+                        : "Name your entry"
+                  }
                   value={trackTitle}
                   onChange={(e) => setTrackTitle(e.target.value)}
                 />
@@ -486,6 +554,62 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                     )}
                   </div>
                 </>
+              ) : isLiveBattle ? (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Cover picture (required)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.jpg,.jpeg,.png,.webp"
+                      onChange={(e) => setCoverFile(e.target.files?.[0] || null)}
+                      className="w-full text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-primary"
+                    />
+                    {coverFile && (
+                      <div className="mt-2 max-h-40 overflow-hidden rounded-lg">
+                        <img src={URL.createObjectURL(coverFile)} alt="Cover preview" className="h-full w-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" /> Debate start time
+                    </label>
+                    <Input
+                      type="datetime-local"
+                      value={liveStartLocal}
+                      onChange={(e) => setLiveStartLocal(e.target.value)}
+                    />
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      After both accept, the post shows a countdown until this time.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                      Debate length
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {LIVE_BATTLE_DURATIONS_MIN.map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setLiveDurationMin(m)}
+                          className={`rounded-xl border px-3 py-2 text-xs font-bold transition ${
+                            liveDurationMin === m
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-border text-muted-foreground"
+                          }`}
+                        >
+                          {m} min
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Ends automatically — replay stays on the post.
+                    </p>
+                  </div>
+                </>
               ) : (
                 <>
                   <div>
@@ -516,7 +640,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   {mediaFile && showVoiceover && (
                     <VoiceoverRecorder
                       mediaFile={mediaFile}
-                      mediaType={mediaType}
+                      mediaType={mediaType === "video" ? "video" : "audio"}
                       onMixedFile={(mixed) => {
                         setMediaFile(mixed);
                         setHasVoiceover(true);
@@ -550,8 +674,20 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 <p><span className="text-muted-foreground">Title:</span> <span className="font-bold">{title}</span></p>
                 <p><span className="text-muted-foreground">Your entry:</span> <span className="font-bold">{trackTitle}</span></p>
                 <p><span className="text-muted-foreground">Opponent:</span> <span className="font-bold">{selectedOpponent?.display_name}</span></p>
-                {!isPhotoBattle && (
+                {!isPhotoBattle && !isLiveBattle && (
                   <p><span className="text-muted-foreground">Max duration:</span> <span className="font-bold">{maxDuration} min</span></p>
+                )}
+                {isLiveBattle && (
+                  <>
+                    <p>
+                      <span className="text-muted-foreground">Starts:</span>{" "}
+                      <span className="font-bold">{liveStartLocal.replace("T", " ")}</span>
+                    </p>
+                    <p>
+                      <span className="text-muted-foreground">Length:</span>{" "}
+                      <span className="font-bold">{liveDurationMin} min</span>
+                    </p>
+                  </>
                 )}
                 {isPhotoBattle && photoSongFile && (
                   <p>

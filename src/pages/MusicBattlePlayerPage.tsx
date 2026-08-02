@@ -20,6 +20,7 @@ import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
 import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
 import BattleVsMark from "@/components/battle/BattleVsMark";
+import BattleLiveStage from "@/components/battle/BattleLiveStage";
 import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
 import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
@@ -180,7 +181,13 @@ const MusicBattlePlayerPage = () => {
   const canVoteLeft = !!user?.id && user.id !== battle?.challenger_id;
   const canVoteRight = !!user?.id && !!battle?.opponent_id && user.id !== battle?.opponent_id;
   const isPending = battle?.status === "pending" && !!battle?.opponent_id;
-  const canAccept = isPending && user?.id === battle?.opponent_id && !battle?.opponent_media_url;
+  const isLiveBattle = (battle?.media_type || "").toLowerCase() === "live";
+  const canAccept =
+    isPending &&
+    user?.id === battle?.opponent_id &&
+    (isLiveBattle
+      ? !battle?.opponent_cover_url
+      : !battle?.opponent_media_url);
 
   const leftProfile = profiles[battle?.challenger_id] || {};
   const rightProfile = profiles[battle?.opponent_id] || {};
@@ -308,7 +315,19 @@ const MusicBattlePlayerPage = () => {
   };
 
   const handleAcceptBattle = useCallback(async () => {
-    if (!user || !battle || !acceptTrackTitle.trim() || !acceptMediaFile) return;
+    if (!user || !battle || !acceptTrackTitle.trim()) return;
+    const isPhotoBattle = battle.media_type === "photo";
+    const isLive = battle.media_type === "live";
+
+    if (isLive) {
+      if (!acceptCoverFile) {
+        toast.error("Live debates need a cover picture");
+        return;
+      }
+    } else if (!acceptMediaFile) {
+      return;
+    }
+
     if (battle.media_type === "audio" && !acceptCoverFile) {
       toast.error("Audio battles need cover art");
       return;
@@ -318,10 +337,8 @@ const MusicBattlePlayerPage = () => {
       return;
     }
 
-    const isPhotoBattle = battle.media_type === "photo";
-
-    // Validate duration against battle limit (skip for photo battles)
-    if (!isPhotoBattle) {
+    // Validate duration against battle limit (skip for photo/live battles)
+    if (!isPhotoBattle && !isLive && acceptMediaFile) {
       const maxMin = (battle as any).max_duration_minutes || 40;
       if (maxMin > 0) {
         try {
@@ -348,7 +365,19 @@ const MusicBattlePlayerPage = () => {
       let mediaUrl = "";
       let coverUrl = "";
 
-      if (isPhotoBattle) {
+      if (isLive && acceptCoverFile) {
+        const coverExt = acceptCoverFile.name.split(".").pop();
+        const coverResult = await uploadToR2(acceptCoverFile, {
+          folder: `battles/covers/${user.id}`,
+          fileName: `${Date.now()}.${coverExt}`,
+          mimeType: acceptCoverFile.type,
+        });
+        if (coverResult.success && coverResult.data) {
+          coverUrl = getR2DownloadUrl(coverResult.data.key);
+        } else {
+          throw new Error(coverResult.error || "Failed to upload cover");
+        }
+      } else if (isPhotoBattle && acceptMediaFile) {
         // For photo battles, upload photo as cover
         const ext = acceptMediaFile.name.split(".").pop();
         const result = await uploadToR2(acceptMediaFile, {
@@ -373,7 +402,7 @@ const MusicBattlePlayerPage = () => {
             mediaUrl = getR2DownloadUrl(songResult.data.key);
           }
         }
-      } else {
+      } else if (acceptMediaFile) {
         const mediaExt = acceptMediaFile.name.split(".").pop();
         const mediaResult = await uploadToR2(acceptMediaFile, {
           folder: `battles/${user.id}`,
@@ -593,7 +622,7 @@ const MusicBattlePlayerPage = () => {
         isPlaying={isPlaying}
       />
       {/* hidden media elements for audio battles — only load when active */}
-      {battle.media_type !== "video" && battle.status === "active" && (
+      {battle.media_type !== "video" && battle.media_type !== "live" && battle.status === "active" && (
         <>
           <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
           <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
@@ -613,10 +642,14 @@ const MusicBattlePlayerPage = () => {
             </div>
           </div>
           <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-xs font-black ${
-            finalMinute ? "bg-rose-500 text-white" : "bg-muted text-foreground"
+            finalMinute ? "bg-rose-500 text-white" : uiStatus === "countdown" ? "bg-amber-500 text-white" : "bg-muted text-foreground"
           }`}>
             <Clock className="h-3.5 w-3.5" />
-            {finalMinute ? formatClockMmSs(msLeft) : (timeLeft || formatCountdown(msLeft))}
+            {uiStatus === "countdown" && battle.scheduled_start_at
+              ? formatCountdown(new Date(battle.scheduled_start_at).getTime() - Date.now())
+              : finalMinute
+                ? formatClockMmSs(msLeft)
+                : (timeLeft || formatCountdown(msLeft))}
           </div>
         </div>
 
@@ -655,6 +688,15 @@ const MusicBattlePlayerPage = () => {
       ) : null}
 
       {/* ── MAIN BATTLE AREA ── */}
+      {isLiveBattle ? (
+        <div className="relative flex flex-1 flex-col px-3 pt-3">
+          <BattleLiveStage
+            battle={battle}
+            leftName={leftName}
+            rightName={rightName}
+          />
+        </div>
+      ) : (
       <div
         className={`relative flex flex-1 flex-col items-center justify-center transition-all duration-300 ${
           expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : "px-3 pt-3"
@@ -892,9 +934,10 @@ const MusicBattlePlayerPage = () => {
           )}
         </AnimatePresence>
       </div>
+      )}
 
-      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) — only when active ── */}
-      {battle.status === "active" && (
+      {/* ── AUDIO PLAYBACK BAR (SEEKABLE) — only when active (not live debates) ── */}
+      {battle.status === "active" && !isLiveBattle && (
       <div className="px-6 py-3" onClick={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()} onTouchEnd={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
           <span>{fmt(currentTime)}</span>
@@ -967,12 +1010,39 @@ const MusicBattlePlayerPage = () => {
             <p className="mb-3 text-center text-sm font-semibold text-primary">🥊 You&apos;ve been challenged!</p>
             <div className="space-y-3">
               <Input
-                placeholder={battle.media_type === "photo" ? "Your caption" : "Your track title"}
+                placeholder={
+                  battle.media_type === "photo"
+                    ? "Your caption"
+                    : battle.media_type === "live"
+                      ? "Your debate topic / stance"
+                      : "Your track title"
+                }
                 value={acceptTrackTitle}
                 onChange={(event) => setAcceptTrackTitle(event.target.value)}
                 className="h-11"
               />
-              {battle.media_type === "photo" ? (
+              {battle.media_type === "live" ? (
+                <div>
+                  <label className="mb-1 block text-xs text-muted-foreground">
+                    Upload cover picture (required)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*,.jpg,.jpeg,.png,.webp"
+                    onChange={(event) => setAcceptCoverFile(event.target.files?.[0] || null)}
+                    className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
+                  />
+                  {acceptCoverFile && (
+                    <p className="mt-1 text-[10px] text-primary">🖼️ {acceptCoverFile.name}</p>
+                  )}
+                  {battle.scheduled_start_at && (
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Goes live {new Date(battle.scheduled_start_at).toLocaleString()} · ends{" "}
+                      {battle.expires_at ? new Date(battle.expires_at).toLocaleString() : "on schedule"}
+                    </p>
+                  )}
+                </div>
+              ) : battle.media_type === "photo" ? (
                 <>
                   <div>
                     <label className="mb-1 block text-xs text-muted-foreground">Upload your photo</label>
@@ -1073,8 +1143,9 @@ const MusicBattlePlayerPage = () => {
                   acceptSongChecking ||
                   !!acceptSongTrim ||
                   !acceptTrackTitle.trim() ||
-                  !acceptMediaFile ||
-                  (battle.media_type === "audio" && !acceptCoverFile)
+                  (battle.media_type === "live"
+                    ? !acceptCoverFile
+                    : !acceptMediaFile || (battle.media_type === "audio" && !acceptCoverFile))
                 }
                 className="w-full rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground disabled:opacity-50"
               >

@@ -1,6 +1,6 @@
 /** Pure UI helpers for Creators Battle — no backend changes. */
 
-export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open";
+export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open" | "countdown";
 
 export type BattleCategoryMeta = {
   id: string;
@@ -11,6 +11,7 @@ export type BattleCategoryMeta = {
 /** Map existing media_type to a browseable category chip (no new DB field). */
 export function battleCategoryFromMedia(mediaType?: string | null): BattleCategoryMeta {
   const t = (mediaType || "audio").toLowerCase();
+  if (t === "live") return { id: "live", label: "Live", emoji: "🔴" };
   if (t === "video") return { id: "video", label: "Video", emoji: "🎥" };
   if (t === "photo") return { id: "photography", label: "Photography", emoji: "📸" };
   return { id: "music", label: "Music", emoji: "🎵" };
@@ -29,9 +30,11 @@ export function getBattleUiStatus(battle: {
   status?: string | null;
   expires_at?: string | null;
   created_at?: string | null;
+  scheduled_start_at?: string | null;
   opponent_media_url?: string | null;
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
+  media_type?: string | null;
 }): BattleUiStatus {
   const expiresAt = getBattleExpiresAt(battle);
   const msLeft = expiresAt.getTime() - Date.now();
@@ -50,9 +53,12 @@ export function getBattleUiStatus(battle: {
   if (status === "open" && !battle.opponent_id) return "open";
   if (status === "pending") return "waiting";
 
-  // Active once opponent has uploaded an entry (media and/or cover for photo battles)
+  // Active once opponent has uploaded an entry (media and/or cover for photo/live battles)
   const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
   if (status === "active" && !hasOpponentEntry) return "waiting";
+
+  const startAt = battle.scheduled_start_at ? new Date(battle.scheduled_start_at).getTime() : null;
+  if (status === "active" && startAt != null && Date.now() < startAt) return "countdown";
 
   if (status === "active" && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";
   if (status === "active") return "live";
@@ -65,12 +71,14 @@ export function isBattleOnFeed(battle: {
   status?: string | null;
   expires_at?: string | null;
   created_at?: string | null;
+  scheduled_start_at?: string | null;
   opponent_media_url?: string | null;
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
+  media_type?: string | null;
 }): boolean {
   const ui = getBattleUiStatus(battle);
-  return ui === "live" || ui === "ending";
+  return ui === "live" || ui === "ending" || ui === "countdown";
 }
 
 export function formatCountdown(msLeft: number): string {
