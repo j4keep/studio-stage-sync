@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,9 +28,11 @@ type ViewerState = { rail: "reel" | "post"; index: number } | null;
 
 const FeedPage = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const isDesktop = useIsDesktop();
   const [viewer, setViewer] = useState<ViewerState>(null);
+  const openBattleId = searchParams.get("battle");
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts"],
@@ -83,6 +85,19 @@ const FeedPage = () => {
   const viewerPosts = posts;
   const activeItems =
     viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? viewerPosts : [];
+
+  // Deep-link live competitors (and shared links) into the post viewer: /?battle=<id>
+  useEffect(() => {
+    if (!openBattleId || isLoading) return;
+    const idx = posts.findIndex((p: any) => p.itemType === "battle" && p.id === openBattleId);
+    if (idx < 0) return;
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    setViewer({ rail: "post", index: idx });
+    const next = new URLSearchParams(searchParams);
+    next.delete("battle");
+    setSearchParams(next, { replace: true });
+  }, [openBattleId, isLoading, posts, searchParams, setSearchParams]);
 
   const trendingRow = trending.length > 0 && (
     <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">

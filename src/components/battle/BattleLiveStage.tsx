@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBattleLiveRoom } from "@/hooks/useBattleLiveRoom";
@@ -35,6 +36,11 @@ type Props = {
   battle: BattleLike;
   leftName: string;
   rightName: string;
+  /**
+   * battle = competitor prep page (cameras during countdown + controls)
+   * feed = public post (covers until live; no mic/cam controls)
+   */
+  surface?: "battle" | "feed";
   /** Compact layout for feed slide */
   compact?: boolean;
   className?: string;
@@ -45,11 +51,13 @@ function StreamVideo({
   muted,
   className,
   videoRef,
+  mirror,
 }: {
   stream: MediaStream | null;
   muted?: boolean;
   className?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
+  mirror?: boolean;
 }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
   const ref = videoRef || localRef;
@@ -67,7 +75,7 @@ function StreamVideo({
       autoPlay
       playsInline
       muted={muted}
-      className={className}
+      className={`${className || ""} ${mirror ? "scale-x-[-1]" : ""}`}
     />
   );
 }
@@ -76,34 +84,56 @@ export default function BattleLiveStage({
   battle,
   leftName,
   rightName,
+  surface = "feed",
   compact = false,
   className = "",
 }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [now, setNow] = useState(Date.now());
   const leftVideoRef = useRef<HTMLVideoElement | null>(null);
   const rightVideoRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<BattleLiveRecorder | null>(null);
   const recordingStartedRef = useRef(false);
   const uploadingReplayRef = useRef(false);
+  const redirectedRef = useRef(false);
+  const prevPhaseRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    const t = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(t);
   }, []);
 
   const phase = getLiveBattlePhase(battle, now);
   const isParticipant =
     !!user && (user.id === battle.challenger_id || user.id === battle.opponent_id);
-  const canPublish = isParticipant && phase === "live";
-  const roomEnabled = !!user && phase === "live";
+
+  // Competitors publish on battle page during countdown (prep), then on feed once live.
+  // Spectators never get mic/cam controls.
+  const canPublish =
+    isParticipant &&
+    ((surface === "battle" && (phase === "countdown" || phase === "live")) ||
+      (surface === "feed" && phase === "live"));
+  const roomEnabled =
+    !!user &&
+    phase !== "ended" &&
+    phase !== "waiting" &&
+    (surface === "battle"
+      ? isParticipant && (phase === "countdown" || phase === "live")
+      : phase === "live");
+
+  // Mic/cam toggles only on the competitor battle page — never on the public post/feed.
+  const showPublisherControls =
+    surface === "battle" && isParticipant && (phase === "countdown" || phase === "live");
+  const showLiveVideo =
+    phase === "live" || (surface === "battle" && isParticipant && phase === "countdown");
 
   const { conn, error, micOn, camOn, streams, remoteCount, toggleMic, toggleCam } =
     useBattleLiveRoom({
       battleId: battle.id,
       challengerId: battle.challenger_id,
       opponentId: battle.opponent_id,
-      enabled: roomEnabled && phase !== "ended",
+      enabled: roomEnabled,
       canPublish,
     });
 
@@ -114,9 +144,25 @@ export default function BattleLiveStage({
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
   const msToEnd = endMs != null ? Math.max(0, endMs - now) : 0;
 
-  // Challenger records the composite replay while live
+  // When countdown hits zero on the competitor battle page → open the public post live.
+  useEffect(() => {
+    const prev = prevPhaseRef.current;
+    prevPhaseRef.current = phase;
+    if (surface !== "battle" || !isParticipant) return;
+    if (redirectedRef.current) return;
+    if (phase === "live" && (prev === "countdown" || prev === null)) {
+      redirectedRef.current = true;
+      toast.message("You're live — opening the post");
+      navigate(`/?battle=${battle.id}`, { replace: true });
+    }
+  }, [phase, surface, isParticipant, battle.id, navigate]);
+
+  // Challenger records the composite replay while live (on whichever surface is connected as publisher)
   useEffect(() => {
     if (phase !== "live" || user?.id !== battle.challenger_id) return;
+    if (surface !== "battle" && surface !== "feed") return;
+    // Prefer recording from feed once live (both may be connected; challenger usually lands on feed).
+    if (surface === "battle") return;
     if (recordingStartedRef.current || conn !== "connected") return;
     if (!streams.leftVideo && !streams.rightVideo) return;
 
@@ -134,11 +180,28 @@ export default function BattleLiveStage({
     conn,
     user?.id,
     battle.challenger_id,
+    surface,
     streams.leftVideo,
     streams.rightVideo,
     streams.leftAudio,
     streams.rightAudio,
   ]);
+
+  // Also allow challenger to record if they stay on battle page (no redirect yet / desktop)
+  useEffect(() => {
+    if (phase !== "live" || user?.id !== battle.challenger_id || surface !== "battle") return;
+    if (recordingStartedRef.current || conn !== "connected") return;
+    if (!streams.leftVideo && !streams.rightVideo) return;
+    const rec = startBattleLiveRecorder({
+      leftVideoEl: leftVideoRef.current,
+      rightVideoEl: rightVideoRef.current,
+      leftAudio: streams.leftAudio,
+      rightAudio: streams.rightAudio,
+    });
+    if (!rec) return;
+    recorderRef.current = rec;
+    recordingStartedRef.current = true;
+  }, [phase, conn, user?.id, battle.challenger_id, surface, streams]);
 
   // Stop recorder + upload when debate ends
   useEffect(() => {
@@ -221,33 +284,42 @@ export default function BattleLiveStage({
     cover: string | null | undefined,
     videoStream: MediaStream | null,
     videoRef: React.RefObject<HTMLVideoElement | null>,
-    mutedLocal: boolean,
-  ) => (
-    <div
-      className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.2rem] bg-neutral-900 ring-1 ${
-        side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
-      } ${compact ? "aspect-[3/4] max-h-[min(52dvh,420px)]" : "aspect-[3/4]"}`}
-    >
-      {phase === "live" && videoStream ? (
-        <StreamVideo
-          stream={videoStream}
-          muted={mutedLocal}
-          videoRef={videoRef}
-          className="absolute inset-0 h-full w-full object-cover"
-        />
-      ) : cover ? (
-        <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-white/50">
-          Waiting…
+    isLocalSide: boolean,
+  ) => {
+    const showVideo = showLiveVideo && !!videoStream;
+    return (
+      <div
+        className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.2rem] bg-neutral-900 ring-1 ${
+          side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
+        } ${compact ? "aspect-[3/4] max-h-[min(52dvh,420px)]" : "aspect-[3/4]"}`}
+      >
+        {showVideo ? (
+          <StreamVideo
+            stream={videoStream}
+            muted={isLocalSide}
+            videoRef={videoRef}
+            mirror={isLocalSide}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : cover ? (
+          <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-xs text-white/50">
+            Waiting…
+          </div>
+        )}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25" />
+        {surface === "battle" && isParticipant && phase === "countdown" && isLocalSide && (
+          <div className="absolute left-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-black uppercase text-black">
+            Preview
+          </div>
+        )}
+        <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
+          <p className="text-sm font-black text-white drop-shadow">{name}</p>
         </div>
-      )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25" />
-      <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
-        <p className="text-sm font-black text-white drop-shadow">{name}</p>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className={`space-y-2 ${className}`}>
@@ -258,13 +330,16 @@ export default function BattleLiveStage({
           </p>
           {phase === "countdown" && (
             <p className="mt-1 font-display text-3xl font-black tabular-nums text-white">
-              {formatCountdown(msToStart)}
+              {msToStart > 0 ? Math.ceil(msToStart / 1000) : 0}s
             </p>
           )}
-          {isParticipant && phase === "countdown" && (
+          {surface === "battle" && isParticipant && phase === "countdown" && (
             <p className="mt-1 text-[11px] text-white/70">
-              Stay on this page — cameras open when the timer hits zero.
+              Check your framing — when this hits zero you go live on the post.
             </p>
+          )}
+          {surface === "feed" && phase === "countdown" && (
+            <p className="mt-1 text-[11px] text-white/70">Cover art up — cameras open when the debate starts.</p>
           )}
         </div>
       )}
@@ -282,7 +357,10 @@ export default function BattleLiveStage({
 
       {phase === "ended" && !replayUrl && (
         <div className="rounded-2xl border border-border bg-muted/40 px-3 py-3 text-center text-xs text-muted-foreground">
-          Debate ended{isParticipant && user?.id === battle.challenger_id ? " — saving replay…" : ". Replay will appear here shortly."}
+          Debate ended
+          {isParticipant && user?.id === battle.challenger_id
+            ? " — saving replay…"
+            : ". Replay will appear here shortly."}
         </div>
       )}
 
@@ -305,7 +383,7 @@ export default function BattleLiveStage({
         )}
       </div>
 
-      {/* Spectator / remote audio */}
+      {/* Spectator / remote audio — feed + non-local sides */}
       {phase === "live" && streams.leftAudio && user?.id !== battle.challenger_id && (
         <StreamAudio stream={streams.leftAudio} />
       )}
@@ -313,7 +391,7 @@ export default function BattleLiveStage({
         <StreamAudio stream={streams.rightAudio} />
       )}
 
-      {phase === "live" && isParticipant && (
+      {showPublisherControls && (
         <div className="flex items-center justify-center gap-2">
           <button
             type="button"
@@ -336,7 +414,12 @@ export default function BattleLiveStage({
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting…
             </span>
           )}
-          {conn === "connected" && (
+          {conn === "connected" && phase === "countdown" && (
+            <span className="text-[11px] text-white/60">
+              {remoteCount > 0 ? "Opponent previewing" : "Get ready…"}
+            </span>
+          )}
+          {conn === "connected" && phase === "live" && (
             <span className="text-[11px] text-white/60">
               {remoteCount > 0 ? "Opponent connected" : "Waiting for opponent…"}
             </span>
@@ -344,11 +427,11 @@ export default function BattleLiveStage({
         </div>
       )}
 
-      {phase === "live" && !user && (
+      {phase === "live" && surface === "feed" && !user && (
         <p className="text-center text-[11px] text-white/60">Sign in to watch the live debate with audio.</p>
       )}
 
-      {error && (
+      {error && showPublisherControls && (
         <p className="text-center text-[11px] text-rose-300">{error}</p>
       )}
     </div>

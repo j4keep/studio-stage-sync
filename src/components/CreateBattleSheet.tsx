@@ -14,8 +14,7 @@ import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   LIVE_BATTLE_DURATIONS_MIN,
-  buildLiveBattleBackground,
-  defaultLiveStartLocal,
+  LIVE_PRACTICE_COUNTDOWN_SEC,
 } from "@/lib/battle-live";
 
 const STEPS = ["Type", "Title", "Opponent", "Upload", "Review"] as const;
@@ -64,7 +63,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [mediaDurationMin, setMediaDurationMin] = useState<number | null>(null);
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
-  const [liveStartLocal, setLiveStartLocal] = useState(defaultLiveStartLocal);
   const [liveDurationMin, setLiveDurationMin] = useState<number>(15);
   const [step, setStep] = useState(0);
   
@@ -155,11 +153,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         toast({ title: "Cover picture required", description: "Live debates need a cover image.", variant: "destructive" });
         return;
       }
-      const startAt = new Date(liveStartLocal);
-      if (Number.isNaN(startAt.getTime()) || startAt.getTime() < Date.now() - 60_000) {
-        toast({ title: "Pick a start time", description: "Choose when the live debate should begin.", variant: "destructive" });
-        return;
-      }
       if (liveDurationMin < 5) {
         toast({ title: "Debate too short", description: "Live debates need at least a few minutes.", variant: "destructive" });
         return;
@@ -184,8 +177,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     try {
       let mediaUrl = "";
       let coverUrl = "";
-      let scheduledStartAt: string | null = null;
-      let expiresAt: string | null = null;
 
       if (isPhotoBattle && photoFile) {
         // For photo battles, the photo IS the cover
@@ -228,9 +219,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           setLoading(false);
           return;
         }
-        const startAt = new Date(liveStartLocal);
-        scheduledStartAt = startAt.toISOString();
-        expiresAt = new Date(startAt.getTime() + liveDurationMin * 60 * 1000).toISOString();
       } else {
         if (mediaFile) {
           const fileExtension = mediaFile.name.split(".").pop();
@@ -266,8 +254,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
-      // Store live start in battle_background until scheduled_start_at is migrated on prod.
-      // expires_at already exists and still drives the end time.
+      // Live start is set when the opponent accepts (practice: 10s countdown).
       const { error: insertError } = await supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
@@ -278,10 +265,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : isLiveBattle ? liveDurationMin : maxDuration,
-        battle_background: isLiveBattle && scheduledStartAt
-          ? buildLiveBattleBackground({ scheduled_start_at: scheduledStartAt })
-          : null,
-        ...(isLiveBattle && expiresAt ? { expires_at: expiresAt } : {}),
+        battle_background: null,
       } as any);
 
       if (insertError) throw insertError;
@@ -301,7 +285,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setOpponentSearch("");
       setMaxDuration(20);
       setMediaDurationMin(null);
-      setLiveStartLocal(defaultLiveStartLocal());
       setLiveDurationMin(15);
       
     } catch (err: any) {
@@ -315,7 +298,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const isSubmitDisabled = () => {
     if (loading || photoSongChecking || !!photoSongTrim || !title.trim() || !trackTitle.trim() || !selectedOpponent) return true;
     if (isPhotoBattle) return !photoFile;
-    if (isLiveBattle) return !coverFile || !liveStartLocal;
+    if (isLiveBattle) return !coverFile;
     return !mediaFile || (mediaType === "audio" && !coverFile) || (mediaDurationMin !== null && mediaDurationMin > maxDuration);
   };
 
@@ -325,7 +308,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
     if (step === 2) return !!selectedOpponent;
     if (step === 3) {
       if (isPhotoBattle) return !!photoFile && !photoSongChecking && !photoSongTrim;
-      if (isLiveBattle) return !!coverFile && !!liveStartLocal;
+      if (isLiveBattle) return !!coverFile;
       return !!mediaFile && (mediaType !== "audio" || !!coverFile) && !(mediaDurationMin !== null && mediaDurationMin > maxDuration);
     }
     return !isSubmitDisabled();
@@ -379,7 +362,6 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                         setPhotoFile(null);
                         setPhotoSongFile(null);
                         setMediaDurationMin(null);
-                        setLiveStartLocal(defaultLiveStartLocal());
                       } else {
                         setPhotoFile(null);
                       }
@@ -397,7 +379,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
               </div>
               {isLiveBattle && (
                 <p className="mt-3 text-xs text-muted-foreground">
-                  FaceTime-style debate on the post page. Pick a cover, start time, and how long it runs — after it ends, the replay stays on the post.
+                  FaceTime-style debate. After both accept, a {LIVE_PRACTICE_COUNTDOWN_SEC}s countdown starts so competitors can check cameras — then it goes live on the post.
                 </p>
               )}
               {!isPhotoBattle && !isLiveBattle && (
@@ -572,17 +554,13 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                       </div>
                     )}
                   </div>
-                  <div>
-                    <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      <Clock className="h-3.5 w-3.5" /> Debate start time
-                    </label>
-                    <Input
-                      type="datetime-local"
-                      value={liveStartLocal}
-                      onChange={(e) => setLiveStartLocal(e.target.value)}
-                    />
+                  <div className="rounded-xl border border-border bg-muted/30 px-3 py-3">
+                    <p className="flex items-center gap-1.5 text-xs font-bold text-foreground">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      {LIVE_PRACTICE_COUNTDOWN_SEC}s prep countdown
+                    </p>
                     <p className="mt-1 text-[10px] text-muted-foreground">
-                      After both accept, the post shows a countdown until this time.
+                      Starts when your opponent accepts. Competitors check cameras on the battle page; the crowd sees covers until go-live.
                     </p>
                   </div>
                   <div>
@@ -680,8 +658,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                 {isLiveBattle && (
                   <>
                     <p>
-                      <span className="text-muted-foreground">Starts:</span>{" "}
-                      <span className="font-bold">{liveStartLocal.replace("T", " ")}</span>
+                      <span className="text-muted-foreground">Prep:</span>{" "}
+                      <span className="font-bold">{LIVE_PRACTICE_COUNTDOWN_SEC}s after accept</span>
                     </p>
                     <p>
                       <span className="text-muted-foreground">Length:</span>{" "}

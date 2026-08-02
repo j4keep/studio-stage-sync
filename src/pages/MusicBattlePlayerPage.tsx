@@ -24,7 +24,11 @@ import BattleLiveStage from "@/components/battle/BattleLiveStage";
 import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
 import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
-import { getBattleScheduledStartAt } from "@/lib/battle-live";
+import {
+  buildLiveBattleBackground,
+  getBattleScheduledStartAt,
+  liveScheduleFromAccept,
+} from "@/lib/battle-live";
 import {
   computeVoteMomentum,
   firstName,
@@ -88,7 +92,30 @@ const MusicBattlePlayerPage = () => {
       return data;
     },
     enabled: !!battleId,
+    refetchInterval: (q) => {
+      const b = q.state.data as { media_type?: string; status?: string } | undefined;
+      if ((b?.media_type || "").toLowerCase() === "live" && b?.status !== "ended") return 2000;
+      return false;
+    },
   });
+
+  // Live battles: pick up accept / schedule changes quickly for the other competitor.
+  useEffect(() => {
+    if (!battleId) return;
+    const channel = supabase
+      .channel(`battle-live-${battleId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "battles", filter: `id=eq.${battleId}` },
+        () => {
+          qc.invalidateQueries({ queryKey: ["battle", battleId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [battleId, qc]);
 
   // Track battle view once
   useEffect(() => {
@@ -432,6 +459,21 @@ const MusicBattlePlayerPage = () => {
         }
       }
 
+      const livePatch =
+        isLive
+          ? (() => {
+              const durationMin = Number((battle as any).max_duration_minutes) || 15;
+              const { scheduledStartAt, expiresAt } = liveScheduleFromAccept(durationMin);
+              return {
+                expires_at: expiresAt,
+                battle_background: buildLiveBattleBackground(
+                  { scheduled_start_at: scheduledStartAt },
+                  (battle as any).battle_background,
+                ),
+              };
+            })()
+          : {};
+
       const { error } = await (supabase as any)
         .from("battles")
         .update({
@@ -439,6 +481,7 @@ const MusicBattlePlayerPage = () => {
           opponent_title: acceptTrackTitle.trim(),
           opponent_media_url: mediaUrl || null,
           opponent_cover_url: coverUrl || null,
+          ...livePatch,
         })
         .eq("id", battle.id)
         .eq("opponent_id", user.id);
@@ -449,10 +492,15 @@ const MusicBattlePlayerPage = () => {
       setAcceptMediaFile(null);
       setAcceptCoverFile(null);
       setAcceptSongFile(null);
-      toast.success("Battle is live — landing on the feed");
       refreshBattleViews();
-      // Launched battles auto-post to the homepage Posts feed for the crowd to vote.
-      navigate("/");
+      if (isLive) {
+        toast.success("Challenge accepted — 10s to check your camera");
+        // Stay on the battle page so both competitors can preview cameras before go-live.
+      } else {
+        toast.success("Battle is live — landing on the feed");
+        // Launched battles auto-post to the homepage Posts feed for the crowd to vote.
+        navigate("/");
+      }
     } catch (error: any) {
       toast.error(error?.message || "Failed to accept challenge");
     } finally {
@@ -695,6 +743,7 @@ const MusicBattlePlayerPage = () => {
             battle={battle}
             leftName={leftName}
             rightName={rightName}
+            surface="battle"
           />
         </div>
       ) : (

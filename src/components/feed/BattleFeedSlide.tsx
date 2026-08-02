@@ -656,6 +656,7 @@ export default function BattleFeedSlide({
                 battle={battle}
                 leftName={leftName}
                 rightName={rightName}
+                surface="feed"
                 compact
               />
             ) : (
@@ -771,8 +772,13 @@ export default function BattleFeedSlide({
                 {battle?.title || "Battle"}
               </p>
               <p className="mt-0.5 text-[11px] font-semibold text-white/70">
-                Now playing · {firstName(nowPlayingName)}
-                {playing ? "" : " (paused)"}
+                {mediaType === "live"
+                  ? uiStatus === "countdown"
+                    ? "Starting soon · cover preview"
+                    : uiStatus === "ended"
+                      ? "Debate ended"
+                      : "Live debate"
+                  : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
               </p>
             </div>
 
@@ -788,21 +794,23 @@ export default function BattleFeedSlide({
               onVoteRight={() => voteMutation.mutate("right")}
             />
 
-            <div className="seek-area pt-0.5" role="slider" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
-              <div className="relative h-[2px] w-full rounded-full bg-white/20">
-                <div
-                  className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none"
-                  style={{
-                    width: `${progress}%`,
-                    transition: playing ? "width 100ms linear" : "none",
-                  }}
-                />
+            {mediaType !== "live" ? (
+              <div className="seek-area pt-0.5" role="slider" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+                <div className="relative h-[2px] w-full rounded-full bg-white/20">
+                  <div
+                    className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none"
+                    style={{
+                      width: `${progress}%`,
+                      transition: playing ? "width 100ms linear" : "none",
+                    }}
+                  />
+                </div>
+                <div className="mt-1 flex justify-between font-mono text-[9px] text-white/45">
+                  <span>{fmt(currentTime)}</span>
+                  <span>{fmt(duration)}</span>
+                </div>
               </div>
-              <div className="mt-1 flex justify-between font-mono text-[9px] text-white/45">
-                <span>{fmt(currentTime)}</span>
-                <span>{fmt(duration)}</span>
-              </div>
-            </div>
+            ) : null}
           </div>
         </>
       ) : null}

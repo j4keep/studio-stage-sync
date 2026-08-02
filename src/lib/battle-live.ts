@@ -109,8 +109,21 @@ export function toDatetimeLocalValue(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+/** Practice pre-start countdown after both sides accept (seconds). */
+export const LIVE_PRACTICE_COUNTDOWN_SEC = 10;
+
 export function defaultLiveStartLocal(): string {
-  return toDatetimeLocalValue(new Date(Date.now() + 10 * 60 * 1000));
+  return toDatetimeLocalValue(new Date(Date.now() + LIVE_PRACTICE_COUNTDOWN_SEC * 1000));
+}
+
+/** Start + end timestamps once the opponent accepts (practice: 10s countdown). */
+export function liveScheduleFromAccept(durationMin: number, now = Date.now()) {
+  const startMs = now + LIVE_PRACTICE_COUNTDOWN_SEC * 1000;
+  const endMs = startMs + Math.max(1, durationMin) * 60 * 1000;
+  return {
+    scheduledStartAt: new Date(startMs).toISOString(),
+    expiresAt: new Date(endMs).toISOString(),
+  };
 }
 
 export const LIVE_BATTLE_DURATIONS_MIN = [10, 15, 30, 45, 60] as const;

@@ -3,7 +3,8 @@ import {
   Room,
   RoomEvent,
   Track,
-  createLocalTracks,
+  createLocalVideoTrack,
+  createLocalAudioTrack,
   type LocalTrack,
   type RemoteTrack,
 } from "livekit-client";
@@ -24,7 +25,7 @@ type Opts = {
   battleId: string | undefined;
   challengerId?: string | null;
   opponentId?: string | null;
-  /** Connect when true (live phase + authenticated). */
+  /** Connect when true. */
   enabled: boolean;
   /** Challenger/opponent publish cam+mic; spectators subscribe only. */
   canPublish: boolean;
@@ -175,11 +176,35 @@ export function useBattleLiveRoom({
       await room.connect(data.url, data.token);
 
       if (canPublish) {
-        const tracks = await createLocalTracks({ audio: true, video: true });
-        localTracksRef.current = tracks;
-        for (const t of tracks) {
-          await room.localParticipant.publishTrack(t);
+        const published: LocalTrack[] = [];
+        // Video first (facing user) — iOS often fails if audio session is wrong.
+        try {
+          const video = await createLocalVideoTrack({
+            facingMode: "user",
+            resolution: { width: 720, height: 1280, frameRate: 24 },
+          });
+          await room.localParticipant.publishTrack(video);
+          published.push(video);
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : "Camera unavailable";
+          throw new Error(msg);
         }
+
+        try {
+          const audio = await createLocalAudioTrack({
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          });
+          await room.localParticipant.publishTrack(audio);
+          published.push(audio);
+        } catch (e: unknown) {
+          // Keep video-only if mic session conflicts (common on iOS Safari).
+          const msg = e instanceof Error ? e.message : "Microphone unavailable";
+          setError(msg.includes("AudioSession") ? "Mic blocked — video still on. Check mute/permissions." : msg);
+          setMicOn(false);
+        }
+        localTracksRef.current = published;
       }
 
       rebuildStreams(room);
@@ -209,8 +234,14 @@ export function useBattleLiveRoom({
     const room = roomRef.current;
     if (!room || !canPublish) return;
     const next = !micOn;
-    await room.localParticipant.setMicrophoneEnabled(next);
-    setMicOn(next);
+    try {
+      await room.localParticipant.setMicrophoneEnabled(next);
+      setMicOn(next);
+      setError(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Mic unavailable";
+      setError(msg);
+    }
   };
 
   const toggleCam = async () => {
