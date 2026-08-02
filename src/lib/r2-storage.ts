@@ -19,181 +19,249 @@ type UploadOptions = {
   onProgress?: (progress: number) => void;
 };
 
-const PROXY_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5MB
+/** Edge function body limits are tight — keep proxy uploads under this. */
+const PROXY_UPLOAD_THRESHOLD = 4 * 1024 * 1024; // 4MB
+const PROXY_TIMEOUT_MS = 40_000;
+const PRESIGN_TIMEOUT_MS = 20_000;
+const PUT_TIMEOUT_MS = 45_000;
+
+function supabaseFunctionsBase(): { url: string; anonKey: string } {
+  const url = import.meta.env.VITE_SUPABASE_URL as string;
+  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+  return { url, anonKey };
+}
+
+async function authHeaders(): Promise<Record<string, string>> {
+  const { anonKey } = supabaseFunctionsBase();
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token || anonKey;
+  return {
+    Authorization: `Bearer ${token}`,
+    apikey: anonKey,
+  };
+}
+
+/** Compress images client-side so battle covers upload reliably on mobile. */
+export async function compressImageForUpload(
+  file: File,
+  maxEdge = 1400,
+  quality = 0.8,
+): Promise<File> {
+  const type = (file.type || "").toLowerCase();
+  const looksImage =
+    type.startsWith("image/") ||
+    /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name);
+  if (!looksImage || type === "image/gif") return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    bitmap.close?.();
+    const blob: Blob | null = await new Promise((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", quality),
+    );
+    if (!blob) return file;
+    const base = file.name.replace(/\.[^/.]+$/, "") || "cover";
+    return new File([blob], `${base}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 /**
  * Upload a file to R2 storage.
- * Files under 5MB use multipart form-data via edge function (avoids browser→R2 CORS hangs on mobile).
- * Larger files use a presigned PUT directly to R2.
+ * Prefer edge-function proxy (no browser→R2 CORS). Fall back to presigned PUT.
  */
 export async function uploadToR2(
   file: File,
   options: UploadOptions = {}
 ): Promise<R2Response<UploadResult>> {
-  const key = options.folder
-    ? `${options.folder}/${options.fileName || file.name}`
-    : options.fileName || file.name;
+  let uploadFile = file;
+  const mime = (options.mimeType || file.type || "").toLowerCase();
+  const looksImage =
+    mime.startsWith("image/") ||
+    (!mime && /\.(jpe?g|png|webp|heic|heif)$/i.test(file.name));
+  if (looksImage) {
+    // Keep covers small enough for the edge proxy (avoids browser→R2 CORS hangs).
+    uploadFile = await compressImageForUpload(file, 1400, 0.8);
+    if (uploadFile.size > PROXY_UPLOAD_THRESHOLD) {
+      uploadFile = await compressImageForUpload(uploadFile, 1100, 0.72);
+    }
+    if (uploadFile.size > PROXY_UPLOAD_THRESHOLD) {
+      uploadFile = await compressImageForUpload(uploadFile, 900, 0.62);
+    }
+  }
 
-  const useProxy = file.size <= PROXY_UPLOAD_THRESHOLD;
+  let safeName = options.fileName || uploadFile.name;
+  if (uploadFile.type === "image/jpeg") {
+    safeName = safeName.replace(/\.[^/.]+$/, ".jpg");
+  }
+
+  const key = options.folder ? `${options.folder}/${safeName}` : safeName;
+  const contentType =
+    uploadFile.type || options.mimeType || "application/octet-stream";
+
   console.log(
-    `[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: ${useProxy ? "proxy" : "presigned"}`,
+    `[R2 Upload] Starting: ${uploadFile.name}, size=${uploadFile.size}, key=${key}, type=${contentType}`,
   );
 
-  if (useProxy) {
-    const proxied = await uploadViaFormData(file, options);
+  // 1) Edge proxy (works for covers/photos without browser→R2 CORS)
+  if (uploadFile.size <= PROXY_UPLOAD_THRESHOLD) {
+    const proxied = await uploadViaEdgeStream(uploadFile, key, contentType, options);
     if (proxied.success) return proxied;
-    // Fall back to presigned if the edge proxy fails (e.g. cold start / size edge cases).
-    console.warn("[R2 Upload] Proxy upload failed, falling back to presigned:", proxied.error);
+    console.warn("[R2 Upload] Edge proxy failed:", proxied.error);
   }
 
-  return uploadStreamingToR2(file, key, options);
+  // 2) Presigned PUT fallback
+  return uploadViaPresignedPut(uploadFile, key, contentType, options);
 }
 
-/** Small file upload via multipart form-data */
-async function uploadViaFormData(
-  file: File,
-  options: UploadOptions
-): Promise<R2Response<UploadResult>> {
-  try {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (options.fileName) formData.append('fileName', options.fileName);
-    if (options.folder) formData.append('folder', options.folder);
-    if (options.mimeType) formData.append('mimeType', options.mimeType);
-
-    console.log('[R2 Upload] Invoking r2-upload edge function...');
-    const invokePromise = supabase.functions.invoke('r2-upload', {
-      body: formData,
-    });
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      window.setTimeout(() => reject(new Error('Cover upload timed out — try a smaller image')), 90_000);
-    });
-    const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
-    console.log('[R2 Upload] Edge function response:', { data, error: error?.message });
-
-    if (error) return { success: false, error: error.message };
-    if (!data?.success) return { success: false, error: data?.error || 'Upload failed' };
-
-    options.onProgress?.(100);
-    return { success: true, data: { key: data.key, url: data.url, size: data.size } };
-  } catch (err) {
-    console.error('[R2 Upload] FormData upload error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Upload failed' };
-  }
-}
-
-/** Large file upload: get presigned URL and upload directly to R2 */
-async function uploadStreamingToR2(
+/** Streaming body through r2-upload (same path as podcast upload). */
+async function uploadViaEdgeStream(
   file: File,
   key: string,
-  options: UploadOptions
+  contentType: string,
+  options: UploadOptions,
+): Promise<R2Response<UploadResult>> {
+  const { url } = supabaseFunctionsBase();
+  const headers = await authHeaders();
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+
+  try {
+    console.log("[R2 Upload] Edge stream POST…");
+    const response = await fetch(`${url}/functions/v1/r2-upload`, {
+      method: "POST",
+      headers: {
+        ...headers,
+        "x-upload-key": key,
+        "x-upload-content-type": contentType,
+        "Content-Type": contentType,
+      },
+      body: file,
+      signal: controller.signal,
+    });
+
+    const data = await response.json().catch(() => null);
+    console.log("[R2 Upload] Edge stream response:", response.status, data);
+
+    if (!response.ok || !data?.success) {
+      return {
+        success: false,
+        error: data?.error || `Upload failed (${response.status})`,
+      };
+    }
+
+    options.onProgress?.(100);
+    return {
+      success: true,
+      data: {
+        key: typeof data.key === "string" ? data.key : key,
+        url: typeof data.url === "string" ? data.url : "",
+        size: typeof data.size === "number" ? data.size : file.size,
+      },
+    };
+  } catch (err) {
+    console.error("[R2 Upload] Edge stream error:", err);
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { success: false, error: "Upload timed out — try a smaller image" };
+    }
+    return { success: false, error: err instanceof Error ? err.message : "Upload failed" };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+async function uploadViaPresignedPut(
+  file: File,
+  key: string,
+  contentType: string,
+  options: UploadOptions,
 ): Promise<R2Response<UploadResult>> {
   try {
-    const contentType = options.mimeType || file.type || 'application/octet-stream';
+    console.log("[R2 Upload] Requesting presigned URL…");
+    const { url } = supabaseFunctionsBase();
+    const headers = await authHeaders();
+    const presignController = new AbortController();
+    const presignTimer = window.setTimeout(() => presignController.abort(), PRESIGN_TIMEOUT_MS);
 
-    // Step 1: Get a presigned PUT URL from the edge function
-    console.log('[R2 Upload] Requesting presigned URL for key:', key);
-    const { data: presignData, error: presignError } = await supabase.functions.invoke('r2-presign', {
-      body: { key, contentType },
-    });
-    console.log('[R2 Upload] Presign response:', { success: presignData?.success, error: presignError?.message || presignData?.error });
-
-    if (presignError || !presignData?.success) {
-      return { success: false, error: presignData?.error || presignError?.message || 'Failed to get upload URL' };
-    }
-
-    const presignedUrl = presignData.url;
-    const publicUrl = presignedUrl.split('?')[0];
-
-    // Video uploads are more reliable with fetch than XHR on mobile networks.
-    if (contentType.startsWith('video/')) {
-      console.log('[R2 Upload] Starting direct PUT to R2 with fetch for video upload...');
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => controller.abort(), 15 * 60 * 1000);
-
-      try {
-        const response = await fetch(presignedUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': contentType,
-          },
-          body: file,
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          console.error('[R2 Upload] Fetch upload failed:', response.status, response.statusText);
-          return { success: false, error: `Upload failed: ${response.status}` };
-        }
-
-        options.onProgress?.(100);
-        return { success: true, data: { key, url: publicUrl, size: file.size } };
-      } catch (err) {
-        console.error('[R2 Upload] Fetch upload error:', err);
+    let presignData: { success?: boolean; url?: string; error?: string } | null = null;
+    try {
+      const presignRes = await fetch(`${url}/functions/v1/r2-presign`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ key, contentType }),
+        signal: presignController.signal,
+      });
+      presignData = await presignRes.json().catch(() => null);
+      if (!presignRes.ok || !presignData?.success || !presignData.url) {
         return {
           success: false,
-          error: err instanceof DOMException && err.name === 'AbortError'
-            ? 'Video upload timed out'
-            : err instanceof Error
-              ? err.message
-              : 'Upload failed',
+          error: presignData?.error || `Failed to get upload URL (${presignRes.status})`,
         };
-      } finally {
-        window.clearTimeout(timeoutId);
       }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return { success: false, error: "Upload timed out getting upload URL" };
+      }
+      // Last resort: supabase invoke
+      const { data, error } = await supabase.functions.invoke("r2-presign", {
+        body: { key, contentType },
+      });
+      if (error || !data?.success || !data?.url) {
+        return {
+          success: false,
+          error: data?.error || error?.message || "Failed to get upload URL",
+        };
+      }
+      presignData = data;
+    } finally {
+      window.clearTimeout(presignTimer);
     }
 
-    // Step 2: Upload directly to R2 using XHR for progress
-    console.log('[R2 Upload] Starting direct PUT to R2...');
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      let settled = false;
-      const finish = (result: R2Response<UploadResult>) => {
-        if (settled) return;
-        settled = true;
-        resolve(result);
-      };
+    const presignedUrl = presignData!.url!;
+    const publicUrl = presignedUrl.split("?")[0];
+    console.log("[R2 Upload] Direct PUT to R2…");
 
-      xhr.open('PUT', presignedUrl, true);
-      xhr.setRequestHeader('Content-Type', contentType);
-
-      if (options.onProgress) {
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            options.onProgress?.(Math.round((e.loaded / e.total) * 100));
-          }
-        };
+    const putController = new AbortController();
+    const putTimer = window.setTimeout(() => putController.abort(), PUT_TIMEOUT_MS);
+    try {
+      const response = await fetch(presignedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": contentType },
+        body: file,
+        signal: putController.signal,
+      });
+      if (!response.ok) {
+        return { success: false, error: `Upload failed: ${response.status}` };
       }
-
-      xhr.onload = () => {
-        console.log('[R2 Upload] XHR completed, status:', xhr.status);
-        if (xhr.status >= 200 && xhr.status < 300) {
-          finish({ success: true, data: { key, url: publicUrl, size: file.size } });
-        } else {
-          console.error('[R2 Upload] XHR failed:', xhr.status, xhr.responseText);
-          finish({ success: false, error: `Upload failed: ${xhr.status}` });
-        }
+      options.onProgress?.(100);
+      return { success: true, data: { key, url: publicUrl, size: file.size } };
+    } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        return { success: false, error: "Upload timed out — try a smaller image" };
+      }
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Network error during upload",
       };
-
-      xhr.onerror = () => {
-        console.error('[R2 Upload] XHR network error');
-        finish({ success: false, error: 'Network error during upload' });
-      };
-      xhr.onabort = () => {
-        console.error('[R2 Upload] XHR aborted');
-        finish({ success: false, error: 'Upload was interrupted' });
-      };
-      xhr.ontimeout = () => {
-        console.error('[R2 Upload] XHR timeout');
-        finish({ success: false, error: 'Upload timed out' });
-      };
-      xhr.timeout = contentType.startsWith('image/') ? 90_000 : 600_000;
-
-      xhr.send(file);
-    });
+    } finally {
+      window.clearTimeout(putTimer);
+    }
   } catch (err) {
-    console.error('[R2 Upload] Streaming upload error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Upload failed' };
+    console.error("[R2 Upload] Presigned upload error:", err);
+    return { success: false, error: err instanceof Error ? err.message : "Upload failed" };
   }
 }
 

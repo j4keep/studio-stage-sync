@@ -212,17 +212,22 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           }
         }
       } else if (isLiveBattle && coverFile) {
+        setLaunchStatus("Preparing cover…");
+        // uploadToR2 compresses images and uses the edge upload proxy (no R2 CORS hang).
         setLaunchStatus("Uploading cover…");
-        const ext = coverFile.name.split(".").pop() || "jpg";
         const coverResult = await uploadToR2(coverFile, {
           folder: `battles/covers/${user.id}`,
-          fileName: `${Date.now()}.${ext}`,
-          mimeType: coverFile.type || "image/jpeg",
+          fileName: `${Date.now()}.jpg`,
+          mimeType: "image/jpeg",
         });
         if (coverResult.success && coverResult.data) {
           coverUrl = getR2DownloadUrl(coverResult.data.key);
         } else {
-          toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
+          toast({
+            title: "Cover upload failed",
+            description: coverResult.error || "Could not upload cover. Try a smaller JPG/PNG.",
+            variant: "destructive",
+          });
           return;
         }
       } else {
