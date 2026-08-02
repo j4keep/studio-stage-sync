@@ -8,6 +8,7 @@ import {
   Heart,
   MessageCircle,
   Send,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -27,9 +28,10 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
-import { getBattleScheduledStartAt } from "@/lib/battle-live";
+import { getBattleScheduledStartAt, getLiveBattleEndsAt } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 type Props = {
@@ -407,22 +409,41 @@ export default function BattleFeedSlide({
 
   const uiStatus = getBattleUiStatus(battle || {});
   const ended = uiStatus === "ended";
-  const msLeft = getBattleExpiresAt(battle || {}).getTime() - now;
-  const votingOpen =
-    (battle?.status === "active" ||
-      uiStatus === "live" ||
-      uiStatus === "ending" ||
-      uiStatus === "countdown") &&
-    !!(battle?.opponent_media_url || battle?.opponent_cover_url);
+  const msLeft =
+    ((battle?.media_type || "").toLowerCase() === "live"
+      ? getLiveBattleEndsAt(battle || {})
+      : getBattleExpiresAt(battle || {})
+    ).getTime() - now;
+  const votingOpen = isBattleVotingOpen(battle || {});
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, { ended, votingOpen });
   const rightVoteGate = canUserVoteForSide(uid, battle?.opponent_id, { ended, votingOpen });
+  const isCreator = !!uid && uid === battle?.challenger_id;
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!battle?.id || !isCreator) return;
+      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Battle deleted");
+      qc.invalidateQueries({ queryKey: ["feed-posts"] });
+      qc.invalidateQueries({ queryKey: ["battles"] });
+      onScrollLockChange?.(false);
+    },
+    onError: () => toast.error("Couldn't delete battle"),
+  });
 
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {
       if (!uid || !battle) return;
+      if (!isBattleVotingOpen(battle)) {
+        toast.error("Voting closed — time expired");
+        return;
+      }
       const targetId = side === "left" ? battle.challenger_id : battle.opponent_id;
-      const gate = canUserVoteForSide(uid, targetId, { ended, votingOpen });
+      const gate = canUserVoteForSide(uid, targetId, { ended, votingOpen: true });
       if (!gate.allowed) {
         toast.error(gate.reason || "Can't vote");
         return;
@@ -740,6 +761,22 @@ export default function BattleFeedSlide({
             <button type="button" onClick={share} className="feed-action-btn" aria-label="Share">
               <Forward className="feed-action-icon" />
             </button>
+            {isCreator ? (
+              <button
+                type="button"
+                className="feed-action-btn"
+                aria-label="Delete battle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (deleteMutation.isPending) return;
+                  if (!window.confirm("Delete this battle post? The replay will be removed.")) return;
+                  deleteMutation.mutate();
+                }}
+              >
+                <Trash2 className="feed-action-icon text-rose-300" />
+                <span className="feed-action-count text-[9px]">Delete</span>
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={(e) => {
@@ -776,9 +813,11 @@ export default function BattleFeedSlide({
                   ? uiStatus === "countdown"
                     ? "Starting soon · cover preview"
                     : uiStatus === "ended"
-                      ? "Debate ended"
+                      ? "Replay · voting closed"
                       : "Live debate"
-                  : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
+                  : ended
+                    ? `Ended · ${firstName(nowPlayingName)}`
+                    : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
               </p>
             </div>
 

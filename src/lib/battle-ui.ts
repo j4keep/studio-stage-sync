@@ -86,9 +86,41 @@ export function isBattleOnFeed(battle: {
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
   media_type?: string | null;
+  max_duration_minutes?: number | null;
+  replay_media_url?: string | null;
 }): boolean {
   const ui = getBattleUiStatus(battle);
-  return ui === "live" || ui === "ending" || ui === "countdown";
+  // Keep launched battles on the post feed through the full lifecycle (including
+  // after voting ends) until the creator deletes them from Battles.
+  if (ui === "live" || ui === "ending" || ui === "countdown") return true;
+  if (ui === "ended") {
+    return !!(battle.opponent_id && (battle.opponent_media_url || battle.opponent_cover_url));
+  }
+  return false;
+}
+
+/** True while the crowd can still cast votes (clock + status). */
+export function isBattleVotingOpen(battle: {
+  status?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  scheduled_start_at?: string | null;
+  battle_background?: string | null;
+  opponent_media_url?: string | null;
+  opponent_cover_url?: string | null;
+  media_type?: string | null;
+  max_duration_minutes?: number | null;
+}): boolean {
+  const ui = getBattleUiStatus(battle);
+  if (ui === "ended" || ui === "waiting" || ui === "open") return false;
+  if (ui === "countdown") return false; // live debates: vote once cameras are up
+  const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
+  if (!hasOpponentEntry) return false;
+  const status = (battle.status || "").toLowerCase();
+  if (status === "ended" || status === "completed" || status === "expired") return false;
+  const isLiveType = (battle.media_type || "").toLowerCase() === "live";
+  const endAt = isLiveType ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle);
+  return endAt.getTime() > Date.now();
 }
 
 export function formatCountdown(msLeft: number): string {

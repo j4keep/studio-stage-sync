@@ -1,20 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBattleLiveRoom } from "@/hooks/useBattleLiveRoom";
 import { formatCountdown } from "@/lib/battle-ui";
 import {
-  buildLiveBattleBackground,
   getBattleReplayMediaUrl,
   getBattleScheduledStartAt,
   getLiveBattleEndsAt,
   getLiveBattlePhase,
-  isMissingLiveBattleColumnError,
 } from "@/lib/battle-live";
 import { startBattleLiveRecorder, type BattleLiveRecorder } from "@/lib/battle-live-record";
-import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
-import { supabase } from "@/integrations/supabase/client";
+import { persistLiveBattleReplay } from "@/lib/persist-live-battle-replay";
 import { toast } from "sonner";
 import {
   forceIosAudioSessionToPlayback,
@@ -95,6 +93,7 @@ export default function BattleLiveStage({
 }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [now, setNow] = useState(Date.now());
   const leftVideoRef = useRef<HTMLVideoElement | null>(null);
   const rightVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -103,6 +102,8 @@ export default function BattleLiveStage({
   const uploadingReplayRef = useRef(false);
   const redirectedRef = useRef(false);
   const prevPhaseRef = useRef<string | null>(null);
+  const battleRef = useRef(battle);
+  battleRef.current = battle;
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 250);
@@ -176,12 +177,41 @@ export default function BattleLiveStage({
     }
   }, [phase, surface, isParticipant, battle.id, navigate]);
 
-  // Challenger records the composite replay while live (on whichever surface is connected as publisher)
+  const flushReplay = useCallback(async () => {
+    if (uploadingReplayRef.current) return;
+    if (user?.id !== battleRef.current.challenger_id) return;
+    if (getBattleReplayMediaUrl(battleRef.current)) return;
+    const rec = recorderRef.current;
+    if (!rec || !recordingStartedRef.current) return;
+
+    uploadingReplayRef.current = true;
+    recorderRef.current = null;
+    recordingStartedRef.current = false;
+    try {
+      const blob = await rec.stop();
+      if (!blob || !user) return;
+      const url = await persistLiveBattleReplay({
+        battle: battleRef.current,
+        userId: user.id,
+        blob,
+      });
+      if (url) {
+        toast.success("Debate replay saved to the post");
+        qc.invalidateQueries({ queryKey: ["battle", battleRef.current.id] });
+        qc.invalidateQueries({ queryKey: ["feed-posts"] });
+        qc.invalidateQueries({ queryKey: ["battles"] });
+      }
+    } catch {
+      uploadingReplayRef.current = false;
+      toast.error("Couldn't save debate replay — keep this tab open next time");
+    }
+  }, [user, qc]);
+
+  // Challenger records from the public post surface (where they land when go-live).
+  // Avoid starting on the battle page — navigating to the feed would drop that recorder.
   useEffect(() => {
+    if (surface !== "feed") return;
     if (phase !== "live" || user?.id !== battle.challenger_id) return;
-    if (surface !== "battle" && surface !== "feed") return;
-    // Prefer recording from feed once live (both may be connected; challenger usually lands on feed).
-    if (surface === "battle") return;
     if (recordingStartedRef.current || conn !== "connected") return;
     if (!streams.leftVideo && !streams.rightVideo) return;
 
@@ -191,92 +221,40 @@ export default function BattleLiveStage({
       leftAudio: streams.leftAudio,
       rightAudio: streams.rightAudio,
     });
-    if (!rec) return;
+    if (!rec) {
+      toast.message("Recording unavailable on this device — debate still goes live");
+      return;
+    }
     recorderRef.current = rec;
     recordingStartedRef.current = true;
   }, [
+    surface,
     phase,
     conn,
     user?.id,
     battle.challenger_id,
-    surface,
     streams.leftVideo,
     streams.rightVideo,
     streams.leftAudio,
     streams.rightAudio,
   ]);
 
-  // Also allow challenger to record if they stay on battle page (no redirect yet / desktop)
-  useEffect(() => {
-    if (phase !== "live" || user?.id !== battle.challenger_id || surface !== "battle") return;
-    if (recordingStartedRef.current || conn !== "connected") return;
-    if (!streams.leftVideo && !streams.rightVideo) return;
-    const rec = startBattleLiveRecorder({
-      leftVideoEl: leftVideoRef.current,
-      rightVideoEl: rightVideoRef.current,
-      leftAudio: streams.leftAudio,
-      rightAudio: streams.rightAudio,
-    });
-    if (!rec) return;
-    recorderRef.current = rec;
-    recordingStartedRef.current = true;
-  }, [phase, conn, user?.id, battle.challenger_id, surface, streams]);
-
-  // Stop recorder + upload when debate ends
+  // Stop + upload when voting/debate clock ends
   useEffect(() => {
     if (phase !== "ended") return;
-    if (!recordingStartedRef.current || uploadingReplayRef.current) return;
+    void flushReplay();
+  }, [phase, flushReplay]);
+
+  // Last-resort save if the tab is closing while a recording is in progress.
+  // Do NOT flush on React unmount — navigating battle → feed would cut the replay short.
+  useEffect(() => {
     if (user?.id !== battle.challenger_id) return;
-    if (replayUrl) return;
-
-    const rec = recorderRef.current;
-    if (!rec) return;
-    uploadingReplayRef.current = true;
-    recorderRef.current = null;
-
-    void (async () => {
-      try {
-        const blob = await rec.stop();
-        if (!blob || !user) return;
-        const file = new File([blob], `live-battle-${battle.id}.webm`, {
-          type: blob.type || "video/webm",
-        });
-        const result = await uploadToR2(file, {
-          folder: `battles/replays/${user.id}`,
-          fileName: `${Date.now()}.webm`,
-          mimeType: file.type,
-        });
-        if (!result.success || !result.data) return;
-        const url = getR2DownloadUrl(result.data.key);
-
-        let { error: updateError } = await (supabase as any)
-          .from("battles")
-          .update({ replay_media_url: url })
-          .eq("id", battle.id)
-          .eq("challenger_id", user.id);
-
-        if (updateError && isMissingLiveBattleColumnError(updateError)) {
-          ({ error: updateError } = await (supabase as any)
-            .from("battles")
-            .update({
-              battle_background: buildLiveBattleBackground(
-                {
-                  scheduled_start_at: getBattleScheduledStartAt(battle),
-                  replay_media_url: url,
-                },
-                battle.battle_background,
-              ),
-            })
-            .eq("id", battle.id)
-            .eq("challenger_id", user.id));
-        }
-
-        if (!updateError) toast.success("Live debate replay saved");
-      } catch {
-        /* best-effort */
-      }
-    })();
-  }, [phase, user, battle, replayUrl]);
+    const onPageHide = () => {
+      void flushReplay();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [user?.id, battle.challenger_id, flushReplay]);
 
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;

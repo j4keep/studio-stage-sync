@@ -38,6 +38,7 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
 
@@ -173,16 +174,10 @@ const MusicBattlePlayerPage = () => {
         toast.error("You can't vote for yourself");
         return;
       }
-      const battleEnded =
-        battle.status === "ended" ||
-        battle.status === "completed" ||
-        battle.status === "expired" ||
-        (battle.expires_at && new Date(battle.expires_at).getTime() <= Date.now());
-      if (battleEnded) {
-        toast.error("Voting closed — battle ended");
+      if (!isBattleVotingOpen(battle)) {
+        toast.error("Voting closed — time expired");
         return;
       }
-      if (battle.status !== "active") return;
       const existing = votes.find((v: any) => v.user_id === user.id);
       if (existing) {
         await supabase.from("battle_votes").update({ voted_for: votedFor }).eq("id", existing.id);
@@ -810,7 +805,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "left" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.challenger_media_url && battle.status === "active" ? (
+              {battle.media_type === "video" && battle.challenger_media_url ? (
                 <video
                   ref={(el) => {
                     videoLeftRef.current = el;
@@ -856,8 +851,8 @@ const MusicBattlePlayerPage = () => {
             </div>
           ) : null}
 
-          {/* CENTER PLAY BUTTON — hidden when a side is expanded or battle not active */}
-          {!expandedSide && battle.status === "active" && (
+          {/* CENTER PLAY BUTTON — available while media can still be watched */}
+          {!expandedSide && (battle.status === "active" || ended) && battle.media_type !== "live" && (
           <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2 z-40">
             {/* outer pulse rings */}
             <motion.div
@@ -946,7 +941,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "right" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.opponent_media_url && battle.status === "active" ? (
+              {battle.media_type === "video" && battle.opponent_media_url ? (
                 <video
                   ref={(el) => {
                     videoRightRef.current = el;
@@ -1040,9 +1035,9 @@ const MusicBattlePlayerPage = () => {
             leftInitial={leftName}
             rightInitial={rightName}
             size="md"
-            interactive={!ended && battle.status === "active"}
-            disabledLeft={!canVoteLeft || ended}
-            disabledRight={!canVoteRight || ended}
+            interactive={isBattleVotingOpen(battle)}
+            disabledLeft={!canVoteLeft || !isBattleVotingOpen(battle)}
+            disabledRight={!canVoteRight || !isBattleVotingOpen(battle)}
             onVoteLeft={() => voteMutation.mutate("left")}
             onVoteRight={() => voteMutation.mutate("right")}
           />
