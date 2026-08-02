@@ -1047,15 +1047,20 @@ const MusicBattlePlayerPage = () => {
                     />
                   )}
 
-                  {battle.media_type === "audio" && (
+                  {(battle.media_type === "audio" || battle.media_type === "video") && (
                     <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Upload cover art</label>
+                      <label className="mb-1 block text-xs text-muted-foreground">
+                        Upload cover picture{battle.media_type === "audio" ? " (required)" : " (optional)"}
+                      </label>
                       <input
                         type="file"
                         accept="image/*,.jpg,.jpeg,.png,.webp"
                         onChange={(event) => setAcceptCoverFile(event.target.files?.[0] || null)}
                         className="w-full text-xs file:mr-3 file:rounded-xl file:border-0 file:bg-primary/15 file:px-3 file:py-2 file:font-semibold file:text-primary"
                       />
+                      {acceptCoverFile && (
+                        <p className="mt-1 text-[10px] text-primary">🖼️ {acceptCoverFile.name}</p>
+                      )}
                     </div>
                   )}
                 </>
