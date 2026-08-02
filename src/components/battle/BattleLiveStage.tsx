@@ -3,7 +3,13 @@ import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBattleLiveRoom } from "@/hooks/useBattleLiveRoom";
 import { formatCountdown } from "@/lib/battle-ui";
-import { getLiveBattlePhase } from "@/lib/battle-live";
+import {
+  buildLiveBattleBackground,
+  getBattleReplayMediaUrl,
+  getBattleScheduledStartAt,
+  getLiveBattlePhase,
+  isMissingLiveBattleColumnError,
+} from "@/lib/battle-live";
 import { startBattleLiveRecorder, type BattleLiveRecorder } from "@/lib/battle-live-record";
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +28,7 @@ type BattleLike = {
   opponent_cover_url?: string | null;
   opponent_media_url?: string | null;
   replay_media_url?: string | null;
+  battle_background?: string | null;
 };
 
 type Props = {
@@ -100,9 +107,9 @@ export default function BattleLiveStage({
       canPublish,
     });
 
-  const startMs = battle.scheduled_start_at
-    ? new Date(battle.scheduled_start_at).getTime()
-    : null;
+  const scheduledStartAt = getBattleScheduledStartAt(battle);
+  const replayUrl = getBattleReplayMediaUrl(battle);
+  const startMs = scheduledStartAt ? new Date(scheduledStartAt).getTime() : null;
   const endMs = battle.expires_at ? new Date(battle.expires_at).getTime() : null;
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
   const msToEnd = endMs != null ? Math.max(0, endMs - now) : 0;
@@ -138,7 +145,7 @@ export default function BattleLiveStage({
     if (phase !== "ended") return;
     if (!recordingStartedRef.current || uploadingReplayRef.current) return;
     if (user?.id !== battle.challenger_id) return;
-    if (battle.replay_media_url) return;
+    if (replayUrl) return;
 
     const rec = recorderRef.current;
     if (!rec) return;
@@ -159,21 +166,38 @@ export default function BattleLiveStage({
         });
         if (!result.success || !result.data) return;
         const url = getR2DownloadUrl(result.data.key);
-        await (supabase as any)
+
+        let { error: updateError } = await (supabase as any)
           .from("battles")
           .update({ replay_media_url: url })
           .eq("id", battle.id)
           .eq("challenger_id", user.id);
-        toast.success("Live debate replay saved");
+
+        if (updateError && isMissingLiveBattleColumnError(updateError)) {
+          ({ error: updateError } = await (supabase as any)
+            .from("battles")
+            .update({
+              battle_background: buildLiveBattleBackground(
+                {
+                  scheduled_start_at: getBattleScheduledStartAt(battle),
+                  replay_media_url: url,
+                },
+                battle.battle_background,
+              ),
+            })
+            .eq("id", battle.id)
+            .eq("challenger_id", user.id));
+        }
+
+        if (!updateError) toast.success("Live debate replay saved");
       } catch {
         /* best-effort */
       }
     })();
-  }, [phase, user, battle.id, battle.challenger_id, battle.replay_media_url]);
+  }, [phase, user, battle, replayUrl]);
 
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
-  const replayUrl = battle.replay_media_url;
 
   if (phase === "ended" && replayUrl) {
     return (

@@ -14,6 +14,7 @@ import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   LIVE_BATTLE_DURATIONS_MIN,
+  buildLiveBattleBackground,
   defaultLiveStartLocal,
 } from "@/lib/battle-live";
 
@@ -265,6 +266,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         }
       }
 
+      // Store live start in battle_background until scheduled_start_at is migrated on prod.
+      // expires_at already exists and still drives the end time.
       const { error: insertError } = await supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
@@ -275,13 +278,10 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : isLiveBattle ? liveDurationMin : maxDuration,
-        battle_background: null,
-        ...(isLiveBattle
-          ? {
-              scheduled_start_at: scheduledStartAt,
-              expires_at: expiresAt,
-            }
-          : {}),
+        battle_background: isLiveBattle && scheduledStartAt
+          ? buildLiveBattleBackground({ scheduled_start_at: scheduledStartAt })
+          : null,
+        ...(isLiveBattle && expiresAt ? { expires_at: expiresAt } : {}),
       } as any);
 
       if (insertError) throw insertError;

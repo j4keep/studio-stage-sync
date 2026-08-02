@@ -29,6 +29,7 @@ import {
   getBattleUiStatus,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
+import { getBattleScheduledStartAt } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 type Props = {
@@ -503,8 +504,9 @@ export default function BattleFeedSlide({
 
   const leftCover = battle?.challenger_cover_url || battle?.challenger_media_url;
   const rightCover = battle?.opponent_cover_url || battle?.opponent_media_url;
-  const msToStart = battle?.scheduled_start_at
-    ? new Date(battle.scheduled_start_at).getTime() - now
+  const scheduledStartAt = getBattleScheduledStartAt(battle || {});
+  const msToStart = scheduledStartAt
+    ? new Date(scheduledStartAt).getTime() - now
     : 0;
   const timerLabel =
     ended || msLeft <= 0

@@ -24,6 +24,7 @@ import BattleLiveStage from "@/components/battle/BattleLiveStage";
 import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
 import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
+import { getBattleScheduledStartAt } from "@/lib/battle-live";
 import {
   computeVoteMomentum,
   firstName,
@@ -645,8 +646,8 @@ const MusicBattlePlayerPage = () => {
             finalMinute ? "bg-rose-500 text-white" : uiStatus === "countdown" ? "bg-amber-500 text-white" : "bg-muted text-foreground"
           }`}>
             <Clock className="h-3.5 w-3.5" />
-            {uiStatus === "countdown" && battle.scheduled_start_at
-              ? formatCountdown(new Date(battle.scheduled_start_at).getTime() - Date.now())
+            {uiStatus === "countdown" && getBattleScheduledStartAt(battle)
+              ? formatCountdown(new Date(getBattleScheduledStartAt(battle)!).getTime() - Date.now())
               : finalMinute
                 ? formatClockMmSs(msLeft)
                 : (timeLeft || formatCountdown(msLeft))}
@@ -1035,9 +1036,9 @@ const MusicBattlePlayerPage = () => {
                   {acceptCoverFile && (
                     <p className="mt-1 text-[10px] text-primary">🖼️ {acceptCoverFile.name}</p>
                   )}
-                  {battle.scheduled_start_at && (
+                  {getBattleScheduledStartAt(battle) && (
                     <p className="mt-2 text-[11px] text-muted-foreground">
-                      Goes live {new Date(battle.scheduled_start_at).toLocaleString()} · ends{" "}
+                      Goes live {new Date(getBattleScheduledStartAt(battle)!).toLocaleString()} · ends{" "}
                       {battle.expires_at ? new Date(battle.expires_at).toLocaleString() : "on schedule"}
                     </p>
                   )}

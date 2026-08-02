@@ -1,5 +1,7 @@
 /** Pure UI helpers for Creators Battle — no backend changes. */
 
+import { getBattleScheduledStartAt } from "@/lib/battle-live";
+
 export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open" | "countdown";
 
 export type BattleCategoryMeta = {
@@ -31,6 +33,7 @@ export function getBattleUiStatus(battle: {
   expires_at?: string | null;
   created_at?: string | null;
   scheduled_start_at?: string | null;
+  battle_background?: string | null;
   opponent_media_url?: string | null;
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
@@ -57,7 +60,8 @@ export function getBattleUiStatus(battle: {
   const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
   if (status === "active" && !hasOpponentEntry) return "waiting";
 
-  const startAt = battle.scheduled_start_at ? new Date(battle.scheduled_start_at).getTime() : null;
+  const startIso = getBattleScheduledStartAt(battle);
+  const startAt = startIso ? new Date(startIso).getTime() : null;
   if (status === "active" && startAt != null && Date.now() < startAt) return "countdown";
 
   if (status === "active" && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";
@@ -72,6 +76,7 @@ export function isBattleOnFeed(battle: {
   expires_at?: string | null;
   created_at?: string | null;
   scheduled_start_at?: string | null;
+  battle_background?: string | null;
   opponent_media_url?: string | null;
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
