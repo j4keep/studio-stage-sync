@@ -23,8 +23,8 @@ const PROXY_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5MB
 
 /**
  * Upload a file to R2 storage.
- * Files under 5MB use multipart form-data via edge function.
- * Files over 5MB stream the raw body through the edge function with custom headers.
+ * Files under 5MB use multipart form-data via edge function (avoids browser→R2 CORS hangs on mobile).
+ * Larger files use a presigned PUT directly to R2.
  */
 export async function uploadToR2(
   file: File,
@@ -34,9 +34,18 @@ export async function uploadToR2(
     ? `${options.folder}/${options.fileName || file.name}`
     : options.fileName || file.name;
 
-  console.log(`[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: presigned`);
+  const useProxy = file.size <= PROXY_UPLOAD_THRESHOLD;
+  console.log(
+    `[R2 Upload] Starting upload: ${file.name}, size: ${file.size}, key: ${key}, method: ${useProxy ? "proxy" : "presigned"}`,
+  );
 
-  // Always use presigned URLs for all file sizes to avoid edge function timeouts
+  if (useProxy) {
+    const proxied = await uploadViaFormData(file, options);
+    if (proxied.success) return proxied;
+    // Fall back to presigned if the edge proxy fails (e.g. cold start / size edge cases).
+    console.warn("[R2 Upload] Proxy upload failed, falling back to presigned:", proxied.error);
+  }
+
   return uploadStreamingToR2(file, key, options);
 }
 
@@ -53,14 +62,19 @@ async function uploadViaFormData(
     if (options.mimeType) formData.append('mimeType', options.mimeType);
 
     console.log('[R2 Upload] Invoking r2-upload edge function...');
-    const { data, error } = await supabase.functions.invoke('r2-upload', {
+    const invokePromise = supabase.functions.invoke('r2-upload', {
       body: formData,
     });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Cover upload timed out — try a smaller image')), 90_000);
+    });
+    const { data, error } = await Promise.race([invokePromise, timeoutPromise]);
     console.log('[R2 Upload] Edge function response:', { data, error: error?.message });
 
     if (error) return { success: false, error: error.message };
     if (!data?.success) return { success: false, error: data?.error || 'Upload failed' };
 
+    options.onProgress?.(100);
     return { success: true, data: { key: data.key, url: data.url, size: data.size } };
   } catch (err) {
     console.error('[R2 Upload] FormData upload error:', err);
@@ -173,7 +187,7 @@ async function uploadStreamingToR2(
         console.error('[R2 Upload] XHR timeout');
         finish({ success: false, error: 'Upload timed out' });
       };
-      xhr.timeout = 600000; // 10 min timeout
+      xhr.timeout = contentType.startsWith('image/') ? 90_000 : 600_000;
 
       xhr.send(file);
     });

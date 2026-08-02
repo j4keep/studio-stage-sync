@@ -57,6 +57,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [photoSongTrim, setPhotoSongTrim] = useState<{ file: File; durationSec: number } | null>(null);
   const photoSongInputRef = useRef<HTMLInputElement | null>(null);
   const [loading, setLoading] = useState(false);
+  const [launchStatus, setLaunchStatus] = useState<string | null>(null);
+  const launchingRef = useRef(false);
   const [opponentSearch, setOpponentSearch] = useState("");
   const [selectedOpponent, setSelectedOpponent] = useState<{ user_id: string; display_name: string; avatar_url: string | null } | null>(null);
   const [maxDuration, setMaxDuration] = useState(20);
@@ -142,6 +144,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
   const handleSubmit = async () => {
     if (!user || !title.trim() || !trackTitle.trim() || !selectedOpponent) return;
+    if (launchingRef.current || loading) return;
 
     if (isPhotoBattle) {
       if (!photoFile) {
@@ -172,7 +175,9 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       }
     }
 
+    launchingRef.current = true;
     setLoading(true);
+    setLaunchStatus("Preparing…");
 
     try {
       let mediaUrl = "";
@@ -180,21 +185,22 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
       if (isPhotoBattle && photoFile) {
         // For photo battles, the photo IS the cover
-        const ext = photoFile.name.split(".").pop();
+        setLaunchStatus("Uploading photo…");
+        const ext = photoFile.name.split(".").pop() || "jpg";
         const result = await uploadToR2(photoFile, {
           folder: `battles/photos/${user.id}`,
           fileName: `${Date.now()}.${ext}`,
-          mimeType: photoFile.type,
+          mimeType: photoFile.type || "image/jpeg",
         });
         if (result.success && result.data) {
           coverUrl = getR2DownloadUrl(result.data.key);
         } else {
           toast({ title: "Upload failed", description: result.error || "Could not upload photo.", variant: "destructive" });
-          setLoading(false);
           return;
         }
         // Optional song for photo battle
         if (photoSongFile) {
+          setLaunchStatus("Uploading song…");
           const songExt = photoSongFile.name.split(".").pop();
           const songResult = await uploadToR2(photoSongFile, {
             folder: `battles/${user.id}`,
@@ -206,56 +212,57 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
           }
         }
       } else if (isLiveBattle && coverFile) {
-        const ext = coverFile.name.split(".").pop();
+        setLaunchStatus("Uploading cover…");
+        const ext = coverFile.name.split(".").pop() || "jpg";
         const coverResult = await uploadToR2(coverFile, {
           folder: `battles/covers/${user.id}`,
           fileName: `${Date.now()}.${ext}`,
-          mimeType: coverFile.type,
+          mimeType: coverFile.type || "image/jpeg",
         });
         if (coverResult.success && coverResult.data) {
           coverUrl = getR2DownloadUrl(coverResult.data.key);
         } else {
           toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
-          setLoading(false);
           return;
         }
       } else {
         if (mediaFile) {
+          setLaunchStatus(mediaType === "video" ? "Uploading video…" : "Uploading song…");
           const fileExtension = mediaFile.name.split(".").pop();
           const uploadResult = await uploadToR2(mediaFile, {
             folder: `battles/${user.id}`,
             fileName: `${Date.now()}.${fileExtension}`,
             mimeType: mediaFile.type,
-            onProgress: (p) => console.log(`[Battle] Media upload: ${p}%`),
+            onProgress: (p) => setLaunchStatus(`Uploading… ${p}%`),
           });
           if (uploadResult.success && uploadResult.data) {
             mediaUrl = getR2DownloadUrl(uploadResult.data.key);
           } else {
             toast({ title: "Upload failed", description: uploadResult.error || "Could not upload media file.", variant: "destructive" });
-            setLoading(false);
             return;
           }
         }
 
         if (coverFile) {
-          const ext = coverFile.name.split(".").pop();
+          setLaunchStatus("Uploading cover…");
+          const ext = coverFile.name.split(".").pop() || "jpg";
           const coverResult = await uploadToR2(coverFile, {
             folder: `battles/covers/${user.id}`,
             fileName: `${Date.now()}.${ext}`,
-            mimeType: coverFile.type,
+            mimeType: coverFile.type || "image/jpeg",
           });
           if (coverResult.success && coverResult.data) {
             coverUrl = getR2DownloadUrl(coverResult.data.key);
           } else {
             toast({ title: "Cover upload failed", description: coverResult.error || "Could not upload cover.", variant: "destructive" });
-            setLoading(false);
             return;
           }
         }
       }
 
-      // Live start is set when the opponent accepts (practice: 10s countdown).
-      const { error: insertError } = await supabase.from("battles").insert({
+      // Live start is set when the opponent accepts (practice countdown).
+      setLaunchStatus("Sending challenge…");
+      const insertPromise = supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
         title: title.trim(),
@@ -267,12 +274,16 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         max_duration_minutes: isPhotoBattle ? 0 : isLiveBattle ? liveDurationMin : maxDuration,
         battle_background: null,
       } as any);
+      const insertTimeout = new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("Sending challenge timed out — check your connection and try again")), 30_000);
+      });
+      const { error: insertError } = await Promise.race([insertPromise, insertTimeout]);
 
       if (insertError) throw insertError;
 
-      queryClient.invalidateQueries({ queryKey: ["battles"] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["battles"] });
+      void queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+      void queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
       toast({ title: "Challenge sent! 🥊", description: `${selectedOpponent.display_name} has been challenged!` });
       onOpenChange(false);
       setTitle("");
@@ -286,12 +297,15 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setMaxDuration(20);
       setMediaDurationMin(null);
       setLiveDurationMin(15);
+      setStep(0);
       
     } catch (err: any) {
       console.error("[Battle] Create failed:", err);
       toast({ title: "Error", description: err?.message || "Failed to create battle", variant: "destructive" });
     } finally {
+      launchingRef.current = false;
       setLoading(false);
+      setLaunchStatus(null);
     }
   };
 
@@ -685,7 +699,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
               <button
                 type="button"
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
-                className="flex h-12 items-center justify-center gap-1 rounded-xl border border-border px-4 text-sm font-bold text-foreground"
+                disabled={loading}
+                className="flex h-12 items-center justify-center gap-1 rounded-xl border border-border px-4 text-sm font-bold text-foreground disabled:opacity-45"
               >
                 <ChevronLeft className="h-4 w-4" /> Back
               </button>
@@ -702,12 +717,12 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
             ) : (
               <button
                 type="button"
-                onClick={handleSubmit}
+                onClick={() => void handleSubmit()}
                 disabled={isSubmitDisabled()}
                 className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl text-sm font-black gradient-primary text-primary-foreground disabled:opacity-50"
               >
                 <Rocket className="h-4 w-4" />
-                {loading ? "Launching..." : "Launch Battle"}
+                {loading ? launchStatus || "Launching..." : "Launch Battle"}
               </button>
             )}
           </div>
