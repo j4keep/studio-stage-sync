@@ -217,23 +217,23 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
       <div className="relative px-3 pb-2 pt-2">
         <div className="mb-2 grid grid-cols-2 gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[11px] font-black tracking-[0.04em] text-[#3b82f6]">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-cyan-300">
               {challengerName.toUpperCase()}
             </p>
             <p className="mt-0.5 flex items-center gap-1 truncate text-[11px] font-semibold text-white/70">
               <span className="truncate">{battle.challenger_title || battle.title || "Entry"}</span>
               {battle.challenger_media_url || battle.challenger_cover_url ? (
-                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#3b82f6]" />
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-cyan-300" />
               ) : null}
             </p>
           </div>
           <div className="min-w-0 text-right">
-            <p className="truncate text-[11px] font-black tracking-[0.04em] text-[#e11d48]">
+            <p className="truncate text-[11px] font-black tracking-[0.04em] text-pink-400">
               {opponentName.toUpperCase()}
             </p>
             <p className="mt-0.5 flex items-center justify-end gap-1 truncate text-[11px] font-semibold text-white/70">
               {battle.opponent_media_url || battle.opponent_cover_url ? (
-                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-[#e11d48]" />
+                <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-pink-400" />
               ) : null}
               <span className="truncate">
                 {battle.opponent_title || (battle.opponent_id ? "Waiting…" : "Open slot")}
@@ -251,12 +251,12 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
           {/* Portrait boxes match post thumbs (4/5) — not short landscape strips */}
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
             <div
-              className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900 shadow-[0_0_24px_rgba(37,99,235,0.35)] ring-[3px] ring-[#2563eb]/80"
+              className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900 shadow-[0_0_24px_rgba(34,211,238,0.4)] ring-[3px] ring-cyan-300/90"
             >
               {battle.challenger_cover_url ? (
                 <img src={battle.challenger_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-sky-600/40 to-sky-950">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-cyan-600/40 to-cyan-950">
                   <span className="text-4xl opacity-50">🎵</span>
                 </div>
               )}
@@ -273,9 +273,9 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
               <motion.div
                 animate={{
                   boxShadow: [
-                    "0 0 10px rgba(37,99,235,0.35)",
-                    "0 0 22px rgba(225,29,72,0.45)",
-                    "0 0 10px rgba(37,99,235,0.35)",
+                    "0 0 10px rgba(34,211,238,0.4)",
+                    "0 0 22px rgba(236,72,153,0.5)",
+                    "0 0 10px rgba(34,211,238,0.4)",
                   ],
                 }}
                 transition={{ repeat: Infinity, duration: 1.8 }}
@@ -288,14 +288,14 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
             <div
               className={`relative aspect-[4/5] overflow-hidden rounded-2xl bg-neutral-900 ring-[3px] ${
                 battle.opponent_cover_url
-                  ? "shadow-[0_0_24px_rgba(225,29,72,0.35)] ring-[#e11d48]/80"
-                  : "shadow-none ring-[#e11d48]/35"
+                  ? "shadow-[0_0_24px_rgba(236,72,153,0.4)] ring-pink-400/90"
+                  : "shadow-none ring-pink-400/35"
               }`}
             >
               {battle.opponent_cover_url ? (
                 <img src={battle.opponent_cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-rose-950/80 to-black px-3 text-center">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-pink-950/80 to-black px-3 text-center">
                   <span className="text-3xl opacity-50">❓</span>
                   <p className="mt-2 text-[11px] font-bold text-white/60">
                     {isPending ? "Waiting for opponent" : "Open challenge"}

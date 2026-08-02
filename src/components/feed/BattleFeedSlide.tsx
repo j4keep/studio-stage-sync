@@ -526,7 +526,7 @@ export default function BattleFeedSlide({
     return (
       <div
         className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 transition-all duration-300 ${
-          side === "left" ? "ring-[#2563eb]/70" : "ring-[#e11d48]/70"
+          side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
         } ${isActiveSide && playing ? "opacity-100" : "opacity-85"} ${
           isHidden
             ? "hidden"
@@ -607,7 +607,7 @@ export default function BattleFeedSlide({
                 )}
               </div>
               <div>
-                <p className={`text-xs font-black ${side === "left" ? "text-sky-300" : "text-rose-300"}`}>
+                <p className={`text-xs font-black ${side === "left" ? "text-cyan-300" : "text-pink-400"}`}>
                   {firstName(name)}
                 </p>
                 <p className="text-[10px] font-bold text-white/65">{formatCompact(votesN)} votes</p>
