@@ -317,7 +317,13 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
       </div>
 
       <div className="space-y-2.5 px-3.5 pb-3.5 pt-1">
-        <BattleNeonVoteBar leftPct={tally.leftPct} size="sm" interactive={false} />
+        <BattleNeonVoteBar
+          leftPct={tally.leftPct}
+          leftInitial={challengerName}
+          rightInitial={opponentName}
+          size="sm"
+          interactive={false}
+        />
         <button
           type="button"
           onClick={(e) => {

@@ -880,6 +880,8 @@ const MusicBattlePlayerPage = () => {
         ) : (
           <BattleNeonVoteBar
             leftPct={leftPct}
+            leftInitial={leftName}
+            rightInitial={rightName}
             size="md"
             interactive={!ended && battle.status === "active"}
             disabledLeft={!canVoteLeft || ended}

@@ -741,6 +741,8 @@ export default function BattleFeedSlide({
 
             <BattleNeonVoteBar
               leftPct={tally.leftPct}
+              leftInitial={leftName}
+              rightInitial={rightName}
               size="md"
               interactive={!ended && votingOpen}
               disabledLeft={!leftVoteGate.allowed}

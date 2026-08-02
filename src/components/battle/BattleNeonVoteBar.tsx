@@ -3,6 +3,10 @@ import yajIcon from "@/assets/yaj-ai-generator-icon.png";
 
 type Props = {
   leftPct: number;
+  /** First letter of left competitor (always shown inside the bar). */
+  leftInitial?: string;
+  /** First letter of right competitor (always shown inside the bar). */
+  rightInitial?: string;
   className?: string;
   /** When false, bar is display-only (no voting taps). */
   interactive?: boolean;
@@ -13,12 +17,19 @@ type Props = {
   size?: "sm" | "md";
 };
 
+function initialOf(value?: string | null, fallback = "?") {
+  const ch = (value || "").trim().charAt(0);
+  return (ch || fallback).toUpperCase();
+}
+
 /**
  * Neon cyan/magenta battle vote bar — tap a side to vote.
- * YAJ icon slides toward the winning side; live % under each side.
+ * Competitor initials sit at each end; YAJ slides toward the leader inside the bar.
  */
 export default function BattleNeonVoteBar({
   leftPct,
+  leftInitial,
+  rightInitial,
   className = "",
   interactive = true,
   disabledLeft = false,
@@ -30,11 +41,14 @@ export default function BattleNeonVoteBar({
   const rawLeft = Number.isFinite(leftPct) ? leftPct : 50;
   const displayLeft = Math.max(0, Math.min(100, Math.round(rawLeft)));
   const displayRight = 100 - displayLeft;
-  // Keep icon/fill off the extreme edges so YAJ stays readable.
-  const pct = Math.max(6, Math.min(94, rawLeft));
-  const h = size === "sm" ? 36 : 44;
-  const icon = size === "sm" ? 34 : 42;
+  // Keep icon/fill off the extreme edges so initials stay readable.
+  const pct = Math.max(10, Math.min(90, rawLeft));
+  const h = size === "sm" ? 38 : 46;
+  // Icon must sit fully inside the bar — slightly smaller than inner height.
+  const icon = size === "sm" ? 28 : 34;
   const labelSize = size === "sm" ? "text-[10px]" : "text-[11px]";
+  const leftLetter = initialOf(leftInitial, "A");
+  const rightLetter = initialOf(rightInitial, "B");
 
   return (
     <div
@@ -42,16 +56,16 @@ export default function BattleNeonVoteBar({
       role={interactive ? "group" : "img"}
       aria-label={`Battle score ${displayLeft}% to ${displayRight}%`}
     >
-      <div className="relative" style={{ height: h + 10 }}>
+      <div className="relative" style={{ height: h }}>
         {/* Outer neon glow */}
         <div
-          className="absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full"
+          className="pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 rounded-full"
           style={{
-            height: h + 6,
+            height: h + 4,
             background:
               "linear-gradient(90deg, rgba(34,211,238,0.55), rgba(236,72,153,0.55))",
             filter: "blur(10px)",
-            opacity: 0.55,
+            opacity: 0.5,
           }}
         />
 
@@ -87,11 +101,22 @@ export default function BattleNeonVoteBar({
               }}
             />
 
-            <div className="pointer-events-none absolute inset-y-0 left-3 flex items-center opacity-70">
-              <BrushGlyph />
+            {/* Competitor initials at each end of the bar */}
+            <div className="pointer-events-none absolute inset-y-0 left-2.5 z-[1] flex items-center">
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/35 text-[11px] font-black text-cyan-50 ring-1 ring-cyan-200/50"
+                style={{ textShadow: "0 0 8px rgba(34,211,238,0.8)" }}
+              >
+                {leftLetter}
+              </span>
             </div>
-            <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center opacity-70">
-              <ArmGlyph />
+            <div className="pointer-events-none absolute inset-y-0 right-2.5 z-[1] flex items-center">
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-black/35 text-[11px] font-black text-pink-50 ring-1 ring-pink-200/50"
+                style={{ textShadow: "0 0 8px rgba(236,72,153,0.8)" }}
+              >
+                {rightLetter}
+              </span>
             </div>
 
             <div className="pointer-events-none absolute inset-x-4 top-1 h-2 rounded-full bg-white/20 blur-[2px]" />
@@ -121,33 +146,33 @@ export default function BattleNeonVoteBar({
               />
             </>
           ) : null}
-        </div>
 
-        {/* Moving YAJ icon toward the winning side */}
-        <motion.div
-          className="pointer-events-none absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
-          animate={{ left: `${pct}%` }}
-          transition={{ type: "spring", stiffness: 170, damping: 18 }}
-          style={{ width: icon, height: icon }}
-        >
-          <div
-            className="flex h-full w-full items-center justify-center rounded-full bg-black/70 p-[2px]"
-            style={{
-              boxShadow:
-                "0 0 0 2px rgba(255,255,255,0.85), 0 0 14px rgba(34,211,238,0.55), 0 0 14px rgba(236,72,153,0.55)",
-            }}
+          {/* YAJ sits inside the bar (not hanging outside) */}
+          <motion.div
+            className="pointer-events-none absolute top-1/2 z-20 -translate-x-1/2 -translate-y-1/2"
+            animate={{ left: `${pct}%` }}
+            transition={{ type: "spring", stiffness: 170, damping: 18 }}
+            style={{ width: icon, height: icon }}
           >
-            <img
-              src={yajIcon}
-              alt=""
-              aria-hidden
-              className="h-full w-full rounded-full object-cover"
-            />
-          </div>
-        </motion.div>
+            <div
+              className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-black/80"
+              style={{
+                boxShadow:
+                  "0 0 0 1.5px rgba(255,255,255,0.9), 0 0 10px rgba(34,211,238,0.5), 0 0 10px rgba(236,72,153,0.5)",
+              }}
+            >
+              <img
+                src={yajIcon}
+                alt=""
+                aria-hidden
+                className="h-[92%] w-[92%] rounded-full object-cover"
+              />
+            </div>
+          </motion.div>
+        </div>
       </div>
 
-      {/* Live vote % under each side — no Artist A / Artist B labels */}
+      {/* Live vote % + "vote" cue under each side */}
       <div className={`mt-1.5 flex items-center justify-between px-1 ${labelSize} font-black tracking-wide`}>
         <motion.span
           key={`l-${displayLeft}`}
@@ -156,7 +181,7 @@ export default function BattleNeonVoteBar({
           className="tabular-nums text-cyan-300"
           style={{ textShadow: "0 0 10px rgba(34,211,238,0.65)" }}
         >
-          {displayLeft}%
+          {displayLeft}% vote
         </motion.span>
         <motion.span
           key={`r-${displayRight}`}
@@ -165,38 +190,9 @@ export default function BattleNeonVoteBar({
           className="tabular-nums text-pink-400"
           style={{ textShadow: "0 0 10px rgba(236,72,153,0.65)" }}
         >
-          {displayRight}%
+          {displayRight}% vote
         </motion.span>
       </div>
     </div>
-  );
-}
-
-function BrushGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M15.5 3.5l5 5-9.2 9.2a3.2 3.2 0 01-1.7.9l-3.4.5a.8.8 0 01-.9-.9l.5-3.4c.1-.6.4-1.2.9-1.7L15.5 3.5z"
-        stroke="#083344"
-        strokeWidth="1.8"
-        fill="rgba(8,51,68,0.35)"
-      />
-      <path d="M14 5l5 5" stroke="#083344" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
-function ArmGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path
-        d="M7 8h6a3 3 0 013 3v1h2.5a1.5 1.5 0 010 3H16v1a3 3 0 01-3 3H7"
-        stroke="#4a044e"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        fill="rgba(74,4,78,0.25)"
-      />
-      <circle cx="18.5" cy="12" r="1.4" fill="#4a044e" />
-    </svg>
   );
 }
