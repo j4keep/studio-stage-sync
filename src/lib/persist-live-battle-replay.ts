@@ -29,10 +29,13 @@ export async function persistLiveBattleReplay(opts: {
   });
   const result = await uploadToR2(file, {
     folder: `battles/replays/${userId}`,
-    fileName: `${Date.now()}.webm`,
-    mimeType: file.type,
+    fileName: `${Date.now()}.${file.type.includes("mp4") ? "mp4" : "webm"}`,
+    mimeType: file.type || "video/webm",
+    preferProxy: true,
   });
-  if (!result.success || !result.data) return null;
+  if (!result.success || !result.data) {
+    throw new Error(result.error || "Replay upload failed");
+  }
 
   const url = getR2DownloadUrl(result.data.key);
   const meta = parseLiveBattleMeta(battle.battle_background);

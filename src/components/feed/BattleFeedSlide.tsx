@@ -31,7 +31,11 @@ import {
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
-import { getBattleScheduledStartAt } from "@/lib/battle-live";
+import {
+  getBattleReplayMediaUrl,
+  getBattleScheduledStartAt,
+  getLiveBattlePhase,
+} from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 type Props = {
@@ -408,13 +412,21 @@ export default function BattleFeedSlide({
   }, [battleComments.length, showComments]);
 
   const uiStatus = getBattleUiStatus(battle || {});
+  // "ended" for UI chrome = voting window closed (not live-debate call end).
   const ended = uiStatus === "ended";
   // Feed clock = 24h voting window (live debate length is shown inside BattleLiveStage).
   const msLeft = getBattleExpiresAt(battle || {}).getTime() - now;
   const votingOpen = isBattleVotingOpen(battle || {});
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
-  const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, { ended, votingOpen });
-  const rightVoteGate = canUserVoteForSide(uid, battle?.opponent_id, { ended, votingOpen });
+  // Gate votes only on the 24h window — debate call ending must not lock the bar.
+  const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, {
+    ended: !votingOpen,
+    votingOpen,
+  });
+  const rightVoteGate = canUserVoteForSide(uid, battle?.opponent_id, {
+    ended: !votingOpen,
+    votingOpen,
+  });
   const isCreator = !!uid && uid === battle?.challenger_id;
 
   const deleteMutation = useMutation({
@@ -440,23 +452,29 @@ export default function BattleFeedSlide({
         return;
       }
       const targetId = side === "left" ? battle.challenger_id : battle.opponent_id;
-      const gate = canUserVoteForSide(uid, targetId, { ended, votingOpen: true });
+      const gate = canUserVoteForSide(uid, targetId, { ended: false, votingOpen: true });
       if (!gate.allowed) {
         toast.error(gate.reason || "Can't vote");
         return;
       }
       const existing = (votes as any[]).find((v) => v.user_id === uid);
+      let error;
       if (existing) {
-        await supabase.from("battle_votes").update({ voted_for: targetId }).eq("id", existing.id);
+        ({ error } = await supabase.from("battle_votes").update({ voted_for: targetId }).eq("id", existing.id));
       } else {
-        await supabase
+        ({ error } = await supabase
           .from("battle_votes")
-          .insert({ battle_id: battle.id, user_id: uid, voted_for: targetId });
+          .insert({ battle_id: battle.id, user_id: uid, voted_for: targetId }));
       }
+      if (error) throw error;
     },
     onSuccess: () => {
+      toast.success("Vote counted");
       qc.invalidateQueries({ queryKey: ["battle-votes", battle?.id] });
       qc.invalidateQueries({ queryKey: ["feed-posts"] });
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Couldn't save vote");
     },
   });
 
@@ -811,7 +829,9 @@ export default function BattleFeedSlide({
                     ? "Starting soon · cover preview"
                     : uiStatus === "ended"
                       ? "Replay · voting closed"
-                      : "Live debate"
+                      : getBattleReplayMediaUrl(battle || {}) || getLiveBattlePhase(battle || {}, now) === "ended"
+                        ? "Replay · voting open"
+                        : "Live debate"
                   : ended
                     ? `Ended · ${firstName(nowPlayingName)}`
                     : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
@@ -823,11 +843,15 @@ export default function BattleFeedSlide({
               leftInitial={leftName}
               rightInitial={rightName}
               size="md"
-              interactive={!ended && votingOpen}
+              interactive={votingOpen}
               disabledLeft={!leftVoteGate.allowed}
               disabledRight={!rightVoteGate.allowed}
               onVoteLeft={() => voteMutation.mutate("left")}
               onVoteRight={() => voteMutation.mutate("right")}
+              onDisabledVote={(side) => {
+                const gate = side === "left" ? leftVoteGate : rightVoteGate;
+                toast.error(gate.reason || (!uid ? "Sign in to vote" : "Can't vote"));
+              }}
             />
 
             {mediaType !== "live" ? (

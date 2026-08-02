@@ -50,6 +50,48 @@ type Props = {
   className?: string;
 };
 
+function ReplayVideo({ src, compact }: { src: string; compact?: boolean }) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    forceIosAudioSessionToPlayback();
+    el.muted = muted;
+    el.defaultMuted = muted;
+    el.loop = true;
+    el.playsInline = true;
+    void el.play().catch(() => undefined);
+  }, [src, muted]);
+
+  return (
+    <div className="relative">
+      <video
+        ref={ref}
+        src={src}
+        autoPlay
+        loop
+        muted={muted}
+        playsInline
+        controls={false}
+        className={`w-full object-cover ${compact ? "aspect-[4/5] max-h-[min(52dvh,420px)]" : "aspect-video"}`}
+      />
+      <button
+        type="button"
+        onClick={() => {
+          forceIosAudioSessionToPlayback();
+          unlockFeedAudioSession();
+          setMuted((m) => !m);
+        }}
+        className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-black shadow"
+      >
+        {muted ? "Tap for sound" : "Mute"}
+      </button>
+    </div>
+  );
+}
+
 function StreamVideo({
   stream,
   muted,
@@ -98,6 +140,9 @@ export default function BattleLiveStage({
   const [now, setNow] = useState(Date.now());
   const leftVideoRef = useRef<HTMLVideoElement | null>(null);
   const rightVideoRef = useRef<HTMLVideoElement | null>(null);
+  /** Always-mounted sinks so the recorder keeps frames even after the UI switches to covers. */
+  const leftRecRef = useRef<HTMLVideoElement | null>(null);
+  const rightRecRef = useRef<HTMLVideoElement | null>(null);
   const recorderRef = useRef<BattleLiveRecorder | null>(null);
   const recordingStartedRef = useRef(false);
   const uploadingReplayRef = useRef(false);
@@ -105,6 +150,8 @@ export default function BattleLiveStage({
   const prevPhaseRef = useRef<string | null>(null);
   const battleRef = useRef(battle);
   battleRef.current = battle;
+  const localReplayUrlRef = useRef<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 250);
@@ -112,22 +159,26 @@ export default function BattleLiveStage({
   }, []);
 
   const phase = getLiveBattlePhase(battle, now);
+  const remoteReplayUrl = getBattleReplayMediaUrl(battle);
   const isParticipant =
     !!user && (user.id === battle.challenger_id || user.id === battle.opponent_id);
+  const isChallenger = !!user && user.id === battle.challenger_id;
 
   // Competitors publish on battle page during countdown (prep), then on feed once live.
-  // Spectators never get mic/cam controls.
+  // Keep publishing a moment after debate end so the recorder can finish the last frames.
   const canPublish =
     isParticipant &&
     ((surface === "battle" && (phase === "countdown" || phase === "live")) ||
-      (surface === "feed" && phase === "live"));
+      (surface === "feed" &&
+        (phase === "live" || (phase === "ended" && isChallenger && isRecording && !remoteReplayUrl))));
   const roomEnabled =
     !!user &&
-    phase !== "ended" &&
     phase !== "waiting" &&
-    (surface === "battle"
-      ? isParticipant && (phase === "countdown" || phase === "live")
-      : phase === "live");
+    (phase === "ended"
+      ? surface === "feed" && isChallenger && isRecording && !remoteReplayUrl
+      : surface === "battle"
+        ? isParticipant && (phase === "countdown" || phase === "live")
+        : phase === "live");
 
   // Mic/cam toggles only on the competitor battle page — never on the public post/feed.
   const showPublisherControls =
@@ -155,13 +206,46 @@ export default function BattleLiveStage({
   });
 
   const scheduledStartAt = getBattleScheduledStartAt(battle);
-  const replayUrl = getBattleReplayMediaUrl(battle);
+  const [localReplayUrl, setLocalReplayUrl] = useState<string | null>(null);
+  const [savingReplay, setSavingReplay] = useState(false);
+  const [replayFailed, setReplayFailed] = useState(false);
+  const replayUrl = remoteReplayUrl || localReplayUrl;
   const startMs = scheduledStartAt ? new Date(scheduledStartAt).getTime() : null;
   const endMs = getLiveBattleEndsAt(battle).getTime();
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
   const msToEnd = Math.max(0, endMs - now);
   const [soundOn, setSoundOn] = useState(false);
   const [soundBlocked, setSoundBlocked] = useState(false);
+
+  // Feed recording sinks — stay attached for the whole live call.
+  useEffect(() => {
+    const bind = (el: HTMLVideoElement | null, stream: MediaStream | null) => {
+      if (!el) return;
+      if (el.srcObject !== stream) el.srcObject = stream;
+      if (stream) void el.play().catch(() => undefined);
+    };
+    bind(leftRecRef.current, streams.leftVideo);
+    bind(rightRecRef.current, streams.rightVideo);
+  }, [streams.leftVideo, streams.rightVideo]);
+
+  // Spectators: refresh feed while waiting for challenger to finish uploading replay.
+  useEffect(() => {
+    if (phase !== "ended" || remoteReplayUrl) return;
+    const id = window.setInterval(() => {
+      void qc.invalidateQueries({ queryKey: ["feed-posts"] });
+      void qc.invalidateQueries({ queryKey: ["battle", battle.id] });
+    }, 4000);
+    return () => window.clearInterval(id);
+  }, [phase, remoteReplayUrl, battle.id, qc]);
+
+  useEffect(() => {
+    return () => {
+      if (localReplayUrlRef.current) {
+        URL.revokeObjectURL(localReplayUrlRef.current);
+        localReplayUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Try unlocking debate audio as soon as the post goes live (iOS may still require a tap).
   useEffect(() => {
@@ -193,81 +277,118 @@ export default function BattleLiveStage({
   const flushReplay = useCallback(async () => {
     if (uploadingReplayRef.current) return;
     if (user?.id !== battleRef.current.challenger_id) return;
-    if (getBattleReplayMediaUrl(battleRef.current)) return;
+    if (getBattleReplayMediaUrl(battleRef.current) && !localReplayUrlRef.current) return;
     const rec = recorderRef.current;
-    if (!rec || !recordingStartedRef.current) return;
+    if (!rec || !recordingStartedRef.current) {
+      setReplayFailed(true);
+      setSavingReplay(false);
+      return;
+    }
 
     uploadingReplayRef.current = true;
+    setSavingReplay(true);
+    setReplayFailed(false);
     recorderRef.current = null;
-    recordingStartedRef.current = false;
     try {
       const blob = await rec.stop();
-      if (!blob || !user) return;
-      const url = await persistLiveBattleReplay({
-        battle: battleRef.current,
-        userId: user.id,
-        blob,
-      });
-      if (url) {
-        toast.success("Debate replay saved to the post");
-        qc.invalidateQueries({ queryKey: ["battle", battleRef.current.id] });
-        qc.invalidateQueries({ queryKey: ["feed-posts"] });
-        qc.invalidateQueries({ queryKey: ["battles"] });
+      recordingStartedRef.current = false;
+      setIsRecording(false);
+      if (!blob?.size || !user) {
+        setReplayFailed(true);
+        toast.error("Debate recording was empty — keep the post open next time");
+        return;
+      }
+
+      // Play immediately from the local blob while upload finishes in the background.
+      if (localReplayUrlRef.current) URL.revokeObjectURL(localReplayUrlRef.current);
+      const objectUrl = URL.createObjectURL(blob);
+      localReplayUrlRef.current = objectUrl;
+      setLocalReplayUrl(objectUrl);
+
+      let lastErr: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const url = await persistLiveBattleReplay({
+            battle: battleRef.current,
+            userId: user.id,
+            blob,
+          });
+          if (url) {
+            toast.success("Debate replay saved to the post");
+            void qc.invalidateQueries({ queryKey: ["battle", battleRef.current.id] });
+            void qc.invalidateQueries({ queryKey: ["feed-posts"] });
+            void qc.invalidateQueries({ queryKey: ["battles"] });
+            lastErr = null;
+            break;
+          }
+        } catch (err) {
+          lastErr = err;
+          await new Promise((r) => window.setTimeout(r, 1200 * (attempt + 1)));
+        }
+      }
+      if (lastErr) {
+        setReplayFailed(true);
+        toast.error("Couldn't upload replay yet — replay is playing on this device");
       }
     } catch {
-      uploadingReplayRef.current = false;
+      recordingStartedRef.current = false;
+      setIsRecording(false);
+      setReplayFailed(true);
       toast.error("Couldn't save debate replay — keep this tab open next time");
+    } finally {
+      uploadingReplayRef.current = false;
+      setSavingReplay(false);
     }
   }, [user, qc]);
 
   // Challenger records from the public post surface (where they land when go-live).
-  // Avoid starting on the battle page — navigating to the feed would drop that recorder.
   useEffect(() => {
     if (surface !== "feed") return;
-    if (phase !== "live" || user?.id !== battle.challenger_id) return;
+    if (phase !== "live" || !isChallenger) return;
     if (recordingStartedRef.current || conn !== "connected") return;
     if (!streams.leftVideo && !streams.rightVideo) return;
 
     const rec = startBattleLiveRecorder({
-      leftVideoEl: leftVideoRef.current,
-      rightVideoEl: rightVideoRef.current,
+      getLeftVideo: () => leftRecRef.current || leftVideoRef.current,
+      getRightVideo: () => rightRecRef.current || rightVideoRef.current,
       leftAudio: streams.leftAudio,
       rightAudio: streams.rightAudio,
     });
     if (!rec) {
       toast.message("Recording unavailable on this device — debate still goes live");
+      setReplayFailed(true);
       return;
     }
     recorderRef.current = rec;
     recordingStartedRef.current = true;
+    setIsRecording(true);
+    setReplayFailed(false);
   }, [
     surface,
     phase,
     conn,
-    user?.id,
-    battle.challenger_id,
+    isChallenger,
     streams.leftVideo,
     streams.rightVideo,
     streams.leftAudio,
     streams.rightAudio,
   ]);
 
-  // Stop + upload when voting/debate clock ends
+  // Stop + upload when the debate clock ends
   useEffect(() => {
     if (phase !== "ended") return;
     void flushReplay();
   }, [phase, flushReplay]);
 
   // Last-resort save if the tab is closing while a recording is in progress.
-  // Do NOT flush on React unmount — navigating battle → feed would cut the replay short.
   useEffect(() => {
-    if (user?.id !== battle.challenger_id) return;
+    if (!isChallenger) return;
     const onPageHide = () => {
       void flushReplay();
     };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
-  }, [user?.id, battle.challenger_id, flushReplay]);
+  }, [isChallenger, flushReplay]);
 
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
@@ -275,15 +396,18 @@ export default function BattleLiveStage({
   if (phase === "ended" && replayUrl) {
     return (
       <div className={`relative overflow-hidden rounded-[1.35rem] bg-black ${className}`}>
-        <video
+        <ReplayVideo
           src={replayUrl}
-          controls
-          playsInline
-          className={`w-full object-cover ${compact ? "aspect-[4/5] max-h-[min(52dvh,420px)]" : "aspect-video"}`}
+          compact={compact}
         />
         <div className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
           Replay
         </div>
+        {savingReplay ? (
+          <div className="absolute bottom-3 left-3 right-3 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+            Saving replay to the post…
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -367,12 +491,17 @@ export default function BattleLiveStage({
 
       {phase === "ended" && !replayUrl && (
         <div className="rounded-2xl border border-border bg-muted/40 px-3 py-3 text-center text-xs text-muted-foreground">
-          Debate ended
-          {isParticipant && user?.id === battle.challenger_id
-            ? " — saving replay…"
-            : ". Replay will appear here shortly."}
+          {savingReplay || isRecording
+            ? "Debate ended — saving replay…"
+            : replayFailed
+              ? "Debate ended — replay unavailable on this device."
+              : "Debate ended — replay will appear here shortly."}
         </div>
       )}
+
+      {/* Hidden recorder sinks — always read current LiveKit frames */}
+      <video ref={leftRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
+      <video ref={rightRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
 
       <div className={`flex gap-2 ${compact ? "" : "min-h-[240px]"}`}>
         {tile(

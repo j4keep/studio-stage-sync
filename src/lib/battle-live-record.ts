@@ -17,45 +17,66 @@ export type BattleLiveRecorder = {
   stop: () => Promise<Blob | null>;
 };
 
+type VideoSource = () => HTMLVideoElement | null;
+
 /**
- * Record left/right video elements (+ optional audio streams) into a side-by-side WebM.
- * Best-effort: challenger runs this while the debate is live.
+ * Record left/right video elements (+ optional audio streams) into a side-by-side file.
+ * Uses getters so video elements can mount after the recorder starts.
  */
 export function startBattleLiveRecorder(opts: {
-  leftVideoEl: HTMLVideoElement | null;
-  rightVideoEl: HTMLVideoElement | null;
+  getLeftVideo: VideoSource;
+  getRightVideo: VideoSource;
+  /** @deprecated prefer getters */
+  leftVideoEl?: HTMLVideoElement | null;
+  /** @deprecated prefer getters */
+  rightVideoEl?: HTMLVideoElement | null;
   leftAudio?: MediaStream | null;
   rightAudio?: MediaStream | null;
 }): BattleLiveRecorder | null {
   if (typeof MediaRecorder === "undefined") return null;
 
-  const W = 1280;
-  const H = 720;
+  const getLeft =
+    opts.getLeftVideo ||
+    (() => opts.leftVideoEl || null);
+  const getRight =
+    opts.getRightVideo ||
+    (() => opts.rightVideoEl || null);
+
+  // Smaller output = reliable mobile upload through the edge proxy.
+  const W = 854;
+  const H = 480;
   const canvas = document.createElement("canvas");
   canvas.width = W;
   canvas.height = H;
-  const ctx = canvas.getContext("2d");
+  const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) return null;
 
-  const canvasStream = canvas.captureStream(24);
-  const audioCtx = new AudioContext();
-  const dest = audioCtx.createMediaStreamDestination();
+  const canvasStream = canvas.captureStream(15);
+  let audioCtx: AudioContext | null = null;
   const sources: MediaStreamAudioSourceNode[] = [];
+  let dest: MediaStreamAudioDestinationNode | null = null;
 
-  for (const stream of [opts.leftAudio, opts.rightAudio]) {
-    if (!stream?.getAudioTracks().length) continue;
-    try {
-      const src = audioCtx.createMediaStreamSource(stream);
-      src.connect(dest);
-      sources.push(src);
-    } catch {
-      /* ignore */
+  try {
+    audioCtx = new AudioContext();
+    dest = audioCtx.createMediaStreamDestination();
+    for (const stream of [opts.leftAudio, opts.rightAudio]) {
+      if (!stream?.getAudioTracks().length) continue;
+      try {
+        const src = audioCtx.createMediaStreamSource(stream);
+        src.connect(dest);
+        sources.push(src);
+      } catch {
+        /* ignore */
+      }
     }
+  } catch {
+    audioCtx = null;
+    dest = null;
   }
 
   const mixed = new MediaStream([
     ...canvasStream.getVideoTracks(),
-    ...dest.stream.getAudioTracks(),
+    ...(dest?.stream.getAudioTracks() || []),
   ]);
 
   const mime = pickMime();
@@ -64,18 +85,28 @@ export function startBattleLiveRecorder(opts: {
   try {
     recorder = new MediaRecorder(mixed, {
       mimeType: mime,
-      videoBitsPerSecond: 2_000_000,
-      audioBitsPerSecond: 128_000,
+      videoBitsPerSecond: 900_000,
+      audioBitsPerSecond: 96_000,
     });
   } catch {
-    void audioCtx.close();
-    return null;
+    try {
+      recorder = new MediaRecorder(mixed);
+    } catch {
+      void audioCtx?.close();
+      return null;
+    }
   }
 
   recorder.ondataavailable = (e) => {
     if (e.data?.size) chunks.push(e.data);
   };
-  recorder.start(1000);
+
+  try {
+    recorder.start(1000);
+  } catch {
+    void audioCtx?.close();
+    return null;
+  }
 
   const drawCover = (
     v: HTMLVideoElement | null,
@@ -100,13 +131,17 @@ export function startBattleLiveRecorder(opts: {
       sh = v.videoWidth / cr;
       sy = (v.videoHeight - sh) / 2;
     }
-    ctx.drawImage(v, sx, sy, sw, sh, x, y, w, h);
+    try {
+      ctx.drawImage(v, sx, sy, sw, sh, x, y, w, h);
+    } catch {
+      /* ignore draw errors while track restarts */
+    }
   };
 
   let raf = 0;
   const tick = () => {
-    drawCover(opts.leftVideoEl, 0, 0, W / 2, H);
-    drawCover(opts.rightVideoEl, W / 2, 0, W / 2, H);
+    drawCover(getLeft(), 0, 0, W / 2, H);
+    drawCover(getRight(), W / 2, 0, W / 2, H);
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.moveTo(W / 2, 0);
@@ -128,13 +163,13 @@ export function startBattleLiveRecorder(opts: {
               /* ignore */
             }
           });
-          void audioCtx.close();
+          void audioCtx?.close();
           canvasStream.getTracks().forEach((t) => t.stop());
           if (!chunks.length) {
             resolve(null);
             return;
           }
-          resolve(new Blob(chunks, { type: mime }));
+          resolve(new Blob(chunks, { type: recorder.mimeType || mime }));
         };
         if (recorder.state === "inactive") {
           finish();
@@ -142,6 +177,8 @@ export function startBattleLiveRecorder(opts: {
         }
         recorder.onstop = finish;
         try {
+          // Flush the final chunk before stop.
+          if (recorder.state === "recording") recorder.requestData();
           recorder.stop();
         } catch {
           finish();

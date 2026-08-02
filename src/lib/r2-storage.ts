@@ -17,13 +17,18 @@ type UploadOptions = {
   fileName?: string;
   mimeType?: string;
   onProgress?: (progress: number) => void;
+  /** Prefer edge proxy even for larger files (battle replays). */
+  preferProxy?: boolean;
 };
 
 /** Edge function body limits are tight — keep proxy uploads under this. */
 const PROXY_UPLOAD_THRESHOLD = 4 * 1024 * 1024; // 4MB
+const REPLAY_PROXY_THRESHOLD = 18 * 1024 * 1024; // ~18MB for debate replays
 const PROXY_TIMEOUT_MS = 40_000;
+const REPLAY_PROXY_TIMEOUT_MS = 180_000;
 const PRESIGN_TIMEOUT_MS = 20_000;
 const PUT_TIMEOUT_MS = 45_000;
+const REPLAY_PUT_TIMEOUT_MS = 180_000;
 
 function supabaseFunctionsBase(): { url: string; anonKey: string } {
   const url = import.meta.env.VITE_SUPABASE_URL as string;
@@ -109,19 +114,32 @@ export async function uploadToR2(
   const contentType =
     uploadFile.type || options.mimeType || "application/octet-stream";
 
+  const isReplay =
+    !!options.preferProxy ||
+    (options.folder || "").includes("replays") ||
+    contentType.includes("webm");
+  const proxyLimit = isReplay ? REPLAY_PROXY_THRESHOLD : PROXY_UPLOAD_THRESHOLD;
+  const proxyTimeout = isReplay ? REPLAY_PROXY_TIMEOUT_MS : PROXY_TIMEOUT_MS;
+
   console.log(
     `[R2 Upload] Starting: ${uploadFile.name}, size=${uploadFile.size}, key=${key}, type=${contentType}`,
   );
 
-  // 1) Edge proxy (works for covers/photos without browser→R2 CORS)
-  if (uploadFile.size <= PROXY_UPLOAD_THRESHOLD) {
-    const proxied = await uploadViaEdgeStream(uploadFile, key, contentType, options);
+  // 1) Edge proxy (works for covers/photos/replays without browser→R2 CORS)
+  if (uploadFile.size <= proxyLimit) {
+    const proxied = await uploadViaEdgeStream(uploadFile, key, contentType, options, proxyTimeout);
     if (proxied.success) return proxied;
     console.warn("[R2 Upload] Edge proxy failed:", proxied.error);
   }
 
   // 2) Presigned PUT fallback
-  return uploadViaPresignedPut(uploadFile, key, contentType, options);
+  return uploadViaPresignedPut(
+    uploadFile,
+    key,
+    contentType,
+    options,
+    isReplay ? REPLAY_PUT_TIMEOUT_MS : PUT_TIMEOUT_MS,
+  );
 }
 
 /** Streaming body through r2-upload (same path as podcast upload). */
@@ -130,11 +148,12 @@ async function uploadViaEdgeStream(
   key: string,
   contentType: string,
   options: UploadOptions,
+  timeoutMs = PROXY_TIMEOUT_MS,
 ): Promise<R2Response<UploadResult>> {
   const { url } = supabaseFunctionsBase();
   const headers = await authHeaders();
   const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), PROXY_TIMEOUT_MS);
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     console.log("[R2 Upload] Edge stream POST…");
@@ -172,7 +191,7 @@ async function uploadViaEdgeStream(
   } catch (err) {
     console.error("[R2 Upload] Edge stream error:", err);
     if (err instanceof DOMException && err.name === "AbortError") {
-      return { success: false, error: "Upload timed out — try a smaller image" };
+      return { success: false, error: "Upload timed out — check your connection and try again" };
     }
     return { success: false, error: err instanceof Error ? err.message : "Upload failed" };
   } finally {
@@ -185,6 +204,7 @@ async function uploadViaPresignedPut(
   key: string,
   contentType: string,
   options: UploadOptions,
+  putTimeoutMs = PUT_TIMEOUT_MS,
 ): Promise<R2Response<UploadResult>> {
   try {
     console.log("[R2 Upload] Requesting presigned URL…");
@@ -235,7 +255,7 @@ async function uploadViaPresignedPut(
     console.log("[R2 Upload] Direct PUT to R2…");
 
     const putController = new AbortController();
-    const putTimer = window.setTimeout(() => putController.abort(), PUT_TIMEOUT_MS);
+    const putTimer = window.setTimeout(() => putController.abort(), putTimeoutMs);
     try {
       const response = await fetch(presignedUrl, {
         method: "PUT",

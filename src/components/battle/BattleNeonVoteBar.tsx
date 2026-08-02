@@ -14,6 +14,8 @@ type Props = {
   disabledRight?: boolean;
   onVoteLeft?: () => void;
   onVoteRight?: () => void;
+  /** Fired when a side is tapped but that side is disabled (e.g. self-vote). */
+  onDisabledVote?: (side: "left" | "right") => void;
   size?: "sm" | "md";
 };
 
@@ -36,6 +38,7 @@ export default function BattleNeonVoteBar({
   disabledRight = false,
   onVoteLeft,
   onVoteRight,
+  onDisabledVote,
   size = "md",
 }: Props) {
   const rawLeft = Number.isFinite(leftPct) ? leftPct : 50;
@@ -127,22 +130,24 @@ export default function BattleNeonVoteBar({
               <button
                 type="button"
                 aria-label="Vote left"
-                disabled={disabledLeft}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!disabledLeft) onVoteLeft?.();
+                  e.preventDefault();
+                  if (disabledLeft) onDisabledVote?.("left");
+                  else onVoteLeft?.();
                 }}
-                className="absolute inset-y-0 left-0 z-10 w-1/2 disabled:cursor-not-allowed"
+                className={`absolute inset-y-0 left-0 z-10 w-1/2 ${disabledLeft ? "cursor-not-allowed" : ""}`}
               />
               <button
                 type="button"
                 aria-label="Vote right"
-                disabled={disabledRight}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (!disabledRight) onVoteRight?.();
+                  e.preventDefault();
+                  if (disabledRight) onDisabledVote?.("right");
+                  else onVoteRight?.();
                 }}
-                className="absolute inset-y-0 right-0 z-10 w-1/2 disabled:cursor-not-allowed"
+                className={`absolute inset-y-0 right-0 z-10 w-1/2 ${disabledRight ? "cursor-not-allowed" : ""}`}
               />
             </>
           ) : null}
