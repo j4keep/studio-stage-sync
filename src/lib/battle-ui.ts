@@ -1,6 +1,6 @@
 /** Pure UI helpers for Creators Battle — no backend changes. */
 
-import { getBattleScheduledStartAt } from "@/lib/battle-live";
+import { getBattleScheduledStartAt, getLiveBattleEndsAt } from "@/lib/battle-live";
 
 export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open" | "countdown";
 
@@ -38,8 +38,10 @@ export function getBattleUiStatus(battle: {
   opponent_cover_url?: string | null;
   opponent_id?: string | null;
   media_type?: string | null;
+  max_duration_minutes?: number | null;
 }): BattleUiStatus {
-  const expiresAt = getBattleExpiresAt(battle);
+  const isLiveType = (battle.media_type || "").toLowerCase() === "live";
+  const expiresAt = isLiveType ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle);
   const msLeft = expiresAt.getTime() - Date.now();
   const timeEnded = msLeft <= 0;
   const status = (battle.status || "").toLowerCase();
@@ -62,6 +64,9 @@ export function getBattleUiStatus(battle: {
 
   const startIso = getBattleScheduledStartAt(battle);
   const startAt = startIso ? new Date(startIso).getTime() : null;
+  if (status === "active" && isLiveType && (startAt == null || Date.now() < startAt)) {
+    return "countdown";
+  }
   if (status === "active" && startAt != null && Date.now() < startAt) return "countdown";
 
   if (status === "active" && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";

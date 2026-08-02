@@ -8,6 +8,7 @@ import {
   buildLiveBattleBackground,
   getBattleReplayMediaUrl,
   getBattleScheduledStartAt,
+  getLiveBattleEndsAt,
   getLiveBattlePhase,
   isMissingLiveBattleColumnError,
 } from "@/lib/battle-live";
@@ -15,6 +16,10 @@ import { startBattleLiveRecorder, type BattleLiveRecorder } from "@/lib/battle-l
 import { uploadToR2, getR2DownloadUrl } from "@/lib/r2-storage";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  forceIosAudioSessionToPlayback,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 
 type BattleLike = {
   id: string;
@@ -140,9 +145,23 @@ export default function BattleLiveStage({
   const scheduledStartAt = getBattleScheduledStartAt(battle);
   const replayUrl = getBattleReplayMediaUrl(battle);
   const startMs = scheduledStartAt ? new Date(scheduledStartAt).getTime() : null;
-  const endMs = battle.expires_at ? new Date(battle.expires_at).getTime() : null;
+  const endMs = getLiveBattleEndsAt(battle).getTime();
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
-  const msToEnd = endMs != null ? Math.max(0, endMs - now) : 0;
+  const msToEnd = Math.max(0, endMs - now);
+  const [soundOn, setSoundOn] = useState(false);
+  const [soundBlocked, setSoundBlocked] = useState(false);
+
+  // Try unlocking debate audio as soon as the post goes live (iOS may still require a tap).
+  useEffect(() => {
+    if (phase !== "live") return;
+    if (surface === "battle") {
+      setSoundOn(true);
+      return;
+    }
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    setSoundOn(true);
+  }, [phase, surface]);
 
   // When countdown hits zero on the competitor battle page → open the public post live.
   useEffect(() => {
@@ -383,12 +402,33 @@ export default function BattleLiveStage({
         )}
       </div>
 
-      {/* Spectator / remote audio — feed + non-local sides */}
-      {phase === "live" && streams.leftAudio && user?.id !== battle.challenger_id && (
-        <StreamAudio stream={streams.leftAudio} />
+      {/* Remote debate audio — never play your own mic back */}
+      {phase === "live" && (
+        <DebateAudioSink
+          left={user?.id === battle.challenger_id ? null : streams.leftAudio}
+          right={user?.id === battle.opponent_id ? null : streams.rightAudio}
+          enabled={soundOn || surface === "battle"}
+          onBlocked={() => setSoundBlocked(true)}
+          onPlaying={() => {
+            setSoundBlocked(false);
+            setSoundOn(true);
+          }}
+        />
       )}
-      {phase === "live" && streams.rightAudio && user?.id !== battle.opponent_id && (
-        <StreamAudio stream={streams.rightAudio} />
+
+      {phase === "live" && surface === "feed" && (soundBlocked || !soundOn) && (
+        <button
+          type="button"
+          onClick={() => {
+            forceIosAudioSessionToPlayback();
+            void unlockFeedAudioSession();
+            setSoundOn(true);
+            setSoundBlocked(false);
+          }}
+          className="mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black shadow-lg"
+        >
+          <Mic className="h-3.5 w-3.5" /> Tap for debate audio
+        </button>
       )}
 
       {showPublisherControls && (
@@ -438,13 +478,64 @@ export default function BattleLiveStage({
   );
 }
 
-function StreamAudio({ stream }: { stream: MediaStream }) {
-  const ref = useRef<HTMLAudioElement | null>(null);
+function DebateAudioSink({
+  left,
+  right,
+  enabled,
+  onBlocked,
+  onPlaying,
+}: {
+  left: MediaStream | null;
+  right: MediaStream | null;
+  enabled: boolean;
+  onBlocked: () => void;
+  onPlaying: () => void;
+}) {
+  const leftRef = useRef<HTMLAudioElement | null>(null);
+  const rightRef = useRef<HTMLAudioElement | null>(null);
+  const onBlockedRef = useRef(onBlocked);
+  const onPlayingRef = useRef(onPlaying);
+  onBlockedRef.current = onBlocked;
+  onPlayingRef.current = onPlaying;
+
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    el.srcObject = stream;
-    void el.play().catch(() => undefined);
-  }, [stream]);
-  return <audio ref={ref} autoPlay playsInline className="hidden" />;
+    if (!enabled) return;
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+
+    let blocked = false;
+    let playing = false;
+
+    const playOne = async (el: HTMLAudioElement | null, stream: MediaStream | null) => {
+      if (!el) return;
+      if (!stream || stream.getAudioTracks().length === 0) {
+        el.srcObject = null;
+        el.pause();
+        return;
+      }
+      if (el.srcObject !== stream) el.srcObject = stream;
+      el.muted = false;
+      el.volume = 1;
+      try {
+        await el.play();
+        playing = true;
+        onPlayingRef.current();
+      } catch {
+        blocked = true;
+      }
+    };
+
+    void (async () => {
+      await playOne(leftRef.current, left);
+      await playOne(rightRef.current, right);
+      if (blocked && !playing) onBlockedRef.current();
+    })();
+  }, [left, right, enabled]);
+
+  return (
+    <>
+      <audio ref={leftRef} autoPlay playsInline className="hidden" />
+      <audio ref={rightRef} autoPlay playsInline className="hidden" />
+    </>
+  );
 }

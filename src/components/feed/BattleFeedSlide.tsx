@@ -131,9 +131,9 @@ export default function BattleFeedSlide({
   }, [isActive, battle?.id]);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    const t = window.setInterval(() => setNow(Date.now()), mediaType === "live" ? 250 : 1000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [mediaType]);
 
   const pauseAll = useCallback(() => {
     audioLeftRef.current?.pause();

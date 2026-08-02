@@ -27,6 +27,7 @@ import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   buildLiveBattleBackground,
   getBattleScheduledStartAt,
+  getLiveBattleEndsAt,
   liveScheduleFromAccept,
 } from "@/lib/battle-live";
 import {
@@ -230,9 +231,16 @@ const MusicBattlePlayerPage = () => {
   /* countdown */
   const [timeLeft, setTimeLeft] = useState("");
   useEffect(() => {
-    if (!battle?.expires_at) return;
+    if (!battle) return;
     const tick = () => {
-      const diff = new Date(battle.expires_at).getTime() - Date.now();
+      const endAt =
+        (battle.media_type || "").toLowerCase() === "live"
+          ? getLiveBattleEndsAt(battle)
+          : battle.expires_at
+            ? new Date(battle.expires_at)
+            : null;
+      if (!endAt) return;
+      const diff = endAt.getTime() - Date.now();
       if (diff <= 0) { setTimeLeft("ENDED"); return; }
       const h = Math.floor(diff / 3600000);
       const m = Math.floor((diff % 3600000) / 60000);
@@ -242,7 +250,7 @@ const MusicBattlePlayerPage = () => {
     tick();
     const i = setInterval(tick, 1000);
     return () => clearInterval(i);
-  }, [battle?.expires_at]);
+  }, [battle]);
 
   // Keep ref in sync with state
   useEffect(() => { activeArtistRef.current = activeArtist; }, [activeArtist]);
@@ -462,12 +470,17 @@ const MusicBattlePlayerPage = () => {
       const livePatch =
         isLive
           ? (() => {
-              const durationMin = Number((battle as any).max_duration_minutes) || 15;
-              const { scheduledStartAt, expiresAt } = liveScheduleFromAccept(durationMin);
+              const durationMin = Number((battle as any).max_duration_minutes) || 10;
+              const { scheduledStartAt, expiresAt, durationMin: mins } =
+                liveScheduleFromAccept(durationMin);
               return {
                 expires_at: expiresAt,
                 battle_background: buildLiveBattleBackground(
-                  { scheduled_start_at: scheduledStartAt },
+                  {
+                    scheduled_start_at: scheduledStartAt,
+                    expires_at: expiresAt,
+                    duration_min: mins,
+                  },
                   (battle as any).battle_background,
                 ),
               };
@@ -494,7 +507,7 @@ const MusicBattlePlayerPage = () => {
       setAcceptSongFile(null);
       refreshBattleViews();
       if (isLive) {
-        toast.success("Challenge accepted — 10s to check your camera");
+        toast.success("Challenge accepted — 30s to check your camera");
         // Stay on the battle page so both competitors can preview cameras before go-live.
       } else {
         toast.success("Battle is live — landing on the feed");
@@ -647,7 +660,8 @@ const MusicBattlePlayerPage = () => {
 
   const ended = battle.status === "ended" || battle.status === "completed" || battle.status === "expired" || timeLeft === "ENDED";
   const uiStatus = getBattleUiStatus(battle);
-  const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
+  const msLeft =
+    (isLiveBattle ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle)).getTime() - Date.now();
   const finalMinute = !ended && msLeft > 0 && msLeft <= 60_000 && battle.status === "active";
   const leftName = leftProfile.display_name || "Artist A";
   const rightName = rightProfile.display_name || "Artist B";

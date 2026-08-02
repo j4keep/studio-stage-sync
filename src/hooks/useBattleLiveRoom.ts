@@ -11,6 +11,10 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { battleLiveRoomId } from "@/lib/battle-live";
+import {
+  forceIosAudioSessionToPlayback,
+  setIosAudioSessionForRecording,
+} from "@/lib/feed-video-playback";
 
 export type BattleLiveConn = "idle" | "connecting" | "connected" | "error";
 
@@ -98,8 +102,11 @@ export function useBattleLiveRoom({
       room.remoteParticipants.forEach((p) => {
         remotes += 1;
         p.trackPublications.forEach((pub) => {
-          if (!pub.track) return;
-          applyTrack(p.identity, pub.track, pub.kind);
+          // Prefer subscribed remote tracks; fall back to attached track if present.
+          const track = pub.track ?? (pub as { track?: RemoteTrack | null }).track;
+          if (!track) return;
+          if ("isSubscribed" in pub && pub.isSubscribed === false) return;
+          applyTrack(p.identity, track, pub.kind);
         });
       });
       setRemoteCount(remotes);
@@ -160,11 +167,26 @@ export function useBattleLiveRoom({
       roomRef.current = room;
 
       const refresh = () => rebuildStreams(room);
+      const ensureSubscribed = () => {
+        room.remoteParticipants.forEach((p) => {
+          p.trackPublications.forEach((pub) => {
+            if (!pub.isSubscribed) {
+              try {
+                void pub.setSubscribed(true);
+              } catch {
+                /* ignore */
+              }
+            }
+          });
+        });
+        refresh();
+      };
       room.on(RoomEvent.TrackSubscribed, refresh);
       room.on(RoomEvent.TrackUnsubscribed, refresh);
       room.on(RoomEvent.TrackMuted, refresh);
       room.on(RoomEvent.TrackUnmuted, refresh);
-      room.on(RoomEvent.ParticipantConnected, refresh);
+      room.on(RoomEvent.TrackPublished, ensureSubscribed);
+      room.on(RoomEvent.ParticipantConnected, ensureSubscribed);
       room.on(RoomEvent.ParticipantDisconnected, refresh);
       room.on(RoomEvent.LocalTrackPublished, refresh);
       room.on(RoomEvent.LocalTrackUnpublished, refresh);
@@ -174,8 +196,10 @@ export function useBattleLiveRoom({
       });
 
       await room.connect(data.url, data.token);
+      ensureSubscribed();
 
       if (canPublish) {
+        setIosAudioSessionForRecording();
         const published: LocalTrack[] = [];
         // Video first (facing user) — iOS often fails if audio session is wrong.
         try {
@@ -205,6 +229,9 @@ export function useBattleLiveRoom({
           setMicOn(false);
         }
         localTracksRef.current = published;
+      } else {
+        // Spectators: route to media volume, not quiet ambient.
+        forceIosAudioSessionToPlayback();
       }
 
       rebuildStreams(room);
