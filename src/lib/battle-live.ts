@@ -8,6 +8,9 @@ export type LiveBattlePhase = "waiting" | "countdown" | "live" | "ended";
 
 type LiveMeta = {
   scheduled_start_at?: string | null;
+  /** When cameras/recording stop (chosen debate length). */
+  debate_ends_at?: string | null;
+  /** @deprecated use debate_ends_at — kept for older rows */
   expires_at?: string | null;
   replay_media_url?: string | null;
   duration_min?: number | null;
@@ -36,6 +39,11 @@ export function parseLiveBattleMeta(battleBackground?: string | null): LiveMeta 
     if (!live || typeof live !== "object") return {};
     return {
       scheduled_start_at: live.scheduled_start_at ? String(live.scheduled_start_at) : null,
+      debate_ends_at: live.debate_ends_at
+        ? String(live.debate_ends_at)
+        : live.expires_at
+          ? String(live.expires_at)
+          : null,
       expires_at: live.expires_at ? String(live.expires_at) : null,
       replay_media_url: live.replay_media_url ? String(live.replay_media_url) : null,
       duration_min:
@@ -84,8 +92,11 @@ export function getBattleReplayMediaUrl(battle: {
   return parseLiveBattleMeta(battle.battle_background).replay_media_url || null;
 }
 
-/** Prefer live meta expires_at (set on accept) over stale create-time +24h. */
-export function getLiveBattleEndsAt(battle: {
+/**
+ * When the FaceTime-style debate call stops (chosen length).
+ * Independent from battles.expires_at (24h voting window).
+ */
+export function getLiveDebateEndsAt(battle: {
   expires_at?: string | null;
   created_at?: string | null;
   battle_background?: string | null;
@@ -93,6 +104,8 @@ export function getLiveBattleEndsAt(battle: {
   scheduled_start_at?: string | null;
 }): Date {
   const meta = parseLiveBattleMeta(battle.battle_background);
+  if (meta.debate_ends_at) return new Date(meta.debate_ends_at);
+  // Older rows stored debate end as live.expires_at
   if (meta.expires_at) return new Date(meta.expires_at);
 
   const startIso = getBattleScheduledStartAt(battle);
@@ -106,47 +119,55 @@ export function getLiveBattleEndsAt(battle: {
     return new Date(new Date(startIso).getTime() + durationMin * 60 * 1000);
   }
 
-  if (battle.expires_at) {
-    const exp = new Date(battle.expires_at);
-    // If expires looks like the default create+24h trigger and we have a short duration, ignore it.
-    if (battle.created_at && durationMin && durationMin <= 60) {
-      const created = new Date(battle.created_at).getTime();
-      const almostDay = Math.abs(exp.getTime() - (created + 24 * 60 * 60 * 1000)) < 2 * 60 * 1000;
-      if (almostDay && startIso) {
-        return new Date(new Date(startIso).getTime() + durationMin * 60 * 1000);
-      }
+  // Fallback: if we only have DB expires_at and it looks like a short window, use it.
+  if (battle.expires_at && startIso) {
+    const exp = new Date(battle.expires_at).getTime();
+    const start = new Date(startIso).getTime();
+    if (exp > start && exp - start <= 3 * 60 * 60 * 1000) {
+      return new Date(exp);
     }
-    return exp;
   }
 
-  const created = battle.created_at ? new Date(battle.created_at).getTime() : Date.now();
-  return new Date(created + 24 * 60 * 60 * 1000);
+  // Last resort: 10 min debate
+  const start = startIso ? new Date(startIso).getTime() : Date.now();
+  return new Date(start + 10 * 60 * 1000);
 }
+
+/** @deprecated use getLiveDebateEndsAt */
+export const getLiveBattleEndsAt = getLiveDebateEndsAt;
 
 export function getLiveBattlePhase(battle: BattleLiveFields, now = Date.now()): LiveBattlePhase {
   if ((battle.media_type || "").toLowerCase() !== "live") return "waiting";
 
   const status = (battle.status || "").toLowerCase();
-  const expiresAt = getLiveBattleEndsAt(battle).getTime();
+  const debateEndsAt = getLiveDebateEndsAt(battle).getTime();
   const startIso = getBattleScheduledStartAt(battle);
   const startAt = startIso ? new Date(startIso).getTime() : null;
   const hasOpponent =
     !!(battle.opponent_cover_url || battle.opponent_media_url);
+  const hasReplay = !!getBattleReplayMediaUrl(battle);
 
-  if (
-    status === "ended" ||
-    status === "completed" ||
-    status === "expired" ||
-    now >= expiresAt
-  ) {
+  // Call is over once debate clock hits zero (voting may still be open for 24h).
+  if (hasOpponent && startAt != null && now >= debateEndsAt) {
+    return "ended";
+  }
+  if (hasReplay && (status === "completed" || status === "ended")) {
     return "ended";
   }
 
-  if (status !== "active" || !hasOpponent) return "waiting";
-  // No start stamp yet → treat as countdown shell (covers) rather than jumping to live.
+  if (status === "expired" && now >= debateEndsAt) return "ended";
+
+  if (status !== "active" || !hasOpponent) {
+    if (status === "pending") return "waiting";
+    if (!hasOpponent) return "waiting";
+  }
+
+  if (status === "pending") return "waiting";
+  // No start stamp yet → countdown shell (covers).
   if (startAt == null) return "countdown";
   if (now < startAt) return "countdown";
-  return "live";
+  if (now < debateEndsAt) return "live";
+  return "ended";
 }
 
 export function toDatetimeLocalValue(d: Date): string {
@@ -161,14 +182,21 @@ export function defaultLiveStartLocal(): string {
   return toDatetimeLocalValue(new Date(Date.now() + LIVE_PRACTICE_COUNTDOWN_SEC * 1000));
 }
 
-/** Start + end timestamps once the opponent accepts. */
+/**
+ * On accept:
+ * - debate starts after practice countdown
+ * - debate ends after chosen length
+ * - voting window is always 24h from accept (column expires_at)
+ */
 export function liveScheduleFromAccept(durationMin: number, now = Date.now()) {
   const mins = Math.max(1, durationMin || 10);
   const startMs = now + LIVE_PRACTICE_COUNTDOWN_SEC * 1000;
-  const endMs = startMs + mins * 60 * 1000;
+  const debateEndMs = startMs + mins * 60 * 1000;
+  const voteEndMs = now + 24 * 60 * 60 * 1000;
   return {
     scheduledStartAt: new Date(startMs).toISOString(),
-    expiresAt: new Date(endMs).toISOString(),
+    debateEndsAt: new Date(debateEndMs).toISOString(),
+    voteExpiresAt: new Date(voteEndMs).toISOString(),
     durationMin: mins,
   };
 }

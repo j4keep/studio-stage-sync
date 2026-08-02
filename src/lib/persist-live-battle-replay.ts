@@ -39,20 +39,20 @@ export async function persistLiveBattleReplay(opts: {
   const background = buildLiveBattleBackground(
     {
       scheduled_start_at: getBattleScheduledStartAt(battle) || meta.scheduled_start_at,
-      expires_at: meta.expires_at || battle.expires_at,
+      debate_ends_at: meta.debate_ends_at || meta.expires_at || null,
       duration_min: meta.duration_min,
       replay_media_url: url,
     },
     battle.battle_background,
   );
 
+  // Keep status active so the 24h voting window stays open after the debate ends.
   // Prefer dedicated column; always also stash in battle_background for schema-cache gaps.
   let { error } = await (supabase as any)
     .from("battles")
     .update({
       replay_media_url: url,
       battle_background: background,
-      status: "completed",
     })
     .eq("id", battle.id)
     .eq("challenger_id", userId);
@@ -62,7 +62,6 @@ export async function persistLiveBattleReplay(opts: {
       .from("battles")
       .update({
         battle_background: background,
-        status: "completed",
       })
       .eq("id", battle.id)
       .eq("challenger_id", userId));

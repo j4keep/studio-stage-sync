@@ -27,7 +27,6 @@ import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   buildLiveBattleBackground,
   getBattleScheduledStartAt,
-  getLiveBattleEndsAt,
   liveScheduleFromAccept,
 } from "@/lib/battle-live";
 import {
@@ -223,18 +222,12 @@ const MusicBattlePlayerPage = () => {
     qc.invalidateQueries({ queryKey: ["profile-posts"] });
   }, [battleId, qc]);
 
-  /* countdown */
+  /* countdown — voting window (24h), not live debate length */
   const [timeLeft, setTimeLeft] = useState("");
   useEffect(() => {
     if (!battle) return;
     const tick = () => {
-      const endAt =
-        (battle.media_type || "").toLowerCase() === "live"
-          ? getLiveBattleEndsAt(battle)
-          : battle.expires_at
-            ? new Date(battle.expires_at)
-            : null;
-      if (!endAt) return;
+      const endAt = getBattleExpiresAt(battle);
       const diff = endAt.getTime() - Date.now();
       if (diff <= 0) { setTimeLeft("ENDED"); return; }
       const h = Math.floor(diff / 3600000);
@@ -466,14 +459,19 @@ const MusicBattlePlayerPage = () => {
         isLive
           ? (() => {
               const durationMin = Number((battle as any).max_duration_minutes) || 10;
-              const { scheduledStartAt, expiresAt, durationMin: mins } =
-                liveScheduleFromAccept(durationMin);
+              const {
+                scheduledStartAt,
+                debateEndsAt,
+                voteExpiresAt,
+                durationMin: mins,
+              } = liveScheduleFromAccept(durationMin);
               return {
-                expires_at: expiresAt,
+                // Column expires_at = 24h voting window (same as audio/photo/video).
+                expires_at: voteExpiresAt,
                 battle_background: buildLiveBattleBackground(
                   {
                     scheduled_start_at: scheduledStartAt,
-                    expires_at: expiresAt,
+                    debate_ends_at: debateEndsAt,
                     duration_min: mins,
                   },
                   (battle as any).battle_background,
@@ -653,10 +651,14 @@ const MusicBattlePlayerPage = () => {
     );
   }
 
-  const ended = battle.status === "ended" || battle.status === "completed" || battle.status === "expired" || timeLeft === "ENDED";
   const uiStatus = getBattleUiStatus(battle);
-  const msLeft =
-    (isLiveBattle ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle)).getTime() - Date.now();
+  const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
+  const ended =
+    uiStatus === "ended" ||
+    battle.status === "ended" ||
+    battle.status === "expired" ||
+    (!isLiveBattle && battle.status === "completed") ||
+    timeLeft === "ENDED";
   const finalMinute = !ended && msLeft > 0 && msLeft <= 60_000 && battle.status === "active";
   const leftName = leftProfile.display_name || "Artist A";
   const rightName = rightProfile.display_name || "Artist B";

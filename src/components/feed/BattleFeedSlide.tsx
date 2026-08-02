@@ -31,7 +31,7 @@ import {
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
-import { getBattleScheduledStartAt, getLiveBattleEndsAt } from "@/lib/battle-live";
+import { getBattleScheduledStartAt } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
 
 type Props = {
@@ -409,11 +409,8 @@ export default function BattleFeedSlide({
 
   const uiStatus = getBattleUiStatus(battle || {});
   const ended = uiStatus === "ended";
-  const msLeft =
-    ((battle?.media_type || "").toLowerCase() === "live"
-      ? getLiveBattleEndsAt(battle || {})
-      : getBattleExpiresAt(battle || {})
-    ).getTime() - now;
+  // Feed clock = 24h voting window (live debate length is shown inside BattleLiveStage).
+  const msLeft = getBattleExpiresAt(battle || {}).getTime() - now;
   const votingOpen = isBattleVotingOpen(battle || {});
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, { ended, votingOpen });

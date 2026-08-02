@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import type { LocalTrack, RemoteTrack } from "livekit-client";
 import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBattleLiveRoom } from "@/hooks/useBattleLiveRoom";
@@ -134,14 +135,24 @@ export default function BattleLiveStage({
   const showLiveVideo =
     phase === "live" || (surface === "battle" && isParticipant && phase === "countdown");
 
-  const { conn, error, micOn, camOn, streams, remoteCount, toggleMic, toggleCam } =
-    useBattleLiveRoom({
-      battleId: battle.id,
-      challengerId: battle.challenger_id,
-      opponentId: battle.opponent_id,
-      enabled: roomEnabled,
-      canPublish,
-    });
+  const {
+    conn,
+    error,
+    micOn,
+    camOn,
+    streams,
+    audioTracks,
+    remoteCount,
+    startAudio,
+    toggleMic,
+    toggleCam,
+  } = useBattleLiveRoom({
+    battleId: battle.id,
+    challengerId: battle.challenger_id,
+    opponentId: battle.opponent_id,
+    enabled: roomEnabled,
+    canPublish,
+  });
 
   const scheduledStartAt = getBattleScheduledStartAt(battle);
   const replayUrl = getBattleReplayMediaUrl(battle);
@@ -157,12 +168,14 @@ export default function BattleLiveStage({
     if (phase !== "live") return;
     if (surface === "battle") {
       setSoundOn(true);
+      void startAudio();
       return;
     }
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setSoundOn(true);
-  }, [phase, surface]);
+    void startAudio();
+  }, [phase, surface, startAudio]);
 
   // When countdown hits zero on the competitor battle page → open the public post live.
   useEffect(() => {
@@ -380,12 +393,14 @@ export default function BattleLiveStage({
         )}
       </div>
 
-      {/* Remote debate audio — never play your own mic back */}
+      {/* Remote debate audio — LiveKit track.attach (never play your own mic back) */}
       {phase === "live" && (
         <DebateAudioSink
-          left={user?.id === battle.challenger_id ? null : streams.leftAudio}
-          right={user?.id === battle.opponent_id ? null : streams.rightAudio}
+          left={user?.id === battle.challenger_id ? null : audioTracks.left}
+          right={user?.id === battle.opponent_id ? null : audioTracks.right}
           enabled={soundOn || surface === "battle"}
+          preferPlaybackSession={!canPublish}
+          startAudio={startAudio}
           onBlocked={() => setSoundBlocked(true)}
           onPlaying={() => {
             setSoundBlocked(false);
@@ -398,10 +413,11 @@ export default function BattleLiveStage({
         <button
           type="button"
           onClick={() => {
-            forceIosAudioSessionToPlayback();
+            if (!canPublish) forceIosAudioSessionToPlayback();
             void unlockFeedAudioSession();
             setSoundOn(true);
             setSoundBlocked(false);
+            void startAudio();
           }}
           className="mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black shadow-lg"
         >
@@ -460,12 +476,16 @@ function DebateAudioSink({
   left,
   right,
   enabled,
+  preferPlaybackSession,
+  startAudio,
   onBlocked,
   onPlaying,
 }: {
-  left: MediaStream | null;
-  right: MediaStream | null;
+  left: RemoteTrack | LocalTrack | null;
+  right: RemoteTrack | LocalTrack | null;
   enabled: boolean;
+  preferPlaybackSession: boolean;
+  startAudio: () => Promise<void>;
   onBlocked: () => void;
   onPlaying: () => void;
 }) {
@@ -477,43 +497,92 @@ function DebateAudioSink({
   onPlayingRef.current = onPlaying;
 
   useEffect(() => {
-    if (!enabled) return;
-    forceIosAudioSessionToPlayback();
+    const leftEl = leftRef.current;
+    const rightEl = rightRef.current;
+    if (!enabled) {
+      try {
+        if (leftEl) left?.detach(leftEl);
+        if (rightEl) right?.detach(rightEl);
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    if (preferPlaybackSession) forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
 
+    let cancelled = false;
     let blocked = false;
     let playing = false;
 
-    const playOne = async (el: HTMLAudioElement | null, stream: MediaStream | null) => {
+    const attachOne = async (
+      el: HTMLAudioElement | null,
+      track: RemoteTrack | LocalTrack | null,
+    ) => {
       if (!el) return;
-      if (!stream || stream.getAudioTracks().length === 0) {
-        el.srcObject = null;
+      if (!track || track.isMuted) {
+        try {
+          track?.detach(el);
+        } catch {
+          /* ignore */
+        }
         el.pause();
+        el.srcObject = null;
         return;
       }
-      if (el.srcObject !== stream) el.srcObject = stream;
-      el.muted = false;
-      el.volume = 1;
+      // LiveKit attach() is more reliable than MediaStream + srcObject for remote audio.
+      const attached = track.attach(el) as HTMLAudioElement;
+      attached.autoplay = true;
+      attached.muted = false;
+      attached.volume = 1;
+      attached.setAttribute("playsinline", "true");
       try {
-        await el.play();
-        playing = true;
-        onPlayingRef.current();
+        await startAudio();
+        await attached.play();
+        if (!cancelled) {
+          playing = true;
+          onPlayingRef.current();
+        }
       } catch {
         blocked = true;
       }
     };
 
     void (async () => {
-      await playOne(leftRef.current, left);
-      await playOne(rightRef.current, right);
-      if (blocked && !playing) onBlockedRef.current();
+      await attachOne(leftEl, left);
+      await attachOne(rightEl, right);
+      if (!cancelled && blocked && !playing) onBlockedRef.current();
     })();
-  }, [left, right, enabled]);
+
+    return () => {
+      cancelled = true;
+      try {
+        if (leftEl) left?.detach(leftEl);
+        if (rightEl) right?.detach(rightEl);
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [left, right, enabled, preferPlaybackSession, startAudio]);
 
   return (
     <>
-      <audio ref={leftRef} autoPlay playsInline className="hidden" />
-      <audio ref={rightRef} autoPlay playsInline className="hidden" />
+      {/* Avoid display:none — many browsers refuse to play audio in hidden elements. */}
+      <audio
+        ref={leftRef}
+        autoPlay
+        playsInline
+        className="pointer-events-none absolute h-px w-px opacity-0"
+        aria-hidden
+      />
+      <audio
+        ref={rightRef}
+        autoPlay
+        playsInline
+        className="pointer-events-none absolute h-px w-px opacity-0"
+        aria-hidden
+      />
     </>
   );
 }

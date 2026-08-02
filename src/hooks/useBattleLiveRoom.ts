@@ -25,6 +25,11 @@ type SideStreams = {
   rightAudio: MediaStream | null;
 };
 
+type SideAudioTracks = {
+  left: RemoteTrack | LocalTrack | null;
+  right: RemoteTrack | LocalTrack | null;
+};
+
 type Opts = {
   battleId: string | undefined;
   challengerId?: string | null;
@@ -59,6 +64,10 @@ export function useBattleLiveRoom({
     leftAudio: null,
     rightAudio: null,
   });
+  const [audioTracks, setAudioTracks] = useState<SideAudioTracks>({
+    left: null,
+    right: null,
+  });
   const [remoteCount, setRemoteCount] = useState(0);
 
   const sideForIdentity = useCallback(
@@ -78,6 +87,7 @@ export function useBattleLiveRoom({
         leftAudio: null,
         rightAudio: null,
       };
+      const nextAudio: SideAudioTracks = { left: null, right: null };
 
       const applyTrack = (identity: string, track: RemoteTrack | LocalTrack, kind: Track.Kind) => {
         const side = sideForIdentity(identity);
@@ -87,8 +97,13 @@ export function useBattleLiveRoom({
           if (side === "left") next.leftVideo = media;
           else next.rightVideo = media;
         } else if (kind === Track.Kind.Audio) {
-          if (side === "left") next.leftAudio = media;
-          else next.rightAudio = media;
+          if (side === "left") {
+            next.leftAudio = media;
+            nextAudio.left = track;
+          } else {
+            next.rightAudio = media;
+            nextAudio.right = track;
+          }
         }
       };
 
@@ -102,7 +117,6 @@ export function useBattleLiveRoom({
       room.remoteParticipants.forEach((p) => {
         remotes += 1;
         p.trackPublications.forEach((pub) => {
-          // Prefer subscribed remote tracks; fall back to attached track if present.
           const track = pub.track ?? (pub as { track?: RemoteTrack | null }).track;
           if (!track) return;
           if ("isSubscribed" in pub && pub.isSubscribed === false) return;
@@ -111,6 +125,7 @@ export function useBattleLiveRoom({
       });
       setRemoteCount(remotes);
       setStreams(next);
+      setAudioTracks(nextAudio);
     },
     [sideForIdentity],
   );
@@ -135,11 +150,24 @@ export function useBattleLiveRoom({
       }
     }
     setStreams({ leftVideo: null, rightVideo: null, leftAudio: null, rightAudio: null });
+    setAudioTracks({ left: null, right: null });
     setRemoteCount(0);
     setConn("idle");
     setMicOn(true);
     setCamOn(true);
   }, []);
+
+  const startAudio = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+    // Spectators need playback routing; publishers stay on play-and-record for the mic.
+    if (!canPublish) forceIosAudioSessionToPlayback();
+    try {
+      await room.startAudio();
+    } catch {
+      /* browser may still require a direct element.play() */
+    }
+  }, [canPublish]);
 
   const connect = useCallback(async () => {
     if (!user || !battleId || roomRef.current) return;
@@ -190,6 +218,9 @@ export function useBattleLiveRoom({
       room.on(RoomEvent.ParticipantDisconnected, refresh);
       room.on(RoomEvent.LocalTrackPublished, refresh);
       room.on(RoomEvent.LocalTrackUnpublished, refresh);
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        /* UI unlock button handles canPlaybackAudio === false */
+      });
       room.on(RoomEvent.Disconnected, () => {
         roomRef.current = null;
         setConn("idle");
@@ -232,6 +263,11 @@ export function useBattleLiveRoom({
       } else {
         // Spectators: route to media volume, not quiet ambient.
         forceIosAudioSessionToPlayback();
+        try {
+          await room.startAudio();
+        } catch {
+          /* tap-to-unmute fallback in UI */
+        }
       }
 
       rebuildStreams(room);
@@ -285,7 +321,9 @@ export function useBattleLiveRoom({
     micOn,
     camOn,
     streams,
+    audioTracks,
     remoteCount,
+    startAudio,
     toggleMic,
     toggleCam,
     disconnect,

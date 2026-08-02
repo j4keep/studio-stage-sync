@@ -1,6 +1,6 @@
 /** Pure UI helpers for Creators Battle — no backend changes. */
 
-import { getBattleScheduledStartAt, getLiveBattleEndsAt } from "@/lib/battle-live";
+import { getBattleScheduledStartAt, LIVE_PRACTICE_COUNTDOWN_SEC } from "@/lib/battle-live";
 
 export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open" | "countdown";
 
@@ -19,10 +19,27 @@ export function battleCategoryFromMedia(mediaType?: string | null): BattleCatego
   return { id: "music", label: "Music", emoji: "🎵" };
 }
 
+/** 24h voting deadline for every battle type (including live debates). */
 export function getBattleExpiresAt(battle: {
   expires_at?: string | null;
   created_at?: string | null;
+  media_type?: string | null;
+  scheduled_start_at?: string | null;
+  battle_background?: string | null;
 }): Date {
+  const isLive = (battle.media_type || "").toLowerCase() === "live";
+  if (isLive && battle.expires_at) {
+    const startIso = getBattleScheduledStartAt(battle);
+    if (startIso) {
+      const exp = new Date(battle.expires_at).getTime();
+      const start = new Date(startIso).getTime();
+      // Legacy accepts stored debate end on expires_at (minutes), not the 24h vote window.
+      if (Number.isFinite(exp) && Number.isFinite(start) && exp > start && exp - start < 12 * 60 * 60 * 1000) {
+        const acceptApprox = start - LIVE_PRACTICE_COUNTDOWN_SEC * 1000;
+        return new Date(acceptApprox + 24 * 60 * 60 * 1000);
+      }
+    }
+  }
   if (battle.expires_at) return new Date(battle.expires_at);
   const created = battle.created_at ? new Date(battle.created_at).getTime() : Date.now();
   return new Date(created + 24 * 60 * 60 * 1000);
@@ -41,17 +58,17 @@ export function getBattleUiStatus(battle: {
   max_duration_minutes?: number | null;
 }): BattleUiStatus {
   const isLiveType = (battle.media_type || "").toLowerCase() === "live";
-  const expiresAt = isLiveType ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle);
-  const msLeft = expiresAt.getTime() - Date.now();
-  const timeEnded = msLeft <= 0;
+  // Vote clock is always expires_at (24h). Debate length is separate (see battle-live).
+  const voteEndsAt = getBattleExpiresAt(battle);
+  const msLeft = voteEndsAt.getTime() - Date.now();
+  const voteWindowClosed = msLeft <= 0;
   const status = (battle.status || "").toLowerCase();
 
-  if (
-    timeEnded ||
-    status === "ended" ||
-    status === "completed" ||
-    status === "expired"
-  ) {
+  if (voteWindowClosed || status === "ended" || status === "expired") {
+    return "ended";
+  }
+  // Live debates may store "completed" when the call/replay finishes while voting continues.
+  if (status === "completed" && !isLiveType) {
     return "ended";
   }
 
@@ -60,17 +77,21 @@ export function getBattleUiStatus(battle: {
 
   // Active once opponent has uploaded an entry (media and/or cover for photo/live battles)
   const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
-  if (status === "active" && !hasOpponentEntry) return "waiting";
+  if ((status === "active" || (isLiveType && status === "completed")) && !hasOpponentEntry) {
+    return "waiting";
+  }
 
   const startIso = getBattleScheduledStartAt(battle);
   const startAt = startIso ? new Date(startIso).getTime() : null;
-  if (status === "active" && isLiveType && (startAt == null || Date.now() < startAt)) {
+  const treatAsActive = status === "active" || (isLiveType && status === "completed" && hasOpponentEntry);
+
+  if (treatAsActive && isLiveType && (startAt == null || Date.now() < startAt)) {
     return "countdown";
   }
-  if (status === "active" && startAt != null && Date.now() < startAt) return "countdown";
+  if (treatAsActive && startAt != null && Date.now() < startAt) return "countdown";
 
-  if (status === "active" && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";
-  if (status === "active") return "live";
+  if (treatAsActive && msLeft > 0 && msLeft <= 15 * 60 * 1000) return "ending";
+  if (treatAsActive) return "live";
 
   return "waiting";
 }
@@ -99,7 +120,7 @@ export function isBattleOnFeed(battle: {
   return false;
 }
 
-/** True while the crowd can still cast votes (clock + status). */
+/** True while the crowd can still cast votes (24h clock + status). */
 export function isBattleVotingOpen(battle: {
   status?: string | null;
   expires_at?: string | null;
@@ -117,10 +138,11 @@ export function isBattleVotingOpen(battle: {
   const hasOpponentEntry = !!(battle.opponent_media_url || battle.opponent_cover_url);
   if (!hasOpponentEntry) return false;
   const status = (battle.status || "").toLowerCase();
-  if (status === "ended" || status === "completed" || status === "expired") return false;
+  if (status === "ended" || status === "expired") return false;
   const isLiveType = (battle.media_type || "").toLowerCase() === "live";
-  const endAt = isLiveType ? getLiveBattleEndsAt(battle) : getBattleExpiresAt(battle);
-  return endAt.getTime() > Date.now();
+  // Non-live "completed" closes votes; live may be completed after the call while votes stay open.
+  if (status === "completed" && !isLiveType) return false;
+  return getBattleExpiresAt(battle).getTime() > Date.now();
 }
 
 export function formatCountdown(msLeft: number): string {
