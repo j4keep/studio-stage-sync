@@ -36,6 +36,7 @@ import {
 import {
   getBattleReplayMediaUrl,
   getBattleScheduledStartAt,
+  getLiveBattleEndsAt,
   getLiveBattlePhase,
 } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
@@ -608,14 +609,20 @@ export default function BattleFeedSlide({
   const msToStart = scheduledStartAt
     ? new Date(scheduledStartAt).getTime() - now
     : 0;
+  const liveDebateMsLeft =
+    mediaType === "live" ? getLiveBattleEndsAt(battle || {}).getTime() - now : 0;
   const timerLabel =
     ended || msLeft <= 0
       ? "Ended"
-      : uiStatus === "countdown"
+      : mediaType === "live" && livePhase === "countdown"
         ? `Starts ${formatCountdown(msToStart)}`
-        : msLeft <= 60_000
-          ? formatClockMmSs(msLeft)
-          : formatCountdown(msLeft);
+        : mediaType === "live" && livePhase === "live"
+          ? `Live · ${formatCountdown(Math.max(0, liveDebateMsLeft))}`
+          : uiStatus === "countdown"
+            ? `Starts ${formatCountdown(msToStart)}`
+            : msLeft <= 60_000
+              ? formatClockMmSs(msLeft)
+              : formatCountdown(msLeft);
   const nowPlayingName = activeSide === "left" ? leftName : rightName;
 
   const formatCount = (value: number) => {

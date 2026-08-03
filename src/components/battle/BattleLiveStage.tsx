@@ -321,8 +321,17 @@ export default function BattleLiveStage({
   const endMs = getLiveBattleEndsAt(battle).getTime();
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
   const msToEnd = Math.max(0, endMs - now);
-  const [soundOn, setSoundOn] = useState(false);
+  // Start unlocked so competitors hear each other as soon as tracks arrive.
+  const [soundOn, setSoundOn] = useState(true);
   const [soundBlocked, setSoundBlocked] = useState(false);
+
+  const unlockDebateAudio = useCallback(() => {
+    forceIosAudioSessionToPlayback();
+    void unlockFeedAudioSession();
+    setSoundOn(true);
+    setSoundBlocked(false);
+    void startAudio();
+  }, [startAudio]);
 
   // Feed recording sinks — stay attached for the whole live call.
   useEffect(() => {
@@ -354,19 +363,24 @@ export default function BattleLiveStage({
     };
   }, []);
 
-  // Try unlocking debate audio as soon as the post goes live (iOS may still require a tap).
+  // Unlock debate audio as soon as the post goes live (iOS may still require a tap).
   useEffect(() => {
     if (phase !== "live") return;
+    setSoundOn(true);
     if (surface === "battle") {
-      setSoundOn(true);
       void startAudio();
       return;
     }
     forceIosAudioSessionToPlayback();
-    unlockFeedAudioSession();
-    setSoundOn(true);
+    void unlockFeedAudioSession();
     void startAudio();
-  }, [phase, surface, startAudio]);
+    // Retry once tracks arrive — first attempt often races the room connect.
+    const t = window.setTimeout(() => {
+      forceIosAudioSessionToPlayback();
+      void startAudio();
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [phase, surface, startAudio, conn, audioTracks.left, audioTracks.right]);
 
   // When countdown hits zero on the competitor battle page → open the public post live.
   useEffect(() => {
@@ -502,6 +516,8 @@ export default function BattleLiveStage({
   }, [isChallenger, flushReplay]);
 
   const handleTileTap = (side: "left" | "right") => {
+    // Any tap unlocks remote debate audio (competitors + spectators).
+    if (phase === "live") unlockDebateAudio();
     if (!onExpandSide) return;
     const nowTs = Date.now();
     const isDouble =
@@ -759,6 +775,7 @@ export default function BattleLiveStage({
         left={user?.id === battle.challenger_id ? null : audioTracks.left}
         right={user?.id === battle.opponent_id ? null : audioTracks.right}
         enabled={soundOn || surface === "battle"}
+        // Spectators: playback session. Publishers keep play-and-record for the mic.
         preferPlaybackSession={!canPublish}
         startAudio={startAudio}
         onBlocked={() => setSoundBlocked(true)}
@@ -769,16 +786,24 @@ export default function BattleLiveStage({
       />
     ) : null;
 
+  // Absolute overlays only — never add document-flow chrome that grows card height.
+  const liveEndCountdown =
+    phase === "live" && surface === "feed" && !expandedSide ? (
+      <div className="pointer-events-none absolute inset-x-2 top-0 z-30 flex justify-center">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/35 bg-rose-500/15 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-rose-200 backdrop-blur">
+          <Radio className="h-3 w-3 animate-pulse" />
+          Ends in {formatCountdown(msToEnd)}
+        </span>
+      </div>
+    ) : null;
+
   const tapForAudio =
-    phase === "live" && surface === "feed" && !canPublish && (soundBlocked || !soundOn) ? (
+    phase === "live" && surface === "feed" && (soundBlocked || !soundOn) ? (
       <button
         type="button"
-        onClick={() => {
-          forceIosAudioSessionToPlayback();
-          void unlockFeedAudioSession();
-          setSoundOn(true);
-          setSoundBlocked(false);
-          void startAudio();
+        onClick={(e) => {
+          e.stopPropagation();
+          unlockDebateAudio();
         }}
         className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black shadow-lg"
       >
@@ -786,16 +811,29 @@ export default function BattleLiveStage({
       </button>
     ) : null;
 
-  // Feed: only the photo-sized tiles (+ absolute overlays). Parent owns the flex row.
-  // Never add banners/sign-in copy in document flow — that made cards taller than photo.
+  const recordingStatus =
+    surface === "feed" && phase === "live" && isChallenger && isRecording ? (
+      <div className="pointer-events-none absolute left-2 top-2 z-30 rounded-full bg-black/65 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-rose-300">
+        ● Rec
+      </div>
+    ) : surface === "feed" && phase === "ended" && !replayUrl && (savingReplay || isRecording) ? (
+      <div className="pointer-events-none absolute inset-x-6 bottom-2 z-30 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+        Saving replay…
+      </div>
+    ) : null;
+
+  // Feed: photo-sized tiles + absolute overlays. Parent owns the flex row.
+  // Audio/recorder sinks stay absolute 1px (not display:none / overflow-hidden — browsers mute those).
   if (surface === "feed") {
     return (
       <>
         {hiddenRecorders}
+        {debateAudio}
         {leftLiveTile}
         {vsBadge}
         {rightLiveTile}
-        {debateAudio}
+        {liveEndCountdown}
+        {recordingStatus}
         {tapForAudio}
       </>
     );

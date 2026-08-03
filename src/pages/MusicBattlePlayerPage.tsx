@@ -27,6 +27,7 @@ import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
   buildLiveBattleBackground,
   getBattleScheduledStartAt,
+  getBattleVoteWindowMinutes,
   liveScheduleFromAccept,
 } from "@/lib/battle-live";
 import {
@@ -459,20 +460,23 @@ const MusicBattlePlayerPage = () => {
         isLive
           ? (() => {
               const durationMin = Number((battle as any).max_duration_minutes) || 10;
+              const voteWindowMin = getBattleVoteWindowMinutes(battle as any);
               const {
                 scheduledStartAt,
                 debateEndsAt,
                 voteExpiresAt,
                 durationMin: mins,
-              } = liveScheduleFromAccept(durationMin);
+                voteWindowMin: voteMins,
+              } = liveScheduleFromAccept(durationMin, Date.now(), voteWindowMin);
               return {
-                // Column expires_at = 24h voting window (same as audio/photo/video).
+                // Column expires_at = creator-chosen voting window from accept time.
                 expires_at: voteExpiresAt,
                 battle_background: buildLiveBattleBackground(
                   {
                     scheduled_start_at: scheduledStartAt,
                     debate_ends_at: debateEndsAt,
                     duration_min: mins,
+                    vote_window_minutes: voteMins,
                   },
                   (battle as any).battle_background,
                 ),

@@ -13,8 +13,12 @@ import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTri
 import { PHOTO_BATTLE_SONG_MAX_SEC } from "@/lib/photo-battle-song";
 import { preparePhotoBattleSong } from "@/lib/prepare-photo-battle-song";
 import {
+  BATTLE_VOTE_WINDOW_PRESETS,
+  DEFAULT_VOTE_WINDOW_MINUTES,
   LIVE_BATTLE_DURATIONS_MIN,
   LIVE_PRACTICE_COUNTDOWN_SEC,
+  buildLiveBattleBackground,
+  normalizeVoteWindowMinutes,
 } from "@/lib/battle-live";
 
 const STEPS = ["Type", "Title", "Opponent", "Upload", "Review"] as const;
@@ -66,6 +70,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
   const [showVoiceover, setShowVoiceover] = useState(false);
   const [hasVoiceover, setHasVoiceover] = useState(false);
   const [liveDurationMin, setLiveDurationMin] = useState<number>(15);
+  const [voteWindowMin, setVoteWindowMin] = useState<number>(DEFAULT_VOTE_WINDOW_MINUTES);
   const [step, setStep] = useState(0);
   
   const isPhotoBattle = mediaType === "photo";
@@ -267,6 +272,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
 
       // Live start is set when the opponent accepts (practice countdown).
       setLaunchStatus("Sending challenge…");
+      const voteMins = normalizeVoteWindowMinutes(voteWindowMin);
+      const voteExpiresAt = new Date(Date.now() + voteMins * 60 * 1000).toISOString();
       const insertPromise = supabase.from("battles").insert({
         challenger_id: user.id,
         opponent_id: selectedOpponent.user_id,
@@ -277,7 +284,11 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         challenger_cover_url: coverUrl || null,
         status: "pending",
         max_duration_minutes: isPhotoBattle ? 0 : isLiveBattle ? liveDurationMin : maxDuration,
-        battle_background: null,
+        // Creator-chosen voting window (presets only). Live re-applies from accept time.
+        expires_at: isLiveBattle ? null : voteExpiresAt,
+        battle_background: buildLiveBattleBackground({
+          vote_window_minutes: voteMins,
+        }),
       } as any);
       const insertTimeout = new Promise<never>((_, reject) => {
         window.setTimeout(() => reject(new Error("Sending challenge timed out — check your connection and try again")), 30_000);
@@ -302,6 +313,7 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
       setMaxDuration(20);
       setMediaDurationMin(null);
       setLiveDurationMin(15);
+      setVoteWindowMin(DEFAULT_VOTE_WINDOW_MINUTES);
       setStep(0);
       
     } catch (err: any) {
@@ -660,6 +672,37 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                   </div>
                 </>
               )}
+
+              {/* Voting window presets — all battle types */}
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Voting window
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {BATTLE_VOTE_WINDOW_PRESETS.map((preset) => (
+                    <button
+                      key={preset.minutes}
+                      type="button"
+                      onClick={() => setVoteWindowMin(preset.minutes)}
+                      className={`rounded-xl border px-3 py-2.5 text-left transition ${
+                        voteWindowMin === preset.minutes
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      <p className="text-xs font-black">
+                        {preset.emoji} {preset.label}
+                      </p>
+                      <p className="mt-0.5 text-[10px] opacity-80">{preset.blurb}</p>
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {isLiveBattle
+                    ? "Starts when your opponent accepts — keeps the Arena moving."
+                    : "Clock starts when you launch the challenge."}
+                </p>
+              </div>
             </div>
           )}
 
@@ -686,6 +729,14 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
                     </p>
                   </>
                 )}
+                <p>
+                  <span className="text-muted-foreground">Voting:</span>{" "}
+                  <span className="font-bold">
+                    {BATTLE_VOTE_WINDOW_PRESETS.find((p) => p.minutes === voteWindowMin)?.emoji}{" "}
+                    {BATTLE_VOTE_WINDOW_PRESETS.find((p) => p.minutes === voteWindowMin)?.label || "Featured Battle"}{" "}
+                    ({BATTLE_VOTE_WINDOW_PRESETS.find((p) => p.minutes === voteWindowMin)?.blurb || "24 hours"})
+                  </span>
+                </p>
                 {isPhotoBattle && photoSongFile && (
                   <p>
                     <span className="text-muted-foreground">Song clip:</span>{" "}

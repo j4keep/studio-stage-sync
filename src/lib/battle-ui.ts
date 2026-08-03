@@ -1,6 +1,10 @@
 /** Pure UI helpers for Creators Battle — no backend changes. */
 
-import { getBattleScheduledStartAt, LIVE_PRACTICE_COUNTDOWN_SEC } from "@/lib/battle-live";
+import {
+  getBattleScheduledStartAt,
+  LIVE_PRACTICE_COUNTDOWN_SEC,
+  parseLiveBattleMeta,
+} from "@/lib/battle-live";
 
 export type BattleUiStatus = "live" | "waiting" | "ending" | "ended" | "open" | "countdown";
 
@@ -19,7 +23,7 @@ export function battleCategoryFromMedia(mediaType?: string | null): BattleCatego
   return { id: "music", label: "Music", emoji: "🎵" };
 }
 
-/** 24h voting deadline for every battle type (including live debates). */
+/** Voting deadline for every battle type (including live debates). */
 export function getBattleExpiresAt(battle: {
   expires_at?: string | null;
   created_at?: string | null;
@@ -30,11 +34,25 @@ export function getBattleExpiresAt(battle: {
   const isLive = (battle.media_type || "").toLowerCase() === "live";
   if (isLive && battle.expires_at) {
     const startIso = getBattleScheduledStartAt(battle);
+    const meta = parseLiveBattleMeta(battle.battle_background);
+    // New rows store the creator vote-window preset — trust expires_at.
+    if (meta.vote_window_minutes != null) {
+      return new Date(battle.expires_at);
+    }
     if (startIso) {
       const exp = new Date(battle.expires_at).getTime();
       const start = new Date(startIso).getTime();
-      // Legacy accepts stored debate end on expires_at (minutes), not the 24h vote window.
-      if (Number.isFinite(exp) && Number.isFinite(start) && exp > start && exp - start < 12 * 60 * 60 * 1000) {
+      const debateEnd = meta.debate_ends_at ? new Date(meta.debate_ends_at).getTime() : NaN;
+      // Legacy accepts stored debate end on expires_at (same as debate clock).
+      const looksLikeDebateEnd =
+        Number.isFinite(debateEnd) && Math.abs(exp - debateEnd) < 90_000
+          ? true
+          : Number.isFinite(exp) &&
+            Number.isFinite(start) &&
+            exp > start &&
+            exp - start < 3 * 60 * 60 * 1000 &&
+            !meta.debate_ends_at;
+      if (looksLikeDebateEnd) {
         const acceptApprox = start - LIVE_PRACTICE_COUNTDOWN_SEC * 1000;
         return new Date(acceptApprox + 24 * 60 * 60 * 1000);
       }

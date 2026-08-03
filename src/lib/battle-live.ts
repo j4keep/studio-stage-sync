@@ -14,6 +14,8 @@ type LiveMeta = {
   expires_at?: string | null;
   replay_media_url?: string | null;
   duration_min?: number | null;
+  /** Voting window length in minutes (creator preset). */
+  vote_window_minutes?: number | null;
 };
 
 type BattleLiveFields = {
@@ -49,6 +51,10 @@ export function parseLiveBattleMeta(battleBackground?: string | null): LiveMeta 
       duration_min:
         typeof live.duration_min === "number" && Number.isFinite(live.duration_min)
           ? live.duration_min
+          : null,
+      vote_window_minutes:
+        typeof live.vote_window_minutes === "number" && Number.isFinite(live.vote_window_minutes)
+          ? live.vote_window_minutes
           : null,
     };
   } catch {
@@ -182,22 +188,52 @@ export function defaultLiveStartLocal(): string {
   return toDatetimeLocalValue(new Date(Date.now() + LIVE_PRACTICE_COUNTDOWN_SEC * 1000));
 }
 
+/** Creator presets for when voting closes (not free-form). */
+export const BATTLE_VOTE_WINDOW_PRESETS = [
+  { minutes: 15, label: "Flash Battle", emoji: "⚡", blurb: "15 minutes" },
+  { minutes: 60, label: "Quick Battle", emoji: "🔥", blurb: "1 hour" },
+  { minutes: 360, label: "Daily Challenge", emoji: "🌙", blurb: "6 hours" },
+  { minutes: 1440, label: "Featured Battle", emoji: "⭐", blurb: "24 hours" },
+] as const;
+
+export const DEFAULT_VOTE_WINDOW_MINUTES = 1440;
+
+export function normalizeVoteWindowMinutes(value: unknown): number {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_VOTE_WINDOW_MINUTES;
+  const match = BATTLE_VOTE_WINDOW_PRESETS.find((p) => p.minutes === n);
+  return match ? match.minutes : DEFAULT_VOTE_WINDOW_MINUTES;
+}
+
+export function getBattleVoteWindowMinutes(battle: {
+  battle_background?: string | null;
+}): number {
+  const meta = parseLiveBattleMeta(battle.battle_background);
+  return normalizeVoteWindowMinutes(meta.vote_window_minutes);
+}
+
 /**
  * On accept:
  * - debate starts after practice countdown
  * - debate ends after chosen length
- * - voting window is always 24h from accept (column expires_at)
+ * - voting window uses creator preset (column expires_at)
  */
-export function liveScheduleFromAccept(durationMin: number, now = Date.now()) {
+export function liveScheduleFromAccept(
+  durationMin: number,
+  now = Date.now(),
+  voteWindowMin: number = DEFAULT_VOTE_WINDOW_MINUTES,
+) {
   const mins = Math.max(1, durationMin || 10);
+  const voteMins = normalizeVoteWindowMinutes(voteWindowMin);
   const startMs = now + LIVE_PRACTICE_COUNTDOWN_SEC * 1000;
   const debateEndMs = startMs + mins * 60 * 1000;
-  const voteEndMs = now + 24 * 60 * 60 * 1000;
+  const voteEndMs = now + voteMins * 60 * 1000;
   return {
     scheduledStartAt: new Date(startMs).toISOString(),
     debateEndsAt: new Date(debateEndMs).toISOString(),
     voteExpiresAt: new Date(voteEndMs).toISOString(),
     durationMin: mins,
+    voteWindowMin: voteMins,
   };
 }
 
