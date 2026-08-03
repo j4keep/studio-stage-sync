@@ -28,10 +28,7 @@ import { resolveMediaDuration } from "@/lib/media-duration";
 import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
 import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 import BattleScreenSharePrivacy from "@/components/battle/BattleScreenSharePrivacy";
-import {
-  canBrowserScreenShare,
-  screenShareUnsupportedReason,
-} from "@/lib/screen-share-support";
+import { canBrowserScreenShare } from "@/lib/screen-share-support";
 
 type BattleLike = {
   id: string;
@@ -802,10 +799,7 @@ export default function BattleLiveStage({
   const screenShareSupported = canBrowserScreenShare();
 
   const onStartShare = async () => {
-    if (!screenShareSupported) {
-      toast.error(screenShareUnsupportedReason(), { duration: 6500 });
-      return;
-    }
+    if (!screenShareSupported) return;
     if (conn !== "connected") {
       toast.error(
         conn === "connecting"
@@ -824,8 +818,9 @@ export default function BattleLiveStage({
     }
   };
 
+  // Phone/iPad browsers can't screen-share — hide the control entirely there.
   const screenShareControls =
-    showPublisherControls && phase === "live" ? (
+    screenShareSupported && showPublisherControls && phase === "live" ? (
       <div
         className={`z-[60] flex items-center justify-center gap-2 ${
           surface === "feed"
@@ -842,19 +837,11 @@ export default function BattleLiveStage({
               void onStartShare();
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            disabled={conn !== "connected" && screenShareSupported}
-            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-[11px] font-black shadow-lg ${
-              screenShareSupported
-                ? "bg-cyan-300 text-black disabled:opacity-60"
-                : "bg-white/15 text-white/80 ring-1 ring-white/25"
-            }`}
+            disabled={conn !== "connected"}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-3 py-2 text-[11px] font-black text-black shadow-lg disabled:opacity-60"
           >
             <MonitorUp className="h-3.5 w-3.5" />
-            {!screenShareSupported
-              ? "Screen share · desktop only"
-              : conn === "connecting"
-                ? "Connecting…"
-                : "Share screen"}
+            {conn === "connecting" ? "Connecting…" : "Share screen"}
           </button>
         ) : screenSharePhase === "live" ? (
           <>
@@ -1002,29 +989,23 @@ export default function BattleLiveStage({
           >
             {camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
           </button>
-          {phase === "live" ? (
+          {phase === "live" && screenShareSupported ? (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 void onStartShare();
               }}
-              disabled={conn !== "connected" && screenShareSupported}
-              className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-xs font-black disabled:opacity-60 ${
-                screenShareSupported
-                  ? "bg-cyan-300 text-black"
-                  : "bg-white/15 text-white/80 ring-1 ring-white/25"
-              }`}
+              disabled={conn !== "connected"}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-cyan-300 px-3 text-xs font-black text-black disabled:opacity-60"
               aria-label="Share screen"
             >
               <MonitorUp className="h-4 w-4" />
-              {!screenShareSupported
-                ? "Desktop only"
-                : conn === "connecting"
-                  ? "Connecting…"
-                  : screenSharePhase === "off"
-                    ? "Share screen"
-                    : "Screen…"}
+              {conn === "connecting"
+                ? "Connecting…"
+                : screenSharePhase === "off"
+                  ? "Share screen"
+                  : "Screen…"}
             </button>
           ) : null}
           {conn === "connecting" && (
