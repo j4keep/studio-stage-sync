@@ -66,29 +66,22 @@ function ReplayVideo({ src, compact }: { src: string; compact?: boolean }) {
   }, [src, muted]);
 
   return (
-    <div className="relative">
-      <video
-        ref={ref}
-        src={src}
-        autoPlay
-        loop
-        muted={muted}
-        playsInline
-        controls={false}
-        className={`w-full object-cover ${compact ? "aspect-[4/5] max-h-[min(52dvh,420px)]" : "aspect-video"}`}
-      />
-      <button
-        type="button"
-        onClick={() => {
-          forceIosAudioSessionToPlayback();
-          unlockFeedAudioSession();
-          setMuted((m) => !m);
-        }}
-        className="absolute bottom-3 right-3 rounded-full bg-white/90 px-3 py-1.5 text-[10px] font-black uppercase tracking-wide text-black shadow"
-      >
-        {muted ? "Tap for sound" : "Mute"}
-      </button>
-    </div>
+    <video
+      ref={ref}
+      src={src}
+      autoPlay
+      loop
+      muted={muted}
+      playsInline
+      controls={false}
+      onClick={() => {
+        // Same as other feed posts: tap media to unlock/toggle sound — no Mute chrome on the post.
+        forceIosAudioSessionToPlayback();
+        unlockFeedAudioSession();
+        setMuted((m) => !m);
+      }}
+      className={`w-full cursor-pointer object-cover ${compact ? "aspect-[4/5] max-h-[min(52dvh,420px)]" : "aspect-video"}`}
+    />
   );
 }
 
@@ -538,11 +531,12 @@ export default function BattleLiveStage({
         />
       )}
 
-      {phase === "live" && surface === "feed" && (soundBlocked || !soundOn) && (
+      {/* Spectators only — never show mute/audio chrome on the host's post view. */}
+      {phase === "live" && surface === "feed" && !canPublish && (soundBlocked || !soundOn) && (
         <button
           type="button"
           onClick={() => {
-            if (!canPublish) forceIosAudioSessionToPlayback();
+            forceIosAudioSessionToPlayback();
             void unlockFeedAudioSession();
             setSoundOn(true);
             setSoundBlocked(false);

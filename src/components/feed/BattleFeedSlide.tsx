@@ -8,7 +8,6 @@ import {
   Heart,
   MessageCircle,
   Send,
-  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -427,23 +426,6 @@ export default function BattleFeedSlide({
     ended: !votingOpen,
     votingOpen,
   });
-  const isCreator = !!uid && uid === battle?.challenger_id;
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      if (!battle?.id || !isCreator) return;
-      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Battle deleted");
-      qc.invalidateQueries({ queryKey: ["feed-posts"] });
-      qc.invalidateQueries({ queryKey: ["battles"] });
-      onScrollLockChange?.(false);
-    },
-    onError: () => toast.error("Couldn't delete battle"),
-  });
-
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {
       if (!uid || !battle) return;
@@ -776,22 +758,6 @@ export default function BattleFeedSlide({
             <button type="button" onClick={share} className="feed-action-btn" aria-label="Share">
               <Forward className="feed-action-icon" />
             </button>
-            {isCreator ? (
-              <button
-                type="button"
-                className="feed-action-btn"
-                aria-label="Delete battle"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (deleteMutation.isPending) return;
-                  if (!window.confirm("Delete this battle post? The replay will be removed.")) return;
-                  deleteMutation.mutate();
-                }}
-              >
-                <Trash2 className="feed-action-icon text-rose-300" />
-                <span className="feed-action-count text-[9px]">Delete</span>
-              </button>
-            ) : null}
             <button
               type="button"
               onClick={(e) => {
