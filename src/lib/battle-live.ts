@@ -237,7 +237,8 @@ export function liveScheduleFromAccept(
   };
 }
 
-export const LIVE_BATTLE_DURATIONS_MIN = [5, 10, 15, 30, 45, 60] as const;
+/** Includes 1 min for quick testing — keep first so creators can tap it fast. */
+export const LIVE_BATTLE_DURATIONS_MIN = [1, 5, 10, 15, 30, 45, 60] as const;
 
 /** True when PostgREST error is the missing live-battle columns schema cache miss. */
 export function isMissingLiveBattleColumnError(err: { message?: string } | null | undefined): boolean {
