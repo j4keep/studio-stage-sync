@@ -1,18 +1,24 @@
 import { useMemo, useState } from "react";
-import { Swords, Plus, ArrowLeft } from "lucide-react";
+import { Swords, Plus, ArrowLeft, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { useProGate } from "@/hooks/use-pro-gate";
 import ProGateModal from "@/components/ProGateModal";
 import CreateBattleSheet from "@/components/CreateBattleSheet";
 import BattleCard from "@/components/BattleCard";
+import BattleArenaRecord from "@/components/battle/BattleArenaRecord";
 import { partitionBattleFeed } from "@/lib/battle-ui";
+import { buildBattleArenaRecord, type BattleWinRow } from "@/lib/battle-records";
 
 const BattlesPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const [showCreate, setShowCreate] = useState(false);
+  const [showRecord, setShowRecord] = useState(false);
 
   const { data: battles = [], isLoading } = useQuery({
     queryKey: ["battles"],
@@ -59,8 +65,36 @@ const BattlesPage = () => {
     [battles, voteTotals],
   );
 
+  const { data: myWinRows = [] } = useQuery({
+    queryKey: ["battle-arena-record-preview", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [] as BattleWinRow[];
+      const { data } = await (supabase as any)
+        .from("battle_wins")
+        .select("*")
+        .or(`winner_id.eq.${user.id},loser_id.eq.${user.id}`)
+        .order("declared_at", { ascending: false })
+        .limit(80);
+      return (data || []) as BattleWinRow[];
+    },
+    enabled: !!user?.id,
+  });
+
+  const streakPreview = useMemo(() => {
+    if (!user?.id) return 0;
+    return buildBattleArenaRecord(user.id, myWinRows).currentStreak;
+  }, [user?.id, myWinRows]);
+
   const handleCreate = () => {
     requirePro("Battles", () => setShowCreate(true));
+  };
+
+  const openRecord = () => {
+    if (!user?.id) {
+      toast.error("Sign in to view your Winning Street record");
+      return;
+    }
+    setShowRecord(true);
   };
 
   return (
@@ -81,12 +115,28 @@ const BattlesPage = () => {
             Live matchups. Real crowd. One winner.
           </p>
         </div>
-        <button
-          onClick={handleCreate}
-          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold gradient-primary text-primary-foreground"
-        >
-          <Plus className="h-3.5 w-3.5" /> Create
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={openRecord}
+            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-[#0b0b10] text-orange-300 shadow-[0_0_18px_rgba(251,146,60,0.45)] ring-2 ring-orange-400/70"
+            aria-label="Open Winning Street record"
+            title="Winning Street"
+          >
+            <Flame className="h-4 w-4 fill-orange-400/50" />
+            {streakPreview > 0 ? (
+              <span className="absolute -bottom-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-cyan-300 to-pink-400 px-1 text-[9px] font-black text-black ring-1 ring-black/40">
+                {streakPreview > 99 ? "99+" : streakPreview}
+              </span>
+            ) : null}
+          </button>
+          <button
+            onClick={handleCreate}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold gradient-primary text-primary-foreground"
+          >
+            <Plus className="h-3.5 w-3.5" /> Create
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -124,6 +174,7 @@ const BattlesPage = () => {
       )}
 
       <CreateBattleSheet open={showCreate} onOpenChange={setShowCreate} />
+      <BattleArenaRecord open={showRecord} onClose={() => setShowRecord(false)} />
       <ProGateModal
         open={showProModal}
         onClose={closeProModal}
