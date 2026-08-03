@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import type { LocalTrack, RemoteTrack } from "livekit-client";
-import { Loader2, Mic, MicOff, Radio, Video, VideoOff } from "lucide-react";
+import { Eye, EyeOff, Loader2, Mic, MicOff, MonitorUp, Radio, Video, VideoOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBattleLiveRoom } from "@/hooks/useBattleLiveRoom";
 import { formatCountdown } from "@/lib/battle-ui";
@@ -27,6 +27,7 @@ import {
 import { resolveMediaDuration } from "@/lib/media-duration";
 import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
 import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
+import BattleScreenSharePrivacy from "@/components/battle/BattleScreenSharePrivacy";
 
 type BattleLike = {
   id: string;
@@ -305,9 +306,11 @@ export default function BattleLiveStage({
         ? isParticipant && (phase === "countdown" || phase === "live")
         : phase === "live");
 
-  // Mic/cam toggles only on the competitor battle page — never on the public post/feed.
+  // Mic/cam on battle prep page; screen share also available to competitors while live on feed.
   const showPublisherControls =
-    surface === "battle" && isParticipant && (phase === "countdown" || phase === "live");
+    isParticipant &&
+    (phase === "countdown" || phase === "live") &&
+    (surface === "battle" || phase === "live");
   const showLiveVideo =
     phase === "live" || (surface === "battle" && isParticipant && phase === "countdown");
 
@@ -316,12 +319,18 @@ export default function BattleLiveStage({
     error,
     micOn,
     camOn,
+    screenSharePhase,
+    localScreenPreview,
     streams,
     audioTracks,
     remoteCount,
     startAudio,
     toggleMic,
     toggleCam,
+    startScreenSharePrivacy,
+    showScreenShare,
+    pauseScreenShare,
+    stopScreenShare,
   } = useBattleLiveRoom({
     battleId: battle.id,
     challengerId: battle.challenger_id,
@@ -350,16 +359,23 @@ export default function BattleLiveStage({
 
   useEffect(() => subscribeLiveRecordSession(() => setRecordSnap(getLiveRecordSessionSnapshot())), []);
 
-  // Recording sinks — stay attached for the whole live call (feed OR battle page).
+  // Recording sinks — prefer live screen share when the crowd can see it.
   useEffect(() => {
     const bind = (el: HTMLVideoElement | null, stream: MediaStream | null) => {
       if (!el) return;
       if (el.srcObject !== stream) el.srcObject = stream;
       if (stream) void el.play().catch(() => undefined);
     };
-    bind(leftRecRef.current, streams.leftVideo);
-    bind(rightRecRef.current, streams.rightVideo);
-  }, [streams.leftVideo, streams.rightVideo]);
+    bind(leftRecRef.current, streams.leftScreen || streams.leftCamera || streams.leftVideo);
+    bind(rightRecRef.current, streams.rightScreen || streams.rightCamera || streams.rightVideo);
+  }, [
+    streams.leftScreen,
+    streams.rightScreen,
+    streams.leftCamera,
+    streams.rightCamera,
+    streams.leftVideo,
+    streams.rightVideo,
+  ]);
 
   // Spectators: refresh feed while waiting for challenger to finish uploading replay.
   useEffect(() => {
@@ -603,11 +619,13 @@ export default function BattleLiveStage({
     side: "left" | "right",
     name: string,
     cover: string | null | undefined,
-    videoStream: MediaStream | null,
+    cameraStream: MediaStream | null,
+    screenStream: MediaStream | null,
     videoRef: React.RefObject<HTMLVideoElement | null>,
     isLocalSide: boolean,
   ) => {
-    const showVideo = showLiveVideo && !!videoStream;
+    const screenLive = showLiveVideo && !!screenStream;
+    const showCamera = showLiveVideo && !!cameraStream;
     const isExpanded = expandedSide === side;
     const isHidden = expandedSide != null && expandedSide !== side;
     return (
@@ -635,9 +653,32 @@ export default function BattleLiveStage({
           onExpandSide(side);
         }}
       >
-        {showVideo ? (
+        {screenLive ? (
+          <>
+            <StreamVideo
+              stream={screenStream}
+              muted={isLocalSide}
+              videoRef={videoRef}
+              mirror={false}
+              className="absolute inset-0 h-full w-full object-contain bg-black"
+            />
+            {showCamera ? (
+              <div className="absolute bottom-10 right-2 z-[5] h-20 w-14 overflow-hidden rounded-xl ring-2 ring-white/70 shadow-lg sm:h-24 sm:w-[4.25rem]">
+                <StreamVideo
+                  stream={cameraStream}
+                  muted
+                  mirror={isLocalSide}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ) : null}
+            <div className="pointer-events-none absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-cyan-400/95 px-2 py-0.5 text-[10px] font-black uppercase text-black">
+              <MonitorUp className="h-3 w-3" /> Screen
+            </div>
+          </>
+        ) : showCamera ? (
           <StreamVideo
-            stream={videoStream}
+            stream={cameraStream}
             muted={isLocalSide}
             videoRef={videoRef}
             mirror={isLocalSide}
@@ -672,7 +713,8 @@ export default function BattleLiveStage({
     "left",
     leftName,
     leftCover,
-    streams.leftVideo,
+    streams.leftCamera || streams.leftVideo,
+    streams.leftScreen,
     leftVideoRef,
     user?.id === battle.challenger_id,
   );
@@ -680,7 +722,8 @@ export default function BattleLiveStage({
     "right",
     rightName,
     rightCover,
-    streams.rightVideo,
+    streams.rightCamera || streams.rightVideo,
+    streams.rightScreen,
     rightVideoRef,
     user?.id === battle.opponent_id,
   );
@@ -752,6 +795,94 @@ export default function BattleLiveStage({
       </div>
     ) : null;
 
+  const onStartShare = async () => {
+    try {
+      await startScreenSharePrivacy();
+      toast.message("Private preview — crowd can’t see until you tap Show");
+    } catch {
+      /* cancelled / unsupported — error surfaced via hook when needed */
+    }
+  };
+
+  const screenShareControls =
+    showPublisherControls && phase === "live" ? (
+      <div
+        className={`z-40 flex items-center justify-center gap-2 ${
+          surface === "feed"
+            ? "pointer-events-auto absolute inset-x-2 bottom-2"
+            : ""
+        }`}
+      >
+        {screenSharePhase === "off" ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              void onStartShare();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-3 py-2 text-[11px] font-black text-black shadow-lg"
+          >
+            <MonitorUp className="h-3.5 w-3.5" /> Share screen
+          </button>
+        ) : screenSharePhase === "live" ? (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void pauseScreenShare();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-amber-400 px-3 py-2 text-[11px] font-black text-black shadow-lg"
+            >
+              <EyeOff className="h-3.5 w-3.5" /> Pause screen
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void stopScreenShare();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-2 text-[11px] font-black text-white ring-1 ring-white/25"
+            >
+              Stop
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              /* privacy overlay already open */
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-2 text-[11px] font-black text-white ring-1 ring-white/25 backdrop-blur"
+          >
+            <Eye className="h-3.5 w-3.5" /> Private preview…
+          </button>
+        )}
+      </div>
+    ) : null;
+
+  const privacyOverlay = (
+    <BattleScreenSharePrivacy
+      open={screenSharePhase === "privacy"}
+      preview={localScreenPreview}
+      broadcasting={false}
+      onShow={() => {
+        void showScreenShare()
+          .then(() => toast.success("Screen is live to the crowd"))
+          .catch(() => toast.error("Couldn’t show screen"));
+      }}
+      onPause={() => {
+        void pauseScreenShare();
+        toast.message("Screen paused — crowd can’t see it");
+      }}
+      onStop={() => {
+        void stopScreenShare();
+        toast.message("Screen share stopped");
+      }}
+    />
+  );
+
   // Feed: photo-sized tiles + absolute overlays. Parent owns the flex row.
   // Audio/recorder sinks stay absolute 1px (not display:none / overflow-hidden — browsers mute those).
   if (surface === "feed") {
@@ -765,6 +896,8 @@ export default function BattleLiveStage({
         {liveEndCountdown}
         {recordingStatus}
         {tapForAudio}
+        {screenShareControls}
+        {privacyOverlay}
       </>
     );
   }
@@ -820,7 +953,7 @@ export default function BattleLiveStage({
       {debateAudio}
 
       {showPublisherControls && (
-        <div className="flex items-center justify-center gap-2">
+        <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
           <button
             type="button"
             onClick={() => void toggleMic()}
@@ -837,6 +970,17 @@ export default function BattleLiveStage({
           >
             {camOn ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
           </button>
+          {phase === "live" ? (
+            <button
+              type="button"
+              onClick={() => void onStartShare()}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-cyan-300 px-3 text-xs font-black text-black"
+              aria-label="Share screen"
+            >
+              <MonitorUp className="h-4 w-4" />
+              {screenSharePhase === "off" ? "Share screen" : "Screen…"}
+            </button>
+          ) : null}
           {conn === "connecting" && (
             <span className="inline-flex items-center gap-1 text-[11px] text-white/70">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Connecting…
@@ -858,6 +1002,8 @@ export default function BattleLiveStage({
       {error && showPublisherControls && (
         <p className="text-center text-[11px] text-rose-300">{error}</p>
       )}
+
+      {privacyOverlay}
     </div>
   );
 }

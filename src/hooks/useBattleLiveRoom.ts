@@ -5,8 +5,10 @@ import {
   Track,
   createLocalVideoTrack,
   createLocalAudioTrack,
+  createLocalScreenTracks,
   type LocalTrack,
   type RemoteTrack,
+  type TrackPublication,
 } from "livekit-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,7 +20,15 @@ import {
 
 export type BattleLiveConn = "idle" | "connecting" | "connected" | "error";
 
+/** off = not sharing · privacy = local preview only / paused · live = crowd can see */
+export type ScreenSharePhase = "off" | "privacy" | "live";
+
 type SideStreams = {
+  leftCamera: MediaStream | null;
+  rightCamera: MediaStream | null;
+  leftScreen: MediaStream | null;
+  rightScreen: MediaStream | null;
+  /** @deprecated use leftCamera — kept for recorder/call sites that want “main” cam */
   leftVideo: MediaStream | null;
   rightVideo: MediaStream | null;
   leftAudio: MediaStream | null;
@@ -40,9 +50,21 @@ type Opts = {
   canPublish: boolean;
 };
 
+const emptyStreams = (): SideStreams => ({
+  leftCamera: null,
+  rightCamera: null,
+  leftScreen: null,
+  rightScreen: null,
+  leftVideo: null,
+  rightVideo: null,
+  leftAudio: null,
+  rightAudio: null,
+});
+
 /**
  * LiveKit room for live debate battles.
  * Maps participant identity → left (challenger) / right (opponent) streams.
+ * Screen share starts in privacy (paused) until the competitor unpauses for the crowd.
  */
 export function useBattleLiveRoom({
   battleId,
@@ -54,16 +76,15 @@ export function useBattleLiveRoom({
   const { user } = useAuth();
   const roomRef = useRef<Room | null>(null);
   const localTracksRef = useRef<LocalTrack[]>([]);
+  const screenTrackRef = useRef<LocalTrack | null>(null);
+  const screenPublishedRef = useRef(false);
   const [conn, setConn] = useState<BattleLiveConn>("idle");
   const [error, setError] = useState<string | null>(null);
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
-  const [streams, setStreams] = useState<SideStreams>({
-    leftVideo: null,
-    rightVideo: null,
-    leftAudio: null,
-    rightAudio: null,
-  });
+  const [screenSharePhase, setScreenSharePhase] = useState<ScreenSharePhase>("off");
+  const [localScreenPreview, setLocalScreenPreview] = useState<MediaStream | null>(null);
+  const [streams, setStreams] = useState<SideStreams>(emptyStreams);
   const [audioTracks, setAudioTracks] = useState<SideAudioTracks>({
     left: null,
     right: null,
@@ -81,22 +102,37 @@ export function useBattleLiveRoom({
 
   const rebuildStreams = useCallback(
     (room: Room) => {
-      const next: SideStreams = {
-        leftVideo: null,
-        rightVideo: null,
-        leftAudio: null,
-        rightAudio: null,
-      };
+      const next = emptyStreams();
       const nextAudio: SideAudioTracks = { left: null, right: null };
+      const localId = room.localParticipant.identity;
 
-      const applyTrack = (identity: string, track: RemoteTrack | LocalTrack, kind: Track.Kind) => {
+      const applyPub = (identity: string, pub: TrackPublication) => {
+        const track = pub.track as RemoteTrack | LocalTrack | null | undefined;
+        if (!track) return;
+        if ("isSubscribed" in pub && pub.isSubscribed === false) return;
         const side = sideForIdentity(identity);
         if (!side) return;
+
         const media = new MediaStream([track.mediaStreamTrack]);
-        if (kind === Track.Kind.Video) {
-          if (side === "left") next.leftVideo = media;
-          else next.rightVideo = media;
-        } else if (kind === Track.Kind.Audio) {
+        if (pub.kind === Track.Kind.Video) {
+          if (pub.source === Track.Source.ScreenShare) {
+            // Crowd must not see paused/muted screens — local preview uses localScreenPreview.
+            if (pub.isMuted && identity !== localId) return;
+            if (side === "left") next.leftScreen = media;
+            else next.rightScreen = media;
+          } else {
+            // Camera (or unknown video) — never overwrite with screen.
+            if (pub.source && pub.source !== Track.Source.Camera) return;
+            if (side === "left") {
+              next.leftCamera = media;
+              next.leftVideo = media;
+            } else {
+              next.rightCamera = media;
+              next.rightVideo = media;
+            }
+          }
+        } else if (pub.kind === Track.Kind.Audio) {
+          if (pub.source === Track.Source.ScreenShareAudio) return;
           if (side === "left") {
             next.leftAudio = media;
             nextAudio.left = track;
@@ -107,31 +143,60 @@ export function useBattleLiveRoom({
         }
       };
 
-      const localId = room.localParticipant.identity;
-      room.localParticipant.trackPublications.forEach((pub) => {
-        if (!pub.track) return;
-        applyTrack(localId, pub.track, pub.kind);
-      });
+      room.localParticipant.trackPublications.forEach((pub) => applyPub(localId, pub));
 
       let remotes = 0;
       room.remoteParticipants.forEach((p) => {
         remotes += 1;
-        p.trackPublications.forEach((pub) => {
-          const track = pub.track ?? (pub as { track?: RemoteTrack | null }).track;
-          if (!track) return;
-          if ("isSubscribed" in pub && pub.isSubscribed === false) return;
-          applyTrack(p.identity, track, pub.kind);
-        });
+        p.trackPublications.forEach((pub) => applyPub(p.identity, pub));
       });
       setRemoteCount(remotes);
       setStreams(next);
       setAudioTracks(nextAudio);
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+      setCamOn(room.localParticipant.isCameraEnabled);
     },
     [sideForIdentity],
   );
 
+  const clearScreenShareLocal = useCallback(() => {
+    const t = screenTrackRef.current;
+    screenTrackRef.current = null;
+    screenPublishedRef.current = false;
+    if (t) {
+      try {
+        t.stop();
+        t.detach();
+      } catch {
+        /* ignore */
+      }
+    }
+    setLocalScreenPreview(null);
+    setScreenSharePhase("off");
+  }, []);
+
+  const stopScreenShare = useCallback(async () => {
+    const room = roomRef.current;
+    const track = screenTrackRef.current;
+    if (room && track && screenPublishedRef.current) {
+      try {
+        await room.localParticipant.unpublishTrack(track, true);
+      } catch {
+        try {
+          await room.localParticipant.setScreenShareEnabled(false);
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+    clearScreenShareLocal();
+    if (room) rebuildStreams(room);
+  }, [clearScreenShareLocal, rebuildStreams]);
+
   const disconnect = useCallback(async () => {
     const room = roomRef.current;
+    // Unpublish/stop screen while room ref is still valid.
+    await stopScreenShare().catch(() => undefined);
     roomRef.current = null;
     for (const t of localTracksRef.current) {
       try {
@@ -149,18 +214,17 @@ export function useBattleLiveRoom({
         /* ignore */
       }
     }
-    setStreams({ leftVideo: null, rightVideo: null, leftAudio: null, rightAudio: null });
+    setStreams(emptyStreams());
     setAudioTracks({ left: null, right: null });
     setRemoteCount(0);
     setConn("idle");
     setMicOn(true);
     setCamOn(true);
-  }, []);
+  }, [stopScreenShare]);
 
   const startAudio = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
-    // Spectators need playback routing; publishers stay on play-and-record for the mic.
     if (!canPublish) forceIosAudioSessionToPlayback();
     try {
       await room.startAudio();
@@ -211,6 +275,7 @@ export function useBattleLiveRoom({
       };
       room.on(RoomEvent.TrackSubscribed, refresh);
       room.on(RoomEvent.TrackUnsubscribed, refresh);
+      room.on(RoomEvent.TrackUnpublished, refresh);
       room.on(RoomEvent.TrackMuted, refresh);
       room.on(RoomEvent.TrackUnmuted, refresh);
       room.on(RoomEvent.TrackPublished, ensureSubscribed);
@@ -218,9 +283,6 @@ export function useBattleLiveRoom({
       room.on(RoomEvent.ParticipantDisconnected, refresh);
       room.on(RoomEvent.LocalTrackPublished, refresh);
       room.on(RoomEvent.LocalTrackUnpublished, refresh);
-      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
-        /* UI unlock button handles canPlaybackAudio === false */
-      });
       room.on(RoomEvent.Disconnected, () => {
         roomRef.current = null;
         setConn("idle");
@@ -232,7 +294,6 @@ export function useBattleLiveRoom({
       if (canPublish) {
         setIosAudioSessionForRecording();
         const published: LocalTrack[] = [];
-        // Video first (facing user) — iOS often fails if audio session is wrong.
         try {
           const video = await createLocalVideoTrack({
             facingMode: "user",
@@ -254,14 +315,16 @@ export function useBattleLiveRoom({
           await room.localParticipant.publishTrack(audio);
           published.push(audio);
         } catch (e: unknown) {
-          // Keep video-only if mic session conflicts (common on iOS Safari).
           const msg = e instanceof Error ? e.message : "Microphone unavailable";
-          setError(msg.includes("AudioSession") ? "Mic blocked — video still on. Check mute/permissions." : msg);
+          setError(
+            msg.includes("AudioSession")
+              ? "Mic blocked — video still on. Check mute/permissions."
+              : msg,
+          );
           setMicOn(false);
         }
         localTracksRef.current = published;
       } else {
-        // Spectators: route to media volume, not quiet ambient.
         forceIosAudioSessionToPlayback();
         try {
           await room.startAudio();
@@ -289,7 +352,6 @@ export function useBattleLiveRoom({
     return () => {
       void disconnect();
     };
-    // Connect once per enabled window / publish role — avoid reconnect loops from callback identity.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, battleId, user?.id, canPublish]);
 
@@ -315,17 +377,107 @@ export function useBattleLiveRoom({
     setCamOn(next);
   };
 
+  /**
+   * Pick a screen/window/tab. Stays in privacy mode — crowd cannot see until showScreenShare().
+   */
+  const startScreenSharePrivacy = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room || !canPublish) return;
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      setError("Screen share isn’t supported on this device. Try desktop Chrome or Edge.");
+      throw new Error("Screen share unsupported");
+    }
+    try {
+      if (screenTrackRef.current) {
+        await stopScreenShare();
+      }
+      const tracks = await createLocalScreenTracks({
+        audio: false,
+        // Prefer a crisp tab/window share for articles / Google results.
+        resolution: { width: 1920, height: 1080, frameRate: 15 },
+        contentHint: "detail",
+      });
+      const video = tracks.find((t) => t.kind === Track.Kind.Video) || tracks[0];
+      if (!video) throw new Error("No screen video track");
+
+      // Stay unpublished until competitor taps “Show to crowd”.
+      video.mediaStreamTrack.addEventListener("ended", () => {
+        void stopScreenShare();
+      });
+
+      screenTrackRef.current = video;
+      screenPublishedRef.current = false;
+      setLocalScreenPreview(new MediaStream([video.mediaStreamTrack]));
+      setScreenSharePhase("privacy");
+      setError(null);
+    } catch (e: unknown) {
+      clearScreenShareLocal();
+      const msg = e instanceof Error ? e.message : "Screen share cancelled";
+      if (!/cancel|denied|permission/i.test(msg)) setError(msg);
+      throw e;
+    }
+  }, [canPublish, clearScreenShareLocal, stopScreenShare]);
+
+  /** Unpause — publish so the crowd can see the screen. */
+  const showScreenShare = useCallback(async () => {
+    const room = roomRef.current;
+    const track = screenTrackRef.current;
+    if (!room || !track || !canPublish) return;
+    try {
+      if (!screenPublishedRef.current) {
+        await room.localParticipant.publishTrack(track, {
+          source: Track.Source.ScreenShare,
+          videoEncoding: { maxBitrate: 1_500_000, maxFramerate: 15 },
+          degradationPreference: "maintain-resolution",
+        });
+        screenPublishedRef.current = true;
+      }
+      setScreenSharePhase("live");
+      setLocalScreenPreview(new MediaStream([track.mediaStreamTrack]));
+      rebuildStreams(room);
+      setError(null);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Couldn’t show screen";
+      setError(msg);
+      throw e;
+    }
+  }, [canPublish, rebuildStreams]);
+
+  /** Pause broadcast — unpublish so the crowd sees nothing; keep local privacy preview. */
+  const pauseScreenShare = useCallback(async () => {
+    const room = roomRef.current;
+    const track = screenTrackRef.current;
+    if (!track) return;
+    if (room && screenPublishedRef.current) {
+      try {
+        await room.localParticipant.unpublishTrack(track, false);
+      } catch {
+        /* ignore */
+      }
+      screenPublishedRef.current = false;
+    }
+    setLocalScreenPreview(new MediaStream([track.mediaStreamTrack]));
+    setScreenSharePhase("privacy");
+    if (room) rebuildStreams(room);
+  }, [rebuildStreams]);
+
   return {
     conn,
     error,
     micOn,
     camOn,
+    screenSharePhase,
+    localScreenPreview,
     streams,
     audioTracks,
     remoteCount,
     startAudio,
     toggleMic,
     toggleCam,
+    startScreenSharePrivacy,
+    showScreenShare,
+    pauseScreenShare,
+    stopScreenShare,
     disconnect,
     reconnect: connect,
   };
