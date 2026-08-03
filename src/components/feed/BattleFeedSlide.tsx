@@ -35,6 +35,7 @@ import {
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
+import { ensureBattleWinRecorded } from "@/lib/finalize-battle-wins";
 import {
   getBattleReplayMediaUrl,
   getBattleScheduledStartAt,
@@ -528,6 +529,27 @@ export default function BattleFeedSlide({
   const votingOpen = isBattleVotingOpen(battle || {});
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
   const winnerSide = getBattleWinnerSide(battle || {}, tally, votingOpen);
+
+  // When the vote clock ends, persist a permanent battle_wins row for Winning Street.
+  useEffect(() => {
+    if (!battle?.id || votingOpen) return;
+    let cancelled = false;
+    void (async () => {
+      const recorded = await ensureBattleWinRecorded(battle, {
+        votes: votes as any[],
+        userId: uid,
+      });
+      if (cancelled || !recorded) return;
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record"] });
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record-preview"] });
+      void qc.invalidateQueries({ queryKey: ["battles"] });
+      void qc.invalidateQueries({ queryKey: ["feed-posts"] });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [battle, votingOpen, votes, uid, qc]);
+
   // Gate votes only on the 24h window — debate call ending must not lock the bar.
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, {
     ended: !votingOpen,

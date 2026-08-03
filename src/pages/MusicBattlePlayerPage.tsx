@@ -43,6 +43,7 @@ import {
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
+import { ensureBattleWinRecorded } from "@/lib/finalize-battle-wins";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -165,6 +166,27 @@ const MusicBattlePlayerPage = () => {
   });
 
   const isParticipant = user?.id === battle?.challenger_id || user?.id === battle?.opponent_id;
+
+  // Persist permanent win/loss once the voting window closes.
+  useEffect(() => {
+    if (!battle?.id) return;
+    if (isBattleVotingOpen(battle) && !battle.winner_id) return;
+    let cancelled = false;
+    void (async () => {
+      const recorded = await ensureBattleWinRecorded(battle, {
+        votes: votes as any[],
+        userId: user?.id,
+      });
+      if (cancelled || !recorded) return;
+      void qc.invalidateQueries({ queryKey: ["battle", battleId] });
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record"] });
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record-preview"] });
+      void qc.invalidateQueries({ queryKey: ["battles"] });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [battle, votes, user?.id, battleId, qc]);
 
   const voteMutation = useMutation({
     mutationFn: async (side: "left" | "right") => {

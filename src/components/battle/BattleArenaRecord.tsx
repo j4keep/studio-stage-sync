@@ -11,6 +11,7 @@ import {
   mediaTypeLabel,
   type BattleWinRow,
 } from "@/lib/battle-records";
+import { finalizeExpiredBattles } from "@/lib/finalize-battle-wins";
 import { formatCompact } from "@/lib/battle-ui";
 
 type Props = {
@@ -54,10 +55,12 @@ export default function BattleArenaRecord({ open, onClose }: Props) {
     enabled: open && !!userId,
   });
 
-  const { data: rows = [], isLoading } = useQuery({
+  const { data: rows = [], isLoading, refetch } = useQuery({
     queryKey: ["battle-arena-record", userId],
     queryFn: async () => {
       if (!userId) return [] as BattleWinRow[];
+      // Flush any expired battles into permanent records before reading.
+      await finalizeExpiredBattles(userId);
       const { data, error } = await (supabase as any)
         .from("battle_wins")
         .select("*")
@@ -68,6 +71,10 @@ export default function BattleArenaRecord({ open, onClose }: Props) {
     },
     enabled: open && !!userId,
   });
+
+  useEffect(() => {
+    if (open && userId) void refetch();
+  }, [open, userId, refetch]);
 
   const record = useMemo(
     () => (userId ? buildBattleArenaRecord(userId, rows) : null),

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Swords, Plus, ArrowLeft, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -12,13 +12,30 @@ import BattleCard from "@/components/BattleCard";
 import BattleArenaRecord from "@/components/battle/BattleArenaRecord";
 import { partitionBattleFeed } from "@/lib/battle-ui";
 import { buildBattleArenaRecord, type BattleWinRow } from "@/lib/battle-records";
+import { finalizeExpiredBattles } from "@/lib/finalize-battle-wins";
 
 const BattlesPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const qc = useQueryClient();
   const { requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const [showCreate, setShowCreate] = useState(false);
   const [showRecord, setShowRecord] = useState(false);
+
+  // Persist any finished battles into permanent battle_wins (Winning Street).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await finalizeExpiredBattles(user?.id);
+      if (cancelled) return;
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record-preview", user?.id] });
+      void qc.invalidateQueries({ queryKey: ["battle-arena-record", user?.id] });
+      void qc.invalidateQueries({ queryKey: ["battles"] });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [qc, user?.id]);
 
   const { data: battles = [], isLoading } = useQuery({
     queryKey: ["battles"],
