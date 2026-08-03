@@ -796,18 +796,28 @@ export default function BattleLiveStage({
     ) : null;
 
   const onStartShare = async () => {
+    if (conn !== "connected") {
+      toast.error(
+        conn === "connecting"
+          ? "Still connecting — try Share screen again in a second"
+          : "Live room not ready yet",
+      );
+      return;
+    }
     try {
       await startScreenSharePrivacy();
       toast.message("Private preview — crowd can’t see until you tap Show");
-    } catch {
-      /* cancelled / unsupported — error surfaced via hook when needed */
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Couldn’t open screen share";
+      if (/cancel/i.test(msg)) return;
+      toast.error(msg);
     }
   };
 
   const screenShareControls =
     showPublisherControls && phase === "live" ? (
       <div
-        className={`z-40 flex items-center justify-center gap-2 ${
+        className={`z-[60] flex items-center justify-center gap-2 ${
           surface === "feed"
             ? "pointer-events-auto absolute inset-x-2 bottom-2"
             : ""
@@ -818,11 +828,15 @@ export default function BattleLiveStage({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               void onStartShare();
             }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-3 py-2 text-[11px] font-black text-black shadow-lg"
+            onPointerDown={(e) => e.stopPropagation()}
+            disabled={conn !== "connected"}
+            className="inline-flex items-center gap-1.5 rounded-full bg-cyan-300 px-3 py-2 text-[11px] font-black text-black shadow-lg disabled:opacity-60"
           >
-            <MonitorUp className="h-3.5 w-3.5" /> Share screen
+            <MonitorUp className="h-3.5 w-3.5" />
+            {conn === "connecting" ? "Connecting…" : "Share screen"}
           </button>
         ) : screenSharePhase === "live" ? (
           <>
@@ -973,12 +987,20 @@ export default function BattleLiveStage({
           {phase === "live" ? (
             <button
               type="button"
-              onClick={() => void onStartShare()}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-cyan-300 px-3 text-xs font-black text-black"
+              onClick={(e) => {
+                e.stopPropagation();
+                void onStartShare();
+              }}
+              disabled={conn !== "connected"}
+              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-cyan-300 px-3 text-xs font-black text-black disabled:opacity-60"
               aria-label="Share screen"
             >
               <MonitorUp className="h-4 w-4" />
-              {screenSharePhase === "off" ? "Share screen" : "Screen…"}
+              {conn === "connecting"
+                ? "Connecting…"
+                : screenSharePhase === "off"
+                  ? "Share screen"
+                  : "Screen…"}
             </button>
           ) : null}
           {conn === "connecting" && (

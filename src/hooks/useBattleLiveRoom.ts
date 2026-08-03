@@ -3,9 +3,9 @@ import {
   Room,
   RoomEvent,
   Track,
+  LocalVideoTrack,
   createLocalVideoTrack,
   createLocalAudioTrack,
-  createLocalScreenTracks,
   type LocalTrack,
   type RemoteTrack,
   type TrackPublication,
@@ -379,44 +379,85 @@ export function useBattleLiveRoom({
 
   /**
    * Pick a screen/window/tab. Stays in privacy mode — crowd cannot see until showScreenShare().
+   * Important: getDisplayMedia must be the first await (user-gesture), or the picker never opens.
    */
   const startScreenSharePrivacy = useCallback(async () => {
-    const room = roomRef.current;
-    if (!room || !canPublish) return;
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-      setError("Screen share isn’t supported on this device. Try desktop Chrome or Edge.");
-      throw new Error("Screen share unsupported");
+    if (!canPublish) {
+      const msg = "Only battle competitors can share their screen";
+      setError(msg);
+      throw new Error(msg);
     }
+    if (!roomRef.current) {
+      const msg =
+        conn === "connecting"
+          ? "Still connecting to the live room — wait a second and try again"
+          : "Live room isn’t connected yet — wait for Live, then try Share screen again";
+      setError(msg);
+      throw new Error(msg);
+    }
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
+      const msg = "Screen share isn’t supported here. Use desktop Chrome or Edge.";
+      setError(msg);
+      throw new Error(msg);
+    }
+
+    // FIRST await — do not stop previous tracks / await anything before this.
+    let displayStream: MediaStream;
     try {
+      // Keep constraints simple so the browser picker always opens.
+      displayStream = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
+    } catch (e: unknown) {
+      const name = e instanceof DOMException ? e.name : "";
+      const msg = e instanceof Error ? e.message : "Screen share cancelled";
+      const cancelled =
+        name === "NotAllowedError" || /cancel|denied|permission|notallowed/i.test(msg);
+      if (!cancelled) setError(msg);
+      throw cancelled ? new Error("Screen share cancelled") : e;
+    }
+
+    const mediaTrack = displayStream.getVideoTracks()[0];
+    if (!mediaTrack) {
+      displayStream.getTracks().forEach((t) => t.stop());
+      const msg = "No screen video track returned";
+      setError(msg);
+      throw new Error(msg);
+    }
+
+    try {
+      // Clear any previous share only AFTER the picker succeeded.
       if (screenTrackRef.current) {
         await stopScreenShare();
       }
-      const tracks = await createLocalScreenTracks({
-        audio: false,
-        // Prefer a crisp tab/window share for articles / Google results.
-        resolution: { width: 1920, height: 1080, frameRate: 15 },
-        contentHint: "detail",
-      });
-      const video = tracks.find((t) => t.kind === Track.Kind.Video) || tracks[0];
-      if (!video) throw new Error("No screen video track");
 
-      // Stay unpublished until competitor taps “Show to crowd”.
-      video.mediaStreamTrack.addEventListener("ended", () => {
+      const video = new LocalVideoTrack(mediaTrack, undefined, true);
+      video.source = Track.Source.ScreenShare;
+      try {
+        mediaTrack.contentHint = "detail";
+      } catch {
+        /* older browsers */
+      }
+
+      mediaTrack.addEventListener("ended", () => {
         void stopScreenShare();
       });
 
       screenTrackRef.current = video;
       screenPublishedRef.current = false;
-      setLocalScreenPreview(new MediaStream([video.mediaStreamTrack]));
+      setLocalScreenPreview(new MediaStream([mediaTrack]));
       setScreenSharePhase("privacy");
       setError(null);
     } catch (e: unknown) {
+      mediaTrack.stop();
+      displayStream.getTracks().forEach((t) => t.stop());
       clearScreenShareLocal();
-      const msg = e instanceof Error ? e.message : "Screen share cancelled";
-      if (!/cancel|denied|permission/i.test(msg)) setError(msg);
+      const msg = e instanceof Error ? e.message : "Couldn’t start screen share";
+      setError(msg);
       throw e;
     }
-  }, [canPublish, clearScreenShareLocal, stopScreenShare]);
+  }, [canPublish, clearScreenShareLocal, conn, stopScreenShare]);
 
   /** Unpause — publish so the crowd can see the screen. */
   const showScreenShare = useCallback(async () => {
