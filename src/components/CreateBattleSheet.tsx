@@ -161,8 +161,8 @@ const CreateBattleSheet = ({ open, onOpenChange }: Props) => {
         toast({ title: "Cover picture required", description: "Live debates need a cover image.", variant: "destructive" });
         return;
       }
-      if (liveDurationMin < 5) {
-        toast({ title: "Debate too short", description: "Live debates need at least a few minutes.", variant: "destructive" });
+      if (liveDurationMin < 1) {
+        toast({ title: "Debate too short", description: "Pick a debate length of at least 1 minute.", variant: "destructive" });
         return;
       }
     } else {
