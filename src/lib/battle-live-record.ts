@@ -19,13 +19,25 @@ export type BattleLiveRecorder = {
 
 type VideoSource = () => HTMLVideoElement | null;
 
+function loadCover(url?: string | null): HTMLImageElement | null {
+  if (!url) return null;
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  img.decoding = "async";
+  img.src = url;
+  return img;
+}
+
 /**
  * Record left/right video elements (+ optional audio streams) into a side-by-side file.
  * Uses getters so video elements can mount after the recorder starts.
+ * Falls back to cover art when a camera frame is missing (avoids a black half).
  */
 export function startBattleLiveRecorder(opts: {
   getLeftVideo: VideoSource;
   getRightVideo: VideoSource;
+  leftCoverUrl?: string | null;
+  rightCoverUrl?: string | null;
   /** @deprecated prefer getters */
   leftVideoEl?: HTMLVideoElement | null;
   /** @deprecated prefer getters */
@@ -42,8 +54,11 @@ export function startBattleLiveRecorder(opts: {
     opts.getRightVideo ||
     (() => opts.rightVideoEl || null);
 
-  // Smaller output = reliable mobile upload through the edge proxy.
-  const W = 854;
+  const leftCover = loadCover(opts.leftCoverUrl);
+  const rightCover = loadCover(opts.rightCoverUrl);
+
+  // Portrait-pair friendly canvas (matches feed dual 3:4 tiles side-by-side ≈ 3:2).
+  const W = 720;
   const H = 480;
   const canvas = document.createElement("canvas");
   canvas.width = W;
@@ -108,8 +123,39 @@ export function startBattleLiveRecorder(opts: {
     return null;
   }
 
-  const drawCover = (
+  const drawImageFit = (
+    source: CanvasImageSource,
+    sw: number,
+    sh: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+  ) => {
+    if (!sw || !sh) return;
+    const vr = sw / sh;
+    const cr = w / h;
+    let sx = 0;
+    let sy = 0;
+    let sww = sw;
+    let shh = sh;
+    if (vr > cr) {
+      sww = sh * cr;
+      sx = (sw - sww) / 2;
+    } else {
+      shh = sw / cr;
+      sy = (sh - shh) / 2;
+    }
+    try {
+      ctx.drawImage(source, sx, sy, sww, shh, x, y, w, h);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const drawSide = (
     v: HTMLVideoElement | null,
+    cover: HTMLImageElement | null,
     x: number,
     y: number,
     w: number,
@@ -117,31 +163,19 @@ export function startBattleLiveRecorder(opts: {
   ) => {
     ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(x, y, w, h);
-    if (!v || v.readyState < 2 || !v.videoWidth) return;
-    const vr = v.videoWidth / v.videoHeight;
-    const cr = w / h;
-    let sx = 0;
-    let sy = 0;
-    let sw = v.videoWidth;
-    let sh = v.videoHeight;
-    if (vr > cr) {
-      sw = v.videoHeight * cr;
-      sx = (v.videoWidth - sw) / 2;
-    } else {
-      sh = v.videoWidth / cr;
-      sy = (v.videoHeight - sh) / 2;
+    if (v && v.readyState >= 2 && v.videoWidth > 0) {
+      drawImageFit(v, v.videoWidth, v.videoHeight, x, y, w, h);
+      return;
     }
-    try {
-      ctx.drawImage(v, sx, sy, sw, sh, x, y, w, h);
-    } catch {
-      /* ignore draw errors while track restarts */
+    if (cover && cover.complete && cover.naturalWidth > 0) {
+      drawImageFit(cover, cover.naturalWidth, cover.naturalHeight, x, y, w, h);
     }
   };
 
   let raf = 0;
   const tick = () => {
-    drawCover(getLeft(), 0, 0, W / 2, H);
-    drawCover(getRight(), W / 2, 0, W / 2, H);
+    drawSide(getLeft(), leftCover, 0, 0, W / 2, H);
+    drawSide(getRight(), rightCover, W / 2, 0, W / 2, H);
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.moveTo(W / 2, 0);
@@ -177,7 +211,6 @@ export function startBattleLiveRecorder(opts: {
         }
         recorder.onstop = finish;
         try {
-          // Flush the final chunk before stop.
           if (recorder.state === "recording") recorder.requestData();
           recorder.stop();
         } catch {

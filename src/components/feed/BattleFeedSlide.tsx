@@ -668,7 +668,11 @@ export default function BattleFeedSlide({
         }
       >
         {mediaType === "live" ? (
-          <div className="relative w-full max-w-lg">
+          <div
+            className={`relative flex w-full max-w-lg items-center justify-center ${
+              expandedSide ? "h-full" : ""
+            }`}
+          >
             {isActive ? (
               <BattleLiveStage
                 battle={battle}
@@ -676,19 +680,45 @@ export default function BattleFeedSlide({
                 rightName={rightName}
                 surface="feed"
                 compact
+                expandedSide={expandedSide}
+                onExpandSide={(side) =>
+                  setExpandedSide((prev) => (prev === side ? null : side))
+                }
               />
             ) : (
-              <div className="flex gap-2">
-                <div className="relative min-w-0 flex-1 aspect-[3/4] overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 ring-cyan-300/90">
-                  {leftCover ? (
-                    <img src={leftCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                  ) : null}
-                </div>
-                <div className="relative min-w-0 flex-1 aspect-[3/4] overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 ring-pink-400/90">
-                  {rightCover ? (
-                    <img src={rightCover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                  ) : null}
-                </div>
+              <div className="relative flex w-full items-center justify-center gap-1.5">
+                {(["left", "right"] as const).map((side) => {
+                  const cover = side === "left" ? leftCover : rightCover;
+                  const isExpanded = expandedSide === side;
+                  const isHidden = expandedSide != null && expandedSide !== side;
+                  return (
+                    <div
+                      key={side}
+                      className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 transition-all duration-300 ${
+                        side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
+                      } ${
+                        isHidden
+                          ? "hidden"
+                          : isExpanded
+                            ? "h-full w-full max-h-full max-w-lg"
+                            : "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]"
+                      }`}
+                      onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
+                      onClick={(e) => handleArtistClick(e, side)}
+                    >
+                      {cover ? (
+                        <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                      ) : null}
+                    </div>
+                  );
+                })}
+                {!expandedSide ? (
+                  <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+                    <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+                      VS
+                    </span>
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -724,7 +754,7 @@ export default function BattleFeedSlide({
       {/* Bottom chrome — same placement language as regular posts */}
       {!showComments ? (
         <>
-          <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
+          <div className="absolute right-[max(1rem,env(safe-area-inset-right))] feed-bottom-offset z-40 flex flex-col items-center gap-3.5 pb-1 pointer-events-auto">
             <button type="button" onClick={toggleLike} className="feed-action-btn">
               <Heart className={`feed-action-icon ${liked ? "fill-red-500 text-red-500" : ""}`} />
               <span className="feed-action-count">{formatCount(likesCount)}</span>
@@ -784,7 +814,7 @@ export default function BattleFeedSlide({
             </button>
           </div>
 
-          <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 max-w-[calc(100%-5.5rem)] space-y-2 pb-1 pointer-events-auto">
+          <div className="absolute left-3 right-[5.25rem] feed-bottom-offset z-40 max-w-[calc(100%-6.25rem)] space-y-2 pb-1 pointer-events-auto">
             <div>
               <p className="truncate text-[15px] font-extrabold text-white drop-shadow-lg">
                 {battle?.title || "Battle"}

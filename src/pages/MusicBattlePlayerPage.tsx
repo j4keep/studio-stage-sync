@@ -749,12 +749,21 @@ const MusicBattlePlayerPage = () => {
 
       {/* ── MAIN BATTLE AREA ── */}
       {isLiveBattle ? (
-        <div className="relative flex flex-1 flex-col px-3 pt-3">
+        <div
+          className={`relative flex flex-1 flex-col px-3 pt-3 ${
+            expandedSide ? "fixed inset-0 z-50 bg-background px-4 py-6" : ""
+          }`}
+        >
           <BattleLiveStage
             battle={battle}
             leftName={leftName}
             rightName={rightName}
             surface="battle"
+            compact
+            expandedSide={expandedSide}
+            onExpandSide={(side) =>
+              setExpandedSide((prev) => (prev === side ? null : side))
+            }
           />
         </div>
       ) : (

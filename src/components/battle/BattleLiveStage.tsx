@@ -47,10 +47,25 @@ type Props = {
   surface?: "battle" | "feed";
   /** Compact layout for feed slide */
   compact?: boolean;
+  /** Feed double-tap expand — same sides as video/photo battles. */
+  expandedSide?: "left" | "right" | null;
+  onExpandSide?: (side: "left" | "right") => void;
   className?: string;
 };
 
-function ReplayVideo({ src, compact }: { src: string; compact?: boolean }) {
+const TILE_SIZE =
+  "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]";
+const TILE_EXPANDED = "h-full w-full max-h-full max-w-lg";
+
+function ReplayVideo({
+  src,
+  className = "",
+  onActivate,
+}: {
+  src: string;
+  className?: string;
+  onActivate?: () => void;
+}) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(true);
 
@@ -74,13 +89,15 @@ function ReplayVideo({ src, compact }: { src: string; compact?: boolean }) {
       muted={muted}
       playsInline
       controls={false}
-      onClick={() => {
-        // Same as other feed posts: tap media to unlock/toggle sound — no Mute chrome on the post.
+      onClick={(e) => {
+        e.stopPropagation();
+        // Tap = sound; parent handles double-tap expand.
         forceIosAudioSessionToPlayback();
         unlockFeedAudioSession();
         setMuted((m) => !m);
+        onActivate?.();
       }}
-      className={`w-full cursor-pointer object-cover ${compact ? "aspect-[4/5] max-h-[min(52dvh,420px)]" : "aspect-video"}`}
+      className={`h-full w-full cursor-pointer object-cover ${className}`}
     />
   );
 }
@@ -125,8 +142,12 @@ export default function BattleLiveStage({
   rightName,
   surface = "feed",
   compact = false,
+  expandedSide = null,
+  onExpandSide,
   className = "",
 }: Props) {
+  const lastTapRef = useRef(0);
+  const lastTapSideRef = useRef<"left" | "right" | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -344,6 +365,8 @@ export default function BattleLiveStage({
     const rec = startBattleLiveRecorder({
       getLeftVideo: () => leftRecRef.current || leftVideoRef.current,
       getRightVideo: () => rightRecRef.current || rightVideoRef.current,
+      leftCoverUrl: battle.challenger_cover_url,
+      rightCoverUrl: battle.opponent_cover_url,
       leftAudio: streams.leftAudio,
       rightAudio: streams.rightAudio,
     });
@@ -365,6 +388,8 @@ export default function BattleLiveStage({
     streams.rightVideo,
     streams.leftAudio,
     streams.rightAudio,
+    battle.challenger_cover_url,
+    battle.opponent_cover_url,
   ]);
 
   // Stop + upload when the debate clock ends
@@ -383,24 +408,54 @@ export default function BattleLiveStage({
     return () => window.removeEventListener("pagehide", onPageHide);
   }, [isChallenger, flushReplay]);
 
+  const handleTileTap = (side: "left" | "right") => {
+    if (!onExpandSide) return;
+    const nowTs = Date.now();
+    const isDouble =
+      lastTapSideRef.current === side && nowTs - lastTapRef.current < 280;
+    lastTapRef.current = nowTs;
+    lastTapSideRef.current = side;
+    if (isDouble) onExpandSide(side);
+  };
+
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
 
+  // Replay: same height language as video/photo dual cards (not a tall landscape block).
   if (phase === "ended" && replayUrl) {
+    const expanded = !!expandedSide;
     return (
-      <div className={`relative overflow-hidden rounded-[1.35rem] bg-black ${className}`}>
-        <ReplayVideo
-          src={replayUrl}
-          compact={compact}
-        />
-        <div className="absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-          Replay
-        </div>
-        {savingReplay ? (
-          <div className="absolute bottom-3 left-3 right-3 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
-            Saving replay to the post…
+      <div className={`relative w-full ${className}`}>
+        <div
+          className={`relative mx-auto overflow-hidden rounded-[1.35rem] bg-black ring-1 ring-white/15 ${
+            expanded
+              ? TILE_EXPANDED
+              : "w-full max-w-lg aspect-[3/2] max-h-[min(52dvh,420px)]"
+          }`}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            handleTileTap(expandedSide || "left");
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onExpandSide?.(expandedSide || "left");
+          }}
+        >
+          <ReplayVideo src={replayUrl} className="absolute inset-0" />
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+            Replay
           </div>
-        ) : null}
+          {expanded ? (
+            <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
+              Double-tap to minimize
+            </div>
+          ) : null}
+          {savingReplay ? (
+            <div className="absolute bottom-3 left-3 right-3 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+              Saving replay to the post…
+            </div>
+          ) : null}
+        </div>
       </div>
     );
   }
@@ -414,11 +469,24 @@ export default function BattleLiveStage({
     isLocalSide: boolean,
   ) => {
     const showVideo = showLiveVideo && !!videoStream;
+    const isExpanded = expandedSide === side;
+    const isHidden = expandedSide != null && expandedSide !== side;
     return (
       <div
-        className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.2rem] bg-neutral-900 ring-1 ${
+        className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 transition-all duration-300 ${
           side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
-        } ${compact ? "aspect-[3/4] max-h-[min(52dvh,420px)]" : "aspect-[3/4]"}`}
+        } ${isHidden ? "hidden" : isExpanded ? TILE_EXPANDED : compact || surface === "feed" ? TILE_SIZE : "min-w-0 flex-1 aspect-[3/4]"}`}
+        onTouchEnd={(e) => {
+          if (!onExpandSide) return;
+          e.stopPropagation();
+          e.preventDefault();
+          handleTileTap(side);
+        }}
+        onDoubleClick={(e) => {
+          if (!onExpandSide) return;
+          e.stopPropagation();
+          onExpandSide(side);
+        }}
       >
         {showVideo ? (
           <StreamVideo
@@ -436,6 +504,11 @@ export default function BattleLiveStage({
           </div>
         )}
         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25" />
+        {isExpanded ? (
+          <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
+            Double-tap to minimize
+          </div>
+        ) : null}
         {surface === "battle" && isParticipant && phase === "countdown" && isLocalSide && (
           <div className="absolute left-2 top-2 z-10 rounded-full bg-amber-500/90 px-2 py-0.5 text-[10px] font-black uppercase text-black">
             Preview
@@ -449,30 +522,23 @@ export default function BattleLiveStage({
   };
 
   return (
-    <div className={`space-y-2 ${className}`}>
-      {(phase === "countdown" || phase === "waiting") && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-center">
+    <div className={`w-full ${className}`}>
+      {/* Status chips sit above tiles without stretching the media taller than video/photo. */}
+      {(phase === "countdown" || phase === "waiting") && !expandedSide && (
+        <div className="mb-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
             {phase === "waiting" ? "Waiting for opponent" : "Debate starts in"}
           </p>
           {phase === "countdown" && (
-            <p className="mt-1 font-display text-3xl font-black tabular-nums text-white">
+            <p className="mt-0.5 font-display text-2xl font-black tabular-nums text-white">
               {msToStart > 0 ? Math.ceil(msToStart / 1000) : 0}s
             </p>
-          )}
-          {surface === "battle" && isParticipant && phase === "countdown" && (
-            <p className="mt-1 text-[11px] text-white/70">
-              Check your framing — when this hits zero you go live on the post.
-            </p>
-          )}
-          {surface === "feed" && phase === "countdown" && (
-            <p className="mt-1 text-[11px] text-white/70">Cover art up — cameras open when the debate starts.</p>
           )}
         </div>
       )}
 
-      {phase === "live" && (
-        <div className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+      {phase === "live" && !expandedSide && (
+        <div className="mb-2 flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-rose-300">
             <Radio className="h-3.5 w-3.5 animate-pulse" /> Live debate
           </span>
@@ -482,8 +548,8 @@ export default function BattleLiveStage({
         </div>
       )}
 
-      {phase === "ended" && !replayUrl && (
-        <div className="rounded-2xl border border-border bg-muted/40 px-3 py-3 text-center text-xs text-muted-foreground">
+      {phase === "ended" && !replayUrl && !expandedSide && (
+        <div className="mb-2 rounded-2xl border border-border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
           {savingReplay || isRecording
             ? "Debate ended — saving replay…"
             : replayFailed
@@ -496,7 +562,11 @@ export default function BattleLiveStage({
       <video ref={leftRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
       <video ref={rightRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
 
-      <div className={`flex gap-2 ${compact ? "" : "min-h-[240px]"}`}>
+      <div
+        className={`relative flex w-full items-center justify-center gap-1.5 ${
+          expandedSide ? "h-full" : ""
+        }`}
+      >
         {tile(
           "left",
           leftName,
@@ -505,6 +575,13 @@ export default function BattleLiveStage({
           leftVideoRef,
           user?.id === battle.challenger_id,
         )}
+        {!expandedSide ? (
+          <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+            <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+              VS
+            </span>
+          </div>
+        ) : null}
         {tile(
           "right",
           rightName,
