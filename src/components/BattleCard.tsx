@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
+import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
 import {
   battleCategoryFromMedia,
   formatClockMmSs,
@@ -16,6 +17,7 @@ import {
   getBattleUiStatus,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
+import { getBattleReplayMediaUrl } from "@/lib/battle-live";
 
 interface Battle {
   id: string;
@@ -36,6 +38,8 @@ interface Battle {
   max_duration_minutes?: number;
   views?: number;
   likes_count?: number;
+  replay_media_url?: string | null;
+  battle_background?: string | null;
 }
 
 /** Compact battle card for feed / battles list — open for like/comment/vote. */
@@ -169,6 +173,8 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
   const msLeft = getBattleExpiresAt(battle).getTime() - Date.now();
   const finalMinute = isActive && !isExpired && msLeft > 0 && msLeft <= 60_000;
   const cat = battleCategoryFromMedia(battle.media_type);
+  const isLive = (battle.media_type || "").toLowerCase() === "live";
+  const liveReplayUrl = isLive ? getBattleReplayMediaUrl(battle) : null;
   const timerLabel = finalMinute
     ? formatClockMmSs(msLeft)
     : timeLeft || (msLeft > 0 ? formatCountdown(msLeft) : "Ended");
@@ -242,6 +248,20 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
           </div>
         </div>
 
+        {liveReplayUrl ? (
+          <div
+            className="relative w-full"
+            onClick={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <LiveBattleReplayPlayer
+              src={liveReplayUrl}
+              leftName={challengerName}
+              rightName={opponentName}
+              compact
+            />
+          </div>
+        ) : (
         <button
           type="button"
           onTouchEnd={handleTouchEnd}
@@ -314,6 +334,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
             </div>
           </div>
         </button>
+        )}
       </div>
 
       <div className="space-y-2.5 px-3.5 pb-3.5 pt-1">

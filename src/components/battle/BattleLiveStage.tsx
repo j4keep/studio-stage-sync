@@ -25,6 +25,7 @@ import {
   subscribeLiveRecordSession,
 } from "@/lib/battle-live-record-session";
 import { resolveMediaDuration } from "@/lib/media-duration";
+import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
 
 type BattleLike = {
   id: string;
@@ -559,80 +560,20 @@ export default function BattleLiveStage({
       );
     }
 
-    const leftTile = (
-      <div
-        className={`${TILE_SHELL} ring-cyan-300/90 ${TILE_SIZE}`}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          handleTileTap("left");
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          onExpandSide?.("left");
-        }}
-      >
-        <ReplayVideo src={replayUrl} videoRef={replayVideoRef} half="left" />
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-        <div className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
-          Replay
-        </div>
-        <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
-          <p className="text-sm font-black text-white drop-shadow">{leftName}</p>
-        </div>
-      </div>
-    );
-
-    const rightTile = (
-      <div
-        className={`${TILE_SHELL} ring-pink-400/90 ${TILE_SIZE}`}
-        onTouchEnd={(e) => {
-          e.stopPropagation();
-          handleTileTap("right");
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          onExpandSide?.("right");
-        }}
-      >
-        <ReplayHalfFollower src={replayUrl} masterRef={replayVideoRef} />
-        <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-        <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
-          <p className="text-sm font-black text-white drop-shadow">{rightName}</p>
-        </div>
-      </div>
-    );
-
-    const vsBadge = (
-      <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-        <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
-          VS
-        </span>
-      </div>
-    );
-
-    // Feed: parent BattleFeedSlide owns the flex row (same shell as photo battles).
-    if (feedEmbed) {
-      return (
-        <>
-          {leftTile}
-          {vsBadge}
-          {rightTile}
-          {savingReplay ? (
-            <div className="pointer-events-none absolute inset-x-6 bottom-2 z-30 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
-              Saving replay to the post…
-            </div>
-          ) : null}
-        </>
-      );
-    }
-
+    // Completed live → dual VS replay + transport controls (post, battle page, card).
+    // Double-tap expand still uses the full-frame path above — don't change that.
     return (
-      <div className={`relative flex w-full items-center justify-center gap-1.5 ${className}`}>
-        {leftTile}
-        {vsBadge}
-        {rightTile}
+      <div className={`w-full ${feedEmbed ? "" : className}`}>
+        <LiveBattleReplayPlayer
+          src={replayUrl}
+          leftName={leftName}
+          rightName={rightName}
+          videoRef={replayVideoRef}
+          onExpandSide={onExpandSide}
+          hideTransport={false}
+        />
         {savingReplay ? (
-          <div className="pointer-events-none absolute inset-x-6 bottom-2 z-30 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+          <div className="mt-2 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
             Saving replay to the post…
           </div>
         ) : null}

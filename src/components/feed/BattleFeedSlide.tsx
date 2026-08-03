@@ -106,8 +106,6 @@ export default function BattleFeedSlide({
   const mediaType = (battle?.media_type || "audio").toLowerCase();
   const liveReplayUrl = mediaType === "live" ? getBattleReplayMediaUrl(battle || {}) : null;
   const livePhase = mediaType === "live" ? getLiveBattlePhase(battle || {}, now) : null;
-  // Show seek whenever the debate is over (remote replay, local blob, or saving).
-  const showLiveSeek = mediaType === "live" && (livePhase === "ended" || !!liveReplayUrl);
 
   useEffect(() => {
     activeSideRef.current = activeSide;
@@ -961,14 +959,15 @@ export default function BattleFeedSlide({
               }}
             />
 
-            {mediaType !== "live" || showLiveSeek ? (
+            {/* Live completed replay owns its own scrubber/transport under the dual cards. */}
+            {mediaType !== "live" ? (
               <div
                 className="seek-area relative z-50 pt-0.5"
                 role="slider"
                 aria-valuenow={progress}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="Seek replay"
+                aria-label="Seek"
               >
                 <div
                   ref={seekTrackRef}
