@@ -40,6 +40,7 @@ import {
   getLiveBattlePhase,
 } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
+import { readMediaDuration, resolveMediaDuration } from "@/lib/media-duration";
 
 type Props = {
   battle: any;
@@ -172,12 +173,26 @@ export default function BattleFeedSlide({
   useEffect(() => {
     if (!isActive || mediaType !== "live") return;
     let raf = 0;
+    let probing = false;
     const tick = () => {
       const el = liveReplayRef.current;
       if (el && !isScrubbing) {
-        const d = el.duration || 0;
+        let d = readMediaDuration(el);
+        // MediaRecorder WebM often reports Infinity — probe once so the seek bar works.
+        if (d <= 0 && !probing && el.readyState >= 1) {
+          probing = true;
+          void resolveMediaDuration(el).then((resolved) => {
+            if (resolved > 0) {
+              setDuration(resolved);
+              const t = el.currentTime || 0;
+              setCurrentTime(t);
+              setProgress((t / resolved) * 100);
+            }
+            probing = false;
+          });
+        }
         const t = el.currentTime || 0;
-        setDuration(Number.isFinite(d) ? d : 0);
+        if (d > 0) setDuration(d);
         setCurrentTime(t);
         setProgress(d > 0 ? (t / d) * 100 : 0);
         setPlaying(!el.paused);
@@ -198,8 +213,17 @@ export default function BattleFeedSlide({
       if (!track || !el) return;
       const rect = track.getBoundingClientRect();
       const pct = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(rect.width, 1)));
-      const d = el.duration || 0;
-      if (!Number.isFinite(d) || d <= 0) return;
+      const d = readMediaDuration(el);
+      if (d <= 0) {
+        void resolveMediaDuration(el).then((resolved) => {
+          if (resolved <= 0) return;
+          el.currentTime = pct * resolved;
+          setProgress(pct * 100);
+          setCurrentTime(pct * resolved);
+          setDuration(resolved);
+        });
+        return;
+      }
       el.currentTime = pct * d;
       setProgress(pct * 100);
       setCurrentTime(pct * d);

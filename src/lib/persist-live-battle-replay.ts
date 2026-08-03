@@ -44,6 +44,7 @@ export async function persistLiveBattleReplay(opts: {
       scheduled_start_at: getBattleScheduledStartAt(battle) || meta.scheduled_start_at,
       debate_ends_at: meta.debate_ends_at || meta.expires_at || null,
       duration_min: meta.duration_min,
+      vote_window_minutes: meta.vote_window_minutes,
       replay_media_url: url,
     },
     battle.battle_background,

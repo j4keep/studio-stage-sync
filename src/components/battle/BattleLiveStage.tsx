@@ -12,13 +12,19 @@ import {
   getLiveBattleEndsAt,
   getLiveBattlePhase,
 } from "@/lib/battle-live";
-import { startBattleLiveRecorder, type BattleLiveRecorder } from "@/lib/battle-live-record";
-import { persistLiveBattleReplay } from "@/lib/persist-live-battle-replay";
 import { toast } from "sonner";
 import {
   forceIosAudioSessionToPlayback,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
+import {
+  ensureLiveBattleRecording,
+  flushLiveBattleRecording,
+  getLiveRecordSessionSnapshot,
+  isLiveBattleRecording,
+  subscribeLiveRecordSession,
+} from "@/lib/battle-live-record-session";
+import { resolveMediaDuration } from "@/lib/media-duration";
 
 type BattleLike = {
   id: string;
@@ -102,6 +108,8 @@ function ReplayVideo({
     el.loop = true;
     el.playsInline = true;
     void el.play().catch(() => undefined);
+    // MediaRecorder WebM often reports Infinity until we force a duration probe.
+    void resolveMediaDuration(el);
   }, [src, muted]);
 
   const halfClass =
@@ -250,15 +258,16 @@ export default function BattleLiveStage({
   /** Always-mounted sinks so the recorder keeps frames even after the UI switches to covers. */
   const leftRecRef = useRef<HTMLVideoElement | null>(null);
   const rightRecRef = useRef<HTMLVideoElement | null>(null);
-  const recorderRef = useRef<BattleLiveRecorder | null>(null);
-  const recordingStartedRef = useRef(false);
-  const uploadingReplayRef = useRef(false);
   const redirectedRef = useRef(false);
   const prevPhaseRef = useRef<string | null>(null);
+  const flushOnceRef = useRef(false);
   const battleRef = useRef(battle);
   battleRef.current = battle;
-  const localReplayUrlRef = useRef<string | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
+  const [recordSnap, setRecordSnap] = useState(() => getLiveRecordSessionSnapshot());
+  const isRecording = recordSnap.battleId === battle.id && recordSnap.recording;
+  const savingReplay = recordSnap.battleId === battle.id && recordSnap.saving;
+  const replayFailed = recordSnap.battleId === battle.id && recordSnap.failed;
+  const localReplayUrl = recordSnap.battleId === battle.id ? recordSnap.localUrl : null;
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 250);
@@ -276,13 +285,17 @@ export default function BattleLiveStage({
   const canPublish =
     isParticipant &&
     ((surface === "battle" && (phase === "countdown" || phase === "live")) ||
-      (surface === "feed" &&
-        (phase === "live" || (phase === "ended" && isChallenger && isRecording && !remoteReplayUrl))));
+      (phase === "live" && surface === "feed") ||
+      (phase === "ended" &&
+        isChallenger &&
+        (isRecording || savingReplay) &&
+        !remoteReplayUrl &&
+        !localReplayUrl));
   const roomEnabled =
     !!user &&
     phase !== "waiting" &&
     (phase === "ended"
-      ? surface === "feed" && isChallenger && isRecording && !remoteReplayUrl
+      ? isChallenger && (isRecording || savingReplay) && !remoteReplayUrl && !localReplayUrl
       : surface === "battle"
         ? isParticipant && (phase === "countdown" || phase === "live")
         : phase === "live");
@@ -313,10 +326,7 @@ export default function BattleLiveStage({
   });
 
   const scheduledStartAt = getBattleScheduledStartAt(battle);
-  const [localReplayUrl, setLocalReplayUrl] = useState<string | null>(null);
-  const [savingReplay, setSavingReplay] = useState(false);
-  const [replayFailed, setReplayFailed] = useState(false);
-  const replayUrl = remoteReplayUrl || localReplayUrl;
+  const replayUrl = remoteReplayUrl || localReplayUrl || recordSnap.remoteUrl;
   const startMs = scheduledStartAt ? new Date(scheduledStartAt).getTime() : null;
   const endMs = getLiveBattleEndsAt(battle).getTime();
   const msToStart = startMs != null ? Math.max(0, startMs - now) : 0;
@@ -333,7 +343,9 @@ export default function BattleLiveStage({
     void startAudio();
   }, [startAudio]);
 
-  // Feed recording sinks — stay attached for the whole live call.
+  useEffect(() => subscribeLiveRecordSession(() => setRecordSnap(getLiveRecordSessionSnapshot())), []);
+
+  // Recording sinks — stay attached for the whole live call (feed OR battle page).
   useEffect(() => {
     const bind = (el: HTMLVideoElement | null, stream: MediaStream | null) => {
       if (!el) return;
@@ -353,15 +365,6 @@ export default function BattleLiveStage({
     }, 4000);
     return () => window.clearInterval(id);
   }, [phase, remoteReplayUrl, battle.id, qc]);
-
-  useEffect(() => {
-    return () => {
-      if (localReplayUrlRef.current) {
-        URL.revokeObjectURL(localReplayUrlRef.current);
-        localReplayUrlRef.current = null;
-      }
-    };
-  }, []);
 
   // Unlock debate audio as soon as the post goes live (iOS may still require a tap).
   useEffect(() => {
@@ -396,110 +399,78 @@ export default function BattleLiveStage({
   }, [phase, surface, isParticipant, battle.id, navigate]);
 
   const flushReplay = useCallback(async () => {
-    if (uploadingReplayRef.current) return;
-    if (user?.id !== battleRef.current.challenger_id) return;
-    if (getBattleReplayMediaUrl(battleRef.current) && !localReplayUrlRef.current) return;
-    const rec = recorderRef.current;
-    if (!rec || !recordingStartedRef.current) {
-      setReplayFailed(true);
-      setSavingReplay(false);
-      return;
-    }
-
-    uploadingReplayRef.current = true;
-    setSavingReplay(true);
-    setReplayFailed(false);
-    recorderRef.current = null;
-    try {
-      const blob = await rec.stop();
-      recordingStartedRef.current = false;
-      setIsRecording(false);
-      if (!blob?.size || !user) {
-        setReplayFailed(true);
-        toast.error("Debate recording was empty — keep the post open next time");
-        return;
+    if (!user || user.id !== battleRef.current.challenger_id) return;
+    const id = battleRef.current.id;
+    const before = getLiveRecordSessionSnapshot();
+    if (before.battleId !== id) return;
+    if (before.remoteUrl) return;
+    if (before.saving) return;
+    if (!before.recording && !before.localUrl) return;
+    if (flushOnceRef.current && before.localUrl) return;
+    flushOnceRef.current = true;
+    const url = await flushLiveBattleRecording(id);
+    setRecordSnap(getLiveRecordSessionSnapshot());
+    if (url) {
+      if (!url.startsWith("blob:")) {
+        toast.success("Debate replay saved to the post");
       }
-
-      // Play immediately from the local blob while upload finishes in the background.
-      if (localReplayUrlRef.current) URL.revokeObjectURL(localReplayUrlRef.current);
-      const objectUrl = URL.createObjectURL(blob);
-      localReplayUrlRef.current = objectUrl;
-      setLocalReplayUrl(objectUrl);
-
-      let lastErr: unknown = null;
-      for (let attempt = 0; attempt < 3; attempt += 1) {
-        try {
-          const url = await persistLiveBattleReplay({
-            battle: battleRef.current,
-            userId: user.id,
-            blob,
-          });
-          if (url) {
-            toast.success("Debate replay saved to the post");
-            void qc.invalidateQueries({ queryKey: ["battle", battleRef.current.id] });
-            void qc.invalidateQueries({ queryKey: ["feed-posts"] });
-            void qc.invalidateQueries({ queryKey: ["battles"] });
-            lastErr = null;
-            break;
-          }
-        } catch (err) {
-          lastErr = err;
-          await new Promise((r) => window.setTimeout(r, 1200 * (attempt + 1)));
-        }
-      }
-      if (lastErr) {
-        setReplayFailed(true);
-        toast.error("Couldn't upload replay yet — replay is playing on this device");
-      }
-    } catch {
-      recordingStartedRef.current = false;
-      setIsRecording(false);
-      setReplayFailed(true);
+      void qc.invalidateQueries({ queryKey: ["battle", id] });
+      void qc.invalidateQueries({ queryKey: ["feed-posts"] });
+      void qc.invalidateQueries({ queryKey: ["battles"] });
+    } else if (getLiveRecordSessionSnapshot().failed) {
       toast.error("Couldn't save debate replay — keep this tab open next time");
-    } finally {
-      uploadingReplayRef.current = false;
-      setSavingReplay(false);
+      flushOnceRef.current = false;
     }
   }, [user, qc]);
 
-  // Challenger records from the public post surface (where they land when go-live).
+  // Challenger auto-records on ANY surface once live (survives feed ↔ battle navigation).
   useEffect(() => {
-    if (surface !== "feed") return;
-    if (phase !== "live" || !isChallenger) return;
-    if (recordingStartedRef.current || conn !== "connected") return;
-    if (!streams.leftVideo && !streams.rightVideo) return;
+    if (phase !== "live" || !isChallenger || !user) return;
+    if (conn !== "connected") return;
+    if (remoteReplayUrl) return;
 
-    const rec = startBattleLiveRecorder({
+    const started = ensureLiveBattleRecording({
+      battle: {
+        id: battle.id,
+        challenger_id: battle.challenger_id,
+        battle_background: battle.battle_background,
+        scheduled_start_at: battle.scheduled_start_at,
+        expires_at: battle.expires_at,
+        challenger_cover_url: battle.challenger_cover_url,
+        opponent_cover_url: battle.opponent_cover_url,
+      },
+      userId: user.id,
       getLeftVideo: () => leftRecRef.current || leftVideoRef.current,
       getRightVideo: () => rightRecRef.current || rightVideoRef.current,
-      leftCoverUrl: battle.challenger_cover_url,
-      rightCoverUrl: battle.opponent_cover_url,
       leftAudio: streams.leftAudio,
       rightAudio: streams.rightAudio,
+      leftLabel: leftName,
+      rightLabel: rightName,
     });
-    if (!rec) {
+    setRecordSnap(getLiveRecordSessionSnapshot());
+    if (!started && !isLiveBattleRecording(battle.id)) {
       toast.message("Recording unavailable on this device — debate still goes live");
-      setReplayFailed(true);
-      return;
     }
-    recorderRef.current = rec;
-    recordingStartedRef.current = true;
-    setIsRecording(true);
-    setReplayFailed(false);
   }, [
-    surface,
     phase,
     conn,
     isChallenger,
-    streams.leftVideo,
-    streams.rightVideo,
+    user,
+    remoteReplayUrl,
     streams.leftAudio,
     streams.rightAudio,
+    battle.id,
+    battle.challenger_id,
+    battle.battle_background,
+    battle.scheduled_start_at,
+    battle.expires_at,
     battle.challenger_cover_url,
     battle.opponent_cover_url,
+    leftName,
+    rightName,
   ]);
 
-  // Stop + upload when the debate clock ends
+  // Stop + upload when the debate clock ends (auto-play local blob immediately).
   useEffect(() => {
     if (phase !== "ended") return;
     void flushReplay();
@@ -509,11 +480,11 @@ export default function BattleLiveStage({
   useEffect(() => {
     if (!isChallenger) return;
     const onPageHide = () => {
-      void flushReplay();
+      void flushLiveBattleRecording(battleRef.current.id);
     };
     window.addEventListener("pagehide", onPageHide);
     return () => window.removeEventListener("pagehide", onPageHide);
-  }, [isChallenger, flushReplay]);
+  }, [isChallenger]);
 
   const handleTileTap = (side: "left" | "right") => {
     // Any tap unlocks remote debate audio (competitors + spectators).

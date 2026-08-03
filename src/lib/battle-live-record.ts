@@ -22,10 +22,33 @@ type VideoSource = () => HTMLVideoElement | null;
 function loadCover(url?: string | null): HTMLImageElement | null {
   if (!url) return null;
   const img = new Image();
+  // Anonymous so canvas captureStream stays untainted when CDN sends CORS.
   img.crossOrigin = "anonymous";
   img.decoding = "async";
+  img.referrerPolicy = "no-referrer";
   img.src = url;
   return img;
+}
+
+function drawPlaceholder(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  tint: string,
+) {
+  const g = ctx.createLinearGradient(x, y, x + w, y + h);
+  g.addColorStop(0, tint);
+  g.addColorStop(1, "#0a0a0a");
+  ctx.fillStyle = g;
+  ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = "rgba(255,255,255,0.85)";
+  ctx.font = `700 ${Math.max(28, Math.floor(w * 0.14))}px system-ui, sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText((label || "?").slice(0, 1).toUpperCase(), x + w / 2, y + h / 2);
 }
 
 /**
@@ -38,6 +61,8 @@ export function startBattleLiveRecorder(opts: {
   getRightVideo: VideoSource;
   leftCoverUrl?: string | null;
   rightCoverUrl?: string | null;
+  leftLabel?: string | null;
+  rightLabel?: string | null;
   /** @deprecated prefer getters */
   leftVideoEl?: HTMLVideoElement | null;
   /** @deprecated prefer getters */
@@ -156,6 +181,8 @@ export function startBattleLiveRecorder(opts: {
   const drawSide = (
     v: HTMLVideoElement | null,
     cover: HTMLImageElement | null,
+    label: string,
+    tint: string,
     x: number,
     y: number,
     w: number,
@@ -168,14 +195,39 @@ export function startBattleLiveRecorder(opts: {
       return;
     }
     if (cover && cover.complete && cover.naturalWidth > 0) {
-      drawImageFit(cover, cover.naturalWidth, cover.naturalHeight, x, y, w, h);
+      try {
+        drawImageFit(cover, cover.naturalWidth, cover.naturalHeight, x, y, w, h);
+        return;
+      } catch {
+        /* tainted / incomplete — fall through to placeholder */
+      }
     }
+    // Never leave a pure black half — matches Facebook "was live" cover fallback.
+    drawPlaceholder(ctx, x, y, w, h, label, tint);
   };
 
   let raf = 0;
   const tick = () => {
-    drawSide(getLeft(), leftCover, 0, 0, W / 2, H);
-    drawSide(getRight(), rightCover, W / 2, 0, W / 2, H);
+    drawSide(
+      getLeft(),
+      leftCover,
+      opts.leftLabel || "L",
+      "#0e7490",
+      0,
+      0,
+      W / 2,
+      H,
+    );
+    drawSide(
+      getRight(),
+      rightCover,
+      opts.rightLabel || "R",
+      "#9d174d",
+      W / 2,
+      0,
+      W / 2,
+      H,
+    );
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.moveTo(W / 2, 0);
