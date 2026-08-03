@@ -17,6 +17,10 @@ import {
   forceIosAudioSessionToPlayback,
   setIosAudioSessionForRecording,
 } from "@/lib/feed-video-playback";
+import {
+  canBrowserScreenShare,
+  screenShareUnsupportedReason,
+} from "@/lib/screen-share-support";
 
 export type BattleLiveConn = "idle" | "connecting" | "connected" | "error";
 
@@ -395,8 +399,8 @@ export function useBattleLiveRoom({
       setError(msg);
       throw new Error(msg);
     }
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getDisplayMedia) {
-      const msg = "Screen share isn’t supported here. Use desktop Chrome or Edge.";
+    if (!canBrowserScreenShare()) {
+      const msg = screenShareUnsupportedReason();
       setError(msg);
       throw new Error(msg);
     }
