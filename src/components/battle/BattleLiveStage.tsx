@@ -64,11 +64,14 @@ function ReplayVideo({
   src,
   className = "",
   videoRef,
+  half,
   onActivate,
 }: {
   src: string;
   className?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
+  /** Crop composite replay into a photo-sized card half. */
+  half?: "left" | "right";
   onActivate?: () => void;
 }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -93,6 +96,13 @@ function ReplayVideo({
     void el.play().catch(() => undefined);
   }, [src, muted]);
 
+  const halfClass =
+    half === "left"
+      ? "absolute inset-0 h-full w-[200%] max-w-none object-cover"
+      : half === "right"
+        ? "absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover"
+        : "absolute inset-0 h-full w-full object-cover";
+
   return (
     <video
       ref={setRefs}
@@ -110,7 +120,68 @@ function ReplayVideo({
         setMuted((m) => !m);
         onActivate?.();
       }}
-      className={`absolute inset-0 h-full w-full cursor-pointer object-cover ${className}`}
+      className={`cursor-pointer ${halfClass} ${className}`}
+    />
+  );
+}
+
+/** Right-card follower that stays in sync with the master replay (seek bar drives master). */
+function ReplayHalfFollower({
+  src,
+  masterRef,
+}: {
+  src: string;
+  masterRef?: React.RefObject<HTMLVideoElement | null>;
+}) {
+  const ref = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const slave = ref.current;
+    if (!slave) return;
+    slave.muted = true;
+    slave.loop = true;
+    slave.playsInline = true;
+    void slave.play().catch(() => undefined);
+
+    const sync = () => {
+      const master = masterRef?.current;
+      if (!master || !slave) return;
+      if (Math.abs(slave.currentTime - master.currentTime) > 0.3) {
+        try {
+          slave.currentTime = master.currentTime;
+        } catch {
+          /* ignore */
+        }
+      }
+      if (master.paused && !slave.paused) slave.pause();
+      if (!master.paused && slave.paused) void slave.play().catch(() => undefined);
+    };
+
+    const master = masterRef?.current;
+    master?.addEventListener("timeupdate", sync);
+    master?.addEventListener("seeked", sync);
+    master?.addEventListener("play", sync);
+    master?.addEventListener("pause", sync);
+    const id = window.setInterval(sync, 500);
+    return () => {
+      master?.removeEventListener("timeupdate", sync);
+      master?.removeEventListener("seeked", sync);
+      master?.removeEventListener("play", sync);
+      master?.removeEventListener("pause", sync);
+      window.clearInterval(id);
+    };
+  }, [src, masterRef]);
+
+  return (
+    <video
+      ref={ref}
+      src={src}
+      autoPlay
+      loop
+      muted
+      playsInline
+      controls={false}
+      className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover"
     />
   );
 }
@@ -435,46 +506,90 @@ export default function BattleLiveStage({
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
 
-  // Replay uses the same expand window classes as photo/audio competitor cards.
+  // Replay: same dual 3:4 cards as photo battles (not one tall full-width card).
   if (phase === "ended" && replayUrl) {
     const expanded = !!expandedSide;
-    return (
-      <div
-        className={`relative flex w-full items-center justify-center ${
-          expanded ? "h-full" : ""
-        } ${className}`}
-      >
-        <div
-          className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 transition-all duration-300 ${
-            expanded
-              ? TILE_EXPANDED
-              : "w-full aspect-[3/4] max-h-[min(52dvh,420px)]"
-          }`}
-          onTouchEnd={(e) => {
-            e.stopPropagation();
-            handleTileTap(expandedSide || "left");
-          }}
-          onDoubleClick={(e) => {
-            e.stopPropagation();
-            onExpandSide?.(expandedSide || "left");
-          }}
-        >
-          <ReplayVideo src={replayUrl} videoRef={replayVideoRef} />
-          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-          <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
-            Replay
-          </div>
-          {expanded ? (
+    if (expanded) {
+      return (
+        <div className={`relative flex h-full w-full items-center justify-center ${className}`}>
+          <div
+            className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 transition-all duration-300 ${TILE_EXPANDED}`}
+            onTouchEnd={(e) => {
+              e.stopPropagation();
+              handleTileTap(expandedSide || "left");
+            }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              onExpandSide?.(expandedSide || "left");
+            }}
+          >
+            <ReplayVideo src={replayUrl} videoRef={replayVideoRef} />
+            <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+            <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+              Replay
+            </div>
             <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
               Double-tap to minimize
             </div>
-          ) : null}
-          {savingReplay ? (
-            <div className="absolute bottom-3 left-3 right-3 z-10 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
-              Saving replay to the post…
-            </div>
-          ) : null}
+          </div>
         </div>
+      );
+    }
+
+    return (
+      <div className={`relative flex w-full items-center justify-center gap-1.5 ${className}`}>
+        <div
+          className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-cyan-300/90 transition-all duration-300 ${TILE_SIZE}`}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            handleTileTap("left");
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onExpandSide?.("left");
+          }}
+        >
+          {/* Left half of the composite — exact same card size as photo battles */}
+          <ReplayVideo src={replayUrl} videoRef={replayVideoRef} half="left" />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+          <div className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+            Replay
+          </div>
+          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
+            <p className="text-sm font-black text-white drop-shadow">{leftName}</p>
+          </div>
+        </div>
+
+        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+          <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+            VS
+          </span>
+        </div>
+
+        <div
+          className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-pink-400/90 transition-all duration-300 ${TILE_SIZE}`}
+          onTouchEnd={(e) => {
+            e.stopPropagation();
+            handleTileTap("right");
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            onExpandSide?.("right");
+          }}
+        >
+          {/* Right half of the same composite (synced by shared src + time from master) */}
+          <ReplayHalfFollower src={replayUrl} masterRef={replayVideoRef} />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
+            <p className="text-sm font-black text-white drop-shadow">{rightName}</p>
+          </div>
+        </div>
+
+        {savingReplay ? (
+          <div className="pointer-events-none absolute inset-x-6 bottom-2 z-30 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+            Saving replay to the post…
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -548,10 +663,13 @@ export default function BattleLiveStage({
     );
   };
 
+  // On the feed, status copy already lives in the bottom chrome — don't stack banners
+  // above the cards (that made live taller than photo and hit the heart icon).
+  const showStatusBanner = surface !== "feed";
+
   return (
     <div className={`w-full ${className}`}>
-      {/* Status chips sit above tiles without stretching the media taller than video/photo. */}
-      {(phase === "countdown" || phase === "waiting") && !expandedSide && (
+      {showStatusBanner && (phase === "countdown" || phase === "waiting") && !expandedSide && (
         <div className="mb-2 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.14em] text-amber-200">
             {phase === "waiting" ? "Waiting for opponent" : "Debate starts in"}
@@ -564,7 +682,7 @@ export default function BattleLiveStage({
         </div>
       )}
 
-      {phase === "live" && !expandedSide && (
+      {showStatusBanner && phase === "live" && !expandedSide && (
         <div className="mb-2 flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 px-3 py-1.5">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-rose-300">
             <Radio className="h-3.5 w-3.5 animate-pulse" /> Live debate
@@ -575,7 +693,7 @@ export default function BattleLiveStage({
         </div>
       )}
 
-      {phase === "ended" && !replayUrl && !expandedSide && (
+      {showStatusBanner && phase === "ended" && !replayUrl && !expandedSide && (
         <div className="mb-2 rounded-2xl border border-border bg-muted/40 px-3 py-2 text-center text-xs text-muted-foreground">
           {savingReplay || isRecording
             ? "Debate ended — saving replay…"
@@ -635,7 +753,7 @@ export default function BattleLiveStage({
         />
       )}
 
-      {/* Spectators only — never show mute/audio chrome on the host's post view. */}
+      {/* Spectators only — overlay so it doesn't stretch the card stack taller than photo. */}
       {phase === "live" && surface === "feed" && !canPublish && (soundBlocked || !soundOn) && (
         <button
           type="button"
@@ -646,7 +764,7 @@ export default function BattleLiveStage({
             setSoundBlocked(false);
             void startAudio();
           }}
-          className="mx-auto flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black shadow-lg"
+          className="absolute bottom-3 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-black text-black shadow-lg"
         >
           <Mic className="h-3.5 w-3.5" /> Tap for debate audio
         </button>
