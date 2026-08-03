@@ -502,57 +502,69 @@ export default function BattleLiveStage({
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
 
-  // Replay: dual photo-sized cards (never one full-width 3:4 — that hits the heart icons).
+  // Replay: dual photo-sized cards; expand = that person's half only (not the full composite).
   if (phase === "ended" && replayUrl) {
     const expanded = !!expandedSide;
     const feedEmbed = surface === "feed";
+    const side = expandedSide || "left";
     if (expanded) {
       return (
         <div
           className={
             feedEmbed
-              ? `${TILE_SHELL} ring-white/15 ${TILE_EXPANDED} ${className}`
+              ? `${TILE_SHELL} ${side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"} ${TILE_EXPANDED} ${className}`
               : `relative flex h-full w-full items-center justify-center ${className}`
           }
           onTouchEnd={(e) => {
             e.stopPropagation();
-            handleTileTap(expandedSide || "left");
+            handleTileTap(side);
           }}
           onDoubleClick={(e) => {
             e.stopPropagation();
-            onExpandSide?.(expandedSide || "left");
+            onExpandSide?.(side);
           }}
         >
           {feedEmbed ? (
             <>
-              <ReplayVideo src={replayUrl} videoRef={replayVideoRef} />
+              {/* Crop composite to the tapped competitor only — same portrait window as photo expand. */}
+              <ReplayVideo src={replayUrl} videoRef={replayVideoRef} half={side} />
               <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
               <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
                 Replay
               </div>
               <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
                 Double-tap to minimize
+              </div>
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+                <p className="text-sm font-black text-white drop-shadow">
+                  {side === "left" ? leftName : rightName}
+                </p>
               </div>
             </>
           ) : (
             <div
-              className={`${TILE_SHELL} ring-white/15 ${TILE_EXPANDED}`}
+              className={`${TILE_SHELL} ${side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"} ${TILE_EXPANDED}`}
               onTouchEnd={(e) => {
                 e.stopPropagation();
-                handleTileTap(expandedSide || "left");
+                handleTileTap(side);
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                onExpandSide?.(expandedSide || "left");
+                onExpandSide?.(side);
               }}
             >
-              <ReplayVideo src={replayUrl} videoRef={replayVideoRef} />
+              <ReplayVideo src={replayUrl} videoRef={replayVideoRef} half={side} />
               <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
               <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
                 Replay
               </div>
               <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
                 Double-tap to minimize
+              </div>
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+                <p className="text-sm font-black text-white drop-shadow">
+                  {side === "left" ? leftName : rightName}
+                </p>
               </div>
             </div>
           )}
@@ -560,8 +572,7 @@ export default function BattleLiveStage({
       );
     }
 
-    // Completed live → dual VS replay + transport controls (post, battle page, card).
-    // Double-tap expand still uses the full-frame path above — don't change that.
+    // Collapsed: dual VS cards. Feed uses bottom post seek; battle page/card get a clean bar.
     return (
       <div className={`w-full ${feedEmbed ? "" : className}`}>
         <LiveBattleReplayPlayer
@@ -570,7 +581,7 @@ export default function BattleLiveStage({
           rightName={rightName}
           videoRef={replayVideoRef}
           onExpandSide={onExpandSide}
-          hideTransport={false}
+          hideProgress={feedEmbed}
         />
         {savingReplay ? (
           <div className="mt-2 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">

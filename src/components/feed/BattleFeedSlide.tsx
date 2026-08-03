@@ -106,6 +106,8 @@ export default function BattleFeedSlide({
   const mediaType = (battle?.media_type || "audio").toLowerCase();
   const liveReplayUrl = mediaType === "live" ? getBattleReplayMediaUrl(battle || {}) : null;
   const livePhase = mediaType === "live" ? getLiveBattlePhase(battle || {}, now) : null;
+  // Bottom seek like regular posts — only once the live debate has a replay / ended.
+  const showLiveSeek = mediaType === "live" && (livePhase === "ended" || !!liveReplayUrl);
 
   useEffect(() => {
     activeSideRef.current = activeSide;
@@ -959,15 +961,15 @@ export default function BattleFeedSlide({
               }}
             />
 
-            {/* Live completed replay owns its own scrubber/transport under the dual cards. */}
-            {mediaType !== "live" ? (
+            {/* Same bottom progress bar placement as regular posts (incl. live replay). */}
+            {mediaType !== "live" || showLiveSeek ? (
               <div
                 className="seek-area relative z-50 pt-0.5"
                 role="slider"
                 aria-valuenow={progress}
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-label="Seek"
+                aria-label={mediaType === "live" ? "Seek replay" : "Seek"}
               >
                 <div
                   ref={seekTrackRef}
