@@ -14,13 +14,32 @@ export function readMediaDuration(el: HTMLMediaElement | null | undefined): numb
   return 0;
 }
 
+type ResolveOpts = {
+  /**
+   * Force the Infinity→finite probe even while playing.
+   * Default false: never seek an actively playing element (causes feed glitches).
+   */
+  force?: boolean;
+};
+
 /**
  * Force WebM/MediaRecorder files to compute a finite duration by seeking near the end.
- * Returns a promise that resolves with the duration (or 0).
+ * Preserves playback position and will not interrupt an in-progress play unless `force`.
  */
-export function resolveMediaDuration(el: HTMLMediaElement): Promise<number> {
+export function resolveMediaDuration(
+  el: HTMLMediaElement,
+  opts: ResolveOpts = {},
+): Promise<number> {
   const existing = readMediaDuration(el);
   if (existing > 0) return Promise.resolve(existing);
+
+  // Playing with unknown duration — don't yank the playhead; caller can retry later.
+  if (!opts.force && !el.paused && (el.currentTime || 0) > 0.05) {
+    return Promise.resolve(0);
+  }
+
+  const savedTime = Number.isFinite(el.currentTime) ? el.currentTime : 0;
+  const wasPlaying = !el.paused;
 
   return new Promise((resolve) => {
     let done = false;
@@ -31,9 +50,14 @@ export function resolveMediaDuration(el: HTMLMediaElement): Promise<number> {
       el.removeEventListener("loadedmetadata", onMeta);
       const d = readMediaDuration(el);
       try {
-        if (el.currentTime > 0.25) el.currentTime = 0;
+        if (Math.abs((el.currentTime || 0) - savedTime) > 0.05) {
+          el.currentTime = savedTime;
+        }
       } catch {
         /* ignore */
+      }
+      if (wasPlaying) {
+        void el.play().catch(() => undefined);
       }
       resolve(d);
     };

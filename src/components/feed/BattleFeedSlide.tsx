@@ -44,6 +44,10 @@ import {
 } from "@/lib/battle-live";
 import { incrementBattleViews } from "@/hooks/use-likes";
 import { readMediaDuration, resolveMediaDuration } from "@/lib/media-duration";
+import {
+  forceIosAudioSessionToPlayback,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 
 type Props = {
   battle: any;
@@ -173,17 +177,17 @@ export default function BattleFeedSlide({
     [mediaType],
   );
 
-  // Live replay progress (same clock as audio/video battles).
+  // Live replay progress — throttled (not every animation frame) to cut feed jank.
   useEffect(() => {
     if (!isActive || mediaType !== "live") return;
-    let raf = 0;
+    let timer = 0;
     let probing = false;
     const tick = () => {
       const el = liveReplayRef.current;
       if (el && !isScrubbing) {
         let d = readMediaDuration(el);
-        // MediaRecorder WebM often reports Infinity — probe once so the seek bar works.
-        if (d <= 0 && !probing && el.readyState >= 1) {
+        // Probe only when paused / just loaded — never seek mid-play (glitches iOS).
+        if (d <= 0 && !probing && el.readyState >= 1 && (el.paused || el.currentTime < 0.05)) {
           probing = true;
           void resolveMediaDuration(el).then((resolved) => {
             if (resolved > 0) {
@@ -201,11 +205,30 @@ export default function BattleFeedSlide({
         setProgress(d > 0 ? (t / d) * 100 : 0);
         setPlaying(!el.paused);
       }
-      raf = window.requestAnimationFrame(tick);
+      timer = window.setTimeout(tick, 125);
     };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
+    timer = window.setTimeout(tick, 125);
+    return () => window.clearTimeout(timer);
   }, [isActive, mediaType, isScrubbing, liveReplayUrl]);
+
+  // Resume live replay after leaving the app / locking the phone.
+  useEffect(() => {
+    if (!isActive || mediaType !== "live") return;
+    const resume = () => {
+      if (document.visibilityState !== "visible") return;
+      const el = liveReplayRef.current;
+      if (!el) return;
+      forceIosAudioSessionToPlayback();
+      unlockFeedAudioSession();
+      if (el.paused) void el.play().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("pageshow", resume);
+    return () => {
+      document.removeEventListener("visibilitychange", resume);
+      window.removeEventListener("pageshow", resume);
+    };
+  }, [isActive, mediaType, liveReplayUrl]);
 
   const scrubToClientX = useCallback(
     (clientX: number) => {
@@ -258,14 +281,18 @@ export default function BattleFeedSlide({
           mediaType === "live"
             ? liveReplayRef.current
             : mediaEl(activeSideRef.current);
-        if (el && el.paused) void el.play().catch(() => undefined);
+        // Resume only if the post was playing before scrub — don't force play when paused.
+        if (el && el.paused && playing) {
+          forceIosAudioSessionToPlayback();
+          void el.play().catch(() => undefined);
+        }
       };
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onEnd);
       window.addEventListener("touchmove", onMove, { passive: false });
       window.addEventListener("touchend", onEnd);
     },
-    [mediaEl, mediaType, scrubToClientX],
+    [mediaEl, mediaType, scrubToClientX, playing],
   );
 
   const playSide = useCallback(
@@ -417,24 +444,24 @@ export default function BattleFeedSlide({
     battle?.id,
   ]);
 
-  // Progress for the active side.
+  // Progress for the active side (throttled — rAF setState was janking phones).
   useEffect(() => {
-    if (!isActive) return;
-    let raf = 0;
+    if (!isActive || mediaType === "live") return;
+    let timer = 0;
     const tick = () => {
       const el = mediaEl(activeSideRef.current);
       if (el) {
-        const d = el.duration || 0;
+        const d = readMediaDuration(el) || el.duration || 0;
         const t = el.currentTime || 0;
         setDuration(d);
         setCurrentTime(t);
         setProgress(d > 0 ? (t / d) * 100 : 0);
       }
-      raf = window.requestAnimationFrame(tick);
+      timer = window.setTimeout(tick, 125);
     };
-    raf = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(raf);
-  }, [isActive, mediaEl, activeSide, playing]);
+    timer = window.setTimeout(tick, 125);
+    return () => window.clearTimeout(timer);
+  }, [isActive, mediaEl, activeSide, playing, mediaType]);
 
   useEffect(() => {
     if (isActive) return;

@@ -5,6 +5,7 @@ import BattleFeedSlide from "./BattleFeedSlide";
 import {
   getFeedMountRadius,
   forceIosAudioSessionToPlayback,
+  rearmFeedAudioAfterForeground,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
 
@@ -48,6 +49,18 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   }, [startIndex]);
 
   useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") rearmFeedAudioAfterForeground();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pageshow", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pageshow", onVis);
+    };
+  }, []);
+
+  useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     let rafId = 0;
@@ -58,8 +71,13 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
         rafId = 0;
         const h = el.clientHeight;
         if (h <= 0) return;
-        const next = Math.min(items.length - 1, Math.max(0, Math.round(el.scrollTop / h)));
-        setCurrentIndex((prev) => (prev === next ? prev : next));
+        // Hysteresis: don't flip the active card at the exact halfway point —
+        // bounce remounts were tearing down video/audio mid-play on phones.
+        const raw = el.scrollTop / h;
+        setCurrentIndex((prev) => {
+          if (Math.abs(raw - prev) < 0.58) return prev;
+          return Math.min(items.length - 1, Math.max(0, Math.round(raw)));
+        });
       });
     };
     el.addEventListener("scroll", sync, { passive: true });

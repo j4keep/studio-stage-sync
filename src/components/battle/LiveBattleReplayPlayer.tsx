@@ -34,9 +34,9 @@ const fmt = (s: number) => {
 };
 
 /**
- * Completed live-debate replay: dual VS cards.
- * Tap = play/pause. Double-tap a side = expand that side only.
- * Progress bar is either here (battle page/card) or the feed bottom chrome.
+ * Completed live-debate replay: dual VS cards from ONE decoder.
+ * Left tile = video (left half crop). Right tile = canvas copy of right half
+ * (avoids dual decode + hard seek sync that stuttered on phones).
  */
 export default function LiveBattleReplayPlayer({
   src,
@@ -50,13 +50,17 @@ export default function LiveBattleReplayPlayer({
   winnerSide = null,
 }: Props) {
   const masterRef = useRef<HTMLVideoElement | null>(null);
-  const slaveRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const lastTapRef = useRef(0);
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
+  const durationProbedRef = useRef(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
+  /** Fallback second <video> only if canvas paint is blocked (rare CORS). */
+  const [canvasOk, setCanvasOk] = useState(true);
+  const slaveRef = useRef<HTMLVideoElement | null>(null);
 
   const setMaster = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -75,34 +79,112 @@ export default function LiveBattleReplayPlayer({
     else master.pause();
   }, []);
 
+  // Boot master + optional duration probe (never while already mid-play).
   useEffect(() => {
     const master = masterRef.current;
-    const slave = slaveRef.current;
     if (!master) return;
+    durationProbedRef.current = false;
     forceIosAudioSessionToPlayback();
     master.playsInline = true;
     master.loop = true;
     master.muted = false;
-    if (slave) {
-      slave.muted = true;
-      slave.playsInline = true;
-      slave.loop = true;
-      void slave.play().catch(() => undefined);
-    }
     void master.play().catch(() => undefined);
-    void resolveMediaDuration(master).then((d) => {
-      if (d > 0) setDuration(d);
-    });
+
+    const tryProbe = () => {
+      if (durationProbedRef.current) return;
+      const d = readMediaDuration(master);
+      if (d > 0) {
+        durationProbedRef.current = true;
+        setDuration(d);
+        return;
+      }
+      if (!master.paused && master.currentTime > 0.2) return;
+      durationProbedRef.current = true;
+      void resolveMediaDuration(master).then((resolved) => {
+        if (resolved > 0) setDuration(resolved);
+        else durationProbedRef.current = false;
+      });
+    };
+
+    master.addEventListener("loadedmetadata", tryProbe);
+    master.addEventListener("durationchange", tryProbe);
+    tryProbe();
+    return () => {
+      master.removeEventListener("loadedmetadata", tryProbe);
+      master.removeEventListener("durationchange", tryProbe);
+    };
   }, [src]);
 
+  // Resume after background / tab hide (iOS pauses media and often won't restart).
   useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const master = masterRef.current;
+      if (!master) return;
+      forceIosAudioSessionToPlayback();
+      if (master.paused) void master.play().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pageshow", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pageshow", onVis);
+    };
+  }, [src]);
+
+  // Paint right half from the single decoded video (no second decoder).
+  useEffect(() => {
+    if (!canvasOk) return;
+    const master = masterRef.current;
+    const canvas = canvasRef.current;
+    if (!master || !canvas) return;
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) {
+      setCanvasOk(false);
+      return;
+    }
+
+    let raf = 0;
+    let failed = 0;
+    const draw = () => {
+      const w = master.videoWidth;
+      const h = master.videoHeight;
+      if (w > 1 && h > 1) {
+        const half = Math.floor(w / 2);
+        if (canvas.width !== half || canvas.height !== h) {
+          canvas.width = half;
+          canvas.height = h;
+        }
+        try {
+          ctx.drawImage(master, half, 0, half, h, 0, 0, half, h);
+          failed = 0;
+        } catch {
+          failed += 1;
+          if (failed > 30) {
+            setCanvasOk(false);
+            return;
+          }
+        }
+      }
+      raf = window.requestAnimationFrame(draw);
+    };
+    raf = window.requestAnimationFrame(draw);
+    return () => window.cancelAnimationFrame(raf);
+  }, [src, canvasOk]);
+
+  // Soft fallback slave sync — only when canvas can't paint; drift threshold is large.
+  useEffect(() => {
+    if (canvasOk) return;
     const master = masterRef.current;
     const slave = slaveRef.current;
-    if (!master) return;
+    if (!master || !slave) return;
+    slave.muted = true;
+    slave.playsInline = true;
+    slave.loop = true;
+    void slave.play().catch(() => undefined);
 
-    const syncSlave = () => {
-      if (!slave) return;
-      if (Math.abs(slave.currentTime - master.currentTime) > 0.25) {
+    const sync = () => {
+      if (Math.abs(slave.currentTime - master.currentTime) > 1.25) {
         try {
           slave.currentTime = master.currentTime;
         } catch {
@@ -112,29 +194,33 @@ export default function LiveBattleReplayPlayer({
       if (master.paused && !slave.paused) slave.pause();
       if (!master.paused && slave.paused) void slave.play().catch(() => undefined);
     };
-
-    const onTick = () => {
-      if (!scrubbing) {
-        const d = readMediaDuration(master);
-        const t = master.currentTime || 0;
-        if (d > 0) setDuration(d);
-        setCurrent(t);
-      }
-      syncSlave();
-    };
-
-    master.addEventListener("timeupdate", onTick);
-    master.addEventListener("play", onTick);
-    master.addEventListener("pause", onTick);
-    master.addEventListener("seeked", syncSlave);
-    const id = window.setInterval(onTick, 250);
+    master.addEventListener("seeked", sync);
+    master.addEventListener("play", sync);
+    master.addEventListener("pause", sync);
+    const id = window.setInterval(sync, 1000);
     return () => {
-      master.removeEventListener("timeupdate", onTick);
-      master.removeEventListener("play", onTick);
-      master.removeEventListener("pause", onTick);
-      master.removeEventListener("seeked", syncSlave);
+      master.removeEventListener("seeked", sync);
+      master.removeEventListener("play", sync);
+      master.removeEventListener("pause", sync);
       window.clearInterval(id);
     };
+  }, [src, canvasOk]);
+
+  // Throttled progress (~8fps) — avoid rAF React churn on the feed.
+  useEffect(() => {
+    const master = masterRef.current;
+    if (!master) return;
+    let id = 0;
+    const tick = () => {
+      if (!scrubbing) {
+        const d = readMediaDuration(master);
+        if (d > 0) setDuration(d);
+        setCurrent(master.currentTime || 0);
+      }
+      id = window.setTimeout(tick, 125);
+    };
+    id = window.setTimeout(tick, 125);
+    return () => window.clearTimeout(id);
   }, [src, scrubbing]);
 
   const seekTo = (pct: number) => {
@@ -142,7 +228,7 @@ export default function LiveBattleReplayPlayer({
     if (!master) return;
     const d = readMediaDuration(master) || duration;
     if (d <= 0) {
-      void resolveMediaDuration(master).then((resolved) => {
+      void resolveMediaDuration(master, { force: true }).then((resolved) => {
         if (resolved <= 0) return;
         master.currentTime = pct * resolved;
         setDuration(resolved);
@@ -153,7 +239,7 @@ export default function LiveBattleReplayPlayer({
     master.currentTime = pct * d;
     setCurrent(pct * d);
     setDuration(d);
-    if (slaveRef.current) {
+    if (!canvasOk && slaveRef.current) {
       try {
         slaveRef.current.currentTime = pct * d;
       } catch {
@@ -171,9 +257,10 @@ export default function LiveBattleReplayPlayer({
 
     const onMove = (ev: MouseEvent | TouchEvent) => {
       const x = "touches" in ev ? ev.touches[0]?.clientX : ev.clientX;
-      if (typeof x !== "number") return;
-      const r = track.getBoundingClientRect();
-      seekTo(Math.max(0, Math.min(1, (x - r.left) / Math.max(r.width, 1))));
+      if (typeof x === "number") {
+        const r = track.getBoundingClientRect();
+        seekTo(Math.max(0, Math.min(1, (x - r.left) / Math.max(r.width, 1))));
+      }
     };
     const onEnd = () => {
       setScrubbing(false);
@@ -216,6 +303,7 @@ export default function LiveBattleReplayPlayer({
             autoPlay
             loop
             playsInline
+            preload="auto"
             className="absolute inset-0 h-full w-[200%] max-w-none object-cover"
             onClick={(e) => {
               e.stopPropagation();
@@ -242,20 +330,28 @@ export default function LiveBattleReplayPlayer({
 
         <div
           className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-pink-400/90 ${tileH}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCardTap("right");
+          }}
         >
-          <video
-            ref={slaveRef}
-            src={src}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardTap("right");
-            }}
-          />
+          {canvasOk ? (
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <video
+              ref={slaveRef}
+              src={src}
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="metadata"
+              className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover pointer-events-none"
+            />
+          )}
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
           <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
             <p className="text-sm font-black text-white drop-shadow">{rightName}</p>

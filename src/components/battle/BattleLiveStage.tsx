@@ -114,9 +114,27 @@ function ReplayVideo({
     el.loop = true;
     el.playsInline = true;
     void el.play().catch(() => undefined);
-    // MediaRecorder WebM often reports Infinity until we force a duration probe.
-    void resolveMediaDuration(el);
+    // Only probe when not mid-play — seeking during playback glitches phones.
+    if (el.paused || el.currentTime < 0.05) {
+      void resolveMediaDuration(el);
+    }
   }, [src, muted]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const el = localRef.current;
+      if (!el) return;
+      forceIosAudioSessionToPlayback();
+      if (el.paused) void el.play().catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pageshow", onVis);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pageshow", onVis);
+    };
+  }, [src]);
 
   const halfClass =
     half === "left"

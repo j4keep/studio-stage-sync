@@ -86,6 +86,14 @@ export function unlockFeedAudioSession() {
   window.dispatchEvent(new Event("feed-audio-unlocked"));
 }
 
+/** After backgrounding, keep the session unlocked but re-assert playback routing. */
+export function rearmFeedAudioAfterForeground() {
+  forceIosAudioSessionToPlayback();
+  if (feedAudioSessionUnlocked) {
+    window.dispatchEvent(new Event("feed-audio-unlocked"));
+  }
+}
+
 let gestureUnlockAttached = false;
 
 /** One shared listener so any tap on the feed unlocks audio for the active video. */

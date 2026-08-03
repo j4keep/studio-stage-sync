@@ -945,12 +945,8 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       musicAudioRef.current?.pause();
 
       try {
-        const nextTime = Math.min(
-          Number.isFinite(v.duration) && v.duration > 0 ? Math.max(0, v.duration - 0.05) : v.currentTime + 0.034,
-          Math.max(0, v.currentTime + 0.034),
-        );
-        // Soft nudge only — avoid pause()/play() which stalls iOS video while audio restarts.
-        v.currentTime = nextTime;
+        // Tiny forward nudge only — never jump near the end (that caused audio cuts).
+        v.currentTime = Math.max(0, (v.currentTime || 0) + 0.04);
       } catch {
         /* ignore */
       }
@@ -1020,18 +1016,25 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     if (post.media_type !== "video") return;
     const video = videoRef.current;
     if (!video) return;
-    const showCoverDuringDecoderStall = () => {
+    let stallTimer: number | null = null;
+    const onStallSignal = () => {
       if (!isActiveRef.current || mediaFailed) return;
-      setVideoFrameReady(false);
-      scheduleVideoPaintRecovery(video);
+      // Debounce — brief "waiting" blips are normal and were flashing the cover / seeking.
+      if (stallTimer != null) return;
+      stallTimer = window.setTimeout(() => {
+        stallTimer = null;
+        const v = videoRef.current;
+        if (!v || !isActiveRef.current || mediaFailed) return;
+        if (v.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA && !v.paused) return;
+        scheduleVideoPaintRecovery(v);
+      }, 900);
     };
-    video.addEventListener("waiting", showCoverDuringDecoderStall);
-    video.addEventListener("stalled", showCoverDuringDecoderStall);
-    video.addEventListener("emptied", showCoverDuringDecoderStall);
+    video.addEventListener("waiting", onStallSignal);
+    video.addEventListener("stalled", onStallSignal);
     return () => {
-      video.removeEventListener("waiting", showCoverDuringDecoderStall);
-      video.removeEventListener("stalled", showCoverDuringDecoderStall);
-      video.removeEventListener("emptied", showCoverDuringDecoderStall);
+      if (stallTimer != null) window.clearTimeout(stallTimer);
+      video.removeEventListener("waiting", onStallSignal);
+      video.removeEventListener("stalled", onStallSignal);
     };
   }, [post.media_type, mediaFailed, scheduleVideoPaintRecovery]);
 
