@@ -44,7 +44,7 @@ function mediaKey(mediaType?: string | null): string {
   return "audio";
 }
 
-/** Chronological competitive record for one fighter from permanent battle_wins rows. */
+/** Chronological competitive record for one competitor from permanent battle_wins rows. */
 export function buildBattleArenaRecord(
   userId: string,
   rows: BattleWinRow[],
