@@ -190,6 +190,8 @@ export function defaultLiveStartLocal(): string {
 
 /** Creator presets for when voting closes (not free-form). */
 export const BATTLE_VOTE_WINDOW_PRESETS = [
+  /** Temporary testing preset — remove later. */
+  { minutes: 2, label: "Practice", emoji: "🧪", blurb: "2 minutes · testing only" },
   { minutes: 15, label: "Flash Battle", emoji: "⚡", blurb: "15 minutes" },
   { minutes: 60, label: "Quick Battle", emoji: "🔥", blurb: "1 hour" },
   { minutes: 360, label: "Daily Challenge", emoji: "🌙", blurb: "6 hours" },

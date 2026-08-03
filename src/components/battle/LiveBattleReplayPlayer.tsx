@@ -4,6 +4,7 @@ import {
   forceIosAudioSessionToPlayback,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
+import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 
 type Props = {
   src: string;
@@ -21,6 +22,8 @@ type Props = {
   compact?: boolean;
   /** Double-tap a side to expand that person only. */
   onExpandSide?: (side: "left" | "right") => void;
+  /** Election-style check on the winner after voting closes. */
+  winnerSide?: "left" | "right" | null;
 };
 
 const fmt = (s: number) => {
@@ -44,6 +47,7 @@ export default function LiveBattleReplayPlayer({
   className = "",
   compact = false,
   onExpandSide,
+  winnerSide = null,
 }: Props) {
   const masterRef = useRef<HTMLVideoElement | null>(null);
   const slaveRef = useRef<HTMLVideoElement | null>(null);
@@ -222,9 +226,12 @@ export default function LiveBattleReplayPlayer({
           <div className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
             Replay
           </div>
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
+          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
             <p className="text-sm font-black text-white drop-shadow">{leftName}</p>
           </div>
+          {winnerSide === "left" ? (
+            <BattleWinnerCheckBadge size={compact ? "sm" : "md"} />
+          ) : null}
         </div>
 
         <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
@@ -250,9 +257,12 @@ export default function LiveBattleReplayPlayer({
             }}
           />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5">
+          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
             <p className="text-sm font-black text-white drop-shadow">{rightName}</p>
           </div>
+          {winnerSide === "right" ? (
+            <BattleWinnerCheckBadge size={compact ? "sm" : "md"} />
+          ) : null}
         </div>
       </div>
 

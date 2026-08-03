@@ -17,6 +17,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
+import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 import BattleLiveStage, {
   BATTLE_FEED_TILE,
   BATTLE_FEED_TILE_EXPANDED,
@@ -30,6 +31,7 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  getBattleWinnerSide,
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
@@ -525,6 +527,7 @@ export default function BattleFeedSlide({
   const msLeft = getBattleExpiresAt(battle || {}).getTime() - now;
   const votingOpen = isBattleVotingOpen(battle || {});
   const tally = tallyBattleVotes(votes as any[], battle?.challenger_id, battle?.opponent_id);
+  const winnerSide = getBattleWinnerSide(battle || {}, tally, votingOpen);
   // Gate votes only on the 24h window — debate call ending must not lock the bar.
   const leftVoteGate = canUserVoteForSide(uid, battle?.challenger_id, {
     ended: !votingOpen,
@@ -731,7 +734,7 @@ export default function BattleFeedSlide({
         ) : null}
 
         {!showComments ? (
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 text-left">
+          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%] text-left">
             <button
               type="button"
               className="pointer-events-auto flex items-center gap-1.5"
@@ -757,6 +760,10 @@ export default function BattleFeedSlide({
               </div>
             </button>
           </div>
+        ) : null}
+
+        {winnerSide === side ? (
+          <BattleWinnerCheckBadge size={isExpanded ? "lg" : "md"} />
         ) : null}
       </div>
     );
@@ -796,6 +803,7 @@ export default function BattleFeedSlide({
               compact
               expandedSide={expandedSide}
               replayVideoRef={liveReplayRef}
+              winnerSide={winnerSide}
               className={expandedSide ? BATTLE_FEED_TILE_EXPANDED : ""}
               onExpandSide={(side) =>
                 setExpandedSide((prev) => (prev === side ? null : side))
@@ -824,6 +832,9 @@ export default function BattleFeedSlide({
                   >
                     {cover ? (
                       <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : null}
+                    {winnerSide === side ? (
+                      <BattleWinnerCheckBadge size={isExpanded ? "lg" : "md"} />
                     ) : null}
                   </div>
                 );

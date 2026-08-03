@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
+import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
 import {
   battleCategoryFromMedia,
@@ -15,6 +16,8 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  getBattleWinnerSide,
+  isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
 import { getBattleReplayMediaUrl } from "@/lib/battle-live";
@@ -117,6 +120,8 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
     refetchInterval: isActive && !isExpired ? 8000 : false,
   });
   const tally = tallyBattleVotes(votes as any[], battle.challenger_id, battle.opponent_id);
+  const votingOpen = isBattleVotingOpen(battle);
+  const winnerSide = getBattleWinnerSide(battle, tally, votingOpen);
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
@@ -259,6 +264,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
               leftName={challengerName}
               rightName={opponentName}
               compact
+              winnerSide={winnerSide}
             />
           </div>
         ) : (
@@ -287,6 +293,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
               >
                 {(battle.challenger_title || "READY").split(" ")[0]}
               </p>
+              {winnerSide === "left" ? <BattleWinnerCheckBadge size="sm" /> : null}
             </div>
 
             <div className="relative z-20 flex items-center justify-center self-center">
@@ -331,6 +338,7 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
                   {battle.opponent_title.split(" ")[0]}
                 </p>
               ) : null}
+              {winnerSide === "right" ? <BattleWinnerCheckBadge size="sm" /> : null}
             </div>
           </div>
         </button>

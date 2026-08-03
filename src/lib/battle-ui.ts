@@ -256,6 +256,29 @@ export function tallyBattleVotes(
   return { leftVotes, rightVotes, total, leftPct, rightPct, winner, countable };
 }
 
+/**
+ * Which side shows the election-style winner check after voting closes.
+ * Prefers persisted winner_id; falls back to live tally so the badge appears
+ * even before the declare-winners job runs.
+ */
+export function getBattleWinnerSide(
+  battle: {
+    winner_id?: string | null;
+    challenger_id?: string | null;
+    opponent_id?: string | null;
+  },
+  tally: Pick<BattleVoteTally, "winner">,
+  votingOpen: boolean,
+): "left" | "right" | null {
+  if (votingOpen) return null;
+  if (battle.winner_id) {
+    if (battle.challenger_id && battle.winner_id === battle.challenger_id) return "left";
+    if (battle.opponent_id && battle.winner_id === battle.opponent_id) return "right";
+  }
+  if (tally.winner === "left" || tally.winner === "right") return tally.winner;
+  return null;
+}
+
 /** Participants may vote for the other side only — never themselves. */
 export function canUserVoteForSide(
   userId: string | null | undefined,

@@ -19,6 +19,7 @@ import BattleCategoryChip from "@/components/battle/BattleCategoryChip";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleCrowdReaction from "@/components/battle/BattleCrowdReaction";
 import BattleWinnerCelebration from "@/components/battle/BattleWinnerCelebration";
+import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 import BattleVsMark from "@/components/battle/BattleVsMark";
 import BattleLiveStage from "@/components/battle/BattleLiveStage";
 import { PhotoBattleSongTrimSheet } from "@/components/battle/PhotoBattleSongTrimSheet";
@@ -38,6 +39,7 @@ import {
   formatCountdown,
   getBattleExpiresAt,
   getBattleUiStatus,
+  getBattleWinnerSide,
   isBattleVotingOpen,
   tallyBattleVotes,
 } from "@/lib/battle-ui";
@@ -667,6 +669,8 @@ const MusicBattlePlayerPage = () => {
   const leftName = leftProfile.display_name || "Artist A";
   const rightName = rightProfile.display_name || "Artist B";
   const showWinnerCard = ended && total > 0;
+  const votingOpen = isBattleVotingOpen(battle);
+  const winnerSide = getBattleWinnerSide(battle, voteTally, votingOpen);
   const momentum = computeVoteMomentum(
     audienceVotes,
     battle.challenger_id,
@@ -765,6 +769,7 @@ const MusicBattlePlayerPage = () => {
             surface="battle"
             compact
             expandedSide={expandedSide}
+            winnerSide={winnerSide}
             onExpandSide={(side) =>
               setExpandedSide((prev) => (prev === side ? null : side))
             }
@@ -853,10 +858,13 @@ const MusicBattlePlayerPage = () => {
             {battleId && <BattleEffectsOverlay battleId={battleId} side="left" isExpanded={expandedSide === "left"} />}
             {battleId && <BattleLiveComments battleId={battleId} isExpanded={expandedSide === "left"} />}
 
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3">
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3 pr-[48%]">
               <p className="truncate text-sm font-black text-white">{leftProfile.display_name || "Artist A"}</p>
               <p className="truncate text-[10px] text-white/60">{battle.challenger_title || "Track"}</p>
             </div>
+            {winnerSide === "left" ? (
+              <BattleWinnerCheckBadge size={expandedSide === "left" ? "lg" : "md"} />
+            ) : null}
           </div>
 
           {/* VS between the two competitor screens */}
@@ -989,10 +997,13 @@ const MusicBattlePlayerPage = () => {
             {battleId && <BattleEffectsOverlay battleId={battleId} side="right" isExpanded={expandedSide === "right"} />}
             {battleId && <BattleLiveComments battleId={battleId} isExpanded={expandedSide === "right"} />}
 
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3">
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-30 rounded-b-2xl bg-gradient-to-t from-black/85 to-transparent p-3 pr-[48%]">
               <p className="truncate text-sm font-black text-white">{rightProfile.display_name || "Artist B"}</p>
               <p className="truncate text-[10px] text-white/60">{battle.opponent_title || "Waiting..."}</p>
             </div>
+            {winnerSide === "right" ? (
+              <BattleWinnerCheckBadge size={expandedSide === "right" ? "lg" : "md"} />
+            ) : null}
           </div>
         </div>
 

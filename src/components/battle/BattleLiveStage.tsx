@@ -26,6 +26,7 @@ import {
 } from "@/lib/battle-live-record-session";
 import { resolveMediaDuration } from "@/lib/media-duration";
 import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
+import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 
 type BattleLike = {
   id: string;
@@ -59,6 +60,8 @@ type Props = {
   onExpandSide?: (side: "left" | "right") => void;
   /** Lets the feed chrome drive seek/progress for the replay. */
   replayVideoRef?: React.RefObject<HTMLVideoElement | null>;
+  /** Election-style check after voting closes — sticks on replay too. */
+  winnerSide?: "left" | "right" | null;
   className?: string;
 };
 
@@ -246,6 +249,7 @@ export default function BattleLiveStage({
   expandedSide = null,
   onExpandSide,
   replayVideoRef,
+  winnerSide = null,
   className = "",
 }: Props) {
   const lastTapRef = useRef(0);
@@ -535,11 +539,12 @@ export default function BattleLiveStage({
               <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
                 Double-tap to minimize
               </div>
-              <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3 pr-[42%]">
                 <p className="text-sm font-black text-white drop-shadow">
                   {side === "left" ? leftName : rightName}
                 </p>
               </div>
+              {winnerSide === side ? <BattleWinnerCheckBadge size="lg" /> : null}
             </>
           ) : (
             <div
@@ -561,11 +566,12 @@ export default function BattleLiveStage({
               <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
                 Double-tap to minimize
               </div>
-              <div className="absolute inset-x-0 bottom-0 z-10 p-3">
+              <div className="absolute inset-x-0 bottom-0 z-10 p-3 pr-[42%]">
                 <p className="text-sm font-black text-white drop-shadow">
                   {side === "left" ? leftName : rightName}
                 </p>
               </div>
+              {winnerSide === side ? <BattleWinnerCheckBadge size="lg" /> : null}
             </div>
           )}
         </div>
@@ -582,6 +588,7 @@ export default function BattleLiveStage({
           videoRef={replayVideoRef}
           onExpandSide={onExpandSide}
           hideProgress={feedEmbed}
+          winnerSide={winnerSide}
         />
         {savingReplay ? (
           <div className="mt-2 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
