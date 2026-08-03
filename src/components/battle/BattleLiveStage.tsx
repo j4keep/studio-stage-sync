@@ -50,27 +50,42 @@ type Props = {
   /** Feed double-tap expand — same sides as video/photo battles. */
   expandedSide?: "left" | "right" | null;
   onExpandSide?: (side: "left" | "right") => void;
+  /** Lets the feed chrome drive seek/progress for the replay. */
+  replayVideoRef?: React.RefObject<HTMLVideoElement | null>;
   className?: string;
 };
 
 const TILE_SIZE =
   "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]";
-const TILE_EXPANDED = "h-full w-full max-h-full max-w-lg";
+const TILE_EXPANDED =
+  "relative h-full min-h-[min(62dvh,560px)] w-full max-w-none";
 
 function ReplayVideo({
   src,
   className = "",
+  videoRef,
+  expanded,
   onActivate,
 }: {
   src: string;
   className?: string;
+  videoRef?: React.RefObject<HTMLVideoElement | null>;
+  expanded?: boolean;
   onActivate?: () => void;
 }) {
-  const ref = useRef<HTMLVideoElement | null>(null);
+  const localRef = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(true);
 
+  const setRefs = useCallback(
+    (el: HTMLVideoElement | null) => {
+      localRef.current = el;
+      if (videoRef) (videoRef as React.MutableRefObject<HTMLVideoElement | null>).current = el;
+    },
+    [videoRef],
+  );
+
   useEffect(() => {
-    const el = ref.current;
+    const el = localRef.current;
     if (!el) return;
     forceIosAudioSessionToPlayback();
     el.muted = muted;
@@ -82,7 +97,7 @@ function ReplayVideo({
 
   return (
     <video
-      ref={ref}
+      ref={setRefs}
       src={src}
       autoPlay
       loop
@@ -97,7 +112,9 @@ function ReplayVideo({
         setMuted((m) => !m);
         onActivate?.();
       }}
-      className={`h-full w-full cursor-pointer object-cover ${className}`}
+      className={`h-full w-full cursor-pointer bg-black ${
+        expanded ? "object-contain" : "object-cover"
+      } ${className}`}
     />
   );
 }
@@ -144,6 +161,7 @@ export default function BattleLiveStage({
   compact = false,
   expandedSide = null,
   onExpandSide,
+  replayVideoRef,
   className = "",
 }: Props) {
   const lastTapRef = useRef(0);
@@ -425,7 +443,7 @@ export default function BattleLiveStage({
   if (phase === "ended" && replayUrl) {
     const expanded = !!expandedSide;
     return (
-      <div className={`relative w-full ${className}`}>
+      <div className={`relative mx-auto w-full ${expanded ? "flex h-full min-h-0 flex-col" : ""} ${className}`}>
         <div
           className={`relative mx-auto overflow-hidden rounded-[1.35rem] bg-black ring-1 ring-white/15 ${
             expanded
@@ -441,8 +459,13 @@ export default function BattleLiveStage({
             onExpandSide?.(expandedSide || "left");
           }}
         >
-          <ReplayVideo src={replayUrl} className="absolute inset-0" />
-          <div className="pointer-events-none absolute left-3 top-3 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
+          <ReplayVideo
+            src={replayUrl}
+            videoRef={replayVideoRef}
+            expanded={expanded}
+            className="absolute inset-0"
+          />
+          <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
             Replay
           </div>
           {expanded ? (
@@ -451,7 +474,7 @@ export default function BattleLiveStage({
             </div>
           ) : null}
           {savingReplay ? (
-            <div className="absolute bottom-3 left-3 right-3 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
+            <div className="absolute bottom-3 left-3 right-3 z-10 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">
               Saving replay to the post…
             </div>
           ) : null}
@@ -475,7 +498,15 @@ export default function BattleLiveStage({
       <div
         className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 transition-all duration-300 ${
           side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
-        } ${isHidden ? "hidden" : isExpanded ? TILE_EXPANDED : compact || surface === "feed" ? TILE_SIZE : "min-w-0 flex-1 aspect-[3/4]"}`}
+        } ${
+          isHidden
+            ? "hidden"
+            : isExpanded
+              ? TILE_EXPANDED
+              : compact || surface === "feed"
+                ? TILE_SIZE
+                : "min-w-0 flex-1 aspect-[3/4]"
+        }`}
         onTouchEnd={(e) => {
           if (!onExpandSide) return;
           e.stopPropagation();

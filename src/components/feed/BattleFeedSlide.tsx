@@ -79,6 +79,7 @@ export default function BattleFeedSlide({
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [now, setNow] = useState(Date.now());
 
   const rootRef = useRef<HTMLDivElement | null>(null);
@@ -86,6 +87,8 @@ export default function BattleFeedSlide({
   const audioRightRef = useRef<HTMLAudioElement | null>(null);
   const videoLeftRef = useRef<HTMLVideoElement | null>(null);
   const videoRightRef = useRef<HTMLVideoElement | null>(null);
+  const liveReplayRef = useRef<HTMLVideoElement | null>(null);
+  const seekTrackRef = useRef<HTMLDivElement | null>(null);
   const commentsEndRef = useRef<HTMLDivElement | null>(null);
   const viewedRef = useRef(false);
   const activeSideRef = useRef<"left" | "right">("left");
@@ -96,6 +99,9 @@ export default function BattleFeedSlide({
   const touchHandledRef = useRef(false);
 
   const mediaType = (battle?.media_type || "audio").toLowerCase();
+  const liveReplayUrl = mediaType === "live" ? getBattleReplayMediaUrl(battle || {}) : null;
+  const livePhase = mediaType === "live" ? getLiveBattlePhase(battle || {}, now) : null;
+  const showLiveSeek = mediaType === "live" && (!!liveReplayUrl || livePhase === "ended");
 
   useEffect(() => {
     activeSideRef.current = activeSide;
@@ -149,12 +155,85 @@ export default function BattleFeedSlide({
 
   const mediaEl = useCallback(
     (side: "left" | "right") => {
+      if (mediaType === "live") return liveReplayRef.current;
       if (mediaType === "video") {
         return side === "left" ? videoLeftRef.current : videoRightRef.current;
       }
       return side === "left" ? audioLeftRef.current : audioRightRef.current;
     },
     [mediaType],
+  );
+
+  // Live replay progress (same clock as audio/video battles).
+  useEffect(() => {
+    if (!isActive || mediaType !== "live") return;
+    let raf = 0;
+    const tick = () => {
+      const el = liveReplayRef.current;
+      if (el && !isScrubbing) {
+        const d = el.duration || 0;
+        const t = el.currentTime || 0;
+        setDuration(Number.isFinite(d) ? d : 0);
+        setCurrentTime(t);
+        setProgress(d > 0 ? (t / d) * 100 : 0);
+        setPlaying(!el.paused);
+      }
+      raf = window.requestAnimationFrame(tick);
+    };
+    raf = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(raf);
+  }, [isActive, mediaType, isScrubbing, liveReplayUrl]);
+
+  const scrubToClientX = useCallback(
+    (clientX: number) => {
+      const track = seekTrackRef.current;
+      const el =
+        mediaType === "live"
+          ? liveReplayRef.current
+          : mediaEl(activeSideRef.current);
+      if (!track || !el) return;
+      const rect = track.getBoundingClientRect();
+      const pct = Math.max(0, Math.min(1, (clientX - rect.left) / Math.max(rect.width, 1)));
+      const d = el.duration || 0;
+      if (!Number.isFinite(d) || d <= 0) return;
+      el.currentTime = pct * d;
+      setProgress(pct * 100);
+      setCurrentTime(pct * d);
+      setDuration(d);
+    },
+    [mediaEl, mediaType],
+  );
+
+  const handleScrubStart = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      setIsScrubbing(true);
+      const clientX = "touches" in e ? e.touches[0]?.clientX : e.clientX;
+      if (typeof clientX === "number") scrubToClientX(clientX);
+
+      const onMove = (ev: MouseEvent | TouchEvent) => {
+        const x = "touches" in ev ? ev.touches[0]?.clientX : ev.clientX;
+        if (typeof x === "number") scrubToClientX(x);
+      };
+      const onEnd = () => {
+        setIsScrubbing(false);
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onEnd);
+        window.removeEventListener("touchmove", onMove);
+        window.removeEventListener("touchend", onEnd);
+        const el =
+          mediaType === "live"
+            ? liveReplayRef.current
+            : mediaEl(activeSideRef.current);
+        if (el && el.paused) void el.play().catch(() => undefined);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onEnd);
+      window.addEventListener("touchmove", onMove, { passive: false });
+      window.addEventListener("touchend", onEnd);
+    },
+    [mediaEl, mediaType, scrubToClientX],
   );
 
   const playSide = useCallback(
@@ -669,8 +748,8 @@ export default function BattleFeedSlide({
       >
         {mediaType === "live" ? (
           <div
-            className={`relative flex w-full max-w-lg items-center justify-center ${
-              expandedSide ? "h-full" : ""
+            className={`relative flex w-full items-center justify-center ${
+              expandedSide ? "h-full max-w-none" : "max-w-lg"
             }`}
           >
             {isActive ? (
@@ -681,6 +760,8 @@ export default function BattleFeedSlide({
                 surface="feed"
                 compact
                 expandedSide={expandedSide}
+                replayVideoRef={liveReplayRef}
+                className={expandedSide ? "h-full w-full" : "w-full"}
                 onExpandSide={(side) =>
                   setExpandedSide((prev) => (prev === side ? null : side))
                 }
@@ -850,16 +931,36 @@ export default function BattleFeedSlide({
               }}
             />
 
-            {mediaType !== "live" ? (
-              <div className="seek-area pt-0.5" role="slider" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
-                <div className="relative h-[2px] w-full rounded-full bg-white/20">
+            {mediaType !== "live" || showLiveSeek ? (
+              <div
+                className="seek-area relative z-50 pt-0.5"
+                role="slider"
+                aria-valuenow={progress}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Seek replay"
+              >
+                <div
+                  ref={seekTrackRef}
+                  className="relative h-[3px] w-full cursor-pointer touch-none rounded-full bg-white/20"
+                  onMouseDown={handleScrubStart}
+                  onTouchStart={handleScrubStart}
+                >
                   <div
                     className="absolute left-0 top-0 h-full rounded-full bg-white pointer-events-none"
                     style={{
                       width: `${progress}%`,
-                      transition: playing ? "width 100ms linear" : "none",
+                      transition: isScrubbing || !playing ? "none" : "width 100ms linear",
                     }}
                   />
+                  {(isScrubbing || progress > 0) && (
+                    <div
+                      className={`absolute top-1/2 -translate-y-1/2 rounded-full bg-white pointer-events-none shadow ${
+                        isScrubbing ? "h-2.5 w-2.5" : "h-1.5 w-1.5 opacity-90"
+                      }`}
+                      style={{ left: `calc(${progress}% - ${isScrubbing ? 5 : 3}px)` }}
+                    />
+                  )}
                 </div>
                 <div className="mt-1 flex justify-between font-mono text-[9px] text-white/45">
                   <span>{fmt(currentTime)}</span>
