@@ -106,7 +106,8 @@ export default function BattleFeedSlide({
   const mediaType = (battle?.media_type || "audio").toLowerCase();
   const liveReplayUrl = mediaType === "live" ? getBattleReplayMediaUrl(battle || {}) : null;
   const livePhase = mediaType === "live" ? getLiveBattlePhase(battle || {}, now) : null;
-  const showLiveSeek = mediaType === "live" && (!!liveReplayUrl || livePhase === "ended");
+  // Show seek whenever the debate is over (remote replay, local blob, or saving).
+  const showLiveSeek = mediaType === "live" && (livePhase === "ended" || !!liveReplayUrl);
 
   useEffect(() => {
     activeSideRef.current = activeSide;
