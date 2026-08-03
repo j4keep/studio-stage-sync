@@ -748,8 +748,8 @@ export default function BattleFeedSlide({
       >
         {mediaType === "live" ? (
           <div
-            className={`relative flex w-full items-center justify-center ${
-              expandedSide ? "h-full max-w-none" : "max-w-lg"
+            className={`relative flex w-full max-w-lg items-center justify-center ${
+              expandedSide ? "h-full" : ""
             }`}
           >
             {isActive ? (

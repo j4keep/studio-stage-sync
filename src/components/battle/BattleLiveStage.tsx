@@ -55,22 +55,20 @@ type Props = {
   className?: string;
 };
 
+/** Match BattleFeedSlide photo/audio/video card sizing exactly. */
 const TILE_SIZE =
   "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]";
-const TILE_EXPANDED =
-  "relative h-full min-h-[min(62dvh,560px)] w-full max-w-none";
+const TILE_EXPANDED = "h-full w-full max-h-full max-w-lg";
 
 function ReplayVideo({
   src,
   className = "",
   videoRef,
-  expanded,
   onActivate,
 }: {
   src: string;
   className?: string;
   videoRef?: React.RefObject<HTMLVideoElement | null>;
-  expanded?: boolean;
   onActivate?: () => void;
 }) {
   const localRef = useRef<HTMLVideoElement | null>(null);
@@ -112,9 +110,7 @@ function ReplayVideo({
         setMuted((m) => !m);
         onActivate?.();
       }}
-      className={`h-full w-full cursor-pointer bg-black ${
-        expanded ? "object-contain" : "object-cover"
-      } ${className}`}
+      className={`absolute inset-0 h-full w-full cursor-pointer object-cover ${className}`}
     />
   );
 }
@@ -439,16 +435,20 @@ export default function BattleLiveStage({
   const leftCover = battle.challenger_cover_url;
   const rightCover = battle.opponent_cover_url;
 
-  // Replay: same height language as video/photo dual cards (not a tall landscape block).
+  // Replay uses the same expand window classes as photo/audio competitor cards.
   if (phase === "ended" && replayUrl) {
     const expanded = !!expandedSide;
     return (
-      <div className={`relative mx-auto w-full ${expanded ? "flex h-full min-h-0 flex-col" : ""} ${className}`}>
+      <div
+        className={`relative flex w-full items-center justify-center ${
+          expanded ? "h-full" : ""
+        } ${className}`}
+      >
         <div
-          className={`relative mx-auto overflow-hidden rounded-[1.35rem] bg-black ring-1 ring-white/15 ${
+          className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 transition-all duration-300 ${
             expanded
               ? TILE_EXPANDED
-              : "w-full max-w-lg aspect-[3/2] max-h-[min(52dvh,420px)]"
+              : "w-full aspect-[3/4] max-h-[min(52dvh,420px)]"
           }`}
           onTouchEnd={(e) => {
             e.stopPropagation();
@@ -459,12 +459,8 @@ export default function BattleLiveStage({
             onExpandSide?.(expandedSide || "left");
           }}
         >
-          <ReplayVideo
-            src={replayUrl}
-            videoRef={replayVideoRef}
-            expanded={expanded}
-            className="absolute inset-0"
-          />
+          <ReplayVideo src={replayUrl} videoRef={replayVideoRef} />
+          <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
           <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">
             Replay
           </div>
