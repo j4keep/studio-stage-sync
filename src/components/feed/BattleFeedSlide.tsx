@@ -17,7 +17,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Input } from "@/components/ui/input";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
-import BattleLiveStage from "@/components/battle/BattleLiveStage";
+import BattleLiveStage, {
+  BATTLE_FEED_TILE,
+  BATTLE_FEED_TILE_EXPANDED,
+} from "@/components/battle/BattleLiveStage";
 import { MOBILE_COMMENTS_VIDEO_HEIGHT } from "@/components/feed/PostCommentsSheet";
 import {
   canUserVoteForSide,
@@ -639,10 +642,10 @@ export default function BattleFeedSlide({
           isHidden
             ? "hidden"
             : isExpanded
-              ? "h-full w-full max-h-full max-w-lg"
+              ? BATTLE_FEED_TILE_EXPANDED
               : showComments
                 ? "min-w-0 flex-1 aspect-[3/4] max-h-full"
-                : "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]"
+                : BATTLE_FEED_TILE
         }`}
       >
         <button
@@ -746,80 +749,75 @@ export default function BattleFeedSlide({
                 }
         }
       >
-        {mediaType === "live" ? (
-          <div
-            className={`relative flex w-full max-w-lg items-center justify-center ${
-              expandedSide ? "h-full" : ""
-            }`}
-          >
-            {isActive ? (
-              <BattleLiveStage
-                battle={battle}
-                leftName={leftName}
-                rightName={rightName}
-                surface="feed"
-                compact
-                expandedSide={expandedSide}
-                replayVideoRef={liveReplayRef}
-                className={expandedSide ? "h-full w-full" : "w-full"}
-                onExpandSide={(side) =>
-                  setExpandedSide((prev) => (prev === side ? null : side))
-                }
-              />
-            ) : (
-              <div className="relative flex w-full items-center justify-center gap-1.5">
-                {(["left", "right"] as const).map((side) => {
-                  const cover = side === "left" ? leftCover : rightCover;
-                  const isExpanded = expandedSide === side;
-                  const isHidden = expandedSide != null && expandedSide !== side;
-                  return (
-                    <div
-                      key={side}
-                      className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 ring-1 transition-all duration-300 ${
-                        side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
-                      } ${
-                        isHidden
-                          ? "hidden"
-                          : isExpanded
-                            ? "h-full w-full max-h-full max-w-lg"
-                            : "min-w-0 flex-1 aspect-[3/4] max-h-[min(52dvh,420px)]"
-                      }`}
-                      onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
-                      onClick={(e) => handleArtistClick(e, side)}
-                    >
-                      {cover ? (
-                        <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
-                      ) : null}
-                    </div>
-                  );
-                })}
-                {!expandedSide ? (
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-                    <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
-                      VS
-                    </span>
-                  </div>
-                ) : null}
-              </div>
-            )}
-          </div>
-        ) : (
+        {/* One shared flex shell for photo/audio/video AND live — same card size. */}
         <div
           className={`relative flex w-full max-w-lg items-center justify-center gap-1.5 ${
             expandedSide ? "h-full" : ""
           }`}
         >
-          {renderCompetitor("left")}
-          {!expandedSide ? (
-            <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-              <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
-                VS
-              </span>
-            </div>
-          ) : null}
-          {renderCompetitor("right")}
+          {mediaType === "live" && isActive ? (
+            <BattleLiveStage
+              battle={battle}
+              leftName={leftName}
+              rightName={rightName}
+              surface="feed"
+              compact
+              expandedSide={expandedSide}
+              replayVideoRef={liveReplayRef}
+              className={expandedSide ? BATTLE_FEED_TILE_EXPANDED : ""}
+              onExpandSide={(side) =>
+                setExpandedSide((prev) => (prev === side ? null : side))
+              }
+            />
+          ) : mediaType === "live" ? (
+            <>
+              {(["left", "right"] as const).map((side) => {
+                const cover = side === "left" ? leftCover : rightCover;
+                const isExpanded = expandedSide === side;
+                const isHidden = expandedSide != null && expandedSide !== side;
+                return (
+                  <div
+                    key={side}
+                    className={`relative overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 transition-all duration-300 ${
+                      side === "left" ? "ring-cyan-300/90" : "ring-pink-400/90"
+                    } ${
+                      isHidden
+                        ? "hidden"
+                        : isExpanded
+                          ? BATTLE_FEED_TILE_EXPANDED
+                          : BATTLE_FEED_TILE
+                    }`}
+                    onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
+                    onClick={(e) => handleArtistClick(e, side)}
+                  >
+                    {cover ? (
+                      <img src={cover} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                );
+              })}
+              {!expandedSide ? (
+                <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+                  <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+                    VS
+                  </span>
+                </div>
+              ) : null}
+            </>
+          ) : (
+            <>
+              {renderCompetitor("left")}
+              {!expandedSide ? (
+                <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
+                  <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+                    VS
+                  </span>
+                </div>
+              ) : null}
+              {renderCompetitor("right")}
+            </>
+          )}
         </div>
-        )}
       </div>
 
       {/* Minimal top status (no play button) */}
