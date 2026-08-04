@@ -23,11 +23,11 @@ type Props = {
   className?: string;
   /** Card list / battles page — slightly tighter. */
   compact?: boolean;
-  /** Double-tap a side to expand that person only. */
+  /** Double-tap a side to expand that person only (kept for API compat). */
   onExpandSide?: (side: "left" | "right") => void;
   /** Election-style check on the winner after voting closes. */
   winnerSide?: "left" | "right" | null;
-  /** Feed posts: play once then advance. Battle page can keep looping. */
+  /** Feed posts: play once. Battle page can keep looping. */
   loop?: boolean;
   onEnded?: () => void;
 };
@@ -40,8 +40,9 @@ const fmt = (s: number) => {
 };
 
 /**
- * Completed live-debate replay: dual VS cards.
- * Soft sync only (no hard seeks every frame) — keeps phones swipeable.
+ * Zoom/FaceTime-style replay of a recorded live debate.
+ * ONE decoder plays the side-by-side recording — same idea as watching a Zoom cloud recording.
+ * Dual same-src <video> elements were freezing picture while the progress bar still moved.
  */
 export default function LiveBattleReplayPlayer({
   src,
@@ -51,16 +52,12 @@ export default function LiveBattleReplayPlayer({
   hideProgress = false,
   className = "",
   compact = false,
-  onExpandSide,
   winnerSide = null,
   loop = true,
   onEnded,
 }: Props) {
   const masterRef = useRef<HTMLVideoElement | null>(null);
-  const slaveRef = useRef<HTMLVideoElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
-  const lastTapRef = useRef(0);
-  const lastTapSideRef = useRef<"left" | "right" | null>(null);
   const durationProbedRef = useRef(false);
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
@@ -68,6 +65,7 @@ export default function LiveBattleReplayPlayer({
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
+  const [playing, setPlaying] = useState(false);
 
   const setMaster = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -82,13 +80,17 @@ export default function LiveBattleReplayPlayer({
     if (!master) return;
     forceIosAudioSessionToPlayback();
     void unlockFeedAudioSession();
-    if (master.paused) void master.play().catch(() => undefined);
-    else master.pause();
-  }, []);
+    if (master.paused) {
+      armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
+      void master.play().then(() => setPlaying(true)).catch(() => undefined);
+    } else {
+      master.pause();
+      setPlaying(false);
+    }
+  }, [leftName, rightName]);
 
   useEffect(() => {
     const master = masterRef.current;
-    const slave = slaveRef.current;
     if (!master) return;
     durationProbedRef.current = false;
     endedSentRef.current = false;
@@ -97,26 +99,22 @@ export default function LiveBattleReplayPlayer({
     master.playsInline = true;
     master.loop = loop;
     master.preload = "auto";
-    if (slave) {
-      applyFeedVideoAudio(slave, { muted: true });
-      slave.playsInline = true;
-      slave.loop = loop;
-      slave.preload = "auto";
-    }
+    master.style.transform = "translateZ(0)";
+
     let cancelled = false;
     const start = async () => {
-      // Same ready-gate as regular post videos — don't play before buffer is ready.
       const ready = await waitForVideoCanPlay(master);
       if (cancelled || !ready) return;
-      if (slave) void slave.play().catch(() => undefined);
       try {
         armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
         await master.play();
+        if (!cancelled) setPlaying(true);
       } catch {
         try {
           applyFeedVideoAudio(master, { muted: true });
           await master.play();
           armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
+          if (!cancelled) setPlaying(true);
         } catch {
           /* gesture may still be required */
         }
@@ -143,33 +141,35 @@ export default function LiveBattleReplayPlayer({
     const onMasterEnded = () => {
       if (loop || endedSentRef.current) return;
       endedSentRef.current = true;
-      slave?.pause();
+      setPlaying(false);
       onEndedRef.current?.();
     };
+    const onPlay = () => setPlaying(true);
+    const onPause = () => setPlaying(false);
     master.addEventListener("loadedmetadata", tryProbe);
     master.addEventListener("durationchange", tryProbe);
     master.addEventListener("ended", onMasterEnded);
+    master.addEventListener("play", onPlay);
+    master.addEventListener("pause", onPause);
     tryProbe();
     return () => {
       cancelled = true;
       master.removeEventListener("loadedmetadata", tryProbe);
       master.removeEventListener("durationchange", tryProbe);
       master.removeEventListener("ended", onMasterEnded);
+      master.removeEventListener("play", onPlay);
+      master.removeEventListener("pause", onPause);
       master.pause();
-      slave?.pause();
     };
   }, [src, loop, leftName, rightName]);
 
-  // Resume after backgrounding.
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
       const master = masterRef.current;
-      const slave = slaveRef.current;
       if (!master) return;
       forceIosAudioSessionToPlayback();
       if (master.paused) void master.play().catch(() => undefined);
-      if (slave?.paused) void slave.play().catch(() => undefined);
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pageshow", onVis);
@@ -179,41 +179,6 @@ export default function LiveBattleReplayPlayer({
     };
   }, [src]);
 
-  // Soft sync only on play/pause/seek + rare large drift (no 250ms hard seeks).
-  useEffect(() => {
-    const master = masterRef.current;
-    const slave = slaveRef.current;
-    if (!master || !slave) return;
-
-    const syncSlave = (force = false) => {
-      const drift = Math.abs(slave.currentTime - master.currentTime);
-      if (force || drift > 1.25) {
-        try {
-          slave.currentTime = master.currentTime;
-        } catch {
-          /* ignore */
-        }
-      }
-      if (master.paused && !slave.paused) slave.pause();
-      if (!master.paused && slave.paused) void slave.play().catch(() => undefined);
-    };
-
-    const onPlay = () => syncSlave(true);
-    const onPause = () => syncSlave(true);
-    const onSeeked = () => syncSlave(true);
-    master.addEventListener("play", onPlay);
-    master.addEventListener("pause", onPause);
-    master.addEventListener("seeked", onSeeked);
-    const id = window.setInterval(() => syncSlave(false), 2500);
-    return () => {
-      master.removeEventListener("play", onPlay);
-      master.removeEventListener("pause", onPause);
-      master.removeEventListener("seeked", onSeeked);
-      window.clearInterval(id);
-    };
-  }, [src]);
-
-  // Throttled progress — avoid rAF setState churn.
   useEffect(() => {
     const master = masterRef.current;
     if (!master) return;
@@ -224,42 +189,28 @@ export default function LiveBattleReplayPlayer({
         if (d > 0) setDuration(d);
         setCurrent(master.currentTime || 0);
       }
-      id = window.setTimeout(tick, 200);
+      id = window.setTimeout(tick, 125);
     };
-    id = window.setTimeout(tick, 200);
+    id = window.setTimeout(tick, 125);
     return () => window.clearTimeout(id);
   }, [src, scrubbing]);
 
   const seekTo = (pct: number) => {
     const master = masterRef.current;
     if (!master) return;
-    const d = readMediaDuration(master) || duration;
+    const d = readMediaDuration(master);
     if (d <= 0) {
-      void resolveMediaDuration(master, { force: true }).then((resolved) => {
+      void resolveMediaDuration(master).then((resolved) => {
         if (resolved <= 0) return;
         master.currentTime = pct * resolved;
-        if (slaveRef.current) {
-          try {
-            slaveRef.current.currentTime = pct * resolved;
-          } catch {
-            /* ignore */
-          }
-        }
-        setDuration(resolved);
         setCurrent(pct * resolved);
+        setDuration(resolved);
       });
       return;
     }
     master.currentTime = pct * d;
     setCurrent(pct * d);
     setDuration(d);
-    if (slaveRef.current) {
-      try {
-        slaveRef.current.currentTime = pct * d;
-      } catch {
-        /* ignore */
-      }
-    }
   };
 
   const onScrubStart = (clientX: number) => {
@@ -282,6 +233,10 @@ export default function LiveBattleReplayPlayer({
       window.removeEventListener("mouseup", onEnd);
       window.removeEventListener("touchmove", onMove);
       window.removeEventListener("touchend", onEnd);
+      const master = masterRef.current;
+      if (master && master.paused && playing) {
+        void master.play().catch(() => undefined);
+      }
     };
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onEnd);
@@ -289,83 +244,55 @@ export default function LiveBattleReplayPlayer({
     window.addEventListener("touchend", onEnd);
   };
 
-  const handleCardTap = (side: "left" | "right") => {
-    const nowTs = Date.now();
-    const isDouble =
-      lastTapSideRef.current === side && nowTs - lastTapRef.current < 280;
-    lastTapRef.current = nowTs;
-    lastTapSideRef.current = side;
-    if (isDouble) {
-      onExpandSide?.(side);
-      return;
-    }
-    togglePlay();
-  };
-
   const progress = duration > 0 ? (current / duration) * 100 : 0;
-  const tileH = compact ? "aspect-[4/5]" : "aspect-[3/4] max-h-[min(52dvh,420px)]";
+  const frameH = compact ? "aspect-[3/2] max-h-[min(48dvh,380px)]" : "aspect-[3/2] max-h-[min(56dvh,460px)]";
 
   return (
     <div className={`w-full ${className}`}>
-      <div className="relative flex w-full items-center justify-center gap-1.5">
-        <div
-          className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-cyan-300/90 ${tileH}`}
-        >
-          <video
-            ref={setMaster}
-            src={src}
-            autoPlay
-            loop={loop}
-            playsInline
-            preload="auto"
-            className="absolute inset-0 h-full w-[200%] max-w-none object-cover"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardTap("left");
-            }}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-          <div className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
-            Replay
-          </div>
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
-            <p className="text-sm font-black text-white drop-shadow">{leftName}</p>
-          </div>
-          {winnerSide === "left" ? (
-            <BattleWinnerCheckBadge size={compact ? "sm" : "md"} />
-          ) : null}
-        </div>
+      {/* One full Zoom-style recording frame — left | right already baked into the file. */}
+      <div
+        className={`relative mx-auto w-full overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 ${frameH}`}
+      >
+        <video
+          ref={setMaster}
+          src={src}
+          playsInline
+          loop={loop}
+          preload="auto"
+          className="absolute inset-0 z-[1] h-full w-full object-contain bg-black"
+          style={{ transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }}
+          onClick={(e) => {
+            e.stopPropagation();
+            togglePlay();
+          }}
+        />
 
-        <div className="pointer-events-none absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2">
-          <span className="rounded-full bg-black/70 px-2.5 py-1 text-xs font-black tracking-widest text-white ring-1 ring-white/25">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[2] flex items-start justify-between bg-gradient-to-b from-black/70 to-transparent px-2.5 pb-6 pt-2">
+          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+            Replay
+          </span>
+          <span className="rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-black tracking-widest text-white/90">
             VS
           </span>
         </div>
 
-        <div
-          className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-pink-400/90 ${tileH}`}
-        >
-          <video
-            ref={slaveRef}
-            src={src}
-            autoPlay
-            loop={loop}
-            muted
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardTap("right");
-            }}
-          />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
-          <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
-            <p className="text-sm font-black text-white drop-shadow">{rightName}</p>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[2] flex justify-between bg-gradient-to-t from-black/80 to-transparent px-3 pb-2.5 pt-8">
+          <div className="min-w-0 flex-1 pr-2">
+            <p className="truncate text-sm font-black text-cyan-300 drop-shadow">{leftName}</p>
+            {winnerSide === "left" ? (
+              <div className="mt-1">
+                <BattleWinnerCheckBadge size="sm" />
+              </div>
+            ) : null}
           </div>
-          {winnerSide === "right" ? (
-            <BattleWinnerCheckBadge size={compact ? "sm" : "md"} />
-          ) : null}
+          <div className="min-w-0 flex-1 pl-2 text-right">
+            <p className="truncate text-sm font-black text-pink-400 drop-shadow">{rightName}</p>
+            {winnerSide === "right" ? (
+              <div className="mt-1 flex justify-end">
+                <BattleWinnerCheckBadge size="sm" />
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

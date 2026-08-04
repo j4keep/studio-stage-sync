@@ -555,35 +555,22 @@ export default function BattleFeedSlide({
     };
   }, []);
 
+  // Live Zoom-style replay owns its own play() inside LiveBattleReplayPlayer.
+  // Do NOT run dual-side playSide against it — that fought the single decoder
+  // and left Posts with a moving progress bar and a frozen silent picture.
+  useEffect(() => {
+    if (mediaType !== "live") return;
+    if (!isActive) {
+      hardStopMedia();
+      autoStartedRef.current = null;
+      userPausedRef.current = false;
+      return;
+    }
+  }, [isActive, mediaType, hardStopMedia]);
+
   // Autoplay when the slide becomes active — same timing/retry contract as FeedPostCard.
   useEffect(() => {
-    if (mediaType === "live") {
-      if (!isActive) {
-        hardStopMedia();
-        autoStartedRef.current = null;
-        userPausedRef.current = false;
-        return;
-      }
-      if (userPausedRef.current) return;
-      let cancelled = false;
-      const start = async () => {
-        if (cancelled || userPausedRef.current) return;
-        const ok = await playSideRef.current("left", { fromStart: true });
-        if (!cancelled && ok) autoStartedRef.current = battle?.id ?? null;
-      };
-      const t1 = window.setTimeout(() => {
-        void start();
-      }, 120);
-      const t2 = window.setTimeout(() => {
-        if (autoStartedRef.current === battle?.id) return;
-        void playSideRef.current("left", { fromStart: false });
-      }, 450);
-      return () => {
-        cancelled = true;
-        window.clearTimeout(t1);
-        window.clearTimeout(t2);
-      };
-    }
+    if (mediaType === "live") return;
 
     if (!isActive || !battle?.id) {
       if (!isActive) {

@@ -104,11 +104,29 @@ export function useBattleLiveRoom({
     [challengerId, opponentId],
   );
 
+  // Reuse MediaStream wrappers by track id — recreating them on every LiveKit
+  // event was resetting <video srcObject> and cracking the FaceTime preview.
+  const streamCacheRef = useRef<Map<string, MediaStream>>(new Map());
+
+  const mediaForTrack = useCallback((track: RemoteTrack | LocalTrack) => {
+    const id = track.mediaStreamTrack?.id || "";
+    if (!id) return new MediaStream([track.mediaStreamTrack]);
+    const cached = streamCacheRef.current.get(id);
+    if (cached) {
+      const existing = cached.getTracks()[0];
+      if (existing === track.mediaStreamTrack) return cached;
+    }
+    const media = new MediaStream([track.mediaStreamTrack]);
+    streamCacheRef.current.set(id, media);
+    return media;
+  }, []);
+
   const rebuildStreams = useCallback(
     (room: Room) => {
       const next = emptyStreams();
       const nextAudio: SideAudioTracks = { left: null, right: null };
       const localId = room.localParticipant.identity;
+      const liveTrackIds = new Set<string>();
 
       const applyPub = (identity: string, pub: TrackPublication) => {
         const track = pub.track as RemoteTrack | LocalTrack | null | undefined;
@@ -117,7 +135,10 @@ export function useBattleLiveRoom({
         const side = sideForIdentity(identity);
         if (!side) return;
 
-        const media = new MediaStream([track.mediaStreamTrack]);
+        const media = mediaForTrack(track);
+        const tid = track.mediaStreamTrack?.id;
+        if (tid) liveTrackIds.add(tid);
+
         if (pub.kind === Track.Kind.Video) {
           if (pub.source === Track.Source.ScreenShare) {
             // Crowd must not see paused/muted screens — local preview uses localScreenPreview.
@@ -154,13 +175,19 @@ export function useBattleLiveRoom({
         remotes += 1;
         p.trackPublications.forEach((pub) => applyPub(p.identity, pub));
       });
+
+      // Drop stale wrappers so old tracks don't pin memory.
+      for (const id of [...streamCacheRef.current.keys()]) {
+        if (!liveTrackIds.has(id)) streamCacheRef.current.delete(id);
+      }
+
       setRemoteCount(remotes);
       setStreams(next);
       setAudioTracks(nextAudio);
       setMicOn(room.localParticipant.isMicrophoneEnabled);
       setCamOn(room.localParticipant.isCameraEnabled);
     },
-    [sideForIdentity],
+    [sideForIdentity, mediaForTrack],
   );
 
   const clearScreenShareLocal = useCallback(() => {
@@ -321,9 +348,11 @@ export function useBattleLiveRoom({
         setIosAudioSessionForRecording();
         const published: LocalTrack[] = [];
         try {
+          // Lower than 720p24 while client-recording — keeps FaceTime preview clear
+          // instead of cracking under canvas capture + dual decode.
           const video = await createLocalVideoTrack({
             facingMode: "user",
-            resolution: { width: 720, height: 1280, frameRate: 24 },
+            resolution: { width: 540, height: 960, frameRate: 20 },
           });
           await room.localParticipant.publishTrack(video);
           published.push(video);

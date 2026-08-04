@@ -1,17 +1,6 @@
-/** Client-side composite recorder for live battle replays (2-up FaceTime layout). */
+/** Client-side composite recorder for live battle replays (Zoom/FaceTime 2-up layout). */
 
-function pickMime(): string {
-  const opts = [
-    "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp9,opus",
-    "video/webm",
-    "video/mp4",
-  ];
-  for (const m of opts) {
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(m)) return m;
-  }
-  return "video/webm";
-}
+import { pickVideoRecorderMimeType } from "@/lib/create-camera";
 
 export type BattleLiveRecorder = {
   stop: () => Promise<Blob | null>;
@@ -55,6 +44,9 @@ function drawPlaceholder(
  * Record left/right video elements (+ optional audio streams) into a side-by-side file.
  * Uses getters so video elements can mount after the recorder starts.
  * Falls back to cover art when a camera frame is missing (avoids a black half).
+ *
+ * Mime / bitrate follow Create→Post camera recording (Apple-safe MP4, no forced
+ * bitrates — forced rates were crackling the live capture).
  */
 export function startBattleLiveRecorder(opts: {
   getLeftVideo: VideoSource;
@@ -72,17 +64,13 @@ export function startBattleLiveRecorder(opts: {
 }): BattleLiveRecorder | null {
   if (typeof MediaRecorder === "undefined") return null;
 
-  const getLeft =
-    opts.getLeftVideo ||
-    (() => opts.leftVideoEl || null);
-  const getRight =
-    opts.getRightVideo ||
-    (() => opts.rightVideoEl || null);
+  const getLeft = opts.getLeftVideo || (() => opts.leftVideoEl || null);
+  const getRight = opts.getRightVideo || (() => opts.rightVideoEl || null);
 
   const leftCover = loadCover(opts.leftCoverUrl);
   const rightCover = loadCover(opts.rightCoverUrl);
 
-  // Portrait-pair friendly canvas (matches feed dual 3:4 tiles side-by-side ≈ 3:2).
+  // Side-by-side Zoom recording frame (matches feed dual 3:4 tiles ≈ 3:2).
   const W = 720;
   const H = 480;
   const canvas = document.createElement("canvas");
@@ -91,7 +79,7 @@ export function startBattleLiveRecorder(opts: {
   const ctx = canvas.getContext("2d", { alpha: false });
   if (!ctx) return null;
 
-  const canvasStream = canvas.captureStream(15);
+  const canvasStream = canvas.captureStream(20);
   let audioCtx: AudioContext | null = null;
   const sources: MediaStreamAudioSourceNode[] = [];
   let dest: MediaStreamAudioDestinationNode | null = null;
@@ -119,15 +107,15 @@ export function startBattleLiveRecorder(opts: {
     ...(dest?.stream.getAudioTracks() || []),
   ]);
 
-  const mime = pickMime();
+  const mime = pickVideoRecorderMimeType();
   const chunks: Blob[] = [];
   let recorder: MediaRecorder;
   try {
-    recorder = new MediaRecorder(mixed, {
-      mimeType: mime,
-      videoBitsPerSecond: 900_000,
-      audioBitsPerSecond: 96_000,
-    });
+    // Same as Create camera: no forced videoBitsPerSecond / audioBitsPerSecond
+    // (forced rates crackle on iOS Safari).
+    recorder = mime
+      ? new MediaRecorder(mixed, { mimeType: mime })
+      : new MediaRecorder(mixed);
   } catch {
     try {
       recorder = new MediaRecorder(mixed);
@@ -202,32 +190,13 @@ export function startBattleLiveRecorder(opts: {
         /* tainted / incomplete — fall through to placeholder */
       }
     }
-    // Never leave a pure black half — matches Facebook "was live" cover fallback.
     drawPlaceholder(ctx, x, y, w, h, label, tint);
   };
 
   let raf = 0;
   const tick = () => {
-    drawSide(
-      getLeft(),
-      leftCover,
-      opts.leftLabel || "L",
-      "#0e7490",
-      0,
-      0,
-      W / 2,
-      H,
-    );
-    drawSide(
-      getRight(),
-      rightCover,
-      opts.rightLabel || "R",
-      "#9d174d",
-      W / 2,
-      0,
-      W / 2,
-      H,
-    );
+    drawSide(getLeft(), leftCover, opts.leftLabel || "L", "#0e7490", 0, 0, W / 2, H);
+    drawSide(getRight(), rightCover, opts.rightLabel || "R", "#9d174d", W / 2, 0, W / 2, H);
     ctx.strokeStyle = "rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.moveTo(W / 2, 0);
@@ -255,7 +224,7 @@ export function startBattleLiveRecorder(opts: {
             resolve(null);
             return;
           }
-          resolve(new Blob(chunks, { type: recorder.mimeType || mime }));
+          resolve(new Blob(chunks, { type: recorder.mimeType || mime || "video/webm" }));
         };
         if (recorder.state === "inactive") {
           finish();

@@ -250,7 +250,14 @@ function StreamVideo({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.srcObject = stream;
+    // Only rebind when the underlying track changes — identity churn on every
+    // LiveKit event was flashing/cracking the FaceTime tiles.
+    const nextTrack = stream?.getVideoTracks?.()[0] || null;
+    const prevStream = el.srcObject as MediaStream | null;
+    const prevTrack = prevStream?.getVideoTracks?.()[0] || null;
+    if (nextTrack !== prevTrack) {
+      el.srcObject = stream;
+    }
     if (stream) void el.play().catch(() => undefined);
   }, [stream, ref]);
 
@@ -286,9 +293,6 @@ export default function BattleLiveStage({
   const [now, setNow] = useState(Date.now());
   const leftVideoRef = useRef<HTMLVideoElement | null>(null);
   const rightVideoRef = useRef<HTMLVideoElement | null>(null);
-  /** Always-mounted sinks so the recorder keeps frames even after the UI switches to covers. */
-  const leftRecRef = useRef<HTMLVideoElement | null>(null);
-  const rightRecRef = useRef<HTMLVideoElement | null>(null);
   const redirectedRef = useRef(false);
   const prevPhaseRef = useRef<string | null>(null);
   const flushOnceRef = useRef(false);
@@ -384,24 +388,6 @@ export default function BattleLiveStage({
 
   useEffect(() => subscribeLiveRecordSession(() => setRecordSnap(getLiveRecordSessionSnapshot())), []);
 
-  // Recording sinks — prefer live screen share when the crowd can see it.
-  useEffect(() => {
-    const bind = (el: HTMLVideoElement | null, stream: MediaStream | null) => {
-      if (!el) return;
-      if (el.srcObject !== stream) el.srcObject = stream;
-      if (stream) void el.play().catch(() => undefined);
-    };
-    bind(leftRecRef.current, streams.leftScreen || streams.leftCamera || streams.leftVideo);
-    bind(rightRecRef.current, streams.rightScreen || streams.rightCamera || streams.rightVideo);
-  }, [
-    streams.leftScreen,
-    streams.rightScreen,
-    streams.leftCamera,
-    streams.rightCamera,
-    streams.leftVideo,
-    streams.rightVideo,
-  ]);
-
   // Spectators: poll only this battle while waiting for replay.
   // Never invalidate feed-posts here — that remounted the post viewer and
   // bounced the snap scroller off the battle slide.
@@ -487,8 +473,10 @@ export default function BattleLiveStage({
         opponent_cover_url: battle.opponent_cover_url,
       },
       userId: user.id,
-      getLeftVideo: () => leftRecRef.current || leftVideoRef.current,
-      getRightVideo: () => rightRecRef.current || rightVideoRef.current,
+      // Record from the VISIBLE FaceTime tiles — hidden 1×1 sinks were cracking
+      // the live preview and often captured blank frames.
+      getLeftVideo: () => leftVideoRef.current,
+      getRightVideo: () => rightVideoRef.current,
       leftAudio: streams.leftAudio,
       rightAudio: streams.rightAudio,
       leftLabel: leftName,
@@ -763,13 +751,6 @@ export default function BattleLiveStage({
     </div>
   ) : null;
 
-  const hiddenRecorders = (
-    <>
-      <video ref={leftRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
-      <video ref={rightRecRef} muted playsInline autoPlay className="pointer-events-none absolute h-px w-px opacity-0" aria-hidden />
-    </>
-  );
-
   const debateAudio =
     phase === "live" ? (
       <DebateAudioSink
@@ -934,7 +915,6 @@ export default function BattleLiveStage({
   if (surface === "feed") {
     return (
       <>
-        {hiddenRecorders}
         {debateAudio}
         {leftLiveTile}
         {vsBadge}
@@ -983,8 +963,6 @@ export default function BattleLiveStage({
               : "Debate ended — replay will appear here shortly."}
         </div>
       )}
-
-      {hiddenRecorders}
 
       <div
         className={`relative flex w-full items-center justify-center gap-1.5 ${
