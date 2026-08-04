@@ -166,13 +166,16 @@ export default function BattleFeedSlide({
     return () => window.clearInterval(t);
   }, [mediaType]);
 
-  const pauseAll = useCallback(() => {
+  const pauseAll = useCallback((opts?: { hard?: boolean }) => {
+    const hard = opts?.hard !== false;
     const stop = (el: HTMLMediaElement | null | undefined) => {
       if (!el) return;
       try {
         el.pause();
-        el.muted = true;
-        el.volume = 0;
+        if (hard) {
+          el.muted = true;
+          el.volume = 0;
+        }
       } catch {
         /* ignore */
       }
@@ -199,6 +202,16 @@ export default function BattleFeedSlide({
     [mediaType],
   );
 
+  const armAudible = useCallback((el: HTMLMediaElement) => {
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    el.loop = false;
+    el.removeAttribute("loop");
+    el.muted = false;
+    el.volume = 1;
+    el.defaultMuted = false;
+  }, []);
+
   // Live replay progress — throttled (not every animation frame) to cut feed jank.
   useEffect(() => {
     if (!isActive || mediaType !== "live") return;
@@ -208,8 +221,15 @@ export default function BattleFeedSlide({
       const el = liveReplayRef.current;
       if (el && !isScrubbing) {
         let d = readMediaDuration(el);
-        // Probe only when paused / just loaded — never seek mid-play (glitches iOS).
-        if (d <= 0 && !probing && el.readyState >= 1 && (el.paused || el.currentTime < 0.05)) {
+        // Only probe while fully paused and still at the start — never while
+        // autoplay is spinning up (seeking froze battles at 0 like posts used to).
+        if (
+          d <= 0 &&
+          !probing &&
+          el.readyState >= 1 &&
+          el.paused &&
+          (el.currentTime || 0) < 0.02
+        ) {
           probing = true;
           void resolveMediaDuration(el).then((resolved) => {
             if (resolved > 0) {
@@ -240,8 +260,7 @@ export default function BattleFeedSlide({
       if (document.visibilityState !== "visible") return;
       const el = liveReplayRef.current;
       if (!el) return;
-      forceIosAudioSessionToPlayback();
-      unlockFeedAudioSession();
+      armAudible(el);
       if (el.paused) void el.play().catch(() => undefined);
     };
     document.addEventListener("visibilitychange", resume);
@@ -250,7 +269,7 @@ export default function BattleFeedSlide({
       document.removeEventListener("visibilitychange", resume);
       window.removeEventListener("pageshow", resume);
     };
-  }, [isActive, mediaType, liveReplayUrl]);
+  }, [isActive, mediaType, liveReplayUrl, armAudible]);
 
   const scrubToClientX = useCallback(
     (clientX: number) => {
@@ -305,7 +324,7 @@ export default function BattleFeedSlide({
             : mediaEl(activeSideRef.current);
         // Resume only if the post was playing before scrub — don't force play when paused.
         if (el && el.paused && playing) {
-          forceIosAudioSessionToPlayback();
+          armAudible(el);
           void el.play().catch(() => undefined);
         }
       };
@@ -314,34 +333,77 @@ export default function BattleFeedSlide({
       window.addEventListener("touchmove", onMove, { passive: false });
       window.addEventListener("touchend", onEnd);
     },
-    [mediaEl, mediaType, scrubToClientX, playing],
+    [mediaEl, mediaType, scrubToClientX, playing, armAudible],
   );
 
   const playSide = useCallback(
-    async (side: "left" | "right", opts?: { fromStart?: boolean }) => {
-      pauseAll();
+    async (side: "left" | "right", opts?: { fromStart?: boolean }): Promise<boolean> => {
       setActiveSide(side);
       activeSideRef.current = side;
-      const el = mediaEl(side);
+
+      // Pause sibling media only — do NOT hard-mute the target first.
+      // pauseAll({ hard:true }) was leaving the active side muted, so battles
+      // looked frozen / silent after create + open on Posts.
+      const target = mediaEl(side);
+      const siblings = [
+        audioLeftRef.current,
+        audioRightRef.current,
+        videoLeftRef.current,
+        videoRightRef.current,
+        liveReplayRef.current,
+      ];
+      for (const el of siblings) {
+        if (!el || el === target) continue;
+        try {
+          el.pause();
+        } catch {
+          /* ignore */
+        }
+      }
+
+      const el = target;
       if (!el) {
         setPlaying(false);
-        return;
+        return false;
       }
-      if (opts?.fromStart) el.currentTime = 0;
+
+      armAudible(el);
+      // Seek to start once when requested — never re-seek if already near 0
+      // (that seek storm stuck battles at the beginning like posts used to).
+      if (opts?.fromStart) {
+        try {
+          if ((el.currentTime || 0) > 0.2) el.currentTime = 0;
+        } catch {
+          /* ignore */
+        }
+      }
+
       try {
         await el.play();
+        armAudible(el);
         setPlaying(true);
+        return true;
       } catch {
-        setPlaying(false);
+        // iOS may require a muted kick then unmute (same as regular posts).
+        try {
+          el.muted = true;
+          await el.play();
+          armAudible(el);
+          setPlaying(true);
+          return true;
+        } catch {
+          setPlaying(false);
+          return false;
+        }
       }
     },
-    [mediaEl, pauseAll],
+    [mediaEl, armAudible],
   );
 
   const toggleSide = useCallback(
     (side: "left" | "right") => {
       if (activeSideRef.current === side && playing) {
-        pauseAll();
+        pauseAll({ hard: true });
         setPlaying(false);
         return;
       }
@@ -408,7 +470,24 @@ export default function BattleFeedSlide({
 
   // Autoplay when the slide becomes active (like a regular feed post).
   useEffect(() => {
-    if (!isActive || !battle?.id) return;
+    if (!isActive || !battle?.id) {
+      // Allow a fresh autoplay when the user swipes back onto this battle.
+      if (!isActive) autoStartedRef.current = null;
+      return;
+    }
+
+    // Live debates: arm/resume the replay player mounted inside BattleLiveStage.
+    if (mediaType === "live") {
+      const t = window.setTimeout(() => {
+        const el = liveReplayRef.current;
+        if (!el) return;
+        armAudible(el);
+        if (el.paused) void el.play().catch(() => undefined);
+        setPlaying(!el.paused);
+      }, 160);
+      return () => window.clearTimeout(t);
+    }
+
     if (autoStartedRef.current === battle.id) return;
     const startSide: "left" | "right" = battle.challenger_media_url
       ? "left"
@@ -416,17 +495,36 @@ export default function BattleFeedSlide({
         ? "right"
         : "left";
     if (!battle.challenger_media_url && !battle.opponent_media_url) return;
-    autoStartedRef.current = battle.id;
-    const t = window.setTimeout(() => {
-      void playSide(startSide, { fromStart: true });
-    }, 120);
-    return () => window.clearTimeout(t);
+
+    let cancelled = false;
+    const attempt = async (fromStart: boolean) => {
+      if (cancelled || autoStartedRef.current === battle.id) return;
+      const ok = await playSide(startSide, { fromStart });
+      if (!cancelled && ok) autoStartedRef.current = battle.id;
+    };
+
+    const t1 = window.setTimeout(() => {
+      void attempt(true);
+    }, 100);
+    // Soft retry if the first play raced the decoder — do NOT re-seek.
+    const t2 = window.setTimeout(() => {
+      if (autoStartedRef.current === battle.id) return;
+      void attempt(false);
+    }, 450);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [
     isActive,
     battle?.id,
     battle?.challenger_media_url,
     battle?.opponent_media_url,
+    mediaType,
     playSide,
+    armAudible,
   ]);
 
   // Play the other side when a track ends. Do NOT auto-advance the feed —
@@ -488,14 +586,15 @@ export default function BattleFeedSlide({
 
   useEffect(() => {
     if (isActive) return;
-    pauseAll();
+    pauseAll({ hard: true });
     setPlaying(false);
     setExpandedSide(null);
+    autoStartedRef.current = null;
   }, [isActive, pauseAll]);
 
   useEffect(() => {
     return () => {
-      pauseAll();
+      pauseAll({ hard: true });
     };
   }, [pauseAll]);
 
@@ -781,6 +880,7 @@ export default function BattleFeedSlide({
             ref={side === "left" ? videoLeftRef : videoRightRef}
             src={mediaUrl}
             playsInline
+            loop={false}
             preload={isActive ? "auto" : "none"}
             className="absolute inset-0 h-full w-full object-cover"
           />
@@ -800,6 +900,7 @@ export default function BattleFeedSlide({
           <audio
             ref={side === "left" ? audioLeftRef : audioRightRef}
             src={mediaUrl}
+            loop={false}
             preload={isActive ? "auto" : "none"}
           />
         ) : null}

@@ -90,16 +90,36 @@ export default function LiveBattleReplayPlayer({
     durationProbedRef.current = false;
     endedSentRef.current = false;
     forceIosAudioSessionToPlayback();
+    void unlockFeedAudioSession();
     master.playsInline = true;
     master.loop = loop;
     master.muted = false;
+    master.volume = 1;
+    master.defaultMuted = false;
     if (slave) {
       slave.muted = true;
+      slave.volume = 0;
       slave.playsInline = true;
       slave.loop = loop;
       void slave.play().catch(() => undefined);
     }
-    void master.play().catch(() => undefined);
+    const start = async () => {
+      try {
+        await master.play();
+        master.muted = false;
+        master.volume = 1;
+      } catch {
+        try {
+          master.muted = true;
+          await master.play();
+          master.muted = false;
+          master.volume = 1;
+        } catch {
+          /* gesture may still be required */
+        }
+      }
+    };
+    void start();
 
     const tryProbe = () => {
       if (durationProbedRef.current) return;

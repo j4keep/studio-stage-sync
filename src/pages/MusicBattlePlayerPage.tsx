@@ -44,6 +44,11 @@ import {
   tallyBattleVotes,
 } from "@/lib/battle-ui";
 import { ensureBattleWinRecorded } from "@/lib/finalize-battle-wins";
+import { readMediaDuration, resolveMediaDuration } from "@/lib/media-duration";
+import {
+  forceIosAudioSessionToPlayback,
+  unlockFeedAudioSession,
+} from "@/lib/feed-video-playback";
 
 /* ─── helpers ─── */
 const fmt = (s: number) => {
@@ -272,6 +277,15 @@ const MusicBattlePlayerPage = () => {
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
   const inactiveRef = activeArtist === "left" ? audioRightRef : audioLeftRef;
 
+  const armAudible = useCallback((el: HTMLMediaElement) => {
+    forceIosAudioSessionToPlayback();
+    unlockFeedAudioSession();
+    el.loop = false;
+    el.muted = false;
+    el.volume = 1;
+    el.defaultMuted = false;
+  }, []);
+
   const togglePlay = useCallback(() => {
     const el = activeRef.current;
     if (!el) return;
@@ -280,10 +294,20 @@ const MusicBattlePlayerPage = () => {
       setIsPlaying(false);
     } else {
       inactiveRef.current?.pause();
-      el.play().catch(() => {});
-      setIsPlaying(true);
+      armAudible(el);
+      el.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => {
+          el.muted = true;
+          el.play()
+            .then(() => {
+              armAudible(el);
+              setIsPlaying(true);
+            })
+            .catch(() => setIsPlaying(false));
+        });
     }
-  }, [isPlaying, activeRef, inactiveRef]);
+  }, [isPlaying, activeRef, inactiveRef, armAudible]);
 
   const switchSide = useCallback((side: "left" | "right") => {
     if (side === activeArtist && !isPlaying) {
@@ -295,13 +319,15 @@ const MusicBattlePlayerPage = () => {
     previous?.pause();
     const next = side === "left" ? audioLeftRef.current : audioRightRef.current;
     if (next) {
-      next.currentTime = 0;
-      next.play().catch(() => {});
+      armAudible(next);
+      if ((next.currentTime || 0) > 0.2) next.currentTime = 0;
+      next.play()
+        .then(() => setIsPlaying(true))
+        .catch(() => setIsPlaying(false));
     }
     setActiveArtist(side);
-    setIsPlaying(true);
     setCurrentTime(0);
-  }, [activeArtist, isPlaying, togglePlay]);
+  }, [activeArtist, isPlaying, togglePlay, armAudible]);
 
   const handleArtistTap = useCallback((side: "left" | "right") => {
     const now = Date.now();
@@ -531,9 +557,9 @@ const MusicBattlePlayerPage = () => {
         toast.success("Challenge accepted — 30s to check your camera");
         // Stay on the battle page so both competitors can preview cameras before go-live.
       } else {
-        toast.success("Battle is live — landing on the feed");
-        // Launched battles auto-post to the homepage Posts feed for the crowd to vote.
-        navigate("/");
+        toast.success("Battle is live — opening on Posts");
+        // Open the Posts viewer on this battle so it autoplays like a regular video post.
+        navigate(`/?battle=${battle.id}`);
       }
     } catch (error: any) {
       toast.error(error?.message || "Failed to accept challenge");
@@ -553,35 +579,17 @@ const MusicBattlePlayerPage = () => {
     user,
   ]);
 
-  // Fix webm Infinity duration by seeking to end trick
-  const resolveWebmDuration = useCallback((el: HTMLMediaElement) => {
-    if (el.duration && isFinite(el.duration)) return;
-    const onSeeked = () => {
-      el.removeEventListener("seeked", onSeeked);
-      if (el.duration && isFinite(el.duration)) {
-        setDuration(el.duration);
-      }
-      el.currentTime = 0;
-    };
-    el.addEventListener("seeked", onSeeked);
-    el.currentTime = 1e10; // seek to a huge time to force duration calculation
-  }, []);
-
   useEffect(() => {
     const el = activeArtist === "left" ? audioLeftRef.current : audioRightRef.current;
     if (!el) return;
 
     let frameId: number | null = null;
     let destroyed = false;
-
-    const getDur = () => {
-      if (el.duration && isFinite(el.duration)) return el.duration;
-      return 0;
-    };
+    let probing = false;
 
     const syncFromElement = () => {
       if (destroyed) return;
-      const d = getDur();
+      const d = readMediaDuration(el);
       setCurrentTime(el.currentTime || 0);
       if (d > 0) setDuration(d);
     };
@@ -607,15 +615,21 @@ const MusicBattlePlayerPage = () => {
       }
     };
 
-    // Read initial values
-    syncFromElement();
+    const maybeProbeDuration = () => {
+      if (probing || destroyed) return;
+      if (readMediaDuration(el) > 0) return;
+      // Never seek while playback is starting/running — that stuck battles at 0.
+      if (!el.paused && (el.currentTime || 0) > 0.05) return;
+      if (el.readyState < 1) return;
+      probing = true;
+      void resolveMediaDuration(el).then((d) => {
+        probing = false;
+        if (d > 0) setDuration(d);
+      });
+    };
 
-    // If duration is still Infinity (webm), try the seek trick
-    if (!el.duration || !isFinite(el.duration)) {
-      if (el.readyState >= 1) {
-        resolveWebmDuration(el);
-      }
-    }
+    syncFromElement();
+    maybeProbeDuration();
 
     const onPlay = () => startSyncLoop();
     const onPause = () => {
@@ -624,9 +638,9 @@ const MusicBattlePlayerPage = () => {
     };
     const onTime = () => syncFromElement();
     const onDur = () => {
-      const d = getDur();
+      const d = readMediaDuration(el);
       if (d > 0) setDuration(d);
-      else if (el.readyState >= 1) resolveWebmDuration(el);
+      else maybeProbeDuration();
     };
     const onEnd = () => {
       stopSyncLoop();
@@ -641,7 +655,8 @@ const MusicBattlePlayerPage = () => {
             setIsPlaying(false);
             return;
           }
-          next.currentTime = 0;
+          armAudible(next);
+          if ((next.currentTime || 0) > 0.2) next.currentTime = 0;
           next.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
         }, 50);
         return;
@@ -669,7 +684,53 @@ const MusicBattlePlayerPage = () => {
       el.removeEventListener("durationchange", onDur);
       el.removeEventListener("ended", onEnd);
     };
-  }, [activeArtist, battle?.challenger_media_url, battle?.opponent_media_url, resolveWebmDuration]);
+  }, [activeArtist, battle?.challenger_media_url, battle?.opponent_media_url, armAudible]);
+
+  // Autoplay when an accepted battle page opens (same expectation as Posts).
+  useEffect(() => {
+    if (!battle) return;
+    if (battle.media_type === "live") return;
+    if (battle.status !== "active" && battle.status !== "ended" && battle.status !== "completed") return;
+    if (!battle.challenger_media_url && !battle.opponent_media_url) return;
+
+    let cancelled = false;
+    const tryPlay = () => {
+      if (cancelled) return;
+      const el =
+        (battle.challenger_media_url ? audioLeftRef.current : null) ||
+        audioRightRef.current;
+      if (!el) return;
+      armAudible(el);
+      void el
+        .play()
+        .then(() => {
+          if (!cancelled) setIsPlaying(true);
+        })
+        .catch(() => {
+          el.muted = true;
+          void el.play().then(() => {
+            if (cancelled) return;
+            armAudible(el);
+            setIsPlaying(true);
+          }).catch(() => undefined);
+        });
+    };
+
+    const t1 = window.setTimeout(tryPlay, 120);
+    const t2 = window.setTimeout(tryPlay, 500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [
+    battle?.id,
+    battle?.status,
+    battle?.media_type,
+    battle?.challenger_media_url,
+    battle?.opponent_media_url,
+    armAudible,
+  ]);
 
   if (!battle) {
     return (
@@ -714,8 +775,8 @@ const MusicBattlePlayerPage = () => {
       {/* hidden media elements for audio battles — only load when active */}
       {battle.media_type !== "video" && battle.media_type !== "live" && battle.status === "active" && (
         <>
-          <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="metadata" />
-          <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="metadata" />
+          <audio ref={audioLeftRef} src={battle.challenger_media_url || ""} preload="auto" loop={false} />
+          <audio ref={audioRightRef} src={battle.opponent_media_url || ""} preload="auto" loop={false} />
         </>
       )}
 
@@ -854,8 +915,9 @@ const MusicBattlePlayerPage = () => {
                     audioLeftRef.current = el;
                   }}
                   src={battle.challenger_media_url}
-                  preload="metadata"
+                  preload="auto"
                   playsInline
+                  loop={false}
                   muted={false}
                   className="w-full h-full object-cover pointer-events-none"
                 />
@@ -993,8 +1055,9 @@ const MusicBattlePlayerPage = () => {
                     audioRightRef.current = el;
                   }}
                   src={battle.opponent_media_url}
-                  preload="metadata"
+                  preload="auto"
                   playsInline
+                  loop={false}
                   muted={false}
                   className="w-full h-full object-cover pointer-events-none"
                 />
