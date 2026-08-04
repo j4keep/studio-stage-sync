@@ -90,7 +90,7 @@ export default function ExplorePage() {
       <header className="px-4 pt-3 pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-primary">Discover people, opportunities & communities</p>
+            <p className="text-xs font-semibold text-primary">Discover people, opportunities & circles</p>
             <h1 className="text-2xl font-black tracking-tight">Explore</h1>
           </div>
           <img src={yajLogo} alt="YAJ" className="h-14 w-auto -my-3" />
