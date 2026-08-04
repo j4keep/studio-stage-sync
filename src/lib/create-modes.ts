@@ -1,8 +1,8 @@
-export type CreateMode = "post" | "create" | "live";
+/** Camera create modes. `post` is the short/hold recorder (formerly labeled REEL). */
+export type CreateMode = "post" | "live";
 
 export const CREATE_MODES: { id: CreateMode; label: string }[] = [
-  { id: "post", label: "REEL" },
-  { id: "create", label: "POST" },
+  { id: "post", label: "POST" },
   { id: "live", label: "LIVE" },
 ];
 

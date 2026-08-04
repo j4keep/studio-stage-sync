@@ -4,13 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Search } from "lucide-react";
-import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
+import { fetchFeedItems } from "@/lib/feed-items";
+import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
 import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
-import DesktopReelViewer from "@/components/feed/DesktopReelViewer";
 import BattleCard from "@/components/BattleCard";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
@@ -25,7 +26,7 @@ interface TrendingCreator {
   avatar_url: string | null;
 }
 
-type ViewerState = { rail: "reel" | "post"; index: number } | null;
+type ViewerState = { rail: "post"; index: number } | null;
 
 const FeedPage = () => {
   const navigate = useNavigate();
@@ -34,10 +35,17 @@ const FeedPage = () => {
   const isDesktop = useIsDesktop();
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openBattleId = searchParams.get("battle");
+  const openPostId = searchParams.get("post");
 
   const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
+  });
+
+  const { data: happening = [], isLoading: happeningLoading } = useQuery({
+    queryKey: ["happening-feed"],
+    queryFn: () => fetchHappeningItems({ currentUserId: user?.id }),
+    refetchInterval: 60_000,
   });
 
   const { data: trending = [] } = useQuery<TrendingCreator[]>({
@@ -52,60 +60,67 @@ const FeedPage = () => {
     },
   });
 
-  const { reels, posts } = useMemo(() => {
-    const nextReels: any[] = [];
+  // Posts rail: every regular post + battles (create flow no longer splits reels).
+  const posts = useMemo(() => {
     const nextPosts: any[] = [];
     items.forEach((it: any) => {
-      // Active battles land in the Posts column so the crowd can vote from home.
-      if (it.itemType === "battle") {
-        nextPosts.push(it);
-        return;
-      }
-      if (it.itemType !== "post") return;
-      if (isReelItem(it)) nextReels.push(it);
-      else nextPosts.push(it);
+      if (it.itemType === "battle" || it.itemType === "post") nextPosts.push(it);
     });
-    return { reels: nextReels, posts: nextPosts };
+    return nextPosts;
   }, [items]);
-
-  const featuredReelIndex = useMemo(
-    () => reels.findIndex((p: any) => p.media_type === "video" && p.media_url),
-    [reels],
-  );
 
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
   }, []);
 
-  // Wipe clutter video posts from Posts/Reels (edge function, or own posts via RLS).
   useEffect(() => {
     void clearFeedVideosOnce(user?.id).then((cleared) => {
       if (cleared) void refetch();
     });
   }, [refetch, user?.id]);
 
-  const openItem = (rail: "reel" | "post", index: number) => {
+  const openPostItem = (index: number) => {
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
-    setViewer({ rail, index });
+    setViewer({ rail: "post", index });
   };
-  // Posts rail includes battles — open them in the same fullscreen viewer as posts.
-  const viewerPosts = posts;
-  const activeItems =
-    viewer?.rail === "reel" ? reels : viewer?.rail === "post" ? viewerPosts : [];
 
-  // Deep-link live competitors (and shared links) into the post viewer: /?battle=<id>
+  const openHappeningItem = (item: HappeningItem) => {
+    if (item.openInPostsViewer) {
+      const idx = posts.findIndex(
+        (p: any) => p.itemType === "post" && p.id === item.sourceId,
+      );
+      if (idx >= 0) {
+        openPostItem(idx);
+        return;
+      }
+    }
+    if (item.route) {
+      navigate(item.route);
+    }
+  };
+
+  // Deep-link live battles: /?battle=<id>
   useEffect(() => {
     if (!openBattleId || isLoading) return;
     const idx = posts.findIndex((p: any) => p.itemType === "battle" && p.id === openBattleId);
     if (idx < 0) return;
-    forceIosAudioSessionToPlayback();
-    unlockFeedAudioSession();
-    setViewer({ rail: "post", index: idx });
+    openPostItem(idx);
     const next = new URLSearchParams(searchParams);
     next.delete("battle");
     setSearchParams(next, { replace: true });
   }, [openBattleId, isLoading, posts, searchParams, setSearchParams]);
+
+  // Deep-link a post from Happening: /?post=<id>
+  useEffect(() => {
+    if (!openPostId || isLoading) return;
+    const idx = posts.findIndex((p: any) => p.itemType === "post" && p.id === openPostId);
+    if (idx < 0) return;
+    openPostItem(idx);
+    const next = new URLSearchParams(searchParams);
+    next.delete("post");
+    setSearchParams(next, { replace: true });
+  }, [openPostId, isLoading, posts, searchParams, setSearchParams]);
 
   const trendingRow = trending.length > 0 && (
     <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
@@ -138,6 +153,67 @@ const FeedPage = () => {
         </button>
       ))}
     </div>
+  );
+
+  const happeningColumn = (compact: boolean) => (
+    <>
+      <div className={`${compact ? "-mx-1.5 px-2 py-1" : "-mx-2 px-3 py-1.5"} sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 backdrop-blur-sm`}>
+        <p className={`${compact ? "text-[10px]" : "text-[11px]"} font-black uppercase tracking-wider text-foreground`}>
+          Happening
+        </p>
+      </div>
+      {happeningLoading ? (
+        <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">
+          Loading…
+        </p>
+      ) : happening.length === 0 ? (
+        <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">
+          Nothing happening yet
+        </p>
+      ) : (
+        happening.map((item) => (
+          <HappeningThumbCard
+            key={item.id}
+            item={item}
+            compact={compact}
+            onOpen={() => openHappeningItem(item)}
+          />
+        ))
+      )}
+    </>
+  );
+
+  const postsColumn = () => (
+    <>
+      {posts.length === 0 ? (
+        <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
+          <p className="text-xs text-muted-foreground">No posts yet</p>
+          <button
+            onClick={() => window.dispatchEvent(new Event("open-create-post"))}
+            className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+          >
+            Create first post
+          </button>
+        </div>
+      ) : (
+        posts.map((item: any, i: number) =>
+          item.itemType === "battle" ? (
+            <BattleCard
+              key={`battle-${item.id}`}
+              battle={item}
+              onOpen={() => openPostItem(i)}
+            />
+          ) : (
+            <FeedThumbCard
+              key={item.id}
+              post={item}
+              onOpen={() => openPostItem(i)}
+              pressHoldMs={isDesktop ? 350 : undefined}
+            />
+          ),
+        )
+      )}
+    </>
   );
 
   return (
@@ -174,135 +250,43 @@ const FeedPage = () => {
         </div>
       ) : (
         <>
-          {/* Mobile: side-by-side independently scrolling columns */}
           <div className="relative z-10 flex flex-1 overflow-hidden pt-[7.5rem] lg:hidden">
             <div className="h-full w-1/4 space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-1.5 pb-24 scrollbar-hide">
-              <div className="-mx-1.5 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-2 py-1 backdrop-blur-sm">
-                <p className="text-[10px] font-black uppercase tracking-wider text-foreground">Reels</p>
-              </div>
-              {reels.length === 0 ? (
-                <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">No reels yet</p>
-              ) : (
-                reels.map((post, i) => (
-                  <FeedThumbCard
-                    key={post.id}
-                    post={post}
-                    compact
-                    autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
-                    onOpen={() => openItem("reel", i)}
-                  />
-                ))
-              )}
+              {happeningColumn(true)}
             </div>
 
             <div className="h-full w-3/4 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border/70 px-2 pb-24 scrollbar-hide dark:border-white/10">
               <div className="-mx-2 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-3 py-1 backdrop-blur-sm">
                 <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
               </div>
-              {posts.length === 0 ? (
-                <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
-                  <p className="text-xs text-muted-foreground">No posts yet</p>
-                  <button
-                    onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-                    className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
-                  >
-                    Create first post
-                  </button>
-                </div>
-              ) : (
-                posts.map((item: any, i: number) =>
-                  item.itemType === "battle" ? (
-                    <BattleCard
-                      key={`battle-${item.id}`}
-                      battle={item}
-                      onOpen={() => openItem("post", i)}
-                    />
-                  ) : (
-                    <FeedThumbCard
-                      key={item.id}
-                      post={item}
-                      onOpen={() => openItem("post", i)}
-                    />
-                  ),
-                )
-              )}
+              {postsColumn()}
             </div>
           </div>
 
-          {/* Desktop: same side-by-side Reels | Posts, each scrolls independently */}
           <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-hidden p-3 lg:flex">
             {trending.length > 0 && <div className="mb-3 shrink-0">{trendingRow}</div>}
             <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border/60 bg-background/40">
               <div className="h-full w-[32%] min-w-[180px] max-w-[280px] space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-2 pb-4 scrollbar-hide">
-                <div className="-mx-2 sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur-sm">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Reels</p>
-                </div>
-                {reels.length === 0 ? (
-                  <p className="mt-4 rounded-lg border border-border bg-card px-2 py-3 text-center text-xs text-muted-foreground">
-                    No reels yet
-                  </p>
-                ) : (
-                  reels.map((post, i) => (
-                    <FeedThumbCard
-                      key={post.id}
-                      post={post}
-                      compact
-                      autoPlayMuted={post.media_type === "video" && i === featuredReelIndex}
-                      onOpen={() => openItem("reel", i)}
-                      pressHoldMs={350}
-                    />
-                  ))
-                )}
+                {happeningColumn(false)}
               </div>
 
               <div className="h-full min-w-0 flex-1 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border px-3 pb-4 scrollbar-hide">
                 <div className="-mx-3 sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur-sm">
                   <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
                 </div>
-                {posts.length === 0 ? (
-                  <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6">
-                    <p className="text-sm text-muted-foreground">No posts yet</p>
-                    <button
-                      onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-                      className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground"
-                    >
-                      Create first post
-                    </button>
-                  </div>
-                ) : (
-                  posts.map((item: any, i: number) =>
-                    item.itemType === "battle" ? (
-                      <BattleCard
-                        key={`battle-${item.id}`}
-                        battle={item}
-                        onOpen={() => openItem("post", i)}
-                      />
-                    ) : (
-                      <FeedThumbCard
-                        key={item.id}
-                        post={item}
-                        onOpen={() => openItem("post", i)}
-                        pressHoldMs={350}
-                      />
-                    ),
-                  )
-                )}
+                {postsColumn()}
               </div>
             </div>
           </div>
         </>
       )}
 
-      {viewer && activeItems.length > 0 && (
+      {viewer && posts.length > 0 && (
         isDesktop ? (
-          viewer.rail === "reel" ? (
-            <DesktopReelViewer items={activeItems} startIndex={viewer.index} onClose={() => setViewer(null)} />
-          ) : (
-            <DesktopPostDetail items={activeItems} startIndex={viewer.index} onClose={() => setViewer(null)} />
-          )
+          <DesktopPostDetail items={posts} startIndex={viewer.index} onClose={() => setViewer(null)} />
         ) : (
           <FeedFullscreenViewer
-            items={activeItems}
+            items={posts}
             startIndex={viewer.index}
             currentUserId={user?.id}
             onClose={() => setViewer(null)}

@@ -92,6 +92,10 @@ import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
 import JobInterviewPage from "./pages/JobInterviewPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
+import ServicesPage from "./pages/ServicesPage";
+import ServiceDetailPage from "./pages/ServiceDetailPage";
+import EventsPage from "./pages/EventsPage";
+import EventDetailPage from "./pages/EventDetailPage";
 
 
 import { SessionProvider } from "./wstudio/session/SessionContext";
@@ -329,6 +333,10 @@ const ProtectedRoutes = () => {
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
+        <Route path="/services" element={<ServicesPage />} />
+        <Route path="/services/:id" element={<ServiceDetailPage />} />
+        <Route path="/events" element={<EventsPage />} />
+        <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
         <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
         <Route path="/ai-studio" element={<Navigate to="/" replace />} />

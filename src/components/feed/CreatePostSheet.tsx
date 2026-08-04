@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import CreateCameraView from "./create/CreateCameraView";
-import CreateHubView from "./create/CreateHubView";
 import LiveCameraView from "./create/LiveCameraView";
 import MediaEditView from "./create/MediaEditView";
 import PostPreviewView from "./create/PostPreviewView";
@@ -51,7 +50,6 @@ const queryClient = useQueryClient();
 
 const [step, setStep] = useState<Step>("camera");
 const [createMode, setCreateMode] = useState<CreateMode>("post");
-const [postCameraOpen, setPostCameraOpen] = useState(false);
 const [caption, setCaption] = useState("");
 const [title, setTitle] = useState("");
 const [file, setFile] = useState<File | null>(null);
@@ -373,8 +371,8 @@ if (!user) throw new Error("Not authenticated");
 
   setUploading(false);
 
-  // Tag the post for the feed's Reels vs Posts split.
-  meta = { ...meta, isReel: createMode === "post" };
+  // All camera posts land on the Posts rail (and also surface in Happening).
+  meta = { ...meta, isReel: false };
 
   const payload = {
     caption: encodeCaptionWithMeta(caption.trim(), meta) || null,
@@ -397,6 +395,7 @@ if (!user) throw new Error("Not authenticated");
 },
 onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+  queryClient.invalidateQueries({ queryKey: ["happening-feed"] });
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   toast.success(postToEdit ? "Post updated!" : "Post shared!");
   reset();
@@ -452,7 +451,6 @@ if (!postToEdit) {
 
 ensureMusicPreviewUrl(musicFile);
 
-setPostCameraOpen(false);
 setStep("edit");
 
 };
@@ -580,41 +578,6 @@ musicTrim={{
   volume: editorMeta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
 }}
 initialStream={cameraSessionKey === 0 ? cameraStream : null}
-/>
-)}
-
-{step === "camera" && createMode === "create" && !postCameraOpen && (
-<CreateHubView
-createMode={createMode}
-onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
-onClose={reset}
-onNewVideo={() => setPostCameraOpen(true)}
-onUploadVideo={() => videoInputRef.current?.click()}
-/>
-)}
-
-{step === "camera" && createMode === "create" && postCameraOpen && (
-<CreateCameraView
-key={`post-${cameraSessionKey}`}
-createMode={createMode}
-onModeChange={(m) => { setPostCameraOpen(false); setCreateMode(m); }}
-onClose={() => setPostCameraOpen(false)}
-onCapture={handleMediaFile}
-onOpenGallery={openGallery}
-onTextPost={handleTextPost}
-onAddSound={handleSoundButton}
-soundLabel={soundLabel}
-musicPreviewUrl={musicPreviewUrl}
-musicPaused={showSoundPicker}
-onRegisterMusicPlay={registerCameraMusicPlay}
-musicTrim={{
-  trimStart: editorMeta.music?.trimStart,
-  trimEnd: editorMeta.music?.trimEnd,
-  sourceDurationSec: editorMeta.music?.durationSec,
-  volume: editorMeta.music?.volume ?? MIXED_ADDED_MUSIC_VOLUME,
-}}
-recordMode="tap"
-maxRecordSec={null}
 />
 )}
 
