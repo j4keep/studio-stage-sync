@@ -1,13 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
 import { listMarketplaceListings, listingCoverUrl } from "@/lib/marketplace-api";
-import { isBattleOnFeed } from "@/lib/battle-ui";
 import { parsePostCaption } from "@/lib/post-editor";
 import { isPurgedFeedVideoPost } from "@/lib/clear-feed-videos";
 import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
 
 export type HappeningKind =
   | "post"
-  | "battle"
   | "marketplace"
   | "job"
   | "gig"
@@ -32,7 +30,6 @@ export type HappeningItem = {
 
 const KIND_LABEL: Record<HappeningKind, string> = {
   post: "Post",
-  battle: "Battle",
   marketplace: "Marketplace",
   job: "Career",
   gig: "Gig",
@@ -60,7 +57,6 @@ export async function fetchHappeningItems(opts: {
 
   const [
     postsResult,
-    battlesResult,
     marketResult,
     jobsResult,
     gigsResult,
@@ -70,11 +66,6 @@ export async function fetchHappeningItems(opts: {
     (supabase as any)
       .from("posts")
       .select("id, caption, media_url, media_type, created_at, user_id")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    (supabase as any)
-      .from("battles")
-      .select("*")
       .order("created_at", { ascending: false })
       .limit(limit),
     listMarketplaceListings({ limit, sort: "newest" }).catch(() => []),
@@ -120,26 +111,7 @@ export async function fetchHappeningItems(opts: {
     });
   }
 
-  for (const battle of battlesResult.data || []) {
-    if (!isBattleOnFeed(battle)) continue;
-    const title = safeTitle(battle.title, "Live battle");
-    items.push({
-      id: `battle-${battle.id}`,
-      kind: "battle",
-      title,
-      subtitle: "Battle",
-      coverUrl:
-        battle.challenger_cover_url ||
-        battle.opponent_cover_url ||
-        battle.challenger_media_url ||
-        battle.replay_media_url ||
-        null,
-      mediaType: battle.media_type === "live" || battle.replay_media_url ? "video" : "image",
-      createdAt: battle.updated_at || battle.created_at,
-      route: `/battle/${battle.id}`,
-      sourceId: battle.id,
-    });
-  }
+  // Battles stay on the Posts rail only (same as a regular video post).
 
   for (const listing of marketResult || []) {
     items.push({

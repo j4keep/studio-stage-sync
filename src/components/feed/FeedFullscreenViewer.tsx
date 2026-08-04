@@ -19,9 +19,14 @@ interface Props {
 /** Fullscreen swipeable viewer scoped to a filtered rail (reels-only or posts-only). */
 export default function FeedFullscreenViewer({ items, startIndex, currentUserId, onClose }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const currentIndexRef = useRef(startIndex);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
   const mountRadius = getFeedMountRadius();
+
+  useEffect(() => {
+    currentIndexRef.current = currentIndex;
+  }, [currentIndex]);
 
   const lockScroll = useCallback((locked: boolean) => {
     setScrollLocked(locked);
@@ -38,6 +43,24 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     }
   }, []);
 
+  const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const h = el.clientHeight || 1;
+    const next = Math.max(0, Math.min(items.length - 1, index));
+    el.scrollTo({ top: next * h, behavior });
+    setCurrentIndex(next);
+  }, [items.length]);
+
+  /** After a video ends, swipe up to the next post (Facebook-style). */
+  const advanceAfterVideo = useCallback(() => {
+    if (scrollLocked) return;
+    const cur = currentIndexRef.current;
+    if (cur >= items.length - 1) return;
+    forceIosAudioSessionToPlayback();
+    goToIndex(cur + 1, "smooth");
+  }, [goToIndex, items.length, scrollLocked]);
+
   useEffect(() => {
     // Opening the fullscreen viewer is itself a user-gesture-triggered navigation,
     // so unlock the iOS audio session and force "playback" routing immediately.
@@ -46,6 +69,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: startIndex * el.clientHeight, behavior: "auto" });
+    setCurrentIndex(startIndex);
   }, [startIndex]);
 
   useEffect(() => {
@@ -135,6 +159,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                     currentUserId={currentUserId}
                     isActive={index === currentIndex}
                     onScrollLockChange={lockScroll}
+                    onVideoEnded={advanceAfterVideo}
                   />
                 ) : (
                   <FeedPostCard
@@ -142,6 +167,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                     currentUserId={currentUserId}
                     isActive={index === currentIndex}
                     isNear={mounted}
+                    onVideoEnded={advanceAfterVideo}
                   />
                 )
               ) : null}

@@ -54,9 +54,19 @@ interface Props {
   isNear?: boolean;
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
+  /** Fired once when the video naturally ends (not images). Used to auto-advance the post viewer. */
+  onVideoEnded?: () => void;
 }
 
-const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, chromeHidden = false, onChromeHiddenChange }: Props) => {
+const FeedPostCard = ({
+  post,
+  currentUserId,
+  isActive = false,
+  isNear = false,
+  chromeHidden = false,
+  onChromeHiddenChange,
+  onVideoEnded,
+}: Props) => {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -98,6 +108,10 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
   const [videoDuration, setVideoDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [scrubTime, setScrubTime] = useState(0);
+  const [showReplay, setShowReplay] = useState(false);
+  const onVideoEndedRef = useRef(onVideoEnded);
+  onVideoEndedRef.current = onVideoEnded;
+  const endedAdvanceSentRef = useRef(false);
   const progressRef = useRef<HTMLDivElement>(null);
   const musicStopRef = useRef<(() => void) | null>(null);
   const musicAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -579,19 +593,46 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       setAutoplayAudioLocked(false);
       setVideoProgress(0);
       setVideoDuration(0);
-      videoRef.current?.pause();
+      setShowReplay(false);
+      endedAdvanceSentRef.current = false;
+      paintRecoveryAttemptsRef.current = 0;
+      if (paintRecoveryTimerRef.current) {
+        window.clearTimeout(paintRecoveryTimerRef.current);
+        paintRecoveryTimerRef.current = null;
+      }
+      const v = videoRef.current;
+      if (v) {
+        v.pause();
+        try {
+          v.currentTime = 0;
+        } catch {
+          /* ignore */
+        }
+      }
       setIsPlaying(false);
       return;
     }
 
     setVideoProgress(0);
     setVideoDuration(0);
+    setShowReplay(false);
+    endedAdvanceSentRef.current = false;
+    paintRecoveryAttemptsRef.current = 0;
 
     let cancelled = false;
     const video = videoRef.current;
 
     const attemptPlay = () => {
       if (cancelled || userPausedRef.current || showComments) return;
+      const el = videoRef.current;
+      if (el) {
+        try {
+          const trimStart = postMeta?.trim?.start ?? 0;
+          if ((el.currentTime || 0) > 0.15) el.currentTime = trimStart;
+        } catch {
+          /* ignore */
+        }
+      }
       void playWhenActive();
     };
 
@@ -608,7 +649,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
       window.clearTimeout(retryId);
       video.removeEventListener("canplay", onReady);
     };
-  }, [isActive, showComments, post.media_type, playWhenActive]);
+  }, [isActive, showComments, post.media_type, playWhenActive, postMeta?.trim?.start]);
 
   // iOS/Android pause feed video in background — restore audio when app returns.
   useEffect(() => {
@@ -647,7 +688,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     }
   }, [isActive, post.id, viewCounted]);
 
-  // Video progress — rAF while active so iOS timeupdate throttling doesn't freeze the bar.
+  // Video progress — throttled timer (rAF setState was freezing phones on long sessions).
   useEffect(() => {
     if (!isActive || post.media_type !== "video") return;
 
@@ -664,29 +705,51 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
     video.addEventListener("durationchange", syncDuration);
 
     const trim = postMeta?.trim;
-    let rafId = 0;
-    let lastProgressSync = 0;
+    let timer = 0;
     const tick = () => {
-      if (!isScrubbingRef.current && video.duration && isFinite(video.duration) && !video.paused) {
-        const now = performance.now();
-        if (now - lastProgressSync > 250) {
-          lastProgressSync = now;
-          setVideoProgress((video.currentTime / video.duration) * 100);
-        }
+      if (!isScrubbingRef.current && video.duration && isFinite(video.duration)) {
+        setVideoProgress((video.currentTime / video.duration) * 100);
       }
-      if (trim && !video.paused && video.currentTime >= trim.end) {
-        video.currentTime = trim.start;
+      // Trim end → advance (don't loop the clip forever on the post page).
+      if (
+        trim &&
+        !video.paused &&
+        video.currentTime >= trim.end - 0.05 &&
+        !endedAdvanceSentRef.current
+      ) {
+        endedAdvanceSentRef.current = true;
+        video.pause();
+        setShowReplay(true);
+        onVideoEndedRef.current?.();
+        return;
       }
-      rafId = requestAnimationFrame(tick);
+      timer = window.setTimeout(tick, 125);
     };
-    rafId = requestAnimationFrame(tick);
+    timer = window.setTimeout(tick, 125);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      window.clearTimeout(timer);
       video.removeEventListener("loadedmetadata", syncDuration);
       video.removeEventListener("durationchange", syncDuration);
     };
   }, [isActive, post.media_type, post.id, postMeta?.trim]);
+
+  // Natural video end → auto-advance to the next post (no loop).
+  useEffect(() => {
+    if (!isActive || post.media_type !== "video") return;
+    const video = videoRef.current;
+    if (!video) return;
+    const onEnded = () => {
+      if (endedAdvanceSentRef.current) return;
+      endedAdvanceSentRef.current = true;
+      setShowReplay(true);
+      setIsPlaying(false);
+      musicAudioRef.current?.pause();
+      onVideoEndedRef.current?.();
+    };
+    video.addEventListener("ended", onEnded);
+    return () => video.removeEventListener("ended", onEnded);
+  }, [isActive, post.media_type, post.id]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -912,40 +975,33 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
 
   const hasVisibleVideoFrame = useCallback((video: HTMLVideoElement) => {
     if (video.videoWidth <= 0 || video.videoHeight <= 0) return false;
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.width = 24;
-      canvas.height = 24;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return true;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-      let darkPixels = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const brightness = data[i] + data[i + 1] + data[i + 2];
-        if (brightness < 24) darkPixels += 1;
-      }
-      return darkPixels / (data.length / 4) < 0.96;
-    } catch {
-      // If the browser blocks canvas sampling, wait until real playback has advanced.
-      // This keeps the cover visible instead of flashing a black decoder frame.
-      return video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime > 0.12;
+    // Once playback has advanced, trust the decoder — canvas sampling froze phones.
+    if (!video.paused && video.currentTime > 0.08) return true;
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime > 0.12) {
+      return true;
     }
+    return video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
   }, []);
 
   const scheduleVideoPaintRecovery = useCallback((video: HTMLVideoElement) => {
-    if (paintRecoveryTimerRef.current || paintRecoveryAttemptsRef.current >= 3) return;
+    // Cap recovery — seek storms were freezing the post page after swipe.
+    if (paintRecoveryTimerRef.current || paintRecoveryAttemptsRef.current >= 2) return;
+    if (videoFrameReady || !isActiveRef.current) return;
     paintRecoveryTimerRef.current = window.setTimeout(() => {
       paintRecoveryTimerRef.current = null;
       const v = videoRef.current;
-      if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed || videoFrameReady) return;
+      if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed || videoFrameReady) {
+        return;
+      }
+      if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && v.currentTime > 0.05) {
+        setVideoFrameReady(true);
+        return;
+      }
       paintRecoveryAttemptsRef.current += 1;
 
-      // Keep music paused while nudging the decoder so we don't get audio over a frozen frame.
       musicAudioRef.current?.pause();
 
       try {
-        // Tiny forward nudge only — never jump near the end (that caused audio cuts).
         v.currentTime = Math.max(0, (v.currentTime || 0) + 0.04);
       } catch {
         /* ignore */
@@ -959,7 +1015,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           }
         });
       }, 60);
-    }, paintRecoveryAttemptsRef.current === 0 ? 450 : 750);
+    }, paintRecoveryAttemptsRef.current === 0 ? 600 : 900);
   }, [mediaFailed, playWhenActive, videoFrameReady, isMuted, startAudiblePlayback]);
 
   const markVideoFrameReady = useCallback((video: HTMLVideoElement) => {
@@ -1088,12 +1144,11 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               src={post.media_url}
               className={`absolute inset-0 h-full w-full ${showComments ? "object-contain" : "object-cover"}`}
               style={{ ...videoCompositedStyle, opacity: showPosterOverlay || showGeneratedPosterOverlay ? 0.01 : 1 }}
-              loop
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
               preload={isActive || isNear ? "auto" : "metadata"}
-              onLoadedMetadata={(e) => {
+              onLoadedMetadata={() => {
                 if (coverUrl) setMediaReady(true);
               }}
               onLoadedData={(e) => {
@@ -1108,6 +1163,7 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
               onPlay={() => {
                 setMediaReady(true);
                 setIsPlaying(true);
+                setShowReplay(false);
                 if (videoRef.current) markVideoFrameReady(videoRef.current);
               }}
               onPlaying={(e) => markVideoFrameReady(e.currentTarget)}
@@ -1175,7 +1231,34 @@ const FeedPostCard = ({ post, currentUserId, isActive = false, isNear = false, c
           </div>
         )}
 
-        {post.media_type === "video" && userPaused && !showComments && (
+        {post.media_type === "video" && showReplay && isActive && !showComments && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              const v = videoRef.current;
+              if (!v) return;
+              endedAdvanceSentRef.current = false;
+              setShowReplay(false);
+              userPausedRef.current = false;
+              setUserPaused(false);
+              try {
+                v.currentTime = postMeta?.trim?.start ?? 0;
+              } catch {
+                /* ignore */
+              }
+              void playWhenActive().then((ok) => {
+                if (ok && !isMuted) void startAudiblePlayback();
+              });
+            }}
+            className="absolute left-1/2 top-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full bg-primary/90 px-5 py-3 text-sm font-bold text-primary-foreground shadow-lg backdrop-blur-md active:scale-95"
+            aria-label="Replay video"
+          >
+            <Play className="h-5 w-5 fill-primary-foreground" />
+            Replay
+          </button>
+        )}
+
+        {post.media_type === "video" && userPaused && !showReplay && !showComments && (
           <button
             onClick={(e) => {
               e.stopPropagation();

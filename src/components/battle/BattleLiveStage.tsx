@@ -64,6 +64,8 @@ type Props = {
   replayVideoRef?: React.RefObject<HTMLVideoElement | null>;
   /** Election-style check after voting closes — sticks on replay too. */
   winnerSide?: "left" | "right" | null;
+  /** Feed: play replay once then advance to the next post. */
+  onReplayEnded?: () => void;
   className?: string;
 };
 
@@ -183,10 +185,12 @@ function ReplayHalfFollower({
     slave.playsInline = true;
     void slave.play().catch(() => undefined);
 
-    const sync = () => {
+    // Soft sync only — timeupdate seeks were freezing the post page on phones.
+    const sync = (force = false) => {
       const master = masterRef?.current;
       if (!master || !slave) return;
-      if (Math.abs(slave.currentTime - master.currentTime) > 0.3) {
+      const drift = Math.abs(slave.currentTime - master.currentTime);
+      if (force || drift > 1.25) {
         try {
           slave.currentTime = master.currentTime;
         } catch {
@@ -198,16 +202,17 @@ function ReplayHalfFollower({
     };
 
     const master = masterRef?.current;
-    master?.addEventListener("timeupdate", sync);
-    master?.addEventListener("seeked", sync);
-    master?.addEventListener("play", sync);
-    master?.addEventListener("pause", sync);
-    const id = window.setInterval(sync, 500);
+    const onSeeked = () => sync(true);
+    const onPlay = () => sync(true);
+    const onPause = () => sync(true);
+    master?.addEventListener("seeked", onSeeked);
+    master?.addEventListener("play", onPlay);
+    master?.addEventListener("pause", onPause);
+    const id = window.setInterval(() => sync(false), 2000);
     return () => {
-      master?.removeEventListener("timeupdate", sync);
-      master?.removeEventListener("seeked", sync);
-      master?.removeEventListener("play", sync);
-      master?.removeEventListener("pause", sync);
+      master?.removeEventListener("seeked", onSeeked);
+      master?.removeEventListener("play", onPlay);
+      master?.removeEventListener("pause", onPause);
       window.clearInterval(id);
     };
   }, [src, masterRef]);
@@ -270,6 +275,7 @@ export default function BattleLiveStage({
   onExpandSide,
   replayVideoRef,
   winnerSide = null,
+  onReplayEnded,
   className = "",
 }: Props) {
   const lastTapRef = useRef(0);
@@ -624,6 +630,8 @@ export default function BattleLiveStage({
           onExpandSide={onExpandSide}
           hideProgress={feedEmbed}
           winnerSide={winnerSide}
+          loop={!feedEmbed}
+          onEnded={feedEmbed ? onReplayEnded : undefined}
         />
         {savingReplay ? (
           <div className="mt-2 rounded-full bg-black/65 px-3 py-1.5 text-center text-[10px] font-bold text-white/90">

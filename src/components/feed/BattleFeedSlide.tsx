@@ -54,6 +54,8 @@ type Props = {
   currentUserId?: string;
   isActive?: boolean;
   onScrollLockChange?: (locked: boolean) => void;
+  /** After both sides (or live replay) finish — advance the post viewer. */
+  onVideoEnded?: () => void;
 };
 
 const EMOJIS = ["🔥", "💀", "🎤", "👑", "💪", "😤", "🏆", "⚡"];
@@ -74,6 +76,7 @@ export default function BattleFeedSlide({
   currentUserId,
   isActive = false,
   onScrollLockChange,
+  onVideoEnded,
 }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -407,24 +410,27 @@ export default function BattleFeedSlide({
     playSide,
   ]);
 
-  // Auto-advance to the other side when a track ends.
+  // Play the other side when a track ends; when both done, advance the feed.
   useEffect(() => {
     if (!isActive) return;
     const left = mediaEl("left");
     const right = mediaEl("right");
     if (!left && !right) return;
+    const played = { left: false, right: false };
 
     const onEnded = (finished: "left" | "right") => {
+      played[finished] = true;
       const other: "left" | "right" = finished === "left" ? "right" : "left";
       const otherUrl =
         other === "left" ? battle?.challenger_media_url : battle?.opponent_media_url;
-      if (!otherUrl) {
-        setPlaying(false);
+      if (otherUrl && !played[other]) {
+        window.requestAnimationFrame(() => {
+          void playSide(other, { fromStart: true });
+        });
         return;
       }
-      window.requestAnimationFrame(() => {
-        void playSide(other, { fromStart: true });
-      });
+      setPlaying(false);
+      onVideoEnded?.();
     };
 
     const onLeftEnded = () => onEnded("left");
@@ -442,7 +448,18 @@ export default function BattleFeedSlide({
     battle?.challenger_media_url,
     battle?.opponent_media_url,
     battle?.id,
+    onVideoEnded,
   ]);
+
+  // Live replay end → next post (handled by LiveBattleReplayPlayer via stage).
+  useEffect(() => {
+    if (!isActive || mediaType !== "live" || !liveReplayUrl) return;
+    const el = liveReplayRef.current;
+    if (!el) return;
+    const onEnded = () => onVideoEnded?.();
+    el.addEventListener("ended", onEnded);
+    return () => el.removeEventListener("ended", onEnded);
+  }, [isActive, mediaType, liveReplayUrl, onVideoEnded, battle?.id]);
 
   // Progress for the active side (throttled — rAF setState was janking phones).
   useEffect(() => {
@@ -853,6 +870,7 @@ export default function BattleFeedSlide({
               expandedSide={expandedSide}
               replayVideoRef={liveReplayRef}
               winnerSide={winnerSide}
+              onReplayEnded={onVideoEnded}
               className={expandedSide ? BATTLE_FEED_TILE_EXPANDED : ""}
               onExpandSide={(side) =>
                 setExpandedSide((prev) => (prev === side ? null : side))

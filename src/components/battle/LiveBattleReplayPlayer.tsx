@@ -24,6 +24,9 @@ type Props = {
   onExpandSide?: (side: "left" | "right") => void;
   /** Election-style check on the winner after voting closes. */
   winnerSide?: "left" | "right" | null;
+  /** Feed posts: play once then advance. Battle page can keep looping. */
+  loop?: boolean;
+  onEnded?: () => void;
 };
 
 const fmt = (s: number) => {
@@ -47,6 +50,8 @@ export default function LiveBattleReplayPlayer({
   compact = false,
   onExpandSide,
   winnerSide = null,
+  loop = true,
+  onEnded,
 }: Props) {
   const masterRef = useRef<HTMLVideoElement | null>(null);
   const slaveRef = useRef<HTMLVideoElement | null>(null);
@@ -54,6 +59,9 @@ export default function LiveBattleReplayPlayer({
   const lastTapRef = useRef(0);
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
   const durationProbedRef = useRef(false);
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
+  const endedSentRef = useRef(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
@@ -80,14 +88,15 @@ export default function LiveBattleReplayPlayer({
     const slave = slaveRef.current;
     if (!master) return;
     durationProbedRef.current = false;
+    endedSentRef.current = false;
     forceIosAudioSessionToPlayback();
     master.playsInline = true;
-    master.loop = true;
+    master.loop = loop;
     master.muted = false;
     if (slave) {
       slave.muted = true;
       slave.playsInline = true;
-      slave.loop = true;
+      slave.loop = loop;
       void slave.play().catch(() => undefined);
     }
     void master.play().catch(() => undefined);
@@ -108,14 +117,22 @@ export default function LiveBattleReplayPlayer({
         else durationProbedRef.current = false;
       });
     };
+    const onMasterEnded = () => {
+      if (loop || endedSentRef.current) return;
+      endedSentRef.current = true;
+      slave?.pause();
+      onEndedRef.current?.();
+    };
     master.addEventListener("loadedmetadata", tryProbe);
     master.addEventListener("durationchange", tryProbe);
+    master.addEventListener("ended", onMasterEnded);
     tryProbe();
     return () => {
       master.removeEventListener("loadedmetadata", tryProbe);
       master.removeEventListener("durationchange", tryProbe);
+      master.removeEventListener("ended", onMasterEnded);
     };
-  }, [src]);
+  }, [src, loop]);
 
   // Resume after backgrounding.
   useEffect(() => {
@@ -161,7 +178,7 @@ export default function LiveBattleReplayPlayer({
     master.addEventListener("play", onPlay);
     master.addEventListener("pause", onPause);
     master.addEventListener("seeked", onSeeked);
-    const id = window.setInterval(() => syncSlave(false), 1500);
+    const id = window.setInterval(() => syncSlave(false), 2500);
     return () => {
       master.removeEventListener("play", onPlay);
       master.removeEventListener("pause", onPause);
@@ -272,7 +289,7 @@ export default function LiveBattleReplayPlayer({
             ref={setMaster}
             src={src}
             autoPlay
-            loop
+            loop={loop}
             playsInline
             preload="auto"
             className="absolute inset-0 h-full w-[200%] max-w-none object-cover"
@@ -306,7 +323,7 @@ export default function LiveBattleReplayPlayer({
             ref={slaveRef}
             src={src}
             autoPlay
-            loop
+            loop={loop}
             muted
             playsInline
             preload="metadata"
