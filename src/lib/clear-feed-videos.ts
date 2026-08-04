@@ -11,13 +11,26 @@ export const LEGACY_FEED_VIDEO_POST_IDS = new Set<string>([
   "025a93c0-fb96-41a4-adfc-7a234c209e05",
 ]);
 
+/** Hide every feed video created at/before this moment (Posts + Reels clutter purge). */
+export const FEED_VIDEO_PURGE_BEFORE_MS = Date.parse("2026-08-04T00:30:00.000Z");
+
 const STORAGE_KEY = "yaj:feed-videos-cleared:v1";
 
+/** True when this post should be stripped from homepage Posts/Reels during the purge. */
+export function isPurgedFeedVideoPost(post: { id?: string; media_type?: string; created_at?: string } | null): boolean {
+  if (!post || post.media_type !== "video") return false;
+  if (post.id && LEGACY_FEED_VIDEO_POST_IDS.has(post.id)) return true;
+  const created = post.created_at ? Date.parse(post.created_at) : NaN;
+  return Number.isFinite(created) && created <= FEED_VIDEO_PURGE_BEFORE_MS;
+}
+
 /**
- * Best-effort wipe of every media_type=video feed post via service-role edge function.
- * @returns true when the wipe ran (including already-empty).
+ * Best-effort wipe of feed video posts.
+ * Tries service-role edge paths first, then deletes the signed-in user's own
+ * video posts via RLS so cleanup still happens without a fresh function deploy.
+ * @returns true when any wipe path succeeded.
  */
-export async function clearFeedVideosOnce(): Promise<boolean> {
+export async function clearFeedVideosOnce(userId?: string | null): Promise<boolean> {
   if (typeof window === "undefined") return false;
   try {
     if (window.localStorage.getItem(STORAGE_KEY) === "1") return false;
@@ -36,9 +49,38 @@ export async function clearFeedVideosOnce(): Promise<boolean> {
         body: { action: "clear-feed-videos" },
       }));
     }
-    if (error) return false;
-    const deleted = (data as { deleted?: number } | null)?.deleted;
-    if (typeof deleted !== "number") return false;
+    if (!error && data != null && typeof (data as { deleted?: number }).deleted === "number") {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, "1");
+      } catch {
+        /* ignore */
+      }
+      return true;
+    }
+  } catch {
+    /* continue to owner RLS path */
+  }
+
+  if (!userId) return false;
+  try {
+    const { data: mine, error: listError } = await (supabase as any)
+      .from("posts")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("media_type", "video");
+    if (listError || !mine?.length) return false;
+    const ids = mine.map((row: { id: string }) => row.id);
+    await (supabase as any)
+      .from("likes")
+      .delete()
+      .eq("content_type", "post")
+      .in("content_id", ids);
+    const { error: delError } = await (supabase as any)
+      .from("posts")
+      .delete()
+      .eq("user_id", userId)
+      .eq("media_type", "video");
+    if (delError) return false;
     try {
       window.localStorage.setItem(STORAGE_KEY, "1");
     } catch {
@@ -46,7 +88,6 @@ export async function clearFeedVideosOnce(): Promise<boolean> {
     }
     return true;
   } catch {
-    /* Function may not be deployed yet — legacy ID filter still hides clutter. */
     return false;
   }
 }

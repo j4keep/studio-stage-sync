@@ -77,12 +77,12 @@ const FeedPage = () => {
     initFeedAudioUnlockOnGesture();
   }, []);
 
-  // Wipe clutter video posts from Posts/Reels once the edge function is live.
+  // Wipe clutter video posts from Posts/Reels (edge function, or own posts via RLS).
   useEffect(() => {
-    void clearFeedVideosOnce().then((cleared) => {
+    void clearFeedVideosOnce(user?.id).then((cleared) => {
       if (cleared) void refetch();
     });
-  }, [refetch]);
+  }, [refetch, user?.id]);
 
   const openItem = (rail: "reel" | "post", index: number) => {
     forceIosAudioSessionToPlayback();
