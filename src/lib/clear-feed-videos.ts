@@ -26,7 +26,16 @@ export async function clearFeedVideosOnce(): Promise<boolean> {
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke("clear-feed-videos", { body: {} });
+    // Prefer dedicated function; fall back to declare-battle-winners action
+    // (already deployed) so cleanup still works before a new function ships.
+    let data: unknown = null;
+    let error: unknown = null;
+    ({ data, error } = await supabase.functions.invoke("clear-feed-videos", { body: {} }));
+    if (error || data == null || typeof (data as { deleted?: number }).deleted !== "number") {
+      ({ data, error } = await supabase.functions.invoke("declare-battle-winners", {
+        body: { action: "clear-feed-videos" },
+      }));
+    }
     if (error) return false;
     const deleted = (data as { deleted?: number } | null)?.deleted;
     if (typeof deleted !== "number") return false;
