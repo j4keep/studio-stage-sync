@@ -34,9 +34,8 @@ const fmt = (s: number) => {
 };
 
 /**
- * Completed live-debate replay: dual VS cards from ONE decoder.
- * Left tile = video (left half crop). Right tile = canvas copy of right half
- * (avoids dual decode + hard seek sync that stuttered on phones).
+ * Completed live-debate replay: dual VS cards.
+ * Soft sync only (no hard seeks every frame) — keeps phones swipeable.
  */
 export default function LiveBattleReplayPlayer({
   src,
@@ -50,7 +49,7 @@ export default function LiveBattleReplayPlayer({
   winnerSide = null,
 }: Props) {
   const masterRef = useRef<HTMLVideoElement | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const slaveRef = useRef<HTMLVideoElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
   const lastTapRef = useRef(0);
   const lastTapSideRef = useRef<"left" | "right" | null>(null);
@@ -58,9 +57,6 @@ export default function LiveBattleReplayPlayer({
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
-  /** Fallback second <video> only if canvas paint is blocked (rare CORS). */
-  const [canvasOk, setCanvasOk] = useState(true);
-  const slaveRef = useRef<HTMLVideoElement | null>(null);
 
   const setMaster = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -79,15 +75,21 @@ export default function LiveBattleReplayPlayer({
     else master.pause();
   }, []);
 
-  // Boot master + optional duration probe (never while already mid-play).
   useEffect(() => {
     const master = masterRef.current;
+    const slave = slaveRef.current;
     if (!master) return;
     durationProbedRef.current = false;
     forceIosAudioSessionToPlayback();
     master.playsInline = true;
     master.loop = true;
     master.muted = false;
+    if (slave) {
+      slave.muted = true;
+      slave.playsInline = true;
+      slave.loop = true;
+      void slave.play().catch(() => undefined);
+    }
     void master.play().catch(() => undefined);
 
     const tryProbe = () => {
@@ -98,6 +100,7 @@ export default function LiveBattleReplayPlayer({
         setDuration(d);
         return;
       }
+      // Never seek while mid-play — that froze phones.
       if (!master.paused && master.currentTime > 0.2) return;
       durationProbedRef.current = true;
       void resolveMediaDuration(master).then((resolved) => {
@@ -105,7 +108,6 @@ export default function LiveBattleReplayPlayer({
         else durationProbedRef.current = false;
       });
     };
-
     master.addEventListener("loadedmetadata", tryProbe);
     master.addEventListener("durationchange", tryProbe);
     tryProbe();
@@ -115,14 +117,16 @@ export default function LiveBattleReplayPlayer({
     };
   }, [src]);
 
-  // Resume after background / tab hide (iOS pauses media and often won't restart).
+  // Resume after backgrounding.
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState !== "visible") return;
       const master = masterRef.current;
+      const slave = slaveRef.current;
       if (!master) return;
       forceIosAudioSessionToPlayback();
       if (master.paused) void master.play().catch(() => undefined);
+      if (slave?.paused) void slave.play().catch(() => undefined);
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pageshow", onVis);
@@ -132,59 +136,15 @@ export default function LiveBattleReplayPlayer({
     };
   }, [src]);
 
-  // Paint right half from the single decoded video (no second decoder).
+  // Soft sync only on play/pause/seek + rare large drift (no 250ms hard seeks).
   useEffect(() => {
-    if (!canvasOk) return;
-    const master = masterRef.current;
-    const canvas = canvasRef.current;
-    if (!master || !canvas) return;
-    const ctx = canvas.getContext("2d", { alpha: false });
-    if (!ctx) {
-      setCanvasOk(false);
-      return;
-    }
-
-    let raf = 0;
-    let failed = 0;
-    const draw = () => {
-      const w = master.videoWidth;
-      const h = master.videoHeight;
-      if (w > 1 && h > 1) {
-        const half = Math.floor(w / 2);
-        if (canvas.width !== half || canvas.height !== h) {
-          canvas.width = half;
-          canvas.height = h;
-        }
-        try {
-          ctx.drawImage(master, half, 0, half, h, 0, 0, half, h);
-          failed = 0;
-        } catch {
-          failed += 1;
-          if (failed > 30) {
-            setCanvasOk(false);
-            return;
-          }
-        }
-      }
-      raf = window.requestAnimationFrame(draw);
-    };
-    raf = window.requestAnimationFrame(draw);
-    return () => window.cancelAnimationFrame(raf);
-  }, [src, canvasOk]);
-
-  // Soft fallback slave sync — only when canvas can't paint; drift threshold is large.
-  useEffect(() => {
-    if (canvasOk) return;
     const master = masterRef.current;
     const slave = slaveRef.current;
     if (!master || !slave) return;
-    slave.muted = true;
-    slave.playsInline = true;
-    slave.loop = true;
-    void slave.play().catch(() => undefined);
 
-    const sync = () => {
-      if (Math.abs(slave.currentTime - master.currentTime) > 1.25) {
+    const syncSlave = (force = false) => {
+      const drift = Math.abs(slave.currentTime - master.currentTime);
+      if (force || drift > 1.25) {
         try {
           slave.currentTime = master.currentTime;
         } catch {
@@ -194,19 +154,23 @@ export default function LiveBattleReplayPlayer({
       if (master.paused && !slave.paused) slave.pause();
       if (!master.paused && slave.paused) void slave.play().catch(() => undefined);
     };
-    master.addEventListener("seeked", sync);
-    master.addEventListener("play", sync);
-    master.addEventListener("pause", sync);
-    const id = window.setInterval(sync, 1000);
+
+    const onPlay = () => syncSlave(true);
+    const onPause = () => syncSlave(true);
+    const onSeeked = () => syncSlave(true);
+    master.addEventListener("play", onPlay);
+    master.addEventListener("pause", onPause);
+    master.addEventListener("seeked", onSeeked);
+    const id = window.setInterval(() => syncSlave(false), 1500);
     return () => {
-      master.removeEventListener("seeked", sync);
-      master.removeEventListener("play", sync);
-      master.removeEventListener("pause", sync);
+      master.removeEventListener("play", onPlay);
+      master.removeEventListener("pause", onPause);
+      master.removeEventListener("seeked", onSeeked);
       window.clearInterval(id);
     };
-  }, [src, canvasOk]);
+  }, [src]);
 
-  // Throttled progress (~8fps) — avoid rAF React churn on the feed.
+  // Throttled progress — avoid rAF setState churn.
   useEffect(() => {
     const master = masterRef.current;
     if (!master) return;
@@ -217,9 +181,9 @@ export default function LiveBattleReplayPlayer({
         if (d > 0) setDuration(d);
         setCurrent(master.currentTime || 0);
       }
-      id = window.setTimeout(tick, 125);
+      id = window.setTimeout(tick, 200);
     };
-    id = window.setTimeout(tick, 125);
+    id = window.setTimeout(tick, 200);
     return () => window.clearTimeout(id);
   }, [src, scrubbing]);
 
@@ -231,6 +195,13 @@ export default function LiveBattleReplayPlayer({
       void resolveMediaDuration(master, { force: true }).then((resolved) => {
         if (resolved <= 0) return;
         master.currentTime = pct * resolved;
+        if (slaveRef.current) {
+          try {
+            slaveRef.current.currentTime = pct * resolved;
+          } catch {
+            /* ignore */
+          }
+        }
         setDuration(resolved);
         setCurrent(pct * resolved);
       });
@@ -239,7 +210,7 @@ export default function LiveBattleReplayPlayer({
     master.currentTime = pct * d;
     setCurrent(pct * d);
     setDuration(d);
-    if (!canvasOk && slaveRef.current) {
+    if (slaveRef.current) {
       try {
         slaveRef.current.currentTime = pct * d;
       } catch {
@@ -330,28 +301,21 @@ export default function LiveBattleReplayPlayer({
 
         <div
           className={`relative min-w-0 flex-1 overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-pink-400/90 ${tileH}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCardTap("right");
-          }}
         >
-          {canvasOk ? (
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          ) : (
-            <video
-              ref={slaveRef}
-              src={src}
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="metadata"
-              className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover pointer-events-none"
-            />
-          )}
+          <video
+            ref={slaveRef}
+            src={src}
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="metadata"
+            className="absolute inset-0 h-full w-[200%] max-w-none -translate-x-1/2 object-cover"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCardTap("right");
+            }}
+          />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
           <div className="absolute inset-x-0 bottom-0 z-10 p-2.5 pr-[48%]">
             <p className="text-sm font-black text-white drop-shadow">{rightName}</p>

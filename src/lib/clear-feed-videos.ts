@@ -1,0 +1,43 @@
+import { supabase } from "@/integrations/supabase/client";
+
+/** Existing clutter video posts — hidden immediately until the DB wipe lands. */
+export const LEGACY_FEED_VIDEO_POST_IDS = new Set<string>([
+  "9e71e99c-e927-4216-b2b5-b25bd1678c12",
+  "20e3df98-e589-43d6-946c-e413a7d0b7c0",
+  "c5f27f3c-cbde-4773-9de4-152f7b00da89",
+  "0febf6b6-1ab7-45c4-b1f8-4cd109118845",
+  "79a92609-4acb-45fb-8cf5-5070c3ae1b88",
+  "343769da-ad5a-4d8a-9210-90c032bcc2fc",
+  "025a93c0-fb96-41a4-adfc-7a234c209e05",
+]);
+
+const STORAGE_KEY = "yaj:feed-videos-cleared:v1";
+
+/**
+ * Best-effort wipe of every media_type=video feed post via service-role edge function.
+ * @returns true when the wipe ran (including already-empty).
+ */
+export async function clearFeedVideosOnce(): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    if (window.localStorage.getItem(STORAGE_KEY) === "1") return false;
+  } catch {
+    /* ignore */
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke("clear-feed-videos", { body: {} });
+    if (error) return false;
+    const deleted = (data as { deleted?: number } | null)?.deleted;
+    if (typeof deleted !== "number") return false;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      /* ignore */
+    }
+    return true;
+  } catch {
+    /* Function may not be deployed yet — legacy ID filter still hides clutter. */
+    return false;
+  }
+}

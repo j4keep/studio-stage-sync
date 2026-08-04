@@ -71,13 +71,13 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
         rafId = 0;
         const h = el.clientHeight;
         if (h <= 0) return;
-        // Hysteresis: don't flip the active card at the exact halfway point —
-        // bounce remounts were tearing down video/audio mid-play on phones.
-        const raw = el.scrollTop / h;
-        setCurrentIndex((prev) => {
-          if (Math.abs(raw - prev) < 0.58) return prev;
-          return Math.min(items.length - 1, Math.max(0, Math.round(raw)));
-        });
+        // Simple snap sync — keep swipe snappy. Heavy hysteresis made the
+        // post page feel frozen when trying to swipe to the next video.
+        const next = Math.min(
+          items.length - 1,
+          Math.max(0, Math.round(el.scrollTop / h)),
+        );
+        setCurrentIndex((prev) => (prev === next ? prev : next));
       });
     };
     el.addEventListener("scroll", sync, { passive: true });

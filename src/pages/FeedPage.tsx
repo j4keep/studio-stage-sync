@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Search } from "lucide-react";
 import { fetchFeedItems, isReelItem } from "@/lib/feed-items";
+import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
@@ -34,7 +35,7 @@ const FeedPage = () => {
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openBattleId = searchParams.get("battle");
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["feed-posts"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
   });
@@ -75,6 +76,13 @@ const FeedPage = () => {
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
   }, []);
+
+  // Wipe clutter video posts from Posts/Reels once the edge function is live.
+  useEffect(() => {
+    void clearFeedVideosOnce().then((cleared) => {
+      if (cleared) void refetch();
+    });
+  }, [refetch]);
 
   const openItem = (rail: "reel" | "post", index: number) => {
     forceIosAudioSessionToPlayback();

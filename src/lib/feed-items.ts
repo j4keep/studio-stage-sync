@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { parsePostCaption } from "@/lib/post-editor";
 import { listBlockedPeerIds } from "@/lib/blocks";
 import { isBattleOnFeed } from "@/lib/battle-ui";
+import { LEGACY_FEED_VIDEO_POST_IDS } from "@/lib/clear-feed-videos";
 
 /** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
 export function isReelItem(item: any): boolean {
@@ -55,9 +56,10 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
   const blockedIds =
     currentUserId && !userId ? await listBlockedPeerIds(currentUserId) : new Set<string>();
 
-  const visiblePosts = blockedIds.size
+  const visiblePosts = (blockedIds.size
     ? posts.filter((p: any) => !blockedIds.has(p.user_id))
-    : posts;
+    : posts
+  ).filter((p: any) => !LEGACY_FEED_VIDEO_POST_IDS.has(p.id));
   // Homepage feed: only launched (accepted/active) battles. Profile keeps all for the owner.
   const battlePool = userId
     ? battles

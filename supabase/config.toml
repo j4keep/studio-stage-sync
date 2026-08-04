@@ -23,3 +23,6 @@ verify_jwt = true
 
 [functions.declare-battle-winners]
 verify_jwt = false
+
+[functions.clear-feed-videos]
+verify_jwt = false
