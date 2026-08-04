@@ -125,14 +125,36 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     return () => el.removeEventListener("touchmove", block);
   }, [scrollLocked]);
 
+  const stopAllMediaInViewer = useCallback(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    root.querySelectorAll("video, audio").forEach((node) => {
+      const media = node as HTMLMediaElement;
+      try {
+        media.pause();
+        media.muted = true;
+      } catch {
+        /* ignore */
+      }
+    });
+  }, []);
+
   useEffect(() => {
-    return () => lockScroll(false);
-  }, [lockScroll]);
+    return () => {
+      stopAllMediaInViewer();
+      lockScroll(false);
+    };
+  }, [lockScroll, stopAllMediaInViewer]);
+
+  const handleClose = useCallback(() => {
+    stopAllMediaInViewer();
+    onClose();
+  }, [onClose, stopAllMediaInViewer]);
 
   return (
     <div className="feed-viewer-root fixed inset-0 z-[70] bg-black">
       <button
-        onClick={onClose}
+        onClick={handleClose}
         aria-label="Close"
         className="absolute top-[calc(env(safe-area-inset-top)+0.75rem)] left-3 z-[80] w-10 h-10 rounded-full bg-black/60 backdrop-blur flex items-center justify-center text-white"
       >

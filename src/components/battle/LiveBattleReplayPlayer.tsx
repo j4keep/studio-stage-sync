@@ -131,6 +131,8 @@ export default function LiveBattleReplayPlayer({
       master.removeEventListener("loadedmetadata", tryProbe);
       master.removeEventListener("durationchange", tryProbe);
       master.removeEventListener("ended", onMasterEnded);
+      master.pause();
+      slave?.pause();
     };
   }, [src, loop]);
 

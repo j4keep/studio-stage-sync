@@ -581,13 +581,35 @@ const FeedPostCard = ({
     }
   }, [isActive, isMuted, post.media_type, feedAudioUnlocked, startAudiblePlayback]);
 
+  // Hard-stop media so swipe/close never leaves audio playing in the background.
+  const hardStopMedia = useCallback(() => {
+    mediaSessionCleanupRef.current?.();
+    mediaSessionCleanupRef.current = null;
+    musicAudioRef.current?.pause();
+    try {
+      musicStopRef.current?.();
+    } catch {
+      /* ignore */
+    }
+    musicStopRef.current = null;
+    const v = videoRef.current;
+    if (v) {
+      v.pause();
+      applyFeedVideoAudio(v, { muted: true });
+    }
+    setIsPlaying(false);
+  }, []);
+
+  const playWhenActiveRef = useRef(playWhenActive);
+  playWhenActiveRef.current = playWhenActive;
+  const trimStartRef = useRef(postMeta?.trim?.start ?? 0);
+  trimStartRef.current = postMeta?.trim?.start ?? 0;
+
   useEffect(() => {
     if (post.media_type !== "video") return;
 
     if (!isActive) {
       setShowComments(false);
-      mediaSessionCleanupRef.current?.();
-      mediaSessionCleanupRef.current = null;
       userPausedRef.current = false;
       setUserPaused(false);
       setAutoplayAudioLocked(false);
@@ -600,16 +622,7 @@ const FeedPostCard = ({
         window.clearTimeout(paintRecoveryTimerRef.current);
         paintRecoveryTimerRef.current = null;
       }
-      const v = videoRef.current;
-      if (v) {
-        v.pause();
-        try {
-          v.currentTime = 0;
-        } catch {
-          /* ignore */
-        }
-      }
-      setIsPlaying(false);
+      hardStopMedia();
       return;
     }
 
@@ -621,35 +634,46 @@ const FeedPostCard = ({
 
     let cancelled = false;
     const video = videoRef.current;
+    // Seek to start ONCE when this slide becomes active — never again on
+    // canplay / state churn (that was stuttering the opening audio).
+    if (video) {
+      try {
+        const startAt = trimStartRef.current;
+        if (Math.abs((video.currentTime || 0) - startAt) > 0.25) {
+          video.currentTime = startAt;
+        }
+      } catch {
+        /* ignore */
+      }
+    }
 
     const attemptPlay = () => {
-      if (cancelled || userPausedRef.current || showComments) return;
-      const el = videoRef.current;
-      if (el) {
-        try {
-          const trimStart = postMeta?.trim?.start ?? 0;
-          if ((el.currentTime || 0) > 0.15) el.currentTime = trimStart;
-        } catch {
-          /* ignore */
-        }
-      }
-      void playWhenActive();
+      if (cancelled || userPausedRef.current) return;
+      void playWhenActiveRef.current();
     };
 
     attemptPlay();
-
-    if (!video) return () => { cancelled = true; };
-
-    const onReady = () => attemptPlay();
-    video.addEventListener("canplay", onReady);
-    const retryId = window.setTimeout(attemptPlay, 250);
+    // One gentle retry if the first play raced the decoder — do NOT re-seek.
+    const retryId = window.setTimeout(() => {
+      const el = videoRef.current;
+      if (cancelled || !el || userPausedRef.current) return;
+      if (el.paused) void playWhenActiveRef.current();
+    }, 400);
 
     return () => {
       cancelled = true;
       window.clearTimeout(retryId);
-      video.removeEventListener("canplay", onReady);
     };
-  }, [isActive, showComments, post.media_type, playWhenActive, postMeta?.trim?.start]);
+    // Intentionally only isActive / media_type — playWhenActive identity churn
+    // must not re-seek the video to 0 while it's playing.
+  }, [isActive, post.media_type, hardStopMedia]);
+
+  // Unmount safety — kill audio if the card is torn down mid-swipe.
+  useEffect(() => {
+    return () => {
+      hardStopMedia();
+    };
+  }, [hardStopMedia]);
 
   // iOS/Android pause feed video in background — restore audio when app returns.
   useEffect(() => {
@@ -974,49 +998,25 @@ const FeedPostCard = ({
   }, [coverUrl, localPosterUrl]);
 
   const hasVisibleVideoFrame = useCallback((video: HTMLVideoElement) => {
-    if (video.videoWidth <= 0 || video.videoHeight <= 0) return false;
-    // Once playback has advanced, trust the decoder — canvas sampling froze phones.
-    if (!video.paused && video.currentTime > 0.08) return true;
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.currentTime > 0.12) {
-      return true;
-    }
-    return video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA;
+    // Never sample canvas pixels — that stalled playback. Trust the decoder.
+    return video.videoWidth > 0 && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
   }, []);
 
   const scheduleVideoPaintRecovery = useCallback((video: HTMLVideoElement) => {
-    // Cap recovery — seek storms were freezing the post page after swipe.
-    if (paintRecoveryTimerRef.current || paintRecoveryAttemptsRef.current >= 2) return;
+    // Recovery must NOT seek — seeking mid-play stuck videos at 0 and stuttered audio.
+    if (paintRecoveryTimerRef.current || paintRecoveryAttemptsRef.current >= 1) return;
     if (videoFrameReady || !isActiveRef.current) return;
     paintRecoveryTimerRef.current = window.setTimeout(() => {
       paintRecoveryTimerRef.current = null;
       const v = videoRef.current;
-      if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed || videoFrameReady) {
-        return;
-      }
-      if (!v.paused && v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && v.currentTime > 0.05) {
-        setVideoFrameReady(true);
-        return;
-      }
+      if (!v || v !== video || !isActiveRef.current || userPausedRef.current || mediaFailed) return;
       paintRecoveryAttemptsRef.current += 1;
-
-      musicAudioRef.current?.pause();
-
-      try {
-        v.currentTime = Math.max(0, (v.currentTime || 0) + 0.04);
-      } catch {
-        /* ignore */
-      }
-
-      window.setTimeout(() => {
-        if (!isActiveRef.current || userPausedRef.current) return;
-        void playWhenActive().then((ok) => {
-          if (ok && isFeedAudioSessionUnlocked() && !isMuted) {
-            void startAudiblePlayback();
-          }
-        });
-      }, 60);
-    }, paintRecoveryAttemptsRef.current === 0 ? 600 : 900);
-  }, [mediaFailed, playWhenActive, videoFrameReady, isMuted, startAudiblePlayback]);
+      if (v.paused) void playWhenActive();
+      // Don't block the UI forever on a black first frame.
+      setVideoFrameReady(true);
+      setMediaReady(true);
+    }, 700);
+  }, [mediaFailed, playWhenActive, videoFrameReady]);
 
   const markVideoFrameReady = useCallback((video: HTMLVideoElement) => {
     if (video !== videoRef.current) return;

@@ -167,6 +167,11 @@ export default function BattleFeedSlide({
     audioRightRef.current?.pause();
     videoLeftRef.current?.pause();
     videoRightRef.current?.pause();
+    const live = liveReplayRef.current;
+    if (live) {
+      live.pause();
+      live.muted = true;
+    }
   }, []);
 
   const mediaEl = useCallback(
