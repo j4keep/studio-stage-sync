@@ -26,6 +26,22 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
+    // Immediately mute/pause non-active slides so audio can't leak across swipes
+    // while React is still tearing down the previous card.
+    const root = scrollRef.current;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>(".snap-start").forEach((slide, i) => {
+      if (i === currentIndex) return;
+      slide.querySelectorAll("video, audio").forEach((node) => {
+        const media = node as HTMLMediaElement;
+        try {
+          media.pause();
+          media.muted = true;
+        } catch {
+          /* ignore */
+        }
+      });
+    });
   }, [currentIndex]);
 
   const lockScroll = useCallback((locked: boolean) => {
