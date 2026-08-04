@@ -14,8 +14,7 @@ export function stopAllPageMedia(opts: StopOpts = {}): void {
   document.querySelectorAll("video, audio").forEach((node) => {
     const media = node as HTMLMediaElement;
     try {
-      // Never pause/mute the durable live-battle record sinks — that freezes
-      // the Zoom recording to cover-art fallbacks mid-debate.
+      // Battle record sinks only — never pause these or live replay bakes covers.
       if (
         media instanceof HTMLVideoElement &&
         media.hasAttribute("data-battle-record-sink")
@@ -24,9 +23,7 @@ export function stopAllPageMedia(opts: StopOpts = {}): void {
       }
       media.pause();
       media.muted = true;
-      // Soft stop (viewer open): keep volume so the next audible play() isn't stuck at 0.
-      // Hard stop (close/leave): zero volume so nothing leaks in the background.
-      if (detachStreams) media.volume = 0;
+      media.volume = 0;
       if (detachStreams && media.srcObject) {
         const stream = media.srcObject as MediaStream;
         stream.getTracks?.().forEach((t) => {

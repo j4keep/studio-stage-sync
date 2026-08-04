@@ -558,7 +558,6 @@ export default function BattleFeedSlide({
   // Live Zoom-style replay owns its own play() inside LiveBattleReplayPlayer.
   // Do NOT run dual-side playSide against it — that fought the single decoder
   // and left Posts with a moving progress bar and a frozen silent picture.
-  // When the slide becomes active again after a swipe-away mute, re-arm audio.
   useEffect(() => {
     if (mediaType !== "live") return;
     if (!isActive) {
@@ -567,15 +566,7 @@ export default function BattleFeedSlide({
       userPausedRef.current = false;
       return;
     }
-    const el = liveReplayRef.current;
-    if (!el || userPausedRef.current) return;
-    forceIosAudioSessionToPlayback();
-    mediaSessionCleanupRef.current?.();
-    mediaSessionCleanupRef.current = armFeedAudioPlayback(el, {
-      title: battle?.title || "YAJ Battle",
-    });
-    if (el.paused) void el.play().catch(() => undefined);
-  }, [isActive, mediaType, hardStopMedia, battle?.title, liveReplayUrl]);
+  }, [isActive, mediaType, hardStopMedia]);
 
   // Autoplay when the slide becomes active — same timing/retry contract as FeedPostCard.
   useEffect(() => {

@@ -7,12 +7,7 @@ import { MessageCircle, Search } from "lucide-react";
 import { fetchFeedItems } from "@/lib/feed-items";
 import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
 import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
-import {
-  forceIosAudioSessionToPlayback,
-  initFeedAudioUnlockOnGesture,
-  resetIosAudioSessionToPlayback,
-  unlockFeedAudioSession,
-} from "@/lib/feed-video-playback";
+import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
@@ -92,9 +87,7 @@ const FeedPage = () => {
     // Soft-pause grid previews only — do NOT detach LiveKit/srcObject streams
     // or battle autoplay on Posts glitches hard right after open.
     stopAllPageMedia({ detachStreams: false });
-    // Live debates leave iOS in play-and-record — reset so Create→Post voice plays.
     forceIosAudioSessionToPlayback();
-    void resetIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setViewer({ rail: "post", index });
   };

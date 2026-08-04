@@ -6,7 +6,6 @@ import {
   getFeedMountRadius,
   forceIosAudioSessionToPlayback,
   rearmFeedAudioAfterForeground,
-  resetIosAudioSessionToPlayback,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
@@ -109,7 +108,6 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   // Jump to the opened index after layout — once per open, not on every feed length change.
   useEffect(() => {
     forceIosAudioSessionToPlayback();
-    void resetIosAudioSessionToPlayback();
     unlockFeedAudioSession();
 
     let cancelled = false;
