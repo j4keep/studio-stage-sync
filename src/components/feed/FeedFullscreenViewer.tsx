@@ -26,9 +26,9 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
-  // Battles now use a single decoder like posts, so the normal phone radius is safe.
-  const mountRadius = getFeedMountRadius();
-  const activeId = items[currentIndex]?.id ?? activeIdRef.current;
+  // Pre-mount ±1 on phones so swipe/auto-advance isn't a black cold-start.
+  // Radius 0 left the next snap shell empty until mount → dark frame + frozen play.
+  const mountRadius = Math.max(1, getFeedMountRadius());
 
   const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
     const el = scrollRef.current;
@@ -43,18 +43,16 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     return true;
   }, [items]);
 
-  // Mute inactive slides by item id — never by DOM index. Index-based mute was
-  // silencing the open battle when feed-posts refetched and reordered.
   useEffect(() => {
     currentIndexRef.current = currentIndex;
-    const idAtIndex = items[currentIndex]?.id;
-    if (idAtIndex) activeIdRef.current = idAtIndex;
-
+    activeIdRef.current = items[currentIndex]?.id ?? activeIdRef.current;
+    // Immediately mute/pause non-active slides so audio can't leak across swipes.
+    // Depend on length (not items identity) so feed refetches don't remute/pause
+    // the active post mid-play.
     const root = scrollRef.current;
-    const keepId = activeIdRef.current;
-    if (!root || !keepId) return;
-    root.querySelectorAll<HTMLElement>("[data-feed-item-id]").forEach((slide) => {
-      if (slide.dataset.feedItemId === keepId) return;
+    if (!root) return;
+    root.querySelectorAll<HTMLElement>(".snap-start").forEach((slide, i) => {
+      if (i === currentIndex) return;
       slide.querySelectorAll("video, audio").forEach((node) => {
         const media = node as HTMLMediaElement;
         try {
@@ -66,7 +64,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
         }
       });
     });
-  }, [currentIndex, items]);
+  }, [currentIndex, items.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If the feed list refetches/reorders, stay on the same item by id (don't bounce).
   useEffect(() => {
@@ -102,10 +100,14 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     if (current?.itemType === "battle") return false;
     if (cur >= items.length - 1) return false;
     forceIosAudioSessionToPlayback();
+    // Instant jump is more reliable than smooth on mobile snap scrollers —
+    // smooth mid-frames were rounded back to the finished video (looked like a loop).
     return goToIndex(cur + 1, "auto");
   }, [goToIndex, items, scrollLocked]);
 
-  // Jump to the opened index after layout — once per open, not on every feed length change.
+  // Jump to the opened index after layout. Opening from Happening often hit
+  // clientHeight=0 on first paint → scroll stayed at 0 while currentIndex was N,
+  // so the on-screen slide was frozen/empty while the real active video was off-screen.
   useEffect(() => {
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
@@ -118,33 +120,35 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       const h = el.clientHeight || window.innerHeight || 0;
       if (h <= 0) return;
       const next = Math.max(0, Math.min(items.length - 1, startIndex));
-      ignoreScrollSyncUntilRef.current = performance.now() + 250;
+      ignoreScrollSyncUntilRef.current = performance.now() + 200;
       el.scrollTo({ top: next * h, behavior: "auto" });
       setCurrentIndex(next);
       currentIndexRef.current = next;
-      activeIdRef.current = items[next]?.id ?? activeIdRef.current;
+      activeIdRef.current = items[next]?.id ?? null;
     };
 
     jump();
     const raf1 = window.requestAnimationFrame(jump);
+    const raf2 = window.requestAnimationFrame(() => window.requestAnimationFrame(jump));
     const t1 = window.setTimeout(jump, 50);
-    const t2 = window.setTimeout(jump, 180);
+    const t2 = window.setTimeout(jump, 200);
 
     return () => {
       cancelled = true;
       window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-    // Only re-jump when the opened index changes — not when feed length shifts.
-  }, [startIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [startIndex, items.length]); // eslint-disable-line react-hooks/exhaustive-deps -- open jump only
 
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") {
         rearmFeedAudioAfterForeground();
       } else {
-        stopAllPageMedia({ detachStreams: true });
+        // Backgrounding the app should silence everything immediately.
+        stopAllPageMedia();
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -172,12 +176,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
           items.length - 1,
           Math.max(0, Math.round(el.scrollTop / h)),
         );
-        setCurrentIndex((prev) => {
-          if (prev === next) return prev;
-          activeIdRef.current = items[next]?.id ?? activeIdRef.current;
-          currentIndexRef.current = next;
-          return next;
-        });
+        setCurrentIndex((prev) => (prev === next ? prev : next));
       });
     };
     el.addEventListener("scroll", sync, { passive: true });
@@ -185,7 +184,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       el.removeEventListener("scroll", sync);
       if (rafId) window.cancelAnimationFrame(rafId);
     };
-  }, [items, scrollLocked]);
+  }, [items.length, scrollLocked]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -201,13 +200,13 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
 
   useEffect(() => {
     return () => {
-      stopAllPageMedia({ detachStreams: true });
+      stopAllPageMedia();
       lockScroll(false);
     };
   }, [lockScroll]);
 
   const handleClose = useCallback(() => {
-    stopAllPageMedia({ detachStreams: true });
+    stopAllPageMedia();
     lockScroll(false);
     onClose();
   }, [onClose, lockScroll]);
@@ -229,11 +228,9 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       >
         {items.map((item, index) => {
           const mounted = Math.abs(index - currentIndex) <= mountRadius;
-          const isActive = item.id === activeId && index === currentIndex;
           return (
             <div
               key={item.id}
-              data-feed-item-id={item.id}
               className="h-[100dvh] w-full snap-start snap-always relative bg-black"
               style={{ scrollSnapAlign: "start" }}
             >
@@ -242,14 +239,14 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                   <BattleFeedSlide
                     battle={item}
                     currentUserId={currentUserId}
-                    isActive={isActive}
+                    isActive={index === currentIndex}
                     onScrollLockChange={lockScroll}
                   />
                 ) : (
                   <FeedPostCard
                     post={item}
                     currentUserId={currentUserId}
-                    isActive={isActive}
+                    isActive={index === currentIndex}
                     isNear={mounted}
                     onVideoEnded={advanceAfterVideo}
                   />

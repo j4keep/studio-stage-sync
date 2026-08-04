@@ -84,9 +84,8 @@ const FeedPage = () => {
   }, [refetch, user?.id]);
 
   const openPostItem = (index: number) => {
-    // Soft-pause grid previews only — do NOT detach LiveKit/srcObject streams
-    // or battle autoplay on Posts glitches hard right after open.
-    stopAllPageMedia({ detachStreams: false });
+    // Kill grid / Happening preview media so the viewer gets a clean decoder.
+    stopAllPageMedia();
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setViewer({ rail: "post", index });
