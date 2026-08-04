@@ -26,9 +26,8 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
-  // Keep ±1 mounted so a brief index flicker can't unmount the active battle
-  // (mountRadius 0 was unmounting battles during feed refetch races).
-  const mountRadius = Math.max(1, getFeedMountRadius());
+  // Battles now use a single decoder like posts, so the normal phone radius is safe.
+  const mountRadius = getFeedMountRadius();
   const activeId = items[currentIndex]?.id ?? activeIdRef.current;
 
   const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {

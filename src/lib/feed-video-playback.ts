@@ -55,7 +55,10 @@ export function getFeedMountRadius() {
 }
 
 /** Wait until Safari has enough buffered to start playback — never call load() (resets decoder). */
-export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): Promise<boolean> {
+export function waitForVideoCanPlay(
+  video: HTMLMediaElement,
+  timeoutMs = 5000,
+): Promise<boolean> {
   if (video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA) return Promise.resolve(true);
 
   return new Promise((resolve) => {
@@ -74,6 +77,24 @@ export function waitForVideoCanPlay(video: HTMLVideoElement, timeoutMs = 5000): 
       timeoutMs,
     );
   });
+}
+
+/** Hard-stop a feed media element the same way posts do on swipe/close. */
+export function hardStopFeedMedia(media: HTMLMediaElement | null | undefined): void {
+  if (!media) return;
+  try {
+    media.pause();
+    media.loop = false;
+    if (media instanceof HTMLVideoElement) {
+      applyFeedVideoAudio(media, { muted: true });
+    } else {
+      media.muted = true;
+      media.defaultMuted = true;
+      media.volume = 0;
+    }
+  } catch {
+    /* ignore */
+  }
 }
 
 export function isFeedAudioSessionUnlocked() {

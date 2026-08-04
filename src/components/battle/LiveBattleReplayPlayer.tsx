@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readMediaDuration, resolveMediaDuration } from "@/lib/media-duration";
 import {
+  applyFeedVideoAudio,
+  armFeedAudioPlayback,
   forceIosAudioSessionToPlayback,
   unlockFeedAudioSession,
+  waitForVideoCanPlay,
 } from "@/lib/feed-video-playback";
 import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 
@@ -93,27 +96,27 @@ export default function LiveBattleReplayPlayer({
     void unlockFeedAudioSession();
     master.playsInline = true;
     master.loop = loop;
-    master.muted = false;
-    master.volume = 1;
-    master.defaultMuted = false;
+    master.preload = "auto";
     if (slave) {
-      slave.muted = true;
-      slave.volume = 0;
+      applyFeedVideoAudio(slave, { muted: true });
       slave.playsInline = true;
       slave.loop = loop;
-      void slave.play().catch(() => undefined);
+      slave.preload = "auto";
     }
+    let cancelled = false;
     const start = async () => {
+      // Same ready-gate as regular post videos — don't play before buffer is ready.
+      const ready = await waitForVideoCanPlay(master);
+      if (cancelled || !ready) return;
+      if (slave) void slave.play().catch(() => undefined);
       try {
+        armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
         await master.play();
-        master.muted = false;
-        master.volume = 1;
       } catch {
         try {
-          master.muted = true;
+          applyFeedVideoAudio(master, { muted: true });
           await master.play();
-          master.muted = false;
-          master.volume = 1;
+          armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
         } catch {
           /* gesture may still be required */
         }
@@ -148,13 +151,14 @@ export default function LiveBattleReplayPlayer({
     master.addEventListener("ended", onMasterEnded);
     tryProbe();
     return () => {
+      cancelled = true;
       master.removeEventListener("loadedmetadata", tryProbe);
       master.removeEventListener("durationchange", tryProbe);
       master.removeEventListener("ended", onMasterEnded);
       master.pause();
       slave?.pause();
     };
-  }, [src, loop]);
+  }, [src, loop, leftName, rightName]);
 
   // Resume after backgrounding.
   useEffect(() => {

@@ -46,8 +46,12 @@ import {
 import { ensureBattleWinRecorded } from "@/lib/finalize-battle-wins";
 import { readMediaDuration, resolveMediaDuration } from "@/lib/media-duration";
 import {
+  applyFeedVideoAudio,
+  armFeedAudioPlayback,
   forceIosAudioSessionToPlayback,
+  hardStopFeedMedia,
   unlockFeedAudioSession,
+  waitForVideoCanPlay,
 } from "@/lib/feed-video-playback";
 
 /* ─── helpers ─── */
@@ -277,37 +281,61 @@ const MusicBattlePlayerPage = () => {
   const activeRef = activeArtist === "left" ? audioLeftRef : audioRightRef;
   const inactiveRef = activeArtist === "left" ? audioRightRef : audioLeftRef;
 
-  const armAudible = useCallback((el: HTMLMediaElement) => {
-    forceIosAudioSessionToPlayback();
-    unlockFeedAudioSession();
+  const playMedia = useCallback(async (el: HTMLMediaElement | null, opts?: { fromStart?: boolean }) => {
+    if (!el) {
+      setIsPlaying(false);
+      return false;
+    }
     el.loop = false;
-    el.muted = false;
-    el.volume = 1;
-    el.defaultMuted = false;
-  }, []);
+    el.preload = "auto";
+    if (opts?.fromStart && (el.currentTime || 0) > 0.25) {
+      try {
+        el.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+    }
+    const ready = await waitForVideoCanPlay(el);
+    if (!ready) {
+      setIsPlaying(false);
+      return false;
+    }
+    forceIosAudioSessionToPlayback();
+    armFeedAudioPlayback(el, { title: battle?.title || "YAJ Battle" });
+    try {
+      await el.play();
+      setIsPlaying(true);
+      unlockFeedAudioSession();
+      return true;
+    } catch {
+      try {
+        if (el instanceof HTMLVideoElement) applyFeedVideoAudio(el, { muted: true });
+        else {
+          el.muted = true;
+          el.volume = 0;
+        }
+        await el.play();
+        armFeedAudioPlayback(el, { title: battle?.title || "YAJ Battle" });
+        setIsPlaying(true);
+        return true;
+      } catch {
+        setIsPlaying(false);
+        return false;
+      }
+    }
+  }, [battle?.title]);
 
   const togglePlay = useCallback(() => {
     const el = activeRef.current;
     if (!el) return;
     if (isPlaying) {
-      el.pause();
+      hardStopFeedMedia(el);
       setIsPlaying(false);
     } else {
-      inactiveRef.current?.pause();
-      armAudible(el);
-      el.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => {
-          el.muted = true;
-          el.play()
-            .then(() => {
-              armAudible(el);
-              setIsPlaying(true);
-            })
-            .catch(() => setIsPlaying(false));
-        });
+      hardStopFeedMedia(inactiveRef.current);
+      void playMedia(el);
     }
-  }, [isPlaying, activeRef, inactiveRef, armAudible]);
+  }, [isPlaying, activeRef, inactiveRef, playMedia]);
 
   const switchSide = useCallback((side: "left" | "right") => {
     if (side === activeArtist && !isPlaying) {
@@ -316,18 +344,17 @@ const MusicBattlePlayerPage = () => {
     }
     if (side === activeArtist) return;
     const previous = side === "left" ? audioRightRef.current : audioLeftRef.current;
-    previous?.pause();
-    const next = side === "left" ? audioLeftRef.current : audioRightRef.current;
-    if (next) {
-      armAudible(next);
-      if ((next.currentTime || 0) > 0.2) next.currentTime = 0;
-      next.play()
-        .then(() => setIsPlaying(true))
-        .catch(() => setIsPlaying(false));
-    }
+    hardStopFeedMedia(previous);
     setActiveArtist(side);
     setCurrentTime(0);
-  }, [activeArtist, isPlaying, togglePlay, armAudible]);
+    // Double rAF — wait for the active-side <video> to mount (posts-style single decoder).
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const next = side === "left" ? audioLeftRef.current : audioRightRef.current;
+        void playMedia(next, { fromStart: true });
+      });
+    });
+  }, [activeArtist, isPlaying, togglePlay, playMedia]);
 
   const handleArtistTap = useCallback((side: "left" | "right") => {
     const now = Date.now();
@@ -655,9 +682,7 @@ const MusicBattlePlayerPage = () => {
             setIsPlaying(false);
             return;
           }
-          armAudible(next);
-          if ((next.currentTime || 0) > 0.2) next.currentTime = 0;
-          next.play().then(() => setIsPlaying(true)).catch(() => setIsPlaying(false));
+          void playMedia(next, { fromStart: true });
         }, 50);
         return;
       }
@@ -684,9 +709,9 @@ const MusicBattlePlayerPage = () => {
       el.removeEventListener("durationchange", onDur);
       el.removeEventListener("ended", onEnd);
     };
-  }, [activeArtist, battle?.challenger_media_url, battle?.opponent_media_url, armAudible]);
+  }, [activeArtist, battle?.challenger_media_url, battle?.opponent_media_url, playMedia]);
 
-  // Autoplay when an accepted battle page opens (same expectation as Posts).
+  // Autoplay when an accepted battle page opens (same ready-gate as Posts).
   useEffect(() => {
     if (!battle) return;
     if (battle.media_type === "live") return;
@@ -694,30 +719,24 @@ const MusicBattlePlayerPage = () => {
     if (!battle.challenger_media_url && !battle.opponent_media_url) return;
 
     let cancelled = false;
-    const tryPlay = () => {
+    const tryPlay = async () => {
       if (cancelled) return;
       const el =
         (battle.challenger_media_url ? audioLeftRef.current : null) ||
         audioRightRef.current;
       if (!el) return;
-      armAudible(el);
-      void el
-        .play()
-        .then(() => {
-          if (!cancelled) setIsPlaying(true);
-        })
-        .catch(() => {
-          el.muted = true;
-          void el.play().then(() => {
-            if (cancelled) return;
-            armAudible(el);
-            setIsPlaying(true);
-          }).catch(() => undefined);
-        });
+      await playMedia(el, { fromStart: true });
     };
 
-    const t1 = window.setTimeout(tryPlay, 120);
-    const t2 = window.setTimeout(tryPlay, 500);
+    const t1 = window.setTimeout(() => {
+      void tryPlay();
+    }, 120);
+    const t2 = window.setTimeout(() => {
+      if (cancelled) return;
+      const el = audioLeftRef.current || audioRightRef.current;
+      if (el && !el.paused) return;
+      void tryPlay();
+    }, 500);
     return () => {
       cancelled = true;
       window.clearTimeout(t1);
@@ -729,7 +748,7 @@ const MusicBattlePlayerPage = () => {
     battle?.media_type,
     battle?.challenger_media_url,
     battle?.opponent_media_url,
-    armAudible,
+    playMedia,
   ]);
 
   if (!battle) {
@@ -908,7 +927,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "left" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.challenger_media_url ? (
+              {battle.media_type === "video" && battle.challenger_media_url && activeArtist === "left" ? (
                 <video
                   ref={(el) => {
                     videoLeftRef.current = el;
@@ -1048,7 +1067,7 @@ const MusicBattlePlayerPage = () => {
             )}
 
             <div className={`w-full bg-muted rounded-2xl overflow-hidden ${expandedSide === "right" ? "h-[85vh]" : "aspect-[3/4]"}`}>
-              {battle.media_type === "video" && battle.opponent_media_url ? (
+              {battle.media_type === "video" && battle.opponent_media_url && activeArtist === "right" ? (
                 <video
                   ref={(el) => {
                     videoRightRef.current = el;
