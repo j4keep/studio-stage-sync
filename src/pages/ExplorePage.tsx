@@ -36,7 +36,7 @@ const TOP_PICKS: ExploreItem[] = [
   { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
   { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
-  { label: "Community", emoji: "🏠", background: bg.blue, route: "/circle" },
+  { label: "Circle", emoji: "👥", background: bg.blue, route: "/circle" },
   { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
   { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
   { label: "Services", emoji: "🟰", background: bg.slate },
