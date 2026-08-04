@@ -8,6 +8,7 @@ import {
   rearmFeedAudioAfterForeground,
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
+import { stopAllPageMedia } from "@/lib/stop-page-media";
 
 interface Props {
   items: any[];
@@ -20,14 +21,26 @@ interface Props {
 export default function FeedFullscreenViewer({ items, startIndex, currentUserId, onClose }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(startIndex);
+  const activeIdRef = useRef<string | null>(items[startIndex]?.id ?? null);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
   const mountRadius = getFeedMountRadius();
 
+  const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const h = el.clientHeight || 1;
+    const next = Math.max(0, Math.min(items.length - 1, index));
+    el.scrollTo({ top: next * h, behavior });
+    setCurrentIndex(next);
+    currentIndexRef.current = next;
+    activeIdRef.current = items[next]?.id ?? activeIdRef.current;
+  }, [items]);
+
   useEffect(() => {
     currentIndexRef.current = currentIndex;
-    // Immediately mute/pause non-active slides so audio can't leak across swipes
-    // while React is still tearing down the previous card.
+    activeIdRef.current = items[currentIndex]?.id ?? activeIdRef.current;
+    // Immediately mute/pause non-active slides so audio can't leak across swipes.
     const root = scrollRef.current;
     if (!root) return;
     root.querySelectorAll<HTMLElement>(".snap-start").forEach((slide, i) => {
@@ -37,12 +50,23 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
         try {
           media.pause();
           media.muted = true;
+          media.volume = 0;
         } catch {
           /* ignore */
         }
       });
     });
-  }, [currentIndex]);
+  }, [currentIndex, items]);
+
+  // If the feed list refetches/reorders, stay on the same item by id (don't bounce).
+  useEffect(() => {
+    const id = activeIdRef.current;
+    if (!id || items.length === 0) return;
+    const idx = items.findIndex((it) => it.id === id);
+    if (idx < 0) return;
+    if (idx === currentIndexRef.current) return;
+    goToIndex(idx, "auto");
+  }, [items, goToIndex]);
 
   const lockScroll = useCallback((locked: boolean) => {
     setScrollLocked(locked);
@@ -59,38 +83,37 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     }
   }, []);
 
-  const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const h = el.clientHeight || 1;
-    const next = Math.max(0, Math.min(items.length - 1, index));
-    el.scrollTo({ top: next * h, behavior });
-    setCurrentIndex(next);
-  }, [items.length]);
-
-  /** After a video ends, swipe up to the next post (Facebook-style). */
+  /** After a regular video ends, swipe up to the next post (not used for battles). */
   const advanceAfterVideo = useCallback(() => {
     if (scrollLocked) return;
     const cur = currentIndexRef.current;
+    const current = items[cur];
+    // Battles must never auto-advance — that fought snap-scroll and froze neighbors.
+    if (current?.itemType === "battle") return;
     if (cur >= items.length - 1) return;
     forceIosAudioSessionToPlayback();
     goToIndex(cur + 1, "smooth");
-  }, [goToIndex, items.length, scrollLocked]);
+  }, [goToIndex, items, scrollLocked]);
 
   useEffect(() => {
-    // Opening the fullscreen viewer is itself a user-gesture-triggered navigation,
-    // so unlock the iOS audio session and force "playback" routing immediately.
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: startIndex * el.clientHeight, behavior: "auto" });
     setCurrentIndex(startIndex);
-  }, [startIndex]);
+    currentIndexRef.current = startIndex;
+    activeIdRef.current = items[startIndex]?.id ?? null;
+  }, [startIndex]); // eslint-disable-line react-hooks/exhaustive-deps -- only jump on open index
 
   useEffect(() => {
     const onVis = () => {
-      if (document.visibilityState === "visible") rearmFeedAudioAfterForeground();
+      if (document.visibilityState === "visible") {
+        rearmFeedAudioAfterForeground();
+      } else {
+        // Backgrounding the app should silence everything immediately.
+        stopAllPageMedia();
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     window.addEventListener("pageshow", onVis);
@@ -111,8 +134,6 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
         rafId = 0;
         const h = el.clientHeight;
         if (h <= 0) return;
-        // Simple snap sync — keep swipe snappy. Heavy hysteresis made the
-        // post page feel frozen when trying to swipe to the next video.
         const next = Math.min(
           items.length - 1,
           Math.max(0, Math.round(el.scrollTop / h)),
@@ -127,12 +148,10 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     };
   }, [items.length, scrollLocked]);
 
-  // Hard-block touch scrolling while comments are open (inline style alone can lose to iOS).
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !scrollLocked) return;
     const block = (e: TouchEvent) => {
-      // Allow scrolling inside the comments sheet / nested scroll areas.
       const target = e.target as HTMLElement | null;
       if (target?.closest("[data-feed-comments-sheet], [data-allow-scroll]")) return;
       e.preventDefault();
@@ -141,31 +160,18 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     return () => el.removeEventListener("touchmove", block);
   }, [scrollLocked]);
 
-  const stopAllMediaInViewer = useCallback(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    root.querySelectorAll("video, audio").forEach((node) => {
-      const media = node as HTMLMediaElement;
-      try {
-        media.pause();
-        media.muted = true;
-      } catch {
-        /* ignore */
-      }
-    });
-  }, []);
-
   useEffect(() => {
     return () => {
-      stopAllMediaInViewer();
+      stopAllPageMedia();
       lockScroll(false);
     };
-  }, [lockScroll, stopAllMediaInViewer]);
+  }, [lockScroll]);
 
   const handleClose = useCallback(() => {
-    stopAllMediaInViewer();
+    stopAllPageMedia();
+    lockScroll(false);
     onClose();
-  }, [onClose, stopAllMediaInViewer]);
+  }, [onClose, lockScroll]);
 
   return (
     <div className="feed-viewer-root fixed inset-0 z-[70] bg-black">
@@ -197,7 +203,6 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                     currentUserId={currentUserId}
                     isActive={index === currentIndex}
                     onScrollLockChange={lockScroll}
-                    onVideoEnded={advanceAfterVideo}
                   />
                 ) : (
                   <FeedPostCard

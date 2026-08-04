@@ -211,6 +211,28 @@ export function useBattleLiveRoom({
       }
     }
     localTracksRef.current = [];
+    // Detach every LiveKit media element so debate audio cannot keep playing
+    // after leaving the post viewer.
+    try {
+      room?.remoteParticipants.forEach((p) => {
+        p.trackPublications.forEach((pub) => {
+          try {
+            pub.track?.detach()?.forEach((el) => {
+              try {
+                el.pause();
+                el.remove();
+              } catch {
+                /* ignore */
+              }
+            });
+          } catch {
+            /* ignore */
+          }
+        });
+      });
+    } catch {
+      /* ignore */
+    }
     if (room) {
       try {
         await room.disconnect();

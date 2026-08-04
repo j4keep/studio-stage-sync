@@ -8,6 +8,7 @@ import { fetchFeedItems } from "@/lib/feed-items";
 import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
 import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
+import { stopAllPageMedia } from "@/lib/stop-page-media";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
@@ -84,6 +85,18 @@ const FeedPage = () => {
     unlockFeedAudioSession();
     setViewer({ rail: "post", index });
   };
+
+  const closeViewer = () => {
+    stopAllPageMedia();
+    setViewer(null);
+  };
+
+  // Leaving the homepage must kill any escaped post/battle audio.
+  useEffect(() => {
+    return () => {
+      stopAllPageMedia();
+    };
+  }, []);
 
   const openHappeningItem = (item: HappeningItem) => {
     if (item.openInPostsViewer) {
@@ -283,13 +296,13 @@ const FeedPage = () => {
 
       {viewer && posts.length > 0 && (
         isDesktop ? (
-          <DesktopPostDetail items={posts} startIndex={viewer.index} onClose={() => setViewer(null)} />
+          <DesktopPostDetail items={posts} startIndex={viewer.index} onClose={closeViewer} />
         ) : (
           <FeedFullscreenViewer
             items={posts}
             startIndex={viewer.index}
             currentUserId={user?.id}
-            onClose={() => setViewer(null)}
+            onClose={closeViewer}
           />
         )
       )}

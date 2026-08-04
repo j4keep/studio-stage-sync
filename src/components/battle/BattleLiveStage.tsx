@@ -402,11 +402,12 @@ export default function BattleLiveStage({
     streams.rightVideo,
   ]);
 
-  // Spectators: refresh feed while waiting for challenger to finish uploading replay.
+  // Spectators: poll only this battle while waiting for replay.
+  // Never invalidate feed-posts here — that remounted the post viewer and
+  // bounced the snap scroller off the battle slide.
   useEffect(() => {
     if (phase !== "ended" || remoteReplayUrl) return;
     const id = window.setInterval(() => {
-      void qc.invalidateQueries({ queryKey: ["feed-posts"] });
       void qc.invalidateQueries({ queryKey: ["battle", battle.id] });
     }, 4000);
     return () => window.clearInterval(id);
@@ -1095,6 +1096,17 @@ function DebateAudioSink({
       } catch {
         /* ignore */
       }
+      for (const el of [leftEl, rightEl]) {
+        if (!el) continue;
+        try {
+          el.pause();
+          el.muted = true;
+          el.volume = 0;
+          el.srcObject = null;
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
 
@@ -1151,6 +1163,20 @@ function DebateAudioSink({
         if (rightEl) right?.detach(rightEl);
       } catch {
         /* ignore */
+      }
+      // Hard-stop — LiveKit detach alone was leaving audio playing after swipe/close.
+      for (const el of [leftEl, rightEl]) {
+        if (!el) continue;
+        try {
+          el.pause();
+          el.muted = true;
+          el.volume = 0;
+          el.removeAttribute("src");
+          el.srcObject = null;
+          el.load();
+        } catch {
+          /* ignore */
+        }
       }
     };
   }, [left, right, enabled, preferPlaybackSession, startAudio]);
