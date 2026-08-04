@@ -55,7 +55,8 @@ interface Props {
   chromeHidden?: boolean;
   onChromeHiddenChange?: (hidden: boolean) => void;
   /** Fired once when the video naturally ends (not images). Used to auto-advance the post viewer. */
-  onVideoEnded?: () => void;
+  /** Return true if the viewer advanced to the next post. */
+  onVideoEnded?: () => boolean | void;
 }
 
 const FeedPostCard = ({
@@ -637,6 +638,8 @@ const FeedPostCard = ({
     // Seek to start ONCE when this slide becomes active — never again on
     // canplay / state churn (that was stuttering the opening audio).
     if (video) {
+      video.loop = false;
+      video.removeAttribute("loop");
       try {
         const startAt = trimStartRef.current;
         if (Math.abs((video.currentTime || 0) - startAt) > 0.25) {
@@ -743,8 +746,10 @@ const FeedPostCard = ({
       ) {
         endedAdvanceSentRef.current = true;
         video.pause();
-        setShowReplay(true);
-        onVideoEndedRef.current?.();
+        setIsPlaying(false);
+        musicAudioRef.current?.pause();
+        const advanced = onVideoEndedRef.current?.();
+        if (!advanced) setShowReplay(true);
         return;
       }
       timer = window.setTimeout(tick, 125);
@@ -763,13 +768,21 @@ const FeedPostCard = ({
     if (!isActive || post.media_type !== "video") return;
     const video = videoRef.current;
     if (!video) return;
+    video.loop = false;
+    video.removeAttribute("loop");
     const onEnded = () => {
       if (endedAdvanceSentRef.current) return;
       endedAdvanceSentRef.current = true;
-      setShowReplay(true);
+      try {
+        video.pause();
+      } catch {
+        /* ignore */
+      }
       setIsPlaying(false);
       musicAudioRef.current?.pause();
-      onVideoEndedRef.current?.();
+      const advanced = onVideoEndedRef.current?.();
+      // Only show Replay when there is no next post (or advance was blocked).
+      if (!advanced) setShowReplay(true);
     };
     video.addEventListener("ended", onEnded);
     return () => video.removeEventListener("ended", onEnded);
@@ -1147,6 +1160,7 @@ const FeedPostCard = ({
               playsInline
               muted={videoMutedForAutoplay}
               autoPlay={false}
+              loop={false}
               preload={isActive || isNear ? "auto" : "metadata"}
               onLoadedMetadata={() => {
                 if (coverUrl) setMediaReady(true);

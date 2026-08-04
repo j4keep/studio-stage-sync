@@ -22,19 +22,23 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(startIndex);
   const activeIdRef = useRef<string | null>(items[startIndex]?.id ?? null);
+  /** Ignore scroll-sync while we programmatically move — mid-smooth-scroll was snapping back. */
+  const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
   const mountRadius = getFeedMountRadius();
 
   const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
     const el = scrollRef.current;
-    if (!el) return;
-    const h = el.clientHeight || 1;
+    if (!el) return false;
+    const h = el.clientHeight || window.innerHeight || 1;
     const next = Math.max(0, Math.min(items.length - 1, index));
+    ignoreScrollSyncUntilRef.current = performance.now() + (behavior === "smooth" ? 650 : 120);
     el.scrollTo({ top: next * h, behavior });
     setCurrentIndex(next);
     currentIndexRef.current = next;
     activeIdRef.current = items[next]?.id ?? activeIdRef.current;
+    return true;
   }, [items]);
 
   useEffect(() => {
@@ -83,28 +87,56 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     }
   }, []);
 
-  /** After a regular video ends, swipe up to the next post (not used for battles). */
-  const advanceAfterVideo = useCallback(() => {
-    if (scrollLocked) return;
+  /** After a regular video ends, swipe up to the next post. Returns false if stuck on last. */
+  const advanceAfterVideo = useCallback((): boolean => {
+    if (scrollLocked) return false;
     const cur = currentIndexRef.current;
     const current = items[cur];
     // Battles must never auto-advance — that fought snap-scroll and froze neighbors.
-    if (current?.itemType === "battle") return;
-    if (cur >= items.length - 1) return;
+    if (current?.itemType === "battle") return false;
+    if (cur >= items.length - 1) return false;
     forceIosAudioSessionToPlayback();
-    goToIndex(cur + 1, "smooth");
+    // Instant jump is more reliable than smooth on mobile snap scrollers —
+    // smooth mid-frames were rounded back to the finished video (looked like a loop).
+    return goToIndex(cur + 1, "auto");
   }, [goToIndex, items, scrollLocked]);
 
+  // Jump to the opened index after layout. Opening from Happening often hit
+  // clientHeight=0 on first paint → scroll stayed at 0 while currentIndex was N,
+  // so the on-screen slide was frozen/empty while the real active video was off-screen.
   useEffect(() => {
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: startIndex * el.clientHeight, behavior: "auto" });
-    setCurrentIndex(startIndex);
-    currentIndexRef.current = startIndex;
-    activeIdRef.current = items[startIndex]?.id ?? null;
-  }, [startIndex]); // eslint-disable-line react-hooks/exhaustive-deps -- only jump on open index
+
+    let cancelled = false;
+    const jump = () => {
+      if (cancelled) return;
+      const el = scrollRef.current;
+      if (!el) return;
+      const h = el.clientHeight || window.innerHeight || 0;
+      if (h <= 0) return;
+      const next = Math.max(0, Math.min(items.length - 1, startIndex));
+      ignoreScrollSyncUntilRef.current = performance.now() + 200;
+      el.scrollTo({ top: next * h, behavior: "auto" });
+      setCurrentIndex(next);
+      currentIndexRef.current = next;
+      activeIdRef.current = items[next]?.id ?? null;
+    };
+
+    jump();
+    const raf1 = window.requestAnimationFrame(jump);
+    const raf2 = window.requestAnimationFrame(() => window.requestAnimationFrame(jump));
+    const t1 = window.setTimeout(jump, 50);
+    const t2 = window.setTimeout(jump, 200);
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(raf1);
+      window.cancelAnimationFrame(raf2);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
+  }, [startIndex, items.length]); // eslint-disable-line react-hooks/exhaustive-deps -- open jump only
 
   useEffect(() => {
     const onVis = () => {
@@ -129,9 +161,11 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     let rafId = 0;
     const sync = () => {
       if (scrollLocked) return;
+      if (performance.now() < ignoreScrollSyncUntilRef.current) return;
       if (rafId) return;
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
+        if (performance.now() < ignoreScrollSyncUntilRef.current) return;
         const h = el.clientHeight;
         if (h <= 0) return;
         const next = Math.min(

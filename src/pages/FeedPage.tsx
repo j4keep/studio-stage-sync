@@ -81,6 +81,8 @@ const FeedPage = () => {
   }, [refetch, user?.id]);
 
   const openPostItem = (index: number) => {
+    // Kill grid / Happening preview media so the viewer gets a clean decoder.
+    stopAllPageMedia();
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setViewer({ rail: "post", index });

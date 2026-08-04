@@ -20,17 +20,9 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
     >
       <div className={`relative w-full overflow-hidden bg-muted ${compact ? "aspect-[3/4]" : "aspect-[4/5]"}`}>
         {item.coverUrl ? (
-          isVideo ? (
-            <video
-              src={item.coverUrl}
-              muted
-              playsInline
-              preload="metadata"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
-          )
+          // Always use an image poster here — never a live <video>. Preview videos
+          // competed with the fullscreen player and froze posts opened from Happening.
+          <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-muted-foreground">
             {isVideo ? <Play className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
