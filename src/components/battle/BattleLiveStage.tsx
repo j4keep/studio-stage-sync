@@ -462,6 +462,8 @@ export default function BattleLiveStage({
     if (conn !== "connected") return;
     if (remoteReplayUrl) return;
 
+    // Prefer LiveKit MediaStreams (session-owned sinks) so recording survives
+    // prep→Posts remount. Visible tile refs are a fallback only.
     const started = ensureLiveBattleRecording({
       battle: {
         id: battle.id,
@@ -473,8 +475,10 @@ export default function BattleLiveStage({
         opponent_cover_url: battle.opponent_cover_url,
       },
       userId: user.id,
-      // Record from the VISIBLE FaceTime tiles — hidden 1×1 sinks were cracking
-      // the live preview and often captured blank frames.
+      getLeftStream: () =>
+        streams.leftScreen || streams.leftCamera || streams.leftVideo || null,
+      getRightStream: () =>
+        streams.rightScreen || streams.rightCamera || streams.rightVideo || null,
       getLeftVideo: () => leftVideoRef.current,
       getRightVideo: () => rightVideoRef.current,
       leftAudio: streams.leftAudio,
@@ -494,6 +498,12 @@ export default function BattleLiveStage({
     remoteReplayUrl,
     streams.leftAudio,
     streams.rightAudio,
+    streams.leftScreen,
+    streams.rightScreen,
+    streams.leftCamera,
+    streams.rightCamera,
+    streams.leftVideo,
+    streams.rightVideo,
     battle.id,
     battle.challenger_id,
     battle.battle_background,
@@ -615,6 +625,8 @@ export default function BattleLiveStage({
           src={replayUrl}
           leftName={leftName}
           rightName={rightName}
+          leftCoverUrl={leftCover}
+          rightCoverUrl={rightCover}
           videoRef={replayVideoRef}
           onExpandSide={onExpandSide}
           hideProgress={feedEmbed}

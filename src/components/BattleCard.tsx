@@ -263,6 +263,8 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
               src={liveReplayUrl}
               leftName={challengerName}
               rightName={opponentName}
+              leftCoverUrl={battle.challenger_cover_url}
+              rightCoverUrl={battle.opponent_cover_url}
               compact
               winnerSide={winnerSide}
             />

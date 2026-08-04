@@ -13,6 +13,9 @@ type Props = {
   src: string;
   leftName: string;
   rightName: string;
+  /** Shown until the Zoom recording paints its first frame (avoids black card). */
+  leftCoverUrl?: string | null;
+  rightCoverUrl?: string | null;
   /** Optional external ref (feed bottom seek chrome drives this master). */
   videoRef?: React.RefObject<HTMLVideoElement | null>;
   /**
@@ -48,6 +51,8 @@ export default function LiveBattleReplayPlayer({
   src,
   leftName,
   rightName,
+  leftCoverUrl,
+  rightCoverUrl,
   videoRef,
   hideProgress = false,
   className = "",
@@ -66,6 +71,9 @@ export default function LiveBattleReplayPlayer({
   const [duration, setDuration] = useState(0);
   const [scrubbing, setScrubbing] = useState(false);
   const [playing, setPlaying] = useState(false);
+  /** Hide cover sheets only after a real decoded frame is on screen. */
+  const [hasFrame, setHasFrame] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const setMaster = useCallback(
     (el: HTMLVideoElement | null) => {
@@ -94,6 +102,8 @@ export default function LiveBattleReplayPlayer({
     if (!master) return;
     durationProbedRef.current = false;
     endedSentRef.current = false;
+    setHasFrame(false);
+    setLoadFailed(false);
     forceIosAudioSessionToPlayback();
     void unlockFeedAudioSession();
     master.playsInline = true;
@@ -102,21 +112,37 @@ export default function LiveBattleReplayPlayer({
     master.style.transform = "translateZ(0)";
 
     let cancelled = false;
+    const markFrame = () => {
+      if (cancelled) return;
+      if (master.videoWidth > 0 && master.readyState >= 2) {
+        setHasFrame(true);
+      }
+    };
     const start = async () => {
       const ready = await waitForVideoCanPlay(master);
-      if (cancelled || !ready) return;
+      if (cancelled) return;
+      if (!ready) {
+        setLoadFailed(true);
+        return;
+      }
       try {
         armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
         await master.play();
-        if (!cancelled) setPlaying(true);
+        if (!cancelled) {
+          setPlaying(true);
+          markFrame();
+        }
       } catch {
         try {
           applyFeedVideoAudio(master, { muted: true });
           await master.play();
           armFeedAudioPlayback(master, { title: `${leftName} vs ${rightName}` });
-          if (!cancelled) setPlaying(true);
+          if (!cancelled) {
+            setPlaying(true);
+            markFrame();
+          }
         } catch {
-          /* gesture may still be required */
+          /* gesture may still be required — covers stay visible */
         }
       }
     };
@@ -146,19 +172,34 @@ export default function LiveBattleReplayPlayer({
     };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
+    const onError = () => {
+      if (!cancelled) setLoadFailed(true);
+    };
     master.addEventListener("loadedmetadata", tryProbe);
     master.addEventListener("durationchange", tryProbe);
+    master.addEventListener("loadeddata", markFrame);
+    master.addEventListener("playing", markFrame);
     master.addEventListener("ended", onMasterEnded);
     master.addEventListener("play", onPlay);
     master.addEventListener("pause", onPause);
+    master.addEventListener("error", onError);
     tryProbe();
+    const failTimer = window.setTimeout(() => {
+      if (!cancelled && master.readyState < 2 && !(master.videoWidth > 0)) {
+        setLoadFailed(true);
+      }
+    }, 6000);
     return () => {
       cancelled = true;
+      window.clearTimeout(failTimer);
       master.removeEventListener("loadedmetadata", tryProbe);
       master.removeEventListener("durationchange", tryProbe);
+      master.removeEventListener("loadeddata", markFrame);
+      master.removeEventListener("playing", markFrame);
       master.removeEventListener("ended", onMasterEnded);
       master.removeEventListener("play", onPlay);
       master.removeEventListener("pause", onPause);
+      master.removeEventListener("error", onError);
       master.pause();
     };
   }, [src, loop, leftName, rightName]);
@@ -246,6 +287,7 @@ export default function LiveBattleReplayPlayer({
 
   const progress = duration > 0 ? (current / duration) * 100 : 0;
   const frameH = compact ? "aspect-[3/2] max-h-[min(48dvh,380px)]" : "aspect-[3/2] max-h-[min(56dvh,460px)]";
+  const showCovers = (!hasFrame || loadFailed) && !!(leftCoverUrl || rightCoverUrl);
 
   return (
     <div className={`w-full ${className}`}>
@@ -253,13 +295,34 @@ export default function LiveBattleReplayPlayer({
       <div
         className={`relative mx-auto w-full overflow-hidden rounded-[1.35rem] bg-neutral-900 shadow-[0_18px_40px_-20px_rgba(0,0,0,0.65)] ring-1 ring-white/15 ${frameH}`}
       >
+        {showCovers ? (
+          <div className="absolute inset-0 z-[1] grid grid-cols-2 bg-black">
+            <div className="relative h-full w-full overflow-hidden border-r border-white/20">
+              {leftCoverUrl ? (
+                <img src={leftCoverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-700/50 to-neutral-950" />
+              )}
+            </div>
+            <div className="relative h-full w-full overflow-hidden">
+              {rightCoverUrl ? (
+                <img src={rightCoverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-pink-700/50 to-neutral-950" />
+              )}
+            </div>
+          </div>
+        ) : null}
+
         <video
           ref={setMaster}
           src={src}
           playsInline
           loop={loop}
           preload="auto"
-          className="absolute inset-0 z-[1] h-full w-full object-contain bg-black"
+          className={`absolute inset-0 z-[1] h-full w-full object-contain bg-black transition-opacity duration-200 ${
+            hasFrame && !loadFailed ? "opacity-100" : "opacity-0"
+          }`}
           style={{ transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }}
           onClick={(e) => {
             e.stopPropagation();

@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { battleLiveRoomId } from "@/lib/battle-live";
 import {
   forceIosAudioSessionToPlayback,
+  resetIosAudioSessionToPlayback,
   setIosAudioSessionForRecording,
 } from "@/lib/feed-video-playback";
 import {
@@ -273,6 +274,9 @@ export function useBattleLiveRoom({
     setConn("idle");
     setMicOn(true);
     setCamOn(true);
+    // Leave play-and-record or Posts voice stays muted after a live debate.
+    forceIosAudioSessionToPlayback();
+    void resetIosAudioSessionToPlayback();
   }, [stopScreenShare]);
 
   const startAudio = useCallback(async () => {

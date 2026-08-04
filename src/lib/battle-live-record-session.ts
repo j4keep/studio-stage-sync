@@ -3,7 +3,11 @@
  * Challenger starts once when the debate goes live; flush runs when it ends.
  */
 
-import { startBattleLiveRecorder, type BattleLiveRecorder } from "@/lib/battle-live-record";
+import {
+  startBattleLiveRecorder,
+  type BattleLiveRecorder,
+  type BattleLiveRecorderSources,
+} from "@/lib/battle-live-record";
 import { persistLiveBattleReplay } from "@/lib/persist-live-battle-replay";
 
 type BattleLike = {
@@ -64,9 +68,33 @@ export function getLiveRecordSessionSnapshot() {
   };
 }
 
+function applySources(
+  recorder: BattleLiveRecorder,
+  opts: {
+    getLeftStream?: () => MediaStream | null;
+    getRightStream?: () => MediaStream | null;
+    getLeftVideo: () => HTMLVideoElement | null;
+    getRightVideo: () => HTMLVideoElement | null;
+    leftAudio?: MediaStream | null;
+    rightAudio?: MediaStream | null;
+  },
+) {
+  const sources: BattleLiveRecorderSources = {
+    getLeftStream: opts.getLeftStream,
+    getRightStream: opts.getRightStream,
+    getLeftVideo: opts.getLeftVideo,
+    getRightVideo: opts.getRightVideo,
+    leftAudio: opts.leftAudio,
+    rightAudio: opts.rightAudio,
+  };
+  recorder.setSources(sources);
+}
+
 export function ensureLiveBattleRecording(opts: {
   battle: BattleLike;
   userId: string;
+  getLeftStream?: () => MediaStream | null;
+  getRightStream?: () => MediaStream | null;
   getLeftVideo: () => HTMLVideoElement | null;
   getRightVideo: () => HTMLVideoElement | null;
   leftAudio?: MediaStream | null;
@@ -75,10 +103,18 @@ export function ensureLiveBattleRecording(opts: {
   rightLabel?: string | null;
 }): boolean {
   if (!opts.userId || opts.userId !== opts.battle.challenger_id) return false;
+
+  // Same debate already recording — rebind sinks to the NEW stage's streams/refs.
+  // Without this, prep→Posts navigation left the recorder reading dead video refs
+  // and baking cover photos for the entire replay.
   if (session?.battleId === opts.battle.id) {
     session.battle = opts.battle;
+    if (session.capturing) {
+      applySources(session.recorder, opts);
+    }
     return true;
   }
+
   // Different battle — drop prior session without upload.
   if (session) {
     void session.recorder.stop().catch(() => null);
@@ -87,6 +123,8 @@ export function ensureLiveBattleRecording(opts: {
   }
 
   const recorder = startBattleLiveRecorder({
+    getLeftStream: opts.getLeftStream,
+    getRightStream: opts.getRightStream,
     getLeftVideo: opts.getLeftVideo,
     getRightVideo: opts.getRightVideo,
     leftCoverUrl: opts.battle.challenger_cover_url,
