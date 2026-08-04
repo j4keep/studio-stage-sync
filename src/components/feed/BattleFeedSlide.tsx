@@ -49,8 +49,6 @@ import {
   armFeedAudioPlayback,
   forceIosAudioSessionToPlayback,
   hardStopFeedMedia,
-  isFeedAudioSessionUnlocked,
-  isTouchFeedDevice,
   unlockFeedAudioSession,
   waitForVideoCanPlay,
 } from "@/lib/feed-video-playback";
@@ -86,12 +84,21 @@ export default function BattleFeedSlide({
   const qc = useQueryClient();
   const uid = currentUserId || user?.id;
 
+  const mediaType = (battle?.media_type || "audio").toLowerCase();
+  const initialSide: "left" | "right" = battle?.challenger_media_url
+    ? "left"
+    : battle?.opponent_media_url
+      ? "right"
+      : "left";
+
   const [liked, setLiked] = useState(Boolean(battle?.isLiked));
   const [likesCount, setLikesCount] = useState(battle?.likes_count || 0);
   const [saved, setSaved] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [comment, setComment] = useState("");
-  const [activeSide, setActiveSide] = useState<"left" | "right">("left");
+  // Start on the side that has media so the <video> is mounted on first paint
+  // (waiting for setState+rAF before play() was killing the user-gesture → silent/frozen).
+  const [activeSide, setActiveSide] = useState<"left" | "right">(initialSide);
   const [expandedSide, setExpandedSide] = useState<"left" | "right" | null>(null);
   const [playing, setPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -99,6 +106,7 @@ export default function BattleFeedSlide({
   const [duration, setDuration] = useState(0);
   const [isScrubbing, setIsScrubbing] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const [silentLocked, setSilentLocked] = useState(false);
 
   const rootRef = useRef<HTMLDivElement | null>(null);
   /** One decoder at a time — same contract as FeedPostCard (dual videos froze iOS). */
@@ -107,9 +115,10 @@ export default function BattleFeedSlide({
   const seekTrackRef = useRef<HTMLDivElement | null>(null);
   const commentsEndRef = useRef<HTMLDivElement | null>(null);
   const viewedRef = useRef(false);
-  const activeSideRef = useRef<"left" | "right">("left");
+  const activeSideRef = useRef<"left" | "right">(initialSide);
   const autoStartedRef = useRef<string | null>(null);
   const userPausedRef = useRef(false);
+  const silentLockedRef = useRef(false);
   const isActiveRef = useRef(isActive);
   const mediaSessionCleanupRef = useRef<(() => void) | null>(null);
   const playSideRef = useRef<
@@ -120,8 +129,7 @@ export default function BattleFeedSlide({
   const singleTapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const touchHandledRef = useRef(false);
   isActiveRef.current = isActive;
-
-  const mediaType = (battle?.media_type || "audio").toLowerCase();
+  silentLockedRef.current = silentLocked;
   const liveReplayUrl = mediaType === "live" ? getBattleReplayMediaUrl(battle || {}) : null;
   const livePhase = mediaType === "live" ? getLiveBattlePhase(battle || {}, now) : null;
   // Bottom seek like regular posts — only once the live debate has a replay / ended.
@@ -141,7 +149,16 @@ export default function BattleFeedSlide({
     setExpandedSide(null);
     onScrollLockChange?.(false);
     autoStartedRef.current = null;
-  }, [battle?.id, onScrollLockChange]);
+    silentLockedRef.current = false;
+    setSilentLocked(false);
+    const nextSide: "left" | "right" = battle?.challenger_media_url
+      ? "left"
+      : battle?.opponent_media_url
+        ? "right"
+        : "left";
+    setActiveSide(nextSide);
+    activeSideRef.current = nextSide;
+  }, [battle?.id, battle?.challenger_media_url, battle?.opponent_media_url, onScrollLockChange]);
 
   useEffect(() => {
     setLiked(Boolean(battle?.isLiked));
@@ -188,6 +205,8 @@ export default function BattleFeedSlide({
     hardStopFeedMedia(activeMediaRef.current);
     hardStopFeedMedia(liveReplayRef.current);
     setPlaying(false);
+    silentLockedRef.current = false;
+    setSilentLocked(false);
   }, []);
 
   // Live replay progress — throttled (not every animation frame) to cut feed jank.
@@ -312,6 +331,20 @@ export default function BattleFeedSlide({
     [mediaEl, scrubToClientX, playing],
   );
 
+  const armAudibleEl = useCallback(
+    (el: HTMLMediaElement) => {
+      forceIosAudioSessionToPlayback();
+      unlockFeedAudioSession();
+      mediaSessionCleanupRef.current?.();
+      mediaSessionCleanupRef.current = armFeedAudioPlayback(el, {
+        title: battle?.title || "YAJ Battle",
+      });
+      silentLockedRef.current = false;
+      setSilentLocked(false);
+    },
+    [battle?.title],
+  );
+
   /**
    * Play one side using the same ready-gate / mute-kick path as FeedPostCard.
    * Only one media element is mounted (active side), so iOS isn't fighting two decoders.
@@ -319,13 +352,15 @@ export default function BattleFeedSlide({
   const playSide = useCallback(
     async (side: "left" | "right", opts?: { fromStart?: boolean }): Promise<boolean> => {
       userPausedRef.current = false;
-      setActiveSide(side);
-      activeSideRef.current = side;
-
-      // Wait for React to mount the single active media element for this side.
-      await new Promise<void>((resolve) => {
-        window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
-      });
+      const sideChanged = activeSideRef.current !== side;
+      if (sideChanged) {
+        setActiveSide(side);
+        activeSideRef.current = side;
+        // Only wait for mount when switching sides — first paint already has initialSide media.
+        await new Promise<void>((resolve) => {
+          window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()));
+        });
+      }
 
       if (!isActiveRef.current || userPausedRef.current) return false;
 
@@ -338,6 +373,13 @@ export default function BattleFeedSlide({
       el.loop = false;
       el.removeAttribute("loop");
       el.preload = "auto";
+      // Promote the video onto its own compositor layer so iOS actually paints frames
+      // (progress was advancing while the picture stayed frozen under overlays).
+      if (el instanceof HTMLVideoElement) {
+        el.style.transform = "translateZ(0)";
+        el.style.webkitTransform = "translateZ(0)";
+        el.style.zIndex = "1";
+      }
 
       // Seek once when switching sides / starting — never on soft retries near 0.
       if (opts?.fromStart) {
@@ -348,24 +390,11 @@ export default function BattleFeedSlide({
         }
       }
 
-      const ready = await waitForVideoCanPlay(el);
+      const ready = await waitForVideoCanPlay(el, 3500);
       if (!ready || !isActiveRef.current || userPausedRef.current) {
         setPlaying(false);
         return false;
       }
-
-      // Already playing — just make sure audio is armed.
-      if (!el.paused && el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        mediaSessionCleanupRef.current?.();
-        mediaSessionCleanupRef.current = armFeedAudioPlayback(el, {
-          title: battle?.title || "YAJ Battle",
-        });
-        setPlaying(true);
-        return true;
-      }
-
-      const touchDevice = isTouchFeedDevice();
-      const needsGestureForAudio = touchDevice && !isFeedAudioSessionUnlocked();
 
       const playSilently = async () => {
         if (el instanceof HTMLVideoElement) applyFeedVideoAudio(el, { muted: true });
@@ -376,6 +405,8 @@ export default function BattleFeedSlide({
         try {
           await el.play();
           setPlaying(true);
+          silentLockedRef.current = true;
+          setSilentLocked(true);
           return true;
         } catch {
           setPlaying(false);
@@ -383,20 +414,36 @@ export default function BattleFeedSlide({
         }
       };
 
-      if (needsGestureForAudio) {
-        return playSilently();
+      // Already playing — upgrade silent → audible if needed.
+      if (!el.paused && el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        if (el.muted || el.volume === 0 || silentLockedRef.current) {
+          armAudibleEl(el);
+        } else {
+          armAudibleEl(el);
+        }
+        setPlaying(true);
+        return true;
       }
 
+      // Always try audible first (Posts do this after unlock). Fall back to muted.
       forceIosAudioSessionToPlayback();
-      mediaSessionCleanupRef.current?.();
-      mediaSessionCleanupRef.current = armFeedAudioPlayback(el, {
-        title: battle?.title || "YAJ Battle",
-      });
+      armAudibleEl(el);
 
       try {
         await el.play();
         setPlaying(true);
-        unlockFeedAudioSession();
+        silentLockedRef.current = false;
+        setSilentLocked(false);
+        // Nudge a paint if the decoder stalled on frame 0.
+        if (el instanceof HTMLVideoElement && el.videoWidth > 0 && el.currentTime < 0.05) {
+          try {
+            const t = el.currentTime;
+            el.currentTime = t + 0.001;
+            el.currentTime = t;
+          } catch {
+            /* ignore */
+          }
+        }
         return true;
       } catch {
         mediaSessionCleanupRef.current?.();
@@ -404,21 +451,53 @@ export default function BattleFeedSlide({
         return playSilently();
       }
     },
-    [mediaType, battle?.title],
+    [mediaType, armAudibleEl],
   );
   playSideRef.current = playSide;
 
   const toggleSide = useCallback(
     (side: "left" | "right") => {
+      const el = mediaType === "live" ? liveReplayRef.current : activeMediaRef.current;
+      // Tap while muted-autoplaying must UNMUTE, not pause — that felt like a total glitch.
+      if (
+        activeSideRef.current === side &&
+        playing &&
+        el &&
+        (el.muted || el.volume === 0 || silentLockedRef.current)
+      ) {
+        void playSide(side, { fromStart: false });
+        return;
+      }
       if (activeSideRef.current === side && playing) {
         userPausedRef.current = true;
         hardStopMedia();
+        silentLockedRef.current = false;
+        setSilentLocked(false);
         return;
       }
       void playSide(side, { fromStart: activeSideRef.current !== side });
     },
-    [hardStopMedia, playSide, playing],
+    [hardStopMedia, playSide, playing, mediaType],
   );
+
+  // Upgrade silent autoplay → audible on the next feed gesture (same as FeedPostCard).
+  useEffect(() => {
+    if (!isActive) return;
+    const upgrade = () => {
+      if (!silentLockedRef.current || userPausedRef.current) return;
+      const el = mediaType === "live" ? liveReplayRef.current : activeMediaRef.current;
+      if (!el || el.paused) return;
+      armAudibleEl(el);
+      void el.play().catch(() => undefined);
+    };
+    window.addEventListener("feed-audio-unlocked", upgrade);
+    const root = rootRef.current;
+    root?.addEventListener("pointerdown", upgrade, { capture: true });
+    return () => {
+      window.removeEventListener("feed-audio-unlocked", upgrade);
+      root?.removeEventListener("pointerdown", upgrade, { capture: true } as EventListenerOptions);
+    };
+  }, [isActive, mediaType, armAudibleEl]);
 
   /** Single tap = play/pause that side. Double tap = expand / minimize that card. */
   const handleArtistTap = useCallback(
@@ -881,33 +960,20 @@ export default function BattleFeedSlide({
                 : BATTLE_FEED_TILE
         }`}
       >
-        <button
-          type="button"
-          className="absolute inset-0 z-[1]"
-          aria-label={
-            isExpanded
-              ? `Minimize ${firstName(name)}`
-              : isActiveSide && playing
-                ? `Pause ${firstName(name)}`
-                : `Play ${firstName(name)}`
-          }
-          onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
-          onClick={(e) => handleArtistClick(e, side)}
-        />
-
-        {/* Cover always underneath; only the ACTIVE side mounts a decoder (posts-style). */}
-        {cover ? (
+        {/* Cover only when this side is NOT decoding — a cover on top of a playing
+            video made progress advance with a frozen silent picture. */}
+        {!(mediaType === "video" && mediaUrl && isActive && isActiveSide) && cover ? (
           <img
             src={cover}
             alt=""
-            className="absolute inset-0 h-full w-full object-cover"
+            className="absolute inset-0 z-0 h-full w-full object-cover"
           />
-        ) : mediaType === "video" && mediaUrl && !(isActive && isActiveSide) ? (
-          <div className="absolute inset-0 bg-neutral-900" />
-        ) : !mediaUrl ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-neutral-900 text-xs text-white/50">
+        ) : !(mediaType === "video" && mediaUrl && isActive && isActiveSide) && !mediaUrl ? (
+          <div className="absolute inset-0 z-0 flex items-center justify-center bg-neutral-900 text-xs text-white/50">
             Waiting…
           </div>
+        ) : !(mediaType === "video" && mediaUrl && isActive && isActiveSide) ? (
+          <div className="absolute inset-0 z-0 bg-neutral-900" />
         ) : null}
 
         {mediaType === "video" && mediaUrl && isActive && isActiveSide ? (
@@ -919,7 +985,10 @@ export default function BattleFeedSlide({
             playsInline
             loop={false}
             preload="auto"
-            className="absolute inset-0 h-full w-full object-cover"
+            // Own compositor layer + above cover — iOS was advancing currentTime
+            // without painting frames when the video sat under overlays.
+            className="absolute inset-0 z-[1] h-full w-full object-cover"
+            style={{ transform: "translateZ(0)", WebkitTransform: "translateZ(0)" }}
           />
         ) : null}
 
@@ -935,6 +1004,22 @@ export default function BattleFeedSlide({
         ) : null}
 
         <div className="pointer-events-none absolute inset-0 z-[2] bg-gradient-to-t from-black/80 via-transparent to-black/20" />
+
+        <button
+          type="button"
+          className="absolute inset-0 z-[3] bg-transparent"
+          aria-label={
+            isExpanded
+              ? `Minimize ${firstName(name)}`
+              : isActiveSide && playing && silentLocked
+                ? `Tap for sound · ${firstName(name)}`
+                : isActiveSide && playing
+                  ? `Pause ${firstName(name)}`
+                  : `Play ${firstName(name)}`
+          }
+          onTouchEnd={(e) => handleArtistTouchEnd(e, side)}
+          onClick={(e) => handleArtistClick(e, side)}
+        />
 
         {isExpanded ? (
           <div className="pointer-events-none absolute left-1/2 top-3 z-10 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[10px] font-bold text-white/80 backdrop-blur">
@@ -1161,7 +1246,9 @@ export default function BattleFeedSlide({
                         : "Live debate"
                   : ended
                     ? `Ended · ${firstName(nowPlayingName)}`
-                    : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
+                    : silentLocked
+                      ? `Now playing · ${firstName(nowPlayingName)} · tap for sound`
+                      : `Now playing · ${firstName(nowPlayingName)}${playing ? "" : " (paused)"}`}
               </p>
             </div>
 
