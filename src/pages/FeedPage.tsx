@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from "react";
+import { useMemo, useEffect, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,6 +37,9 @@ const FeedPage = () => {
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openBattleId = searchParams.get("battle");
   const openPostId = searchParams.get("post");
+  /** Prevent deep-link reopen loops that call stopAllPageMedia mid-playback. */
+  const openedBattleDeepLinkRef = useRef<string | null>(null);
+  const openedPostDeepLinkRef = useRef<string | null>(null);
 
   const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["feed-posts"],
@@ -81,22 +84,25 @@ const FeedPage = () => {
   }, [refetch, user?.id]);
 
   const openPostItem = (index: number) => {
-    // Kill grid / Happening preview media so the viewer gets a clean decoder.
-    stopAllPageMedia();
+    // Soft-pause grid previews only — do NOT detach LiveKit/srcObject streams
+    // or battle autoplay on Posts glitches hard right after open.
+    stopAllPageMedia({ detachStreams: false });
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
     setViewer({ rail: "post", index });
   };
 
   const closeViewer = () => {
-    stopAllPageMedia();
+    stopAllPageMedia({ detachStreams: true });
+    openedBattleDeepLinkRef.current = null;
+    openedPostDeepLinkRef.current = null;
     setViewer(null);
   };
 
   // Leaving the homepage must kill any escaped post/battle audio.
   useEffect(() => {
     return () => {
-      stopAllPageMedia();
+      stopAllPageMedia({ detachStreams: true });
     };
   }, []);
 
@@ -115,11 +121,21 @@ const FeedPage = () => {
     }
   };
 
-  // Deep-link live battles: /?battle=<id>
+  // Deep-link battles: /?battle=<id> — open once, never re-stop media on refetch.
   useEffect(() => {
     if (!openBattleId || isLoading) return;
+    if (openedBattleDeepLinkRef.current === openBattleId) {
+      // Param still present after a refetch — just clear it.
+      const next = new URLSearchParams(searchParams);
+      if (next.has("battle")) {
+        next.delete("battle");
+        setSearchParams(next, { replace: true });
+      }
+      return;
+    }
     const idx = posts.findIndex((p: any) => p.itemType === "battle" && p.id === openBattleId);
     if (idx < 0) return;
+    openedBattleDeepLinkRef.current = openBattleId;
     openPostItem(idx);
     const next = new URLSearchParams(searchParams);
     next.delete("battle");
@@ -129,8 +145,17 @@ const FeedPage = () => {
   // Deep-link a post from Happening: /?post=<id>
   useEffect(() => {
     if (!openPostId || isLoading) return;
+    if (openedPostDeepLinkRef.current === openPostId) {
+      const next = new URLSearchParams(searchParams);
+      if (next.has("post")) {
+        next.delete("post");
+        setSearchParams(next, { replace: true });
+      }
+      return;
+    }
     const idx = posts.findIndex((p: any) => p.itemType === "post" && p.id === openPostId);
     if (idx < 0) return;
+    openedPostDeepLinkRef.current = openPostId;
     openPostItem(idx);
     const next = new URLSearchParams(searchParams);
     next.delete("post");
