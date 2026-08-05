@@ -75,6 +75,28 @@ export default function AdminTrustSafetyPage() {
   const [details, setDetails] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [schemaReady, setSchemaReady] = useState<boolean | null>(null);
+  const [setupBusy, setSetupBusy] = useState(false);
+
+  const normalizeProfile = (row: any): ProfileRow => ({
+    user_id: row.user_id,
+    display_name: row.display_name ?? null,
+    avatar_url: row.avatar_url ?? null,
+    moderation_status: (row.moderation_status || "active") as ModerationStatus,
+    moderation_until: row.moderation_until ?? null,
+    moderation_reason: row.moderation_reason ?? null,
+    moderation_offense_count: Number(row.moderation_offense_count || 0),
+  });
+
+  const checkSchema = async () => {
+    const { error } = await (supabase as any)
+      .from("profiles")
+      .select("moderation_status")
+      .limit(1);
+    const ready = !error;
+    setSchemaReady(ready);
+    return ready;
+  };
 
   useEffect(() => {
     if (!user) {
@@ -86,6 +108,29 @@ export default function AdminTrustSafetyPage() {
     });
   }, [user]);
 
+  useEffect(() => {
+    if (isAdmin) void checkSchema();
+  }, [isAdmin]);
+
+  const runSchemaSetup = async () => {
+    setSetupBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("trust-safety-setup", { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success("Trust & Safety database is ready");
+      setSchemaReady(true);
+    } catch (e: any) {
+      toast.error(
+        e?.message ||
+          "Could not auto-setup. Open Lovable → Cloud → SQL and run the trust_safety migration.",
+      );
+      await checkSchema();
+    } finally {
+      setSetupBusy(false);
+    }
+  };
+
   const suggested = useMemo(
     () => suggestedActionForOffenses(selected?.moderation_offense_count ?? 0),
     [selected?.moderation_offense_count],
@@ -93,6 +138,12 @@ export default function AdminTrustSafetyPage() {
 
   const loadRestricted = async () => {
     setLoading(true);
+    const ready = schemaReady ?? (await checkSchema());
+    if (!ready) {
+      setRestricted([]);
+      setLoading(false);
+      return;
+    }
     const { data } = await (supabase as any)
       .from("profiles")
       .select(
@@ -101,7 +152,7 @@ export default function AdminTrustSafetyPage() {
       .in("moderation_status", ["cooldown", "timeout", "suspended", "banned", "warned"])
       .order("updated_at", { ascending: false })
       .limit(80);
-    setRestricted(data || []);
+    setRestricted((data || []).map(normalizeProfile));
     setLoading(false);
   };
 
@@ -138,28 +189,50 @@ export default function AdminTrustSafetyPage() {
     const q = query.trim();
     if (!q) return;
     setLoading(true);
-    let req = (supabase as any)
+
+    // Always search basic profile fields first so users show up even before
+    // the Trust & Safety migration is applied on Lovable Cloud.
+    let basic = (supabase as any)
+      .from("profiles")
+      .select("user_id, display_name, avatar_url")
+      .limit(20);
+    if (q.includes("-") && q.length > 20) basic = basic.eq("user_id", q);
+    else basic = basic.ilike("display_name", `%${q}%`);
+
+    const { data: basicData, error: basicErr } = await basic;
+    if (basicErr) {
+      setLoading(false);
+      toast.error(basicErr.message || "Search failed");
+      return;
+    }
+
+    const baseRows = (basicData || []).map(normalizeProfile);
+    const ready = schemaReady ?? (await checkSchema());
+    if (!ready || baseRows.length === 0) {
+      setResults(baseRows);
+      setLoading(false);
+      return;
+    }
+
+    const ids = baseRows.map((r) => r.user_id);
+    const { data: rich } = await (supabase as any)
       .from("profiles")
       .select(
         "user_id, display_name, avatar_url, moderation_status, moderation_until, moderation_reason, moderation_offense_count",
       )
-      .limit(20);
-    if (q.includes("-") && q.length > 20) {
-      req = req.eq("user_id", q);
-    } else {
-      req = req.ilike("display_name", `%${q}%`);
-    }
-    const { data, error } = await req;
+      .in("user_id", ids);
+
+    const byId = new Map((rich || []).map((r: any) => [r.user_id, normalizeProfile(r)]));
+    setResults(baseRows.map((r) => byId.get(r.user_id) || r));
     setLoading(false);
-    if (error) {
-      toast.error(error.message || "Search failed");
-      return;
-    }
-    setResults(data || []);
   };
 
   const openUser = async (row: ProfileRow) => {
     setSelected(row);
+    if (!schemaReady) {
+      setHistory([]);
+      return;
+    }
     try {
       const rows = await fetchModerationHistory(row.user_id);
       setHistory(rows);
@@ -170,6 +243,10 @@ export default function AdminTrustSafetyPage() {
 
   const runAction = async (action: ModerationActionType) => {
     if (!selected) return;
+    if (!schemaReady) {
+      toast.error("Set up the Trust & Safety database first (button above)");
+      return;
+    }
     if (action !== "restore" && action !== "note" && !reason) {
       toast.error("Reason required");
       return;
@@ -254,6 +331,51 @@ export default function AdminTrustSafetyPage() {
           </p>
         </div>
       </div>
+
+      {schemaReady === false ? (
+        <div className="mb-4 rounded-xl border border-amber-500/35 bg-amber-500/10 p-3">
+          <p className="text-sm font-bold text-foreground">Database setup needed</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Korina will show in search below. To warn/timeout users, apply the Trust &amp; Safety
+            SQL once in Lovable Cloud (or tap auto-setup).
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              disabled={setupBusy}
+              onClick={() => void runSchemaSetup()}
+              className="h-9 rounded-lg gradient-primary px-3 text-[11px] font-bold text-primary-foreground disabled:opacity-50"
+            >
+              {setupBusy ? "Setting up…" : "Auto-setup database"}
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  const res = await fetch(
+                    "/src/../supabase/migrations/20260805200000_trust_safety_moderation.sql",
+                  );
+                  // Bundlers won't serve this path — copy a minimal bootstrap instead.
+                  const bootstrap = `-- Paste into Lovable → Cloud → SQL Editor → Run
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS moderation_status text NOT NULL DEFAULT 'active',
+  ADD COLUMN IF NOT EXISTS moderation_until timestamptz,
+  ADD COLUMN IF NOT EXISTS moderation_reason text,
+  ADD COLUMN IF NOT EXISTS moderation_offense_count integer NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS moderation_public_note text;`;
+                  await navigator.clipboard.writeText(bootstrap);
+                  toast.message("SQL copied — paste into Lovable SQL Editor and Run, then search again");
+                } catch {
+                  toast.error("Could not copy SQL");
+                }
+              }}
+              className="h-9 rounded-lg border border-border bg-card px-3 text-[11px] font-bold text-foreground"
+            >
+              Copy quick-fix SQL
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="mb-4 flex gap-1.5 overflow-x-auto pb-1">
         {tabs.map((t) => (

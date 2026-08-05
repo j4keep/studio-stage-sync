@@ -24,6 +24,7 @@ export function useModerationStatus() {
       setStatus(next);
       return next;
     } catch {
+      // Migration not applied yet — treat everyone as active (don't block the app).
       setStatus(EMPTY_MODERATION);
       return EMPTY_MODERATION;
     } finally {
