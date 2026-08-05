@@ -52,7 +52,12 @@ import NewsCategoryPage from "./pages/NewsCategoryPage";
 import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminCustomerRelationsPage from "./pages/AdminCustomerRelationsPage";
+import AdminTrustSafetyPage from "./pages/AdminTrustSafetyPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
+import CommunityTimeoutPage from "./pages/CommunityTimeoutPage";
+import CommunityTimeoutScreen from "./components/CommunityTimeoutScreen";
+import ModerationBanner from "./components/ModerationBanner";
+import { useModerationStatus } from "./hooks/use-moderation-status";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
 import YajAiConversationSettingsPage from "./pages/YajAiConversationSettingsPage";
@@ -148,6 +153,8 @@ const BreakGuard = ({ children }: { children: JSX.Element }) => {
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
   const { themeSetupDone } = useTheme();
+  const { status: moderation, loading: moderationLoading, refresh: refreshModeration, isLockedOut } =
+    useModerationStatus();
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
   const [termsLoading, setTermsLoading] = useState(true);
   const [showThemePicker, setShowThemePicker] = useState(false);
@@ -227,7 +234,7 @@ const ProtectedRoutes = () => {
     setTermsAccepted(true);
   }, [user]);
 
-  if (loading || termsLoading) {
+  if (loading || termsLoading || (user && moderationLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
@@ -250,6 +257,17 @@ const ProtectedRoutes = () => {
     );
   }
 
+  // Suspended / permanently closed — calm Community Timeout (not a “jail”).
+  if (isLockedOut) {
+    return (
+      <CommunityTimeoutScreen
+        status={moderation}
+        mode="full"
+        onRestored={() => void refreshModeration()}
+      />
+    );
+  }
+
   // Show theme picker onboarding – always dark
   if (showThemePicker) {
     return (
@@ -262,6 +280,7 @@ const ProtectedRoutes = () => {
   return (
     <SessionProvider>
     <AppLayout>
+      <ModerationBanner />
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/radio" element={<RadioPage />} />
@@ -348,6 +367,8 @@ const ProtectedRoutes = () => {
 
         <Route path="/admin/tickets" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/customer-relations" element={<AdminCustomerRelationsPage />} />
+        <Route path="/admin/trust-safety" element={<AdminTrustSafetyPage />} />
+        <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
         <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />

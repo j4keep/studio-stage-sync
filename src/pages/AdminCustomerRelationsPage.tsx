@@ -401,7 +401,9 @@ const AdminCustomerRelationsPage = () => {
         </button>
         <div>
           <h1 className="font-display text-xl font-bold text-foreground">Customer Relations</h1>
-          <p className="text-[10px] text-muted-foreground">Admin inbox · tickets · reports · removals</p>
+          <p className="text-[10px] text-muted-foreground">
+            Help inbox · tickets · appeals replies · content removals (enforcement lives in Trust &amp; Safety)
+          </p>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Phone, Mail, MessageCircle, Headphones } from "lucide-react";
+import { ArrowLeft, FileText, Phone, Mail, MessageCircle, Headphones, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -59,26 +59,48 @@ const HelpPage = () => {
       </div>
 
       {isAdmin ? (
-        <button
-          type="button"
-          onClick={() => navigate("/admin/customer-relations")}
-          className="mb-3 flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 text-left transition-all hover:border-primary/50"
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20">
-            <Headphones className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <span className="block text-sm font-semibold text-foreground">
-              Customer Relations
-              <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary-foreground">
-                Admin
+        <div className="mb-3 space-y-2">
+          <button
+            type="button"
+            onClick={() => navigate("/admin/trust-safety")}
+            className="flex w-full items-center gap-3 rounded-xl border border-cyan-400/35 bg-cyan-400/10 p-4 text-left transition-all hover:border-cyan-400/55"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-400/20">
+              <Shield className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+            </div>
+            <div className="flex-1">
+              <span className="block text-sm font-semibold text-foreground">
+                Trust & Safety
+                <span className="ml-2 rounded-full bg-cyan-500 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                  Admin
+                </span>
               </span>
-            </span>
-            <span className="text-xs text-muted-foreground">
-              Tickets, content reports, delete battles/posts
-            </span>
-          </div>
-        </button>
+              <span className="text-xs text-muted-foreground">
+                Warnings, Community Timeouts, bans, appeals queue
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/customer-relations")}
+            className="flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-primary/10 p-4 text-left transition-all hover:border-primary/50"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/20">
+              <Headphones className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1">
+              <span className="block text-sm font-semibold text-foreground">
+                Customer Relations
+                <span className="ml-2 rounded-full bg-primary px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary-foreground">
+                  Admin
+                </span>
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Tickets, appeals replies, account help
+              </span>
+            </div>
+          </button>
+        </div>
       ) : null}
 
       <div className="flex flex-col gap-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Home, User, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
@@ -7,6 +7,8 @@ import { useCreatePostSheet } from "@/hooks/use-create-post-sheet";
 import CreatePostSheet from "@/components/feed/CreatePostSheet";
 import CreateNavIcon from "@/components/CreateNavIcon";
 import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
+import { useModerationStatus } from "@/hooks/use-moderation-status";
+import { toast } from "sonner";
 
 const CREATE_WAVE_MS = 720;
 
@@ -24,21 +26,33 @@ const BottomNav = () => {
   const [hidden, setHidden] = useState(false);
   const [waving, setWaving] = useState(false);
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
+  const { canPublish } = useModerationStatus();
   const isFeed = location.pathname === "/feed" || location.pathname === "/";
+
+  const tryOpenCreate = useCallback(async () => {
+    if (!canPublish) {
+      toast.message("Community Timeout", {
+        description: "Posting is paused until your cooldown ends.",
+      });
+      navigate("/community-timeout");
+      return;
+    }
+    await openCreate();
+  }, [canPublish, navigate, openCreate]);
 
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setHidden(detail?.hidden ?? false);
     };
-    const openCreateHandler = () => void openCreate();
+    const openCreateHandler = () => void tryOpenCreate();
     window.addEventListener("feed-nav-toggle", handler);
     window.addEventListener("open-create-post", openCreateHandler);
     return () => {
       window.removeEventListener("feed-nav-toggle", handler);
       window.removeEventListener("open-create-post", openCreateHandler);
     };
-  }, [openCreate]);
+  }, [tryOpenCreate]);
 
   useEffect(() => {
     if (location.pathname !== "/feed" && location.pathname !== "/") setHidden(false);
@@ -64,7 +78,7 @@ const BottomNav = () => {
   const handleCreate = async () => {
     if (waving || showCreate) return;
     setWaving(true);
-    void openCreate({ waveMs: CREATE_WAVE_MS });
+    await tryOpenCreate();
     window.setTimeout(() => setWaving(false), CREATE_WAVE_MS);
   };
 

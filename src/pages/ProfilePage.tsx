@@ -206,9 +206,17 @@ const ProfilePage = () => {
     ...(isAdmin
       ? [
           {
+            icon: Shield,
+            label: "Trust & Safety",
+            sub: "Admin · warnings, timeouts, bans",
+            action: () => navigate("/admin/trust-safety"),
+            pro: false,
+            section: null as NotifSection | null,
+          },
+          {
             icon: Headphones,
             label: "Customer Relations",
-            sub: "Admin · tickets, reports, removals",
+            sub: "Admin · tickets, appeals, help replies",
             action: () => navigate("/admin/customer-relations"),
             pro: false,
             section: null as NotifSection | null,
