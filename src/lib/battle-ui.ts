@@ -82,6 +82,9 @@ export function getBattleUiStatus(battle: {
   const voteWindowClosed = msLeft <= 0;
   const status = (battle.status || "").toLowerCase();
 
+  if (status === "cancelled") {
+    return "ended";
+  }
   if (voteWindowClosed || status === "ended" || status === "expired") {
     return "ended";
   }
@@ -128,9 +131,11 @@ export function isBattleOnFeed(battle: {
   max_duration_minutes?: number | null;
   replay_media_url?: string | null;
 }): boolean {
+  // Mutual cancel removes the battle from the public feed (row kept for history).
+  if ((battle.status || "").toLowerCase() === "cancelled") return false;
   const ui = getBattleUiStatus(battle);
-  // Keep launched battles on the post feed through the full lifecycle (including
-  // after voting ends) until the creator deletes them from Battles.
+  // Keep launched battles on the post feed through the full lifecycle.
+  // After accept, participants cannot unilaterally erase results.
   if (ui === "live" || ui === "ending" || ui === "countdown") return true;
   if (ui === "ended") {
     return !!(battle.opponent_id && (battle.opponent_media_url || battle.opponent_cover_url));

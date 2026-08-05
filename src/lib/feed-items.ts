@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { parsePostCaption } from "@/lib/post-editor";
 import { listBlockedPeerIds } from "@/lib/blocks";
 import { isBattleOnFeed } from "@/lib/battle-ui";
+import { isBattleArchivedForUser } from "@/lib/battle-contract";
 import { isPurgedFeedVideoPost } from "@/lib/clear-feed-videos";
 
 /** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
@@ -41,17 +42,24 @@ interface FetchFeedItemsOptions {
 }
 
 export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOptions): Promise<FeedItem[]> => {
-  const [postsResult, battlesResult] = await Promise.all([
+  const [postsResult, challengerBattlesResult, opponentBattlesResult] = await Promise.all([
     userId
       ? (supabase as any).from("posts").select("*").eq("user_id", userId).order("created_at", { ascending: false })
       : (supabase as any).from("posts").select("*").order("created_at", { ascending: false }).limit(50),
     userId
       ? (supabase as any).from("battles").select("*").eq("challenger_id", userId).order("created_at", { ascending: false })
       : (supabase as any).from("battles").select("*").order("created_at", { ascending: false }).limit(50),
+    userId
+      ? (supabase as any).from("battles").select("*").eq("opponent_id", userId).order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] as any[] }),
   ]);
 
   const posts = postsResult.data || [];
-  const battles = battlesResult.data || [];
+  const battlesById = new Map<string, any>();
+  for (const b of [...(challengerBattlesResult.data || []), ...(opponentBattlesResult.data || [])]) {
+    battlesById.set(b.id, b);
+  }
+  const battles = [...battlesById.values()];
 
   const blockedIds =
     currentUserId && !userId ? await listBlockedPeerIds(currentUserId) : new Set<string>();
@@ -60,9 +68,15 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
     ? posts.filter((p: any) => !blockedIds.has(p.user_id))
     : posts
   ).filter((p: any) => !isPurgedFeedVideoPost(p));
-  // Homepage feed: only launched (accepted/active) battles. Profile keeps all for the owner.
+  // Homepage feed: launched battles only. Profile hides cancelled + that user's archives.
   const battlePool = userId
-    ? battles
+    ? battles.filter((b: any) => {
+        if ((b.status || "").toLowerCase() === "cancelled") return false;
+        // Owner viewing own profile: still show archived so they can unarchive.
+        // Visitors: hide battles the profile owner archived.
+        if (currentUserId === userId) return true;
+        return !isBattleArchivedForUser(b, userId);
+      })
     : battles.filter((b: any) => isBattleOnFeed(b));
 
   const visibleBattles = blockedIds.size

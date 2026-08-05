@@ -1,6 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Trash2, Clock, BadgeCheck, Zap } from "lucide-react";
+import {
+  Trash2,
+  Clock,
+  BadgeCheck,
+  Zap,
+  MoreHorizontal,
+  Archive,
+  Flag,
+  XCircle,
+  Lock,
+  ArchiveRestore,
+} from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -10,6 +21,7 @@ import BattleStatusBadge from "@/components/battle/BattleStatusBadge";
 import BattleNeonVoteBar from "@/components/battle/BattleNeonVoteBar";
 import BattleWinnerCheckBadge from "@/components/battle/BattleWinnerCheckBadge";
 import LiveBattleReplayPlayer from "@/components/battle/LiveBattleReplayPlayer";
+import ReportContentSheet from "@/components/ReportContentSheet";
 import {
   battleCategoryFromMedia,
   formatClockMmSs,
@@ -21,6 +33,14 @@ import {
   tallyBattleVotes,
 } from "@/lib/battle-ui";
 import { getBattleReplayMediaUrl } from "@/lib/battle-live";
+import {
+  archiveBattleForUser,
+  deletePendingBattle,
+  getBattleContractAction,
+  requestOrConfirmBattleCancel,
+  unarchiveBattleForUser,
+  type BattleLike,
+} from "@/lib/battle-contract";
 
 interface Battle {
   id: string;
@@ -43,6 +63,10 @@ interface Battle {
   likes_count?: number;
   replay_media_url?: string | null;
   battle_background?: string | null;
+  cancel_requested_by?: string | null;
+  cancel_requested_at?: string | null;
+  challenger_archived_at?: string | null;
+  opponent_archived_at?: string | null;
 }
 
 /** Compact battle card for feed / battles list — open for like/comment/vote. */
@@ -51,6 +75,8 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const lastTapRef = useRef(0);
   const tapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTouchRef = useRef(false);
@@ -122,17 +148,56 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
   const tally = tallyBattleVotes(votes as any[], battle.challenger_id, battle.opponent_id);
   const votingOpen = isBattleVotingOpen(battle);
   const winnerSide = getBattleWinnerSide(battle, tally, votingOpen);
+  const contractAction = getBattleContractAction(
+    battle as BattleLike,
+    user?.id,
+    tally.total || (votes as any[]).length,
+  );
 
-  const deleteMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
-      if (error) throw error;
+  const invalidateBattleQueries = () => {
+    queryClient.invalidateQueries({ queryKey: ["battles"] });
+    queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
+    queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+    queryClient.invalidateQueries({ queryKey: ["battle", battle.id] });
+    queryClient.invalidateQueries({ queryKey: ["battle-votes", battle.id] });
+  };
+
+  const contractMutation = useMutation({
+    mutationFn: async (action: typeof contractAction) => {
+      if (!user) throw new Error("Sign in required");
+      if (action === "delete") {
+        await deletePendingBattle(battle.id);
+        return "deleted";
+      }
+      if (action === "cancel_request" || action === "cancel_confirm") {
+        return requestOrConfirmBattleCancel(battle.id);
+      }
+      if (action === "archive") {
+        await archiveBattleForUser(battle as BattleLike, user.id);
+        return "archived";
+      }
+      if (action === "unarchive") {
+        await unarchiveBattleForUser(battle as BattleLike, user.id);
+        return "unarchived";
+      }
+      throw new Error("Action not available");
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["battles"] });
-      queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
-      queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
-      toast.success("Battle deleted");
+    onSuccess: (result) => {
+      invalidateBattleQueries();
+      setMenuOpen(false);
+      if (result === "deleted") toast.success("Battle deleted");
+      else if (result === "requested" || result === "already_requested") {
+        toast.message("Cancel requested — waiting for the other competitor to agree");
+      } else if (result === "cancelled" || result === "already_cancelled") {
+        toast.success("Battle cancelled by mutual agreement");
+      } else if (result === "archived") {
+        toast.success("Hidden from your profile — still in Arena history");
+      } else if (result === "unarchived") {
+        toast.success("Battle shown on your profile again");
+      }
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || "Couldn't update battle");
     },
   });
 
@@ -211,19 +276,107 @@ const BattleCard = ({ battle, onOpen }: { battle: Battle; onOpen?: () => void })
           <Clock className="h-3 w-3" />
           {uiStatus === "waiting" || uiStatus === "open" ? "Waiting" : `${timerLabel} left`}
         </span>
-        {user?.id === battle.challenger_id && (
+        <div className="relative">
           <button
+            type="button"
             onClick={(e) => {
               e.stopPropagation();
-              deleteMutation.mutate();
+              setMenuOpen((v) => !v);
             }}
-            className="rounded-full p-1 text-white/40 hover:text-rose-400"
-            aria-label="Delete battle"
+            className="rounded-full p-1 text-white/40 hover:text-white"
+            aria-label="Battle options"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <MoreHorizontal className="h-3.5 w-3.5" />
           </button>
-        )}
+          {menuOpen ? (
+            <div
+              className="absolute right-0 top-7 z-30 min-w-[11.5rem] overflow-hidden rounded-xl border border-white/15 bg-[#12121a] py-1 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {contractAction === "delete" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-rose-300 hover:bg-white/5"
+                  onClick={() => {
+                    if (window.confirm("Delete this battle before it’s accepted?")) {
+                      contractMutation.mutate("delete");
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Delete battle
+                </button>
+              ) : null}
+              {contractAction === "cancel_request" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-amber-200 hover:bg-white/5"
+                  onClick={() => contractMutation.mutate("cancel_request")}
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Cancel battle
+                </button>
+              ) : null}
+              {contractAction === "cancel_confirm" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-amber-200 hover:bg-white/5"
+                  onClick={() => contractMutation.mutate("cancel_confirm")}
+                >
+                  <XCircle className="h-3.5 w-3.5" /> Agree to cancel
+                </button>
+              ) : null}
+              {contractAction === "cancel_waiting" ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-white/55">
+                  <Clock className="h-3.5 w-3.5" /> Waiting on opponent
+                </div>
+              ) : null}
+              {contractAction === "locked" ? (
+                <div className="flex items-center gap-2 px-3 py-2 text-[11px] font-semibold text-white/55">
+                  <Lock className="h-3.5 w-3.5" /> Locked after first vote
+                </div>
+              ) : null}
+              {contractAction === "archive" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => contractMutation.mutate("archive")}
+                >
+                  <Archive className="h-3.5 w-3.5" /> Hide from my profile
+                </button>
+              ) : null}
+              {contractAction === "unarchive" ? (
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-white/85 hover:bg-white/5"
+                  onClick={() => contractMutation.mutate("unarchive")}
+                >
+                  <ArchiveRestore className="h-3.5 w-3.5" /> Show on my profile
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] font-semibold text-white/85 hover:bg-white/5"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setReportOpen(true);
+                }}
+              >
+                <Flag className="h-3.5 w-3.5" /> Report / remove request
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {user && reportOpen ? (
+        <ReportContentSheet
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          reporterId={user.id}
+          targetType="battle"
+          targetId={battle.id}
+          title="Report or request battle removal"
+        />
+      ) : null}
 
       <div className="relative px-3 pb-2 pt-2">
         <div className="mb-2 grid grid-cols-2 gap-3">

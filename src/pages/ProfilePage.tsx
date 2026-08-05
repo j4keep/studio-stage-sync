@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import {
   User, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles
+  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -42,6 +42,17 @@ const ProfilePage = () => {
     banner_url: null,
   });
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setIsAdmin(false);
+      return;
+    }
+    void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => {
+      setIsAdmin(Boolean(data));
+    });
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -191,7 +202,19 @@ const ProfilePage = () => {
     { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
     { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true, section: null as NotifSection | null },
     { icon: Rocket, label: "My Boosts", sub: "Promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true, section: null as NotifSection | null },
-    { icon: HelpCircle, label: "Help & Support", sub: "", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
+    { icon: HelpCircle, label: "Help & Support", sub: "Tickets & FAQs", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
+    ...(isAdmin
+      ? [
+          {
+            icon: Headphones,
+            label: "Customer Relations",
+            sub: "Admin · tickets, reports, removals",
+            action: () => navigate("/admin/customer-relations"),
+            pro: false,
+            section: null as NotifSection | null,
+          },
+        ]
+      : []),
   ];
 
   return (

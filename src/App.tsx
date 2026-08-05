@@ -51,7 +51,7 @@ import ArticlePage from "./pages/ArticlePage";
 import NewsCategoryPage from "./pages/NewsCategoryPage";
 import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
-import AdminTicketsPage from "./pages/AdminTicketsPage";
+import AdminCustomerRelationsPage from "./pages/AdminCustomerRelationsPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
@@ -346,7 +346,8 @@ const ProtectedRoutes = () => {
         <Route path="/my-studios" element={<MyStudiosPage />} />
         <Route path="/my-bookings" element={<MyBookingsPage />} />
 
-        <Route path="/admin/tickets" element={<AdminTicketsPage />} />
+        <Route path="/admin/tickets" element={<AdminCustomerRelationsPage />} />
+        <Route path="/admin/customer-relations" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
         <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />
