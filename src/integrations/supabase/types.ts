@@ -229,8 +229,6 @@ export type Database = {
           opponent_id: string | null
           opponent_media_url: string | null
           opponent_title: string | null
-          replay_media_url: string | null
-          scheduled_start_at: string | null
           status: string
           title: string
           updated_at: string
@@ -253,8 +251,6 @@ export type Database = {
           opponent_id?: string | null
           opponent_media_url?: string | null
           opponent_title?: string | null
-          replay_media_url?: string | null
-          scheduled_start_at?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -277,8 +273,6 @@ export type Database = {
           opponent_id?: string | null
           opponent_media_url?: string | null
           opponent_title?: string | null
-          replay_media_url?: string | null
-          scheduled_start_at?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -1529,6 +1523,81 @@ export type Database = {
           },
         ]
       }
+      moderation_actions: {
+        Row: {
+          action_type: string
+          actor_id: string | null
+          created_at: string
+          details: string | null
+          duration_hours: number | null
+          ends_at: string | null
+          id: string
+          offense_number: number | null
+          reason: string
+          target_user_id: string
+        }
+        Insert: {
+          action_type: string
+          actor_id?: string | null
+          created_at?: string
+          details?: string | null
+          duration_hours?: number | null
+          ends_at?: string | null
+          id?: string
+          offense_number?: number | null
+          reason: string
+          target_user_id: string
+        }
+        Update: {
+          action_type?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: string | null
+          duration_hours?: number | null
+          ends_at?: string | null
+          id?: string
+          offense_number?: number | null
+          reason?: string
+          target_user_id?: string
+        }
+        Relationships: []
+      }
+      moderation_appeals: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          id: string
+          message: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       news_articles: {
         Row: {
           author_id: string
@@ -2289,6 +2358,11 @@ export type Database = {
           gig_experience_bio: string | null
           hide_yaj_page_on_gigs: boolean
           id: string
+          moderation_offense_count: number
+          moderation_public_note: string | null
+          moderation_reason: string | null
+          moderation_status: string
+          moderation_until: string | null
           terms_accepted_at: string | null
           theme_preset: string | null
           updated_at: string
@@ -2308,6 +2382,11 @@ export type Database = {
           gig_experience_bio?: string | null
           hide_yaj_page_on_gigs?: boolean
           id?: string
+          moderation_offense_count?: number
+          moderation_public_note?: string | null
+          moderation_reason?: string | null
+          moderation_status?: string
+          moderation_until?: string | null
           terms_accepted_at?: string | null
           theme_preset?: string | null
           updated_at?: string
@@ -2327,6 +2406,11 @@ export type Database = {
           gig_experience_bio?: string | null
           hide_yaj_page_on_gigs?: boolean
           id?: string
+          moderation_offense_count?: number
+          moderation_public_note?: string | null
+          moderation_reason?: string | null
+          moderation_status?: string
+          moderation_until?: string | null
           terms_accepted_at?: string | null
           theme_preset?: string | null
           updated_at?: string
@@ -3680,6 +3764,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_moderation_action: {
+        Args: {
+          p_action_type: string
+          p_details?: string
+          p_duration_hours?: number
+          p_reason: string
+          p_target_user_id: string
+        }
+        Returns: {
+          action_type: string
+          actor_id: string | null
+          created_at: string
+          details: string | null
+          duration_hours: number | null
+          ends_at: string | null
+          id: string
+          offense_number: number | null
+          reason: string
+          target_user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "moderation_actions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       expire_pending_bookings: { Args: never; Returns: number }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       increment_battle_views: {
@@ -3721,6 +3832,20 @@ export type Database = {
           studio_id: string
           user_id: string
         }[]
+      }
+      refresh_moderation_status: {
+        Args: { p_user_id?: string }
+        Returns: {
+          moderation_offense_count: number
+          moderation_public_note: string
+          moderation_reason: string
+          moderation_status: string
+          moderation_until: string
+        }[]
+      }
+      suggested_moderation_action: {
+        Args: { p_offense_count: number }
+        Returns: string
       }
     }
     Enums: {
