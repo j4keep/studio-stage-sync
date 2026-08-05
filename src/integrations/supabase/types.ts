@@ -229,8 +229,6 @@ export type Database = {
           opponent_id: string | null
           opponent_media_url: string | null
           opponent_title: string | null
-          replay_media_url: string | null
-          scheduled_start_at: string | null
           status: string
           title: string
           updated_at: string
@@ -253,8 +251,6 @@ export type Database = {
           opponent_id?: string | null
           opponent_media_url?: string | null
           opponent_title?: string | null
-          replay_media_url?: string | null
-          scheduled_start_at?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -277,8 +273,6 @@ export type Database = {
           opponent_id?: string | null
           opponent_media_url?: string | null
           opponent_title?: string | null
-          replay_media_url?: string | null
-          scheduled_start_at?: string | null
           status?: string
           title?: string
           updated_at?: string
