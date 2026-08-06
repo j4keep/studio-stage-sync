@@ -1,18 +1,31 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Copy, Pause, Pencil, Plus, Square, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  BarChart3,
+  Copy,
+  MessageSquare,
+  Pause,
+  Pencil,
+  Plus,
+  Square,
+  Trash2,
+  Wallet,
+} from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { conversionRate, formatExpiresLabel, remainingClaims } from "@/lib/deals";
 import {
   duplicateDeal,
   getBusinessDashboard,
-  getOrCreateBusinessForUser,
   listMyBusinesses,
   updateDealStatus,
   type Deal,
   type DealBusiness,
 } from "@/lib/deals-api";
 import { toast } from "sonner";
+
+type DashTab = "dashboard" | "verification";
 
 export default function DealBusinessDashboardPage() {
   const nav = useNavigate();
@@ -23,14 +36,16 @@ export default function DealBusinessDashboardPage() {
   const [totals, setTotals] = useState({ views: 0, saves: 0, claims: 0, redemptions: 0 });
   const [conversion, setConversion] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<DashTab>("dashboard");
 
   const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      let list = await listMyBusinesses(user.id);
+      const list = await listMyBusinesses(user.id);
       if (!list.length) {
-        list = [await getOrCreateBusinessForUser(user.id)];
+        nav("/deals/become-business", { replace: true });
+        return;
       }
       setBusinesses(list);
       const bid = businessId || list[0].id;
@@ -44,7 +59,7 @@ export default function DealBusinessDashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [user, businessId]);
+  }, [user, businessId, nav]);
 
   useEffect(() => {
     void load();
@@ -75,7 +90,7 @@ export default function DealBusinessDashboardPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-black">Deals dashboard</h1>
+          <h1 className="text-lg font-black">Business Dashboard</h1>
           <p className="truncate text-[11px] text-muted-foreground">{biz?.name}</p>
         </div>
         <button
@@ -83,11 +98,53 @@ export default function DealBusinessDashboardPage() {
           onClick={() => nav("/deals/create")}
           className="flex h-9 items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3 text-xs font-bold text-white"
         >
-          <Plus className="h-3.5 w-3.5" /> Create
+          <Plus className="h-3.5 w-3.5" /> Post Deal
         </button>
       </header>
 
-      <div className="px-3 py-3">
+      <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-3">
+        {(
+          [
+            { id: "dashboard" as const, label: "Dashboard", icon: BarChart3 },
+            { id: "post", label: "Post Deal", icon: Plus, path: "/deals/create" },
+            { id: "my", label: "My Deals", icon: Pencil, path: null },
+            { id: "verification" as const, label: "Verification", icon: BadgeCheck },
+            { id: "messages", label: "Messages", icon: MessageSquare, soon: true },
+            { id: "payouts", label: "Payouts", icon: Wallet, soon: true },
+          ] as const
+        ).map((item) => (
+          <button
+            key={item.label}
+            type="button"
+            onClick={() => {
+              if ("soon" in item && item.soon) {
+                toast.message(`${item.label} coming soon`);
+                return;
+              }
+              if ("path" in item && item.path) {
+                nav(item.path);
+                return;
+              }
+              if (item.id === "my") {
+                setTab("dashboard");
+                document.getElementById("biz-deals-list")?.scrollIntoView({ behavior: "smooth" });
+                return;
+              }
+              if (item.id === "dashboard" || item.id === "verification") setTab(item.id);
+            }}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-bold ${
+              tab === item.id
+                ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                : "bg-slate-300/90 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+            }`}
+          >
+            <item.icon className="h-3.5 w-3.5" />
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="px-3 pb-3">
         {businesses.length > 1 ? (
           <select
             value={businessId}
@@ -100,7 +157,33 @@ export default function DealBusinessDashboardPage() {
           </select>
         ) : null}
 
-        {!biz?.is_verified && !biz?.can_publish ? (
+        {tab === "verification" ? (
+          <div className="mb-3 rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-black">Verification</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Status:{" "}
+              <span className="font-semibold capitalize">
+                {biz?.verification_status?.replace("_", " ") || "pending"}
+              </span>
+              {biz?.is_verified ? " · Verified Business ✓" : ""}
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Verified businesses and approved partners can publish active public deals. Pending accounts can
+              draft and submit for review.
+            </p>
+            {!biz?.is_verified && !biz?.can_publish ? (
+              <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                Verification required before offers go live.
+              </p>
+            ) : (
+              <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                You’re cleared to publish active deals.
+              </p>
+            )}
+          </div>
+        ) : null}
+
+        {!biz?.is_verified && !biz?.can_publish && tab === "dashboard" ? (
           <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
             Business verification required to publish active public deals.
           </div>
@@ -116,8 +199,8 @@ export default function DealBusinessDashboardPage() {
         </div>
       </div>
 
-      <div className="space-y-3 px-3">
-        <h2 className="text-sm font-bold">Your deals</h2>
+      <div id="biz-deals-list" className="space-y-3 px-3">
+        <h2 className="text-sm font-bold">My Deals</h2>
         {loading ? (
           <p className="py-10 text-center text-sm text-muted-foreground">Loading…</p>
         ) : !deals.length ? (

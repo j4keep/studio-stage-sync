@@ -2,17 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
-  BadgeCheck,
-  BarChart3,
   Bell,
   Bookmark,
-  LayoutDashboard,
   MapPin,
-  PlusCircle,
   Search,
   Store,
   Tag,
-  Ticket,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -31,6 +26,7 @@ import {
   isMissingTableError,
   listDeals,
   toggleSaveDeal,
+  userHasDealBusiness,
   type Deal,
 } from "@/lib/deals-api";
 import DealCard, { DealCardSkeleton } from "@/components/deals/DealCard";
@@ -113,7 +109,7 @@ export default function DealsHomePage() {
   const [heroIdx, setHeroIdx] = useState(0);
   const [hintIdx, setHintIdx] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
-  const [showBizMenu, setShowBizMenu] = useState(false);
+  const [isDealBusiness, setIsDealBusiness] = useState(false);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -125,6 +121,14 @@ export default function DealsHomePage() {
       window.removeEventListener("offline", off);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setIsDealBusiness(false);
+      return;
+    }
+    void userHasDealBusiness(user.id).then(setIsDealBusiness);
+  }, [user]);
 
   useEffect(() => {
     if (q || searchFocused) return;
@@ -338,6 +342,17 @@ export default function DealsHomePage() {
           >
             <Bell className="h-4 w-4" />
           </button>
+          {/* Subtle business shortcut — owners only */}
+          {isDealBusiness ? (
+            <button
+              type="button"
+              onClick={() => nav("/deals/business")}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/80 shadow-sm"
+              aria-label="Business Dashboard"
+            >
+              <Store className="h-4 w-4" />
+            </button>
+          ) : null}
         </div>
 
         <button
@@ -549,7 +564,8 @@ export default function DealsHomePage() {
               setShowLoc(true);
             }}
             onOnline={() => setFilter("online")}
-            onPost={() => nav("/deals/create")}
+            onBecomeBusiness={() => nav("/deals/become-business")}
+            isDealBusiness={isDealBusiness}
           />
         ) : q || category || filter !== "for-you" ? (
           <section>
@@ -568,60 +584,31 @@ export default function DealsHomePage() {
             <FeedSection title="Popular Deals" deals={sections.popular} onSave={onSave} onShare={onShare} />
           </>
         )}
+
+        {/* Non-business shoppers only — disappears once registered */}
+        {!loading && !isDealBusiness ? (
+          <section className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-amber-400/5 p-4">
+            <p className="text-sm font-black">Own a business?</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Reach thousands of local customers with limited-time offers on YAJ Deals.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  toast.error("Sign in to become a business");
+                  nav("/auth");
+                  return;
+                }
+                nav("/deals/become-business");
+              }}
+              className="mt-3 h-10 w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-black text-white"
+            >
+              Become a Business
+            </button>
+          </section>
+        ) : null}
       </main>
-
-      <div className="fixed bottom-24 right-4 z-30">
-        <button
-          type="button"
-          onClick={() => setShowBizMenu(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-xs font-bold text-background shadow-[0_14px_32px_-12px_rgba(15,23,42,0.55)]"
-        >
-          <Store className="h-3.5 w-3.5" />
-          Business Portal
-        </button>
-      </div>
-
-      {showBizMenu ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
-          <div className="w-full max-w-md rounded-t-2xl bg-background p-4 shadow-xl sm:rounded-2xl">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="font-black">Business Portal</h3>
-                <p className="text-[11px] text-muted-foreground">Manage offers, reach locals, get verified</p>
-              </div>
-              <button type="button" onClick={() => setShowBizMenu(false)} aria-label="Close">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-1.5">
-              {(
-                [
-                  { icon: LayoutDashboard, label: "Dashboard", path: "/deals/business" },
-                  { icon: PlusCircle, label: "Post Deal", path: "/deals/create" },
-                  { icon: BarChart3, label: "Analytics", path: "/deals/business" },
-                  { icon: Ticket, label: "My Deals", path: "/deals/my" },
-                  { icon: BadgeCheck, label: "Verification", path: "/deals/business" },
-                ] as const
-              ).map((item) => (
-                <button
-                  key={item.label}
-                  type="button"
-                  onClick={() => {
-                    setShowBizMenu(false);
-                    nav(item.path);
-                  }}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-muted active:scale-[0.99]"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
-                    <item.icon className="h-4 w-4" />
-                  </span>
-                  <span className="text-sm font-bold">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {showLoc ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
@@ -722,13 +709,15 @@ function EmptyState({
   filter,
   onExpand,
   onOnline,
-  onPost,
+  onBecomeBusiness,
+  isDealBusiness,
 }: {
   q: string;
   filter: string;
   onExpand: () => void;
   onOnline: () => void;
-  onPost: () => void;
+  onBecomeBusiness: () => void;
+  isDealBusiness: boolean;
 }) {
   if (q) {
     return (
@@ -772,14 +761,22 @@ function EmptyState({
           <p className="mt-1.5 text-xs leading-relaxed text-white/90">
             Discover discounts from restaurants, shops, salons, gyms, and local businesses near you.
           </p>
-          <p className="mt-2 text-[11px] font-semibold text-amber-100">Be the first business to post a deal.</p>
-          <button
-            type="button"
-            onClick={onPost}
-            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.95)]"
-          >
-            Post Your First Deal
-          </button>
+          {!isDealBusiness ? (
+            <>
+              <p className="mt-2 text-[11px] font-semibold text-amber-100">Own a business? Reach local customers.</p>
+              <button
+                type="button"
+                onClick={onBecomeBusiness}
+                className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.95)]"
+              >
+                Become a Business
+              </button>
+            </>
+          ) : (
+            <p className="mt-2 text-[11px] font-semibold text-amber-100">
+              Post your first offer from your Business Dashboard in Profile.
+            </p>
+          )}
         </div>
       </div>
     </div>

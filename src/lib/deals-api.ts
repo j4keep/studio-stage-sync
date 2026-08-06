@@ -531,6 +531,16 @@ export async function listMyBusinesses(userId: string): Promise<DealBusiness[]> 
   return [...map.values()];
 }
 
+/** True when the user owns or is an active member of a Deals business. */
+export async function userHasDealBusiness(userId: string): Promise<boolean> {
+  try {
+    const list = await listMyBusinesses(userId);
+    return list.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function createDealDraft(input: {
   businessId: string;
   creatorId: string;

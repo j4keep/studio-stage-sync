@@ -2,12 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import {
   User, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones
+  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones,
+  Bookmark, Ticket, Store
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { userHasDealBusiness } from "@/lib/deals-api";
 import profileBanner from "@/assets/profile-banner.jpg";
 import profileAvatar from "@/assets/profile-avatar.jpg";
 import EditProfileSheet from "@/components/EditProfileSheet";
@@ -43,15 +45,18 @@ const ProfilePage = () => {
   });
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isDealBusiness, setIsDealBusiness] = useState(false);
 
   useEffect(() => {
     if (!user) {
       setIsAdmin(false);
+      setIsDealBusiness(false);
       return;
     }
     void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => {
       setIsAdmin(Boolean(data));
     });
+    void userHasDealBusiness(user.id).then(setIsDealBusiness);
   }, [user]);
 
   useEffect(() => {
@@ -194,6 +199,29 @@ const ProfilePage = () => {
       pro: false,
       section: null as NotifSection | null,
     },
+    { icon: Bookmark, label: "Saved Deals", sub: "Offers you bookmarked", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
+    { icon: Ticket, label: "My Coupons", sub: "Claimed & ready to use", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
+    ...(isDealBusiness
+      ? [
+          {
+            icon: Store,
+            label: "Business Dashboard",
+            sub: "Post deals, analytics & verification",
+            action: () => navigate("/deals/business"),
+            pro: false,
+            section: null as NotifSection | null,
+          },
+        ]
+      : [
+          {
+            icon: Store,
+            label: "Become a Business",
+            sub: "Reach local shoppers with Deals",
+            action: () => navigate("/deals/become-business"),
+            pro: false,
+            section: null as NotifSection | null,
+          },
+        ]),
     { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
     { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => goSection("bookings", "/my-bookings"), pro: false, section: "bookings" as NotifSection | null },
     { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },

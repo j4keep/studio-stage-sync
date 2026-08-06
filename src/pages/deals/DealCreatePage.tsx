@@ -12,7 +12,6 @@ import {
 import {
   addDealImage,
   createDealDraft,
-  getOrCreateBusinessForUser,
   listMyBusinesses,
   submitDeal,
   uploadDealImage,
@@ -61,10 +60,11 @@ export default function DealCreatePage() {
     if (!user) return;
     void (async () => {
       try {
-        let list = await listMyBusinesses(user.id);
+        const list = await listMyBusinesses(user.id);
         if (!list.length) {
-          const created = await getOrCreateBusinessForUser(user.id, "My Business");
-          list = [created];
+          toast.message("Register as a business to post deals");
+          nav("/deals/become-business", { replace: true });
+          return;
         }
         setBusinesses(list);
         setBusinessId(list[0].id);
@@ -72,7 +72,7 @@ export default function DealCreatePage() {
         toast.error(e?.message || "Could not load business");
       }
     })();
-  }, [user]);
+  }, [user, nav]);
 
   useEffect(() => {
     if (!file) {
