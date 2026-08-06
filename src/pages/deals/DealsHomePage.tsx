@@ -729,9 +729,13 @@ function EmptyState({
   }
   if (filter === "near-me") {
     return (
-      <div className="overflow-hidden rounded-[1.5rem] shadow-[0_18px_40px_-24px_rgba(15,23,42,0.55)] ring-1 ring-black/5">
-        <div className="relative aspect-[4/3]">
-          <img src={lifestyleDining} alt="" className="h-full w-full object-cover" />
+      <div className="w-full overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_18px_40px_-24px_rgba(15,23,42,0.55)] ring-1 ring-black/5">
+        <div className="relative w-full aspect-[4/3]">
+          <img
+            src={lifestyleDining}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover object-center"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
           <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-white shadow-lg backdrop-blur-xl">
             <p className="text-base font-black">No deals nearby yet.</p>
@@ -750,11 +754,15 @@ function EmptyState({
     );
   }
 
-  // Onboarding hero only when the feed is empty
+  // Onboarding hero only when the feed is empty — image fills the card edge-to-edge
   return (
-    <div className="overflow-hidden rounded-[1.5rem] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5">
-      <div className="relative aspect-[4/5] max-h-[28rem]">
-        <img src={emptyHero} alt="" className="h-full w-full object-cover" />
+    <div className="w-full overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5">
+      <div className="relative w-full aspect-[4/5]">
+        <img
+          src={emptyHero}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
+        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
         <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/30 bg-white/18 p-4 text-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl">
           <p className="text-lg font-black tracking-tight">🎉 Local Deals Start Here</p>
