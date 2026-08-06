@@ -114,24 +114,31 @@ export default function ExplorePage() {
   const onPointerDown = (index: number) => (e: React.PointerEvent) => {
     if (isSearching) return;
     movedRef.current = false;
+    startRef.current = { x: e.clientX, y: e.clientY };
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     if (editing) {
       setDragIndex(index);
       return;
     }
     longPress.current = window.setTimeout(() => {
+      longPress.current = null;
       setEditing(true);
       setDragIndex(index);
       if (navigator.vibrate) navigator.vibrate(12);
-    }, 350);
+    }, 550);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    const start = startRef.current;
+    if (start) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (dist < 12) return;
+      movedRef.current = true;
+    }
     if (dragIndex === null) {
-      if (longPress.current) clearLongPress();
+      clearLongPress();
       return;
     }
-    movedRef.current = true;
     const over = cardIndexAtPoint(e.clientX, e.clientY);
     if (over === null || over === dragIndex) return;
     setOrder((prev) => {
@@ -144,11 +151,14 @@ export default function ExplorePage() {
   };
 
   const onPointerUp = (item: ExploreItem) => () => {
-    const wasDragging = dragIndex !== null && movedRef.current;
+    const wasLongPress = longPress.current === null && dragIndex !== null;
+    const moved = movedRef.current;
     clearLongPress();
     setDragIndex(null);
-    if (!editing && !wasDragging && item.route) navigate(item.route);
+    startRef.current = null;
+    if (!editing && !moved && !wasLongPress && item.route) navigate(item.route);
   };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
