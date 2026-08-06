@@ -239,7 +239,7 @@ export default function ExplorePage() {
                   setDragIndex(null);
                 }}
                 onContextMenu={(e) => e.preventDefault()}
-                className={`text-left touch-none select-none transition-transform ${
+                className={`min-h-0 text-left touch-none select-none transition-transform ${
                   dragIndex === index
                     ? "scale-105 opacity-80 z-10"
                     : editing
@@ -251,10 +251,12 @@ export default function ExplorePage() {
                 <img
                   src={item.image}
                   alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
-                  className="w-full rounded-2xl shadow-sm pointer-events-none"
+                  className={`w-full rounded-2xl shadow-sm pointer-events-none ${
+                    isSearching ? "" : "h-full object-cover"
+                  }`}
                   draggable={false}
-                  loading="lazy"
                 />
+
               </button>
             ))}
           </div>
