@@ -100,8 +100,8 @@ const TOP_PICKS: ExploreItem[] = [
     emoji: "🎮",
     background: "from-violet-100 via-purple-100 to-indigo-200",
     border: "border-violet-300/70",
-    },
   },
+
   {
     label: "Events",
     subtitle: "Local events you'll love.",
