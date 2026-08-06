@@ -46,13 +46,14 @@ function ExploreCard({ item }: { item: ExploreItem }) {
       type="button"
       onClick={() => navigate(item.route)}
       aria-label={`${item.label}. ${item.subtitle}`}
-      className="overflow-hidden rounded-[1.15rem] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+      className="block w-full appearance-none border-0 bg-transparent p-0 transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
     >
+      {/* Image IS the card — no gradient/emoji layer underneath */}
       <img
         src={item.image}
         alt=""
         draggable={false}
-        className="aspect-square w-full object-cover"
+        className="aspect-square w-full rounded-2xl object-cover shadow-sm"
       />
     </button>
   );
