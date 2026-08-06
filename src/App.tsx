@@ -110,7 +110,7 @@ import DealBusinessDashboardPage from "./pages/deals/DealBusinessDashboardPage";
 import DealNotificationsPage from "./pages/deals/DealNotificationsPage";
 import DealPublishingPolicyPage from "./pages/deals/DealPublishingPolicyPage";
 import DealBecomeBusinessPage from "./pages/deals/DealBecomeBusinessPage";
-import GamesPage from "./pages/GamesPage";
+
 
 import { SessionProvider } from "./wstudio/session/SessionContext";
 
@@ -365,7 +365,6 @@ const ProtectedRoutes = () => {
         <Route path="/services/:id" element={<ServiceDetailPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
-        <Route path="/games" element={<GamesPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
