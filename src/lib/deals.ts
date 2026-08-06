@@ -260,16 +260,28 @@ export function formatExpiresLabel(iso: string | null | undefined) {
   const now = Date.now();
   const ms = d.getTime() - now;
   if (ms <= 0) return "Expired";
-  const minutes = ms / 60_000;
-  if (minutes < 60) return `Ends in ${Math.max(1, Math.round(minutes))}m`;
-  const hours = ms / 3_600_000;
-  if (hours < 24) return `Ends in ${Math.max(1, Math.round(hours))}h`;
-  const days = Math.ceil(hours / 24);
+  // Prefer precise countdown under 48h
+  if (ms <= 48 * 3_600_000) return formatCountdown(iso);
+  const days = Math.ceil(ms / 86_400_000);
   if (days === 1) return "Expires Tomorrow";
   if (days <= 7) {
     return `Valid through ${d.toLocaleDateString(undefined, { weekday: "long" })}`;
   }
   return `Ends ${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+}
+
+/** Precise urgency label: "Ends in 3h 14m" / "Ends in 42m". */
+export function formatCountdown(iso: string | null | undefined) {
+  if (!iso) return "";
+  const ms = new Date(iso).getTime() - Date.now();
+  if (Number.isNaN(ms) || ms <= 0) return "Expired";
+  const totalMin = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMin / (60 * 24));
+  const hours = Math.floor((totalMin % (60 * 24)) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return `Ends in ${days}d ${hours}h`;
+  if (hours > 0) return `Ends in ${hours}h ${mins}m`;
+  return `Ends in ${Math.max(1, mins)}m`;
 }
 
 export function isEndingSoon(iso: string | null | undefined, withinHours = 48) {

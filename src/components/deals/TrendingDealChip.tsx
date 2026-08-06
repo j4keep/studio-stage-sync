@@ -1,15 +1,18 @@
-import { MapPin, Star } from "lucide-react";
+import { Clock, MapPin, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { formatDistance, formatExpiresLabel, isEndingSoon } from "@/lib/deals";
+import { formatDistance, isEndingSoon } from "@/lib/deals";
 import { dealCoverUrl, type Deal } from "@/lib/deals-api";
+import { useCountdownLabel } from "@/hooks/use-countdown-label";
+import VerifiedBusinessBadge from "@/components/deals/VerifiedBusinessBadge";
 
-/** Compact horizontal “Trending Near You” card. */
+/** Compact horizontal “Trending Nearby” card. */
 export default function TrendingDealChip({ deal }: { deal: Deal }) {
   const nav = useNavigate();
   const cover = dealCoverUrl(deal);
   const biz = deal.deal_businesses;
   const rating = Number(biz?.avg_rating || 0);
   const ending = isEndingSoon(deal.expires_at);
+  const countdown = useCountdownLabel(deal.expires_at);
 
   return (
     <button
@@ -28,31 +31,30 @@ export default function TrendingDealChip({ deal }: { deal: Deal }) {
         <span className="deal-badge-float absolute left-2 top-2 rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-2 py-1 text-[10px] font-black text-white shadow-md">
           {deal.badge || "DEAL"}
         </span>
-        {ending ? (
-          <span className="deal-ending-glow absolute bottom-2 left-2 rounded-full bg-orange-500/90 px-1.5 py-0.5 text-[9px] font-bold text-white">
-            Limited Time
-          </span>
-        ) : null}
       </div>
       <div className="space-y-0.5 p-2.5">
-        <p className="truncate text-xs font-bold">{biz?.name || "Business"}</p>
+        <p className="flex items-center gap-1 truncate text-xs font-bold">
+          <span className="truncate">{biz?.name || "Business"}</span>
+          {biz?.is_verified ? <VerifiedBusinessBadge compact /> : null}
+        </p>
         <p className="line-clamp-2 text-[11px] font-semibold leading-snug text-foreground/90">{deal.title}</p>
         {biz?.review_count ? (
           <p className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
             {rating.toFixed(1)}
-            {biz.is_verified ? <span className="ml-0.5 text-sky-500">✓</span> : null}
           </p>
-        ) : biz?.is_verified ? (
-          <p className="text-[10px] font-semibold text-sky-600">Verified</p>
         ) : null}
         <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <MapPin className="h-3 w-3" />
-          {formatDistance(deal.distance_miles, deal.location_type) || "Local"}
-          <span>·</span>
-          <span className={ending ? "font-semibold text-orange-600" : ""}>
-            {formatExpiresLabel(deal.expires_at)}
-          </span>
+          <MapPin className="h-3 w-3 shrink-0" />
+          <span className="truncate">{formatDistance(deal.distance_miles, deal.location_type) || "Local"}</span>
+        </p>
+        <p
+          className={`inline-flex items-center gap-0.5 text-[10px] font-semibold ${
+            ending ? "text-orange-600" : "text-muted-foreground"
+          }`}
+        >
+          <Clock className="h-3 w-3" />
+          {countdown}
         </p>
       </div>
     </button>

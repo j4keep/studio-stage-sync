@@ -18,7 +18,6 @@ import {
   canClaimDeal,
   computeSavings,
   formatDiscountBadge,
-  formatExpiresLabel,
   formatMoney,
   getCategoryLabel,
   mapsUrl,
@@ -26,6 +25,8 @@ import {
   remainingClaims,
   statusBadges,
 } from "@/lib/deals";
+import { useCountdownLabel } from "@/hooks/use-countdown-label";
+import VerifiedBusinessBadge from "@/components/deals/VerifiedBusinessBadge";
 import {
   claimDeal,
   dealClaimBlockedReason,
@@ -66,6 +67,7 @@ export default function DealDetailPage() {
     overall: 5,
     body: "",
   });
+  const countdown = useCountdownLabel(deal?.expires_at);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -327,9 +329,7 @@ export default function DealDetailPage() {
           <h2 className="text-xl font-black leading-tight">{deal.title}</h2>
           <p className="mt-1 flex items-center gap-1.5 text-sm">
             <span className="font-semibold">{biz?.name}</span>
-            {biz?.is_verified ? (
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white">✓</span>
-            ) : null}
+            {biz?.is_verified ? <VerifiedBusinessBadge /> : null}
             {biz && biz.review_count > 0 ? (
               <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
@@ -361,7 +361,7 @@ export default function DealDetailPage() {
         </div>
 
         <div className="space-y-2 text-sm">
-          <Row icon={Clock} label="Valid" value={formatExpiresLabel(deal.expires_at)} />
+          <Row icon={Clock} label="Valid" value={countdown} />
           <Row icon={MapPin} label="Category" value={getCategoryLabel(deal.category)} />
           {remaining != null ? <Row icon={Star} label="Remaining" value={`${remaining} claims left`} /> : null}
           {deal.minimum_purchase != null ? (

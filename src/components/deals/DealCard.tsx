@@ -1,14 +1,15 @@
 import { useEffect, useState } from "react";
-import { Bookmark, MapPin, Share2, Star } from "lucide-react";
+import { Bookmark, Clock, MapPin, Share2, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   formatDistance,
-  formatExpiresLabel,
   isEndingSoon,
   remainingClaims,
   statusBadges,
 } from "@/lib/deals";
 import { dealCoverUrl, type Deal } from "@/lib/deals-api";
+import { useCountdownLabel } from "@/hooks/use-countdown-label";
+import VerifiedBusinessBadge from "@/components/deals/VerifiedBusinessBadge";
 
 type Props = {
   deal: Deal;
@@ -60,6 +61,7 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
   const ending = isEndingSoon(deal.expires_at);
   const rating = Number(biz?.avg_rating || 0);
   const reviewCount = Number(biz?.review_count || 0);
+  const countdown = useCountdownLabel(deal.expires_at);
 
   return (
     <article className="deal-card group relative overflow-hidden rounded-[1.35rem] bg-card shadow-[0_10px_28px_-16px_rgba(15,23,42,0.45)] ring-1 ring-black/5 transition-transform duration-200 active:scale-[0.985] dark:ring-white/10">
@@ -87,25 +89,24 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
           </span>
 
           {ending ? (
-            <span className="deal-ending-glow absolute right-3 top-3 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black text-white shadow-md">
+            <span className="deal-ending-glow absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black text-white shadow-md">
+              <Clock className="h-3 w-3" />
               Limited Time
             </span>
           ) : null}
 
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
             {badges
-              .filter((b) => b !== "Ending Soon" || !ending)
+              .filter((b) => b !== "Ending Soon" && b !== "Limited Time")
               .slice(0, 2)
               .map((b) => (
-              <span
-                key={b}
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md ${
-                  b === "Ending Soon" ? "deal-ending-glow bg-orange-500/85" : "bg-black/45"
-                }`}
-              >
-                {b}
-              </span>
-            ))}
+                <span
+                  key={b}
+                  className="rounded-full bg-black/45 px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md"
+                >
+                  {b}
+                </span>
+              ))}
           </div>
         </div>
       </button>
@@ -115,13 +116,9 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
           <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-foreground">
             {deal.title}
           </h3>
-          <p className="mt-1 flex items-center gap-1.5 text-sm">
+          <p className="mt-1 flex flex-wrap items-center gap-1.5 text-sm">
             <span className="truncate font-semibold text-foreground/90">{biz?.name || "Business"}</span>
-            {biz?.is_verified ? (
-              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white shadow-sm">
-                ✓
-              </span>
-            ) : null}
+            {biz?.is_verified ? <VerifiedBusinessBadge /> : null}
           </p>
 
           {reviewCount > 0 ? (
@@ -133,8 +130,9 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
           ) : null}
 
           <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
-            <span className="font-medium text-orange-600 dark:text-orange-400">
-              {formatExpiresLabel(deal.expires_at)}
+            <span className="inline-flex items-center gap-1 font-semibold text-orange-600 dark:text-orange-400">
+              <Clock className="h-3 w-3" />
+              {countdown}
             </span>
             <span className="inline-flex items-center gap-0.5">
               <MapPin className="h-3 w-3" />

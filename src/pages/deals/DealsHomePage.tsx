@@ -2,12 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
+  BadgeCheck,
+  BarChart3,
   Bell,
   Bookmark,
+  LayoutDashboard,
   MapPin,
+  PlusCircle,
   Search,
   Store,
   Tag,
+  Ticket,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -108,6 +113,7 @@ export default function DealsHomePage() {
   const [heroIdx, setHeroIdx] = useState(0);
   const [hintIdx, setHintIdx] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [showBizMenu, setShowBizMenu] = useState(false);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -476,7 +482,7 @@ export default function DealsHomePage() {
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               filter === f.id
                 ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow"
-                : "bg-muted/80 text-foreground shadow-sm"
+                : "bg-slate-300/90 text-slate-800 shadow-sm dark:bg-slate-700 dark:text-slate-100"
             }`}
           >
             {f.label}
@@ -518,7 +524,7 @@ export default function DealsHomePage() {
 
       {!loading && trending.length > 0 ? (
         <section className="mt-5 px-3">
-          <h2 className="mb-2 text-base font-black tracking-tight">Trending Near You</h2>
+          <h2 className="mb-2 text-base font-black tracking-tight">🔥 Trending Nearby</h2>
           <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
             {trending.map((d) => (
               <TrendingDealChip key={d.id} deal={d} />
@@ -534,6 +540,7 @@ export default function DealsHomePage() {
             <DealCardSkeleton />
           </div>
         ) : deals.length === 0 ? (
+          // Onboarding hero only when there are truly zero deals in this view
           <EmptyState
             q={q}
             filter={filter}
@@ -555,31 +562,66 @@ export default function DealsHomePage() {
           </section>
         ) : (
           <>
-            <FeedSection title="Recommended for You" deals={sections.recommended} onSave={onSave} onShare={onShare} />
+            <FeedSection title="Today’s Deals" deals={sections.recommended} onSave={onSave} onShare={onShare} />
+            <FeedSection title="Nearby Deals" deals={sections.newest} onSave={onSave} onShare={onShare} />
             <FeedSection title="Ending Soon" deals={sections.ending} onSave={onSave} onShare={onShare} />
-            <FeedSection title="New Near You" deals={sections.newest} onSave={onSave} onShare={onShare} />
-            <FeedSection title="Popular This Week" deals={sections.popular} onSave={onSave} onShare={onShare} />
+            <FeedSection title="Popular Deals" deals={sections.popular} onSave={onSave} onShare={onShare} />
           </>
         )}
       </main>
 
-      <div className="fixed bottom-24 right-4 z-30 flex flex-col items-end gap-2">
+      <div className="fixed bottom-24 right-4 z-30">
         <button
           type="button"
-          onClick={() => nav("/deals/create")}
-          className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-xs font-black text-white shadow-[0_12px_28px_-10px_rgba(234,88,12,0.9)]"
-        >
-          Post Deal
-        </button>
-        <button
-          type="button"
-          onClick={() => nav("/deals/business")}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/95 px-3.5 py-2 text-[11px] font-bold text-foreground shadow-lg backdrop-blur"
+          onClick={() => setShowBizMenu(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-xs font-bold text-background shadow-[0_14px_32px_-12px_rgba(15,23,42,0.55)]"
         >
           <Store className="h-3.5 w-3.5" />
           Business Portal
         </button>
       </div>
+
+      {showBizMenu ? (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
+          <div className="w-full max-w-md rounded-t-2xl bg-background p-4 shadow-xl sm:rounded-2xl">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <h3 className="font-black">Business Portal</h3>
+                <p className="text-[11px] text-muted-foreground">Manage offers, reach locals, get verified</p>
+              </div>
+              <button type="button" onClick={() => setShowBizMenu(false)} aria-label="Close">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {(
+                [
+                  { icon: LayoutDashboard, label: "Dashboard", path: "/deals/business" },
+                  { icon: PlusCircle, label: "Post Deal", path: "/deals/create" },
+                  { icon: BarChart3, label: "Analytics", path: "/deals/business" },
+                  { icon: Ticket, label: "My Deals", path: "/deals/my" },
+                  { icon: BadgeCheck, label: "Verification", path: "/deals/business" },
+                ] as const
+              ).map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  onClick={() => {
+                    setShowBizMenu(false);
+                    nav(item.path);
+                  }}
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-muted active:scale-[0.99]"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10 text-orange-600">
+                    <item.icon className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm font-bold">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {showLoc ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
