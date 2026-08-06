@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Phone, Mail, MessageCircle, Headphones, Shield } from "lucide-react";
+import { ArrowLeft, FileText, Phone, Mail, MessageCircle, Headphones, Shield, BadgeCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -77,6 +77,26 @@ const HelpPage = () => {
               </span>
               <span className="text-xs text-muted-foreground">
                 Warnings, Community Timeouts, bans, appeals queue
+              </span>
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/admin/deals-verification")}
+            className="flex w-full items-center gap-3 rounded-xl border border-orange-400/35 bg-orange-500/10 p-4 text-left transition-all hover:border-orange-400/55"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/20">
+              <BadgeCheck className="h-4 w-4 text-orange-600 dark:text-orange-300" />
+            </div>
+            <div className="flex-1">
+              <span className="block text-sm font-semibold text-foreground">
+                Deals Verification
+                <span className="ml-2 rounded-full bg-orange-500 px-1.5 py-0.5 text-[9px] font-bold uppercase text-white">
+                  Admin
+                </span>
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Approve merchants, review docs, moderate offers
               </span>
             </div>
           </button>

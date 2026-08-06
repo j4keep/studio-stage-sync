@@ -53,6 +53,7 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminCustomerRelationsPage from "./pages/AdminCustomerRelationsPage";
 import AdminTrustSafetyPage from "./pages/AdminTrustSafetyPage";
+import AdminDealsVerificationPage from "./pages/AdminDealsVerificationPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import CommunityTimeoutPage from "./pages/CommunityTimeoutPage";
 import CommunityTimeoutScreen from "./components/CommunityTimeoutScreen";
@@ -384,6 +385,7 @@ const ProtectedRoutes = () => {
         <Route path="/admin/tickets" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/customer-relations" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/trust-safety" element={<AdminTrustSafetyPage />} />
+        <Route path="/admin/deals-verification" element={<AdminDealsVerificationPage />} />
         <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />

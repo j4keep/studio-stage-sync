@@ -35,7 +35,38 @@ export type DealBusiness = {
   hours_json: Record<string, unknown>;
   avg_rating: number;
   review_count: number;
+  phone_verified_at?: string | null;
+  email_verified_at?: string | null;
+  verification_submitted_at?: string | null;
+  verification_reviewed_at?: string | null;
+  verification_note?: string | null;
+  admin_request_message?: string | null;
+  fraud_flags?: { code: string; detail?: string }[] | null;
+  needs_manual_review?: boolean;
+  posting_suspended?: boolean;
+  violation_count?: number;
 };
+
+export type DealBusinessDocument = {
+  id: string;
+  business_id: string;
+  uploaded_by: string;
+  doc_type: string;
+  file_url: string;
+  file_name: string | null;
+  notes: string | null;
+  status: string;
+  created_at: string;
+};
+
+export const VERIFICATION_DOC_TYPES = [
+  { id: "business_license", label: "Business license" },
+  { id: "ein_tax", label: "EIN / tax document" },
+  { id: "utility_bill", label: "Utility bill (name + address)" },
+  { id: "state_registration", label: "State business registration" },
+  { id: "website_social", label: "Official website / social proof" },
+  { id: "other", label: "Other proof" },
+] as const;
 
 export type DealImage = {
   id: string;
@@ -538,6 +569,210 @@ export async function userHasDealBusiness(userId: string): Promise<boolean> {
     return list.length > 0;
   } catch {
     return false;
+  }
+}
+
+export async function registerDealBusiness(input: {
+  userId: string;
+  name: string;
+  address: string;
+  city: string;
+  state: string;
+  postalCode?: string;
+  phone: string;
+  email?: string;
+  website?: string;
+  category: string;
+  description: string;
+  hoursJson?: Record<string, unknown>;
+  logoUrl?: string | null;
+}): Promise<DealBusiness> {
+  const existing = await listMyBusinesses(input.userId);
+  if (existing.length) {
+    // Update the primary business profile instead of creating duplicates
+    const id = existing[0].id;
+    const { data, error } = await sb
+      .from("deal_businesses")
+      .update({
+        name: input.name.trim(),
+        address: input.address.trim(),
+        city: input.city.trim() || null,
+        state: input.state.trim() || null,
+        postal_code: input.postalCode?.trim() || null,
+        phone: input.phone.trim(),
+        email: input.email?.trim() || null,
+        website: input.website?.trim() || null,
+        category: input.category,
+        description: input.description.trim(),
+        hours_json: input.hoursJson || {},
+        logo_url: input.logoUrl || existing[0].logo_url,
+        email_verified_at: input.email?.trim() ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    if (error) throw error;
+    return data as DealBusiness;
+  }
+
+  const { data, error } = await sb
+    .from("deal_businesses")
+    .insert({
+      owner_id: input.userId,
+      name: input.name.trim(),
+      address: input.address.trim(),
+      city: input.city.trim() || null,
+      state: input.state.trim() || null,
+      postal_code: input.postalCode?.trim() || null,
+      phone: input.phone.trim(),
+      email: input.email?.trim() || null,
+      website: input.website?.trim() || null,
+      category: input.category,
+      description: input.description.trim(),
+      hours_json: input.hoursJson || {},
+      logo_url: input.logoUrl || null,
+      verification_status: "pending",
+      can_publish: false,
+      is_verified: false,
+      email_verified_at: input.email?.trim() ? new Date().toISOString() : null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  await sb.from("deal_business_members").upsert(
+    {
+      business_id: data.id,
+      user_id: input.userId,
+      role: "owner",
+      status: "active",
+    },
+    { onConflict: "business_id,user_id" },
+  );
+
+  return data as DealBusiness;
+}
+
+export async function uploadBusinessDocument(opts: {
+  userId: string;
+  businessId: string;
+  docType: string;
+  file: File;
+  notes?: string;
+}): Promise<DealBusinessDocument> {
+  const ext = opts.file.name.split(".").pop() || "bin";
+  const safeName = `${Date.now()}.${ext}`;
+  let fileUrl: string;
+  const res = await uploadToR2(opts.file, {
+    folder: "deals-verify",
+    fileName: `${opts.userId}/${safeName}`,
+    mimeType: opts.file.type || "application/octet-stream",
+  });
+  if (res.success && res.data?.key) {
+    fileUrl = getR2DownloadUrl(res.data.key);
+  } else {
+    const path = `deals-verify/${opts.userId}/${safeName}`;
+    const { error } = await supabase.storage.from("media").upload(path, opts.file, {
+      contentType: opts.file.type || "application/octet-stream",
+      upsert: false,
+    });
+    if (error) throw new Error(res.error || error.message || "Upload failed");
+    fileUrl = supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
+  }
+
+  const { data, error } = await sb
+    .from("deal_business_documents")
+    .insert({
+      business_id: opts.businessId,
+      uploaded_by: opts.userId,
+      doc_type: opts.docType,
+      file_url: fileUrl,
+      file_name: opts.file.name,
+      notes: opts.notes?.trim() || null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as DealBusinessDocument;
+}
+
+export async function listBusinessDocuments(businessId: string): Promise<DealBusinessDocument[]> {
+  const { data, error } = await sb
+    .from("deal_business_documents")
+    .select("*")
+    .eq("business_id", businessId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data as DealBusinessDocument[]) || [];
+}
+
+export async function submitBusinessVerification(businessId: string): Promise<DealBusiness> {
+  const { data, error } = await sb.rpc("submit_deal_business_verification", {
+    p_business_id: businessId,
+  });
+  if (error) throw error;
+  return data as DealBusiness;
+}
+
+export async function reviewDealBusiness(
+  businessId: string,
+  decision: "approve" | "reject" | "request_info" | "suspend" | "revoke",
+  message?: string,
+): Promise<DealBusiness> {
+  const { data, error } = await sb.rpc("review_deal_business", {
+    p_business_id: businessId,
+    p_decision: decision,
+    p_message: message || null,
+  });
+  if (error) throw error;
+  return data as DealBusiness;
+}
+
+export async function moderateDeal(
+  dealId: string,
+  action: "hide" | "pause" | "restore",
+  note?: string,
+): Promise<Deal> {
+  const { data, error } = await sb.rpc("moderate_deal", {
+    p_deal_id: dealId,
+    p_action: action,
+    p_note: note || null,
+  });
+  if (error) throw error;
+  return data as Deal;
+}
+
+export async function listBusinessesForAdmin(status?: string | null): Promise<DealBusiness[]> {
+  let q = sb.from("deal_businesses").select("*").order("created_at", { ascending: false }).limit(200);
+  if (status) q = q.eq("verification_status", status);
+  const { data, error } = await q;
+  if (error) throw error;
+  return (data as DealBusiness[]) || [];
+}
+
+export async function listDealsForBusinessAdmin(businessId: string): Promise<Deal[]> {
+  const { data, error } = await sb
+    .from("deals")
+    .select("*, deal_images(*)")
+    .eq("business_id", businessId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data as Deal[]) || [];
+}
+
+export function verificationStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case "approved":
+      return "Verified";
+    case "rejected":
+      return "Rejected";
+    case "needs_info":
+      return "Needs more info";
+    case "suspended":
+      return "Suspended";
+    default:
+      return "Pending Verification";
   }
 }
 

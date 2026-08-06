@@ -18,11 +18,15 @@ import { conversionRate, formatExpiresLabel, remainingClaims } from "@/lib/deals
 import {
   duplicateDeal,
   getBusinessDashboard,
+  listBusinessDocuments,
   listMyBusinesses,
   updateDealStatus,
+  verificationStatusLabel,
   type Deal,
   type DealBusiness,
+  type DealBusinessDocument,
 } from "@/lib/deals-api";
+import VerifiedBusinessBadge from "@/components/deals/VerifiedBusinessBadge";
 import { toast } from "sonner";
 
 type DashTab = "dashboard" | "verification";
@@ -33,6 +37,7 @@ export default function DealBusinessDashboardPage() {
   const [businesses, setBusinesses] = useState<DealBusiness[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [docs, setDocs] = useState<DealBusinessDocument[]>([]);
   const [totals, setTotals] = useState({ views: 0, saves: 0, claims: 0, redemptions: 0 });
   const [conversion, setConversion] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -50,10 +55,14 @@ export default function DealBusinessDashboardPage() {
       setBusinesses(list);
       const bid = businessId || list[0].id;
       setBusinessId(bid);
-      const dash = await getBusinessDashboard(bid);
+      const [dash, docRows] = await Promise.all([
+        getBusinessDashboard(bid),
+        listBusinessDocuments(bid).catch(() => [] as DealBusinessDocument[]),
+      ]);
       setDeals(dash.deals);
       setTotals(dash.totals);
       setConversion(dash.conversion);
+      setDocs(docRows);
     } catch (e: any) {
       toast.error(e?.message || "Could not load dashboard");
     } finally {
@@ -158,28 +167,82 @@ export default function DealBusinessDashboardPage() {
         ) : null}
 
         {tab === "verification" ? (
-          <div className="mb-3 rounded-2xl border border-border bg-card p-4">
-            <p className="text-sm font-black">Verification</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Status:{" "}
-              <span className="font-semibold capitalize">
-                {biz?.verification_status?.replace("_", " ") || "pending"}
-              </span>
-              {biz?.is_verified ? " · Verified Business ✓" : ""}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Verified businesses and approved partners can publish active public deals. Pending accounts can
-              draft and submit for review.
-            </p>
-            {!biz?.is_verified && !biz?.can_publish ? (
-              <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                Verification required before offers go live.
+          <div className="mb-3 space-y-3">
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-sm font-black">Business verification</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Status:{" "}
+                    <span className="font-semibold">
+                      {verificationStatusLabel(biz?.verification_status)}
+                    </span>
+                  </p>
+                </div>
+                {biz?.is_verified ? <VerifiedBusinessBadge /> : null}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Pending accounts can save drafts. Public deals unlock after admin approval.
               </p>
-            ) : (
-              <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                You’re cleared to publish active deals.
+              {biz?.admin_request_message ? (
+                <p className="mt-3 rounded-xl bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-800 dark:text-sky-200">
+                  Admin needs more info: {biz.admin_request_message}
+                </p>
+              ) : null}
+              {biz?.verification_note && biz.verification_status === "rejected" ? (
+                <p className="mt-3 rounded-xl bg-red-500/10 px-3 py-2 text-xs font-semibold text-red-700 dark:text-red-300">
+                  Rejected: {biz.verification_note}
+                </p>
+              ) : null}
+              {biz?.posting_suspended ? (
+                <p className="mt-3 rounded-xl bg-foreground/10 px-3 py-2 text-xs font-semibold">
+                  Deal posting is temporarily suspended. Contact support if you believe this is an error.
+                </p>
+              ) : null}
+              {!biz?.is_verified && !biz?.can_publish ? (
+                <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
+                  🟡 Verification required before offers go live.
+                </p>
+              ) : (
+                <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  You’re cleared to publish active deals.
+                </p>
+              )}
+              {biz && !biz.is_verified ? (
+                <button
+                  type="button"
+                  onClick={() => nav("/deals/become-business")}
+                  className="mt-3 h-10 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-xs font-black text-white"
+                >
+                  {biz.verification_status === "needs_info" || biz.verification_status === "rejected"
+                    ? "Update profile & resubmit"
+                    : "Complete verification"}
+                </button>
+              ) : null}
+            </div>
+
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <p className="text-sm font-black">Uploaded documents</p>
+              {!docs.length ? (
+                <p className="mt-2 text-xs text-muted-foreground">No documents yet.</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5">
+                  {docs.map((d) => (
+                    <li key={d.id} className="rounded-lg bg-muted px-2.5 py-2 text-[11px]">
+                      <span className="font-semibold capitalize">{d.doc_type.replace(/_/g, " ")}</span>
+                      {" · "}
+                      {d.file_name || "Document"}
+                      {" · "}
+                      <span className="capitalize text-muted-foreground">{d.status}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Reputation: {Number(biz?.avg_rating || 0).toFixed(1)}★ · {biz?.review_count || 0} reviews ·{" "}
+                {biz?.violation_count || 0} violations
               </p>
-            )}
+            </div>
           </div>
         ) : null}
 

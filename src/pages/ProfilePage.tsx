@@ -3,7 +3,7 @@ import {
   User, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
   CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones,
-  Bookmark, Ticket, Store
+  Bookmark, Ticket, Store, BadgeCheck
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -238,6 +238,14 @@ const ProfilePage = () => {
             label: "Trust & Safety",
             sub: "Admin · warnings, timeouts, bans",
             action: () => navigate("/admin/trust-safety"),
+            pro: false,
+            section: null as NotifSection | null,
+          },
+          {
+            icon: BadgeCheck,
+            label: "Deals Verification",
+            sub: "Admin · approve merchants & moderate deals",
+            action: () => navigate("/admin/deals-verification"),
             pro: false,
             section: null as NotifSection | null,
           },

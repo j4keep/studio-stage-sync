@@ -238,7 +238,8 @@ export default function DealDetailPage() {
     try {
       const updated = await markDealUsed(claim.id);
       setClaim(updated);
-      toast.success("Marked as used");
+      toast.success("Marked as used — rate this business?");
+      setShowReview(true);
     } catch (e: any) {
       toast.error(e?.message || "Could not mark as used");
     }
@@ -518,12 +519,12 @@ export default function DealDetailPage() {
       ) : null}
 
       {showReview ? (
-        <Modal title="Rate this deal" onClose={() => setShowReview(false)}>
+        <Modal title="Rate this business" onClose={() => setShowReview(false)}>
           {(
             [
-              ["offerMatched", "Offer matched description"],
-              ["redemptionEasy", "Redemption was easy"],
-              ["staffHonored", "Staff honored the deal"],
+              ["staffHonored", "Was the deal honored?"],
+              ["redemptionEasy", "Would you return?"],
+              ["offerMatched", "Was the description accurate?"],
               ["overall", "Overall experience"],
             ] as const
           ).map(([key, label]) => (
