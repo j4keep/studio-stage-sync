@@ -56,7 +56,7 @@ export default function DealDetailPage() {
   const [imgIdx, setImgIdx] = useState(0);
   const [reviews, setReviews] = useState<DealReview[]>([]);
   const [showReport, setShowReport] = useState(false);
-  const [reportReason, setReportReason] = useState(DEAL_REPORT_REASONS[0].id);
+  const [reportReason, setReportReason] = useState<string>(DEAL_REPORT_REASONS[0].id);
   const [reportDetails, setReportDetails] = useState("");
   const [showReview, setShowReview] = useState(false);
   const [reviewForm, setReviewForm] = useState({

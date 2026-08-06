@@ -31,9 +31,9 @@ export default function DealCreatePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState(DEAL_CATEGORIES[0].id);
+  const [category, setCategory] = useState<string>(DEAL_CATEGORIES[0].id);
   const [description, setDescription] = useState("");
-  const [dealType, setDealType] = useState(DEAL_TYPES[0].id);
+  const [dealType, setDealType] = useState<string>(DEAL_TYPES[0].id);
   const [regularPrice, setRegularPrice] = useState("");
   const [dealPrice, setDealPrice] = useState("");
   const [discountValue, setDiscountValue] = useState("");
@@ -43,7 +43,7 @@ export default function DealCreatePage() {
     d.setDate(d.getDate() + 14);
     return d.toISOString().slice(0, 16);
   });
-  const [redemptionType, setRedemptionType] = useState(REDEMPTION_TYPES[0].id);
+  const [redemptionType, setRedemptionType] = useState<string>(REDEMPTION_TYPES[0].id);
   const [promoCode, setPromoCode] = useState("");
   const [totalLimit, setTotalLimit] = useState("");
   const [perUserLimit, setPerUserLimit] = useState("1");
