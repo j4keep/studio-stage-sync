@@ -218,7 +218,13 @@ export default function ExplorePage() {
         </div>
 
         {items.length ? (
-          <div ref={gridRef} className="grid grid-cols-3 gap-2">
+          <div
+            ref={gridRef}
+            className={`grid min-h-0 flex-1 grid-cols-3 gap-2 ${
+              isSearching ? "auto-rows-min overflow-y-auto" : "grid-rows-4 overflow-hidden"
+            }`}
+          >
+
             {items.map((item, index) => (
               <button
                 key={item.label}
