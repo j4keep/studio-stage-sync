@@ -4,20 +4,9 @@ import {
   ArrowLeft,
   Bell,
   Bookmark,
-  Briefcase,
-  Car,
-  Clapperboard,
-  Dumbbell,
-  Globe,
-  Home,
   MapPin,
-  Plane,
   Search,
-  ShoppingBag,
-  Sparkles,
-  Ticket,
-  Users,
-  UtensilsCrossed,
+  Tag,
   X,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -25,6 +14,7 @@ import {
   DEAL_CATEGORIES,
   DEAL_FILTERS,
   formatDealLocationLabel,
+  formatDistance,
   getDealLocationPrefs,
   setDealLocationPrefs,
   type DealFilterId,
@@ -39,21 +29,39 @@ import {
 } from "@/lib/deals-api";
 import DealCard, { DealCardSkeleton } from "@/components/deals/DealCard";
 import { toast } from "sonner";
+import emptyHero from "@/assets/deals/deals-empty-hero.jpg";
+import lifestyleDining from "@/assets/deals/deals-lifestyle-dining.jpg";
+import lifestyleShop from "@/assets/deals/deals-lifestyle-shop.jpg";
 
-const CAT_ICONS: Record<string, typeof Search> = {
-  UtensilsCrossed,
-  ShoppingBag,
-  Sparkles,
-  Dumbbell,
-  Clapperboard,
-  Ticket,
-  Car,
-  Home,
-  Briefcase,
-  Users,
-  Plane,
-  Globe,
-};
+const SHOWCASE = [
+  {
+    id: "showcase-1",
+    eyebrow: "Today’s Featured Deal",
+    title: "Local savings start here",
+    subtitle: "Restaurants, shops, salons & more near you",
+    cta: "Explore Deals",
+    image: emptyHero,
+    distance: null as string | null,
+  },
+  {
+    id: "showcase-2",
+    eyebrow: "Today’s Featured Deal",
+    title: "Dinner nights, better prices",
+    subtitle: "Discover limited offers from nearby kitchens",
+    cta: "See Food Deals",
+    image: lifestyleDining,
+    distance: "Near you",
+  },
+  {
+    id: "showcase-3",
+    eyebrow: "Today’s Featured Deal",
+    title: "Support local. Save more.",
+    subtitle: "Verified businesses posting fresh promotions",
+    cta: "Browse Shopping",
+    image: lifestyleShop,
+    distance: "Local picks",
+  },
+] as const;
 
 export default function DealsHomePage() {
   const nav = useNavigate();
@@ -108,7 +116,7 @@ export default function DealsHomePage() {
       const msg = e?.message || "Could not load deals";
       if (e?.setupNeeded || isMissingTableError(msg)) {
         setSetupNeeded(true);
-      } else {
+      } else if (!/expire_stale_deals|Could not find the function/i.test(msg)) {
         toast.error(msg);
       }
       setDeals([]);
@@ -122,10 +130,16 @@ export default function DealsHomePage() {
     void load();
   }, [load]);
 
+  const bannerCount = featured.length || SHOWCASE.length;
+
   useEffect(() => {
-    if (featured.length <= 1) return;
-    const t = setInterval(() => setHeroIdx((i) => (i + 1) % featured.length), 5000);
+    if (bannerCount <= 1) return;
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % bannerCount), 4500);
     return () => clearInterval(t);
+  }, [bannerCount]);
+
+  useEffect(() => {
+    setHeroIdx(0);
   }, [featured.length]);
 
   const sections = useMemo(() => {
@@ -155,7 +169,7 @@ export default function DealsHomePage() {
     try {
       await toggleSaveDeal(user.id, deal.id, next);
     } catch {
-      setDeals(patch);
+      setDeals((prev) => prev.map((d) => (d.id === deal.id ? { ...d, saved: !next } : d)));
       setFeatured((prev) => prev.map((d) => (d.id === deal.id ? { ...d, saved: !next } : d)));
       toast.error("Could not update save");
     }
@@ -171,7 +185,7 @@ export default function DealsHomePage() {
         toast.success("Link copied");
       }
     } catch {
-      /* user cancelled */
+      /* cancelled */
     }
   };
 
@@ -201,18 +215,19 @@ export default function DealsHomePage() {
     );
   };
 
-  const hero = featured[heroIdx] || null;
+  const liveHero = featured[heroIdx] || null;
+  const showcase = SHOWCASE[heroIdx % SHOWCASE.length];
 
   return (
     <div className="relative min-h-screen bg-background pb-28 text-foreground">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-gradient-to-b from-orange-500/15 via-amber-400/5 to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,_rgba(251,146,60,0.22),_transparent_58%)]" />
 
-      <header className="sticky top-0 z-20 border-b border-border/70 bg-background/90 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur">
-        <div className="mb-2 flex items-center gap-2">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
+        <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
             onClick={() => nav("/explore")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/80 shadow-sm"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -224,7 +239,7 @@ export default function DealsHomePage() {
           <button
             type="button"
             onClick={() => nav("/deals/my")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/80 shadow-sm"
             aria-label="Saved Deals"
           >
             <Bookmark className="h-4 w-4" />
@@ -232,12 +247,73 @@ export default function DealsHomePage() {
           <button
             type="button"
             onClick={() => nav("/deals/notifications")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted/80 shadow-sm"
             aria-label="Notifications"
           >
             <Bell className="h-4 w-4" />
           </button>
         </div>
+
+        {/* Rotating featured banner — above search */}
+        <button
+          type="button"
+          onClick={() => {
+            if (liveHero) nav(`/deals/${liveHero.id}`);
+            else if (showcase.id.includes("2")) setCategory("food-drink");
+            else if (showcase.id.includes("3")) setCategory("shopping");
+            else nav("/deals/create");
+          }}
+          className="relative mb-3 block w-full overflow-hidden rounded-2xl text-left shadow-[0_16px_36px_-20px_rgba(15,23,42,0.55)] ring-1 ring-black/5"
+        >
+          <div className="relative aspect-[2.2/1] min-h-[7.5rem]">
+            <img
+              key={liveHero?.id || showcase.id}
+              src={liveHero ? dealCoverUrl(liveHero) || showcase.image : showcase.image}
+              alt=""
+              className="deal-featured-photo absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
+            <div className="absolute inset-0 p-3.5 text-white">
+              <p className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide backdrop-blur-md">
+                <Tag className="h-3 w-3" />
+                {liveHero ? "Today’s Featured Deal" : showcase.eyebrow}
+              </p>
+              <h2 className="mt-1.5 line-clamp-2 text-base font-black leading-tight drop-shadow">
+                {liveHero
+                  ? `${liveHero.badge || "DEAL"} · ${liveHero.title}`
+                  : showcase.title}
+              </h2>
+              <p className="mt-1 line-clamp-1 text-[11px] text-white/85">
+                {liveHero
+                  ? [
+                      liveHero.deal_businesses?.name,
+                      formatDistance(liveHero.distance_miles, liveHero.location_type),
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : showcase.subtitle}
+              </p>
+              <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-orange-600 shadow">
+                {liveHero ? "Claim Now" : showcase.cta}
+              </span>
+            </div>
+          </div>
+        </button>
+        {bannerCount > 1 ? (
+          <div className="-mt-1 mb-3 flex justify-center gap-1.5">
+            {Array.from({ length: bannerCount }).map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Featured slide ${i + 1}`}
+                onClick={() => setHeroIdx(i)}
+                className={`h-1.5 rounded-full transition-all ${
+                  i === heroIdx % bannerCount ? "w-5 bg-orange-500" : "w-1.5 bg-muted-foreground/25"
+                }`}
+              />
+            ))}
+          </div>
+        ) : null}
 
         <button
           type="button"
@@ -245,7 +321,7 @@ export default function DealsHomePage() {
             setLocDraft(loc);
             setShowLoc(true);
           }}
-          className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-700 dark:text-orange-300"
+          className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-700 shadow-sm dark:text-orange-300"
         >
           <MapPin className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{formatDealLocationLabel(loc)}</span>
@@ -257,7 +333,7 @@ export default function DealsHomePage() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search restaurants, stores, services, or offers"
-            className="h-11 w-full rounded-xl border border-border bg-muted/60 pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-orange-400/40"
+            className="h-11 w-full rounded-2xl border border-border/80 bg-muted/50 pl-10 pr-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-orange-400/35"
           />
           {q ? (
             <button
@@ -296,7 +372,7 @@ export default function DealsHomePage() {
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               filter === f.id
                 ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow"
-                : "bg-muted text-foreground"
+                : "bg-muted/80 text-foreground shadow-sm"
             }`}
           >
             {f.label}
@@ -306,91 +382,35 @@ export default function DealsHomePage() {
 
       <section className="mt-4 px-3">
         <h2 className="mb-2 text-sm font-bold">Categories</h2>
-        <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+        <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
           {DEAL_CATEGORIES.map((c) => {
-            const Icon = CAT_ICONS[c.icon] || Globe;
             const active = category === c.id;
             return (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setCategory(active ? null : c.id)}
-                className={`flex w-[4.75rem] shrink-0 flex-col items-center gap-1.5 rounded-2xl border px-2 py-2.5 transition ${
-                  active
-                    ? "border-orange-400 bg-orange-500/10"
-                    : "border-border bg-card"
+                className={`relative w-[9.5rem] shrink-0 overflow-hidden rounded-2xl p-[1px] transition active:scale-[0.98] ${
+                  active ? "shadow-[0_12px_28px_-14px_rgba(234,88,12,0.8)]" : "shadow-sm"
                 }`}
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-sm">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="line-clamp-2 text-center text-[10px] font-semibold leading-tight">
-                  {c.label}
-                </span>
+                <div
+                  className={`relative h-[5.75rem] overflow-hidden rounded-[0.95rem] bg-gradient-to-br ${c.gradient} px-3 py-2.5 text-left text-white ring-1 ${
+                    active ? "ring-orange-400" : "ring-white/25"
+                  }`}
+                >
+                  <div className="pointer-events-none absolute -right-3 -top-4 h-16 w-16 rounded-full bg-white/20 blur-xl" />
+                  <p className="text-lg leading-none drop-shadow-sm">{c.emoji}</p>
+                  <p className="mt-1.5 text-[13px] font-black leading-tight drop-shadow-sm">{c.label}</p>
+                  <p className="mt-0.5 line-clamp-2 text-[10px] font-medium leading-snug text-white/90">
+                    {c.blurb}
+                  </p>
+                </div>
               </button>
             );
           })}
         </div>
       </section>
-
-      {!loading && hero ? (
-        <section className="mt-5 px-3">
-          <h2 className="mb-2 text-base font-black tracking-tight">Featured Deals</h2>
-          <button
-            type="button"
-            onClick={() => nav(`/deals/${hero.id}`)}
-            className="relative block w-full overflow-hidden rounded-2xl text-left shadow-md"
-          >
-            <div className="relative aspect-[16/10] bg-gradient-to-br from-orange-500 to-amber-600">
-              {dealCoverUrl(hero) ? (
-                <img src={dealCoverUrl(hero)!} alt="" className="h-full w-full object-cover" />
-              ) : null}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
-              {hero.is_sponsored ? (
-                <span className="absolute left-3 top-3 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-bold text-foreground">
-                  Sponsored
-                </span>
-              ) : null}
-              <div className="absolute inset-x-0 bottom-0 space-y-1 p-4 text-white">
-                <p className="flex items-center gap-1.5 text-sm font-semibold">
-                  {hero.deal_businesses?.name || "Business"}
-                  {hero.deal_businesses?.is_verified ? (
-                    <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-sky-400 text-[9px] font-bold">
-                      ✓
-                    </span>
-                  ) : null}
-                </p>
-                <h3 className="text-xl font-black leading-tight">{hero.title}</h3>
-                <p className="text-sm font-bold text-amber-200">{hero.badge}</p>
-                <p className="text-xs text-white/80">
-                  {hero.expires_at
-                    ? `Valid through ${new Date(hero.expires_at).toLocaleDateString(undefined, { weekday: "long" })}`
-                    : ""}
-                  {hero.distance_miles != null ? ` · ${hero.distance_miles.toFixed(1)} miles away` : ""}
-                </p>
-                <span className="mt-2 inline-flex rounded-full bg-white px-4 py-2 text-xs font-bold text-orange-600">
-                  View Deal
-                </span>
-              </div>
-            </div>
-          </button>
-          {featured.length > 1 ? (
-            <div className="mt-2 flex justify-center gap-1.5">
-              {featured.map((d, i) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  aria-label={`Featured deal ${i + 1}`}
-                  onClick={() => setHeroIdx(i)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    i === heroIdx ? "w-5 bg-orange-500" : "w-1.5 bg-muted-foreground/30"
-                  }`}
-                />
-              ))}
-            </div>
-          ) : null}
-        </section>
-      ) : null}
 
       <main className="mt-6 space-y-7 px-3">
         {loading ? (
@@ -407,11 +427,12 @@ export default function DealsHomePage() {
               setShowLoc(true);
             }}
             onOnline={() => setFilter("online")}
+            onPost={() => nav("/deals/create")}
           />
         ) : q || category || filter !== "for-you" ? (
           <section>
             <h2 className="mb-2 text-base font-black">Results</h2>
-            <div className="grid gap-3">
+            <div className="grid gap-3.5">
               {deals.map((d) => (
                 <DealCard key={d.id} deal={d} onSave={onSave} onShare={onShare} />
               ))}
@@ -427,7 +448,7 @@ export default function DealsHomePage() {
         )}
       </main>
 
-      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-2">
+      <div className="fixed bottom-24 right-4 z-30">
         <button
           type="button"
           onClick={() => nav("/deals/business")}
@@ -521,8 +542,8 @@ function FeedSection({
   if (!deals.length) return null;
   return (
     <section>
-      <h2 className="mb-2 text-base font-black tracking-tight">{title}</h2>
-      <div className="grid gap-3">
+      <h2 className="mb-2.5 text-base font-black tracking-tight">{title}</h2>
+      <div className="grid gap-3.5">
         {deals.map((d) => (
           <DealCard key={`${title}-${d.id}`} deal={d} onSave={onSave} onShare={onShare} />
         ))}
@@ -536,11 +557,13 @@ function EmptyState({
   filter,
   onExpand,
   onOnline,
+  onPost,
 }: {
   q: string;
   filter: string;
   onExpand: () => void;
   onOnline: () => void;
+  onPost: () => void;
 }) {
   if (q) {
     return (
@@ -552,28 +575,47 @@ function EmptyState({
   }
   if (filter === "near-me") {
     return (
-      <div className="px-4 py-16 text-center">
-        <p className="font-bold">No deals nearby yet.</p>
-        <p className="mt-1 text-sm text-muted-foreground">Expand your distance or browse online offers.</p>
-        <div className="mt-4 flex justify-center gap-2">
-          <button type="button" onClick={onExpand} className="rounded-full bg-muted px-4 py-2 text-xs font-bold">
-            Expand distance
-          </button>
-          <button
-            type="button"
-            onClick={onOnline}
-            className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-xs font-bold text-white"
-          >
-            Browse online
-          </button>
+      <div className="overflow-hidden rounded-[1.5rem] shadow-[0_18px_40px_-24px_rgba(15,23,42,0.55)] ring-1 ring-black/5">
+        <div className="relative aspect-[4/3]">
+          <img src={lifestyleDining} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+          <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-white shadow-lg backdrop-blur-xl">
+            <p className="text-base font-black">No deals nearby yet.</p>
+            <p className="mt-1 text-xs text-white/85">Expand your distance or browse online offers.</p>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={onExpand} className="rounded-full bg-white/20 px-3 py-2 text-xs font-bold backdrop-blur">
+                Expand distance
+              </button>
+              <button type="button" onClick={onOnline} className="rounded-full bg-white px-3 py-2 text-xs font-bold text-orange-600">
+                Browse online
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
+
   return (
-    <div className="px-4 py-16 text-center">
-      <p className="font-bold">No deals to show yet.</p>
-      <p className="mt-1 text-sm text-muted-foreground">Check back soon or adjust your filters.</p>
+    <div className="overflow-hidden rounded-[1.5rem] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5">
+      <div className="relative aspect-[4/5] max-h-[28rem]">
+        <img src={emptyHero} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+        <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/30 bg-white/18 p-4 text-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+          <p className="text-lg font-black tracking-tight">🎉 Local Deals Start Here</p>
+          <p className="mt-1.5 text-xs leading-relaxed text-white/90">
+            Discover discounts from restaurants, shops, salons, gyms, and local businesses near you.
+          </p>
+          <p className="mt-2 text-[11px] font-semibold text-amber-100">Be the first business to post a deal.</p>
+          <button
+            type="button"
+            onClick={onPost}
+            className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.95)]"
+          >
+            Post Your First Deal
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

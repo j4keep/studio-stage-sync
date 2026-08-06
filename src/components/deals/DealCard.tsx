@@ -1,9 +1,10 @@
-import { Bookmark, Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Bookmark, MapPin, Share2, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
   formatDistance,
   formatExpiresLabel,
-  getCategoryLabel,
+  isEndingSoon,
   remainingClaims,
   statusBadges,
 } from "@/lib/deals";
@@ -15,6 +16,40 @@ type Props = {
   onShare?: (deal: Deal) => void;
 };
 
+function Stars({ rating }: { rating: number }) {
+  const full = Math.round(Math.min(5, Math.max(0, rating)));
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-label={`${rating.toFixed(1)} stars`}>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          className={`h-3 w-3 ${i < full ? "fill-amber-400 text-amber-400" : "text-muted-foreground/30"}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function ClaimCount({ value }: { value: number }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (value <= 0) {
+      setN(0);
+      return;
+    }
+    let frame = 0;
+    const steps = 18;
+    const id = window.setInterval(() => {
+      frame += 1;
+      setN(Math.round((value * frame) / steps));
+      if (frame >= steps) window.clearInterval(id);
+    }, 28);
+    return () => window.clearInterval(id);
+  }, [value]);
+  if (value <= 0) return null;
+  return <span>Claimed {n.toLocaleString()} times</span>;
+}
+
 export default function DealCard({ deal, onSave, onShare }: Props) {
   const nav = useNavigate();
   const cover = dealCoverUrl(deal);
@@ -22,29 +57,44 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
   const remaining = remainingClaims(deal);
   const biz = deal.deal_businesses;
   const redeemable = !badges.includes("Expired") && !badges.includes("Sold Out");
+  const ending = isEndingSoon(deal.expires_at);
+  const rating = Number(biz?.avg_rating || 0);
+  const reviewCount = Number(biz?.review_count || 0);
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-orange-500/15 bg-gradient-to-br from-orange-50/80 via-background to-amber-50/40 shadow-sm dark:from-orange-950/20 dark:via-background dark:to-amber-950/10">
+    <article className="deal-card group relative overflow-hidden rounded-[1.35rem] bg-card shadow-[0_10px_28px_-16px_rgba(15,23,42,0.45)] ring-1 ring-black/5 transition-transform duration-200 active:scale-[0.985] dark:ring-white/10">
       <button type="button" className="block w-full text-left" onClick={() => nav(`/deals/${deal.id}`)}>
         <div className="relative aspect-[16/10] overflow-hidden bg-muted">
           {cover ? (
-            <img src={cover} alt="" className="h-full w-full object-cover" loading="lazy" />
+            <img
+              src={cover}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+              loading="lazy"
+            />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400 to-amber-500 text-white/90">
-              <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-amber-400 text-white/95">
+              <svg viewBox="0 0 24 24" className="h-12 w-12" fill="none" stroke="currentColor" strokeWidth="1.5">
                 <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" />
                 <circle cx="7" cy="7" r="1.5" fill="currentColor" />
               </svg>
             </div>
           )}
-          <span className="absolute left-2 top-2 rounded-md bg-gradient-to-r from-orange-500 to-amber-500 px-2 py-1 text-[10px] font-black tracking-wide text-white shadow">
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
+
+          <span className="deal-badge-float absolute left-3 top-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-2.5 py-1.5 text-[11px] font-black tracking-wide text-white shadow-[0_8px_18px_-6px_rgba(234,88,12,0.85)]">
             {deal.badge || "DEAL"}
           </span>
-          <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
+
+          <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
             {badges.slice(0, 2).map((b) => (
               <span
                 key={b}
-                className="rounded-md bg-black/65 px-1.5 py-0.5 text-[9px] font-semibold text-white"
+                className={`rounded-full px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md ${
+                  b === "Ending Soon" || ending
+                    ? "deal-ending-glow bg-orange-500/85"
+                    : "bg-black/45"
+                }`}
               >
                 {b}
               </span>
@@ -53,36 +103,52 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
         </div>
       </button>
 
-      <div className="space-y-2 p-3">
+      <div className="space-y-2.5 px-3.5 pb-3.5 pt-3">
         <button type="button" className="w-full text-left" onClick={() => nav(`/deals/${deal.id}`)}>
-          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-foreground">{deal.title}</h3>
-          <p className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
-            <span className="truncate font-medium text-foreground/80">{biz?.name || "Business"}</span>
+          <h3 className="line-clamp-2 text-[15px] font-bold leading-snug tracking-tight text-foreground">
+            {deal.title}
+          </h3>
+          <p className="mt-1 flex items-center gap-1.5 text-sm">
+            <span className="truncate font-semibold text-foreground/90">{biz?.name || "Business"}</span>
             {biz?.is_verified ? (
-              <span className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-500 text-[8px] font-bold text-white">
+              <span className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white shadow-sm">
                 ✓
               </span>
             ) : null}
           </p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {getCategoryLabel(deal.category)}
-            {" · "}
-            {formatDistance(deal.distance_miles, deal.location_type) || "Local"}
-            {" · "}
-            {formatExpiresLabel(deal.expires_at)}
-          </p>
-          {remaining != null && remaining <= 20 && redeemable ? (
-            <p className="text-[11px] font-medium text-orange-600 dark:text-orange-400">
-              {remaining} left
+
+          {reviewCount > 0 ? (
+            <p className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Stars rating={rating || 5} />
+              <span className="font-semibold text-foreground/80">{(rating || 5).toFixed(1)}</span>
+              <span>({reviewCount})</span>
             </p>
           ) : null}
+
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+            <span className="font-medium text-orange-600 dark:text-orange-400">
+              {formatExpiresLabel(deal.expires_at)}
+            </span>
+            <span className="inline-flex items-center gap-0.5">
+              <MapPin className="h-3 w-3" />
+              {formatDistance(deal.distance_miles, deal.location_type) || "Local"}
+            </span>
+            {(deal.claims_count || 0) >= 5 ? (
+              <span className="font-medium">
+                <ClaimCount value={deal.claims_count || 0} />
+              </span>
+            ) : null}
+            {remaining != null && remaining <= 20 && redeemable ? (
+              <span className="font-semibold text-orange-600">{remaining} left</span>
+            ) : null}
+          </p>
         </button>
 
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => onSave?.(deal)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 shadow-sm"
             aria-label={deal.saved ? "Unsave deal" : "Save deal"}
           >
             <Bookmark className={`h-4 w-4 ${deal.saved ? "fill-foreground" : ""}`} />
@@ -90,7 +156,7 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
           <button
             type="button"
             onClick={() => onShare?.(deal)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-muted/80 shadow-sm"
             aria-label="Share deal"
           >
             <Share2 className="h-4 w-4" />
@@ -99,9 +165,9 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
             type="button"
             disabled={!redeemable}
             onClick={() => nav(`/deals/${deal.id}`)}
-            className="ml-auto h-9 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-4 text-xs font-bold text-white disabled:opacity-40"
+            className="ml-auto h-10 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-5 text-xs font-black text-white shadow-[0_10px_20px_-10px_rgba(234,88,12,0.9)] transition active:scale-[0.98] disabled:opacity-40"
           >
-            View Deal
+            Claim Deal →
           </button>
         </div>
       </div>
@@ -111,9 +177,9 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
 
 export function DealCardSkeleton() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-2xl border border-border bg-muted/40">
+    <div className="animate-pulse overflow-hidden rounded-[1.35rem] bg-muted/50 shadow-sm ring-1 ring-border">
       <div className="aspect-[16/10] bg-muted" />
-      <div className="space-y-2 p-3">
+      <div className="space-y-2 p-3.5">
         <div className="h-4 w-3/4 rounded bg-muted" />
         <div className="h-3 w-1/2 rounded bg-muted" />
         <div className="h-3 w-2/3 rounded bg-muted" />
