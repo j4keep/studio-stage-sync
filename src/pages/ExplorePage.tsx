@@ -1,60 +1,68 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Tag, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
+import battlesCard from "@/assets/explore/battles.jpeg.asset.json";
+import wellnessCard from "@/assets/explore/wellness.jpeg.asset.json";
+import radioCard from "@/assets/explore/radio.jpeg.asset.json";
+import careersCard from "@/assets/explore/careers.jpeg.asset.json";
+import marketplaceCard from "@/assets/explore/marketplace.jpeg.asset.json";
+import dealsCard from "@/assets/explore/deals.jpeg.asset.json";
+import localHelpCard from "@/assets/explore/local-help.jpeg.asset.json";
+import postGigCard from "@/assets/explore/post-a-gig.jpeg.asset.json";
+import servicesCard from "@/assets/explore/services.jpeg.asset.json";
+import yajTvCard from "@/assets/explore/yaj-tv.jpeg.asset.json";
 
 type ExploreItem = {
   label: string;
   subtitle?: string;
   emoji?: string;
-  icon?: ReactNode;
-  background: string;
+  image?: string;
+  background?: string;
   route?: string;
 };
 
 const bg = {
-  green: "from-emerald-300 to-green-400",
-  purple: "from-violet-300 to-fuchsia-400",
-  pink: "from-pink-300 to-rose-400",
-  blue: "from-sky-300 to-cyan-400",
-  yellow: "from-amber-200 to-yellow-400",
-  orange: "from-orange-300 to-amber-400",
-  slate: "from-slate-300 to-slate-500",
-  red: "from-red-300 to-rose-500",
-  teal: "from-teal-300 to-emerald-500",
   indigo: "from-indigo-300 to-violet-500",
-  deals: "from-orange-400 via-orange-500 to-amber-400",
+  orange: "from-orange-300 to-amber-400",
 } as const;
 
 const TOP_PICKS: ExploreItem[] = [
-  { label: "Battles", emoji: "⚔️", background: bg.yellow, route: "/battles" },
-  {
-    label: "Wellness",
-    subtitle: "Sleep · Move · Relax",
-    emoji: "🌿",
-    background: bg.green,
-    route: "/wellness",
-  },
-  { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
-  { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
-  { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
-  {
-    label: "Deals",
-    subtitle: "Local savings & limited offers",
-    icon: <Tag className="h-12 w-12 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" strokeWidth={1.6} />,
-    background: bg.deals,
-    route: "/deals",
-  },
-  { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
-  { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
-  { label: "Services", emoji: "🧾", background: bg.slate, route: "/services" },
-  { label: "YAJ TV", emoji: "📺", background: bg.red, route: "/tv/watch" },
+  { label: "Battles", subtitle: "Compete. Rank. Win.", image: battlesCard.url, route: "/battles" },
+  { label: "Wellness", subtitle: "Sleep · Move · Relax", image: wellnessCard.url, route: "/wellness" },
+  { label: "Radio", subtitle: "Listen. Vibe. Connect.", image: radioCard.url, route: "/radio" },
+  { label: "Careers", subtitle: "Find your path.", image: careersCard.url, route: "/jobs" },
+  { label: "Marketplace", subtitle: "Buy. Sell. Discover.", image: marketplaceCard.url, route: "/marketplace" },
+  { label: "Deals", subtitle: "Local savings & limited offers.", image: dealsCard.url, route: "/deals" },
+  { label: "Find Local Help", subtitle: "Help nearby. Fast.", image: localHelpCard.url, route: "/local-help" },
+  { label: "Post a Gig", subtitle: "Offer your skills.", image: postGigCard.url, route: "/gigs" },
+  { label: "Services", subtitle: "Book trusted professionals.", image: servicesCard.url, route: "/services" },
+  { label: "YAJ TV", subtitle: "Watch. Enjoy. Share.", image: yajTvCard.url, route: "/tv/watch" },
   { label: "Games", emoji: "🎮", background: bg.indigo },
   { label: "Events", emoji: "🎪", background: bg.orange, route: "/events" },
 ];
 
 function ExploreCard({ item }: { item: ExploreItem }) {
   const navigate = useNavigate();
+
+  if (item.image) {
+    return (
+      <button
+        type="button"
+        onClick={item.route ? () => navigate(item.route!) : undefined}
+        className="text-left active:scale-[0.98] transition-transform"
+        aria-label={item.label}
+      >
+        <img
+          src={item.image}
+          alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
+          className="w-full rounded-2xl shadow-sm"
+          loading="lazy"
+        />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -65,15 +73,9 @@ function ExploreCard({ item }: { item: ExploreItem }) {
         className={`relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${item.background} border border-black/5 shadow-sm flex items-center justify-center`}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.6),transparent_38%)]" />
-        {item.icon ? (
-          <span className="relative" aria-hidden>
-            {item.icon}
-          </span>
-        ) : (
-          <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
-            {item.emoji}
-          </span>
-        )}
+        <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
+          {item.emoji}
+        </span>
       </div>
       <p className="mt-1.5 px-0.5 text-xs font-semibold text-foreground truncate">{item.label}</p>
       {item.subtitle ? (
@@ -82,6 +84,7 @@ function ExploreCard({ item }: { item: ExploreItem }) {
     </button>
   );
 }
+
 
 export default function ExplorePage() {
   const [query, setQuery] = useState("");
