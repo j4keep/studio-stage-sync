@@ -63,6 +63,8 @@ export default function ExplorePage() {
   const gridRef = useRef<HTMLDivElement>(null);
   const longPress = useRef<number | null>(null);
   const movedRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
 
   useEffect(() => {
     try {
@@ -114,24 +116,31 @@ export default function ExplorePage() {
   const onPointerDown = (index: number) => (e: React.PointerEvent) => {
     if (isSearching) return;
     movedRef.current = false;
+    startRef.current = { x: e.clientX, y: e.clientY };
     (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
     if (editing) {
       setDragIndex(index);
       return;
     }
     longPress.current = window.setTimeout(() => {
+      longPress.current = null;
       setEditing(true);
       setDragIndex(index);
       if (navigator.vibrate) navigator.vibrate(12);
-    }, 350);
+    }, 550);
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    const start = startRef.current;
+    if (start) {
+      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
+      if (dist < 12) return;
+      movedRef.current = true;
+    }
     if (dragIndex === null) {
-      if (longPress.current) clearLongPress();
+      clearLongPress();
       return;
     }
-    movedRef.current = true;
     const over = cardIndexAtPoint(e.clientX, e.clientY);
     if (over === null || over === dragIndex) return;
     setOrder((prev) => {
@@ -144,15 +153,19 @@ export default function ExplorePage() {
   };
 
   const onPointerUp = (item: ExploreItem) => () => {
-    const wasDragging = dragIndex !== null && movedRef.current;
+    const wasLongPress = longPress.current === null && dragIndex !== null;
+    const moved = movedRef.current;
     clearLongPress();
     setDragIndex(null);
-    if (!editing && !wasDragging && item.route) navigate(item.route);
+    startRef.current = null;
+    if (!editing && !moved && !wasLongPress && item.route) navigate(item.route);
   };
 
+
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="px-4 pt-3 pb-2">
+    <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
+      <header className="shrink-0 px-4 pt-3 pb-2">
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-primary">Discover people, opportunities & circles</p>
@@ -182,7 +195,7 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <section className="px-4 pb-24">
+      <section className="flex min-h-0 flex-1 flex-col px-4 pb-2">
         <div className="mb-2 flex items-end justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-foreground">🔥 Top picks</h2>
@@ -205,7 +218,13 @@ export default function ExplorePage() {
         </div>
 
         {items.length ? (
-          <div ref={gridRef} className="grid grid-cols-3 gap-2">
+          <div
+            ref={gridRef}
+            className={`grid min-h-0 flex-1 grid-cols-3 gap-2 ${
+              isSearching ? "auto-rows-min overflow-y-auto" : "grid-rows-4 overflow-hidden"
+            }`}
+          >
+
             {items.map((item, index) => (
               <button
                 key={item.label}
@@ -220,7 +239,7 @@ export default function ExplorePage() {
                   setDragIndex(null);
                 }}
                 onContextMenu={(e) => e.preventDefault()}
-                className={`text-left touch-none select-none transition-transform ${
+                className={`min-h-0 text-left touch-none select-none transition-transform ${
                   dragIndex === index
                     ? "scale-105 opacity-80 z-10"
                     : editing
@@ -232,10 +251,12 @@ export default function ExplorePage() {
                 <img
                   src={item.image}
                   alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
-                  className="w-full rounded-2xl shadow-sm pointer-events-none"
+                  className={`w-full rounded-2xl shadow-sm pointer-events-none ${
+                    isSearching ? "" : "h-full object-cover"
+                  }`}
                   draggable={false}
-                  loading="lazy"
                 />
+
               </button>
             ))}
           </div>
