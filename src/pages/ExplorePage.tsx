@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
+import { Search, Tag, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
 
 type ExploreItem = {
   label: string;
   subtitle?: string;
-  emoji: string;
+  emoji?: string;
+  icon?: ReactNode;
   background: string;
   route?: string;
 };
@@ -22,6 +23,7 @@ const bg = {
   red: "from-red-300 to-rose-500",
   teal: "from-teal-300 to-emerald-500",
   indigo: "from-indigo-300 to-violet-500",
+  deals: "from-orange-400 via-orange-500 to-amber-400",
 } as const;
 
 const TOP_PICKS: ExploreItem[] = [
@@ -36,7 +38,13 @@ const TOP_PICKS: ExploreItem[] = [
   { label: "Radio", emoji: "🎵", background: bg.purple, route: "/radio" },
   { label: "Careers", emoji: "💼", background: bg.indigo, route: "/jobs" },
   { label: "Marketplace", emoji: "🛍", background: bg.pink, route: "/marketplace" },
-  { label: "Circle", emoji: "👥", background: bg.blue, route: "/circle" },
+  {
+    label: "Deals",
+    subtitle: "Local savings & limited offers",
+    icon: <Tag className="h-12 w-12 text-white drop-shadow-[0_4px_8px_rgba(0,0,0,0.35)]" strokeWidth={1.6} />,
+    background: bg.deals,
+    route: "/deals",
+  },
   { label: "Find Local Help", emoji: "🛠", background: bg.teal, route: "/local-help" },
   { label: "Post a Gig", emoji: "➕", background: bg.orange, route: "/gigs" },
   { label: "Services", emoji: "🧾", background: bg.slate, route: "/services" },
@@ -57,9 +65,15 @@ function ExploreCard({ item }: { item: ExploreItem }) {
         className={`relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${item.background} border border-black/5 shadow-sm flex items-center justify-center`}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.6),transparent_38%)]" />
-        <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
-          {item.emoji}
-        </span>
+        {item.icon ? (
+          <span className="relative" aria-hidden>
+            {item.icon}
+          </span>
+        ) : (
+          <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
+            {item.emoji}
+          </span>
+        )}
       </div>
       <p className="mt-1.5 px-0.5 text-xs font-semibold text-foreground truncate">{item.label}</p>
       {item.subtitle ? (
@@ -79,6 +93,9 @@ export default function ExplorePage() {
       if (i.label.toLowerCase().includes(n)) return true;
       if (i.subtitle?.toLowerCase().includes(n)) return true;
       if (i.label === "Wellness" && (n.includes("sleep") || n.includes("move") || n.includes("relax"))) {
+        return true;
+      }
+      if (i.label === "Deals" && (n.includes("coupon") || n.includes("discount") || n.includes("offer") || n.includes("promo"))) {
         return true;
       }
       return false;

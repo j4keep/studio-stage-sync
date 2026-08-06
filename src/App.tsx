@@ -101,6 +101,13 @@ import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
 import EventsPage from "./pages/EventsPage";
 import EventDetailPage from "./pages/EventDetailPage";
+import DealsHomePage from "./pages/deals/DealsHomePage";
+import DealDetailPage from "./pages/deals/DealDetailPage";
+import MyDealsPage from "./pages/deals/MyDealsPage";
+import DealCreatePage from "./pages/deals/DealCreatePage";
+import DealBusinessDashboardPage from "./pages/deals/DealBusinessDashboardPage";
+import DealNotificationsPage from "./pages/deals/DealNotificationsPage";
+import DealPublishingPolicyPage from "./pages/deals/DealPublishingPolicyPage";
 
 
 import { SessionProvider } from "./wstudio/session/SessionContext";
@@ -356,6 +363,13 @@ const ProtectedRoutes = () => {
         <Route path="/services/:id" element={<ServiceDetailPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
+        <Route path="/deals" element={<DealsHomePage />} />
+        <Route path="/deals/my" element={<MyDealsPage />} />
+        <Route path="/deals/create" element={<DealCreatePage />} />
+        <Route path="/deals/business" element={<DealBusinessDashboardPage />} />
+        <Route path="/deals/notifications" element={<DealNotificationsPage />} />
+        <Route path="/deals/publishing-policy" element={<DealPublishingPolicyPage />} />
+        <Route path="/deals/:id" element={<DealDetailPage />} />
         <Route path="/podcast/*" element={<Navigate to="/" replace />} />
         <Route path="/wstudio/*" element={<Navigate to="/" replace />} />
         <Route path="/ai-studio" element={<Navigate to="/" replace />} />
