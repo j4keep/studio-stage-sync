@@ -307,12 +307,19 @@ export default function DealsHomePage() {
   const showcase = SHOWCASE[heroIdx % SHOWCASE.length];
   const bannerBadge = liveHero?.badge || showcase.badge;
   const placeholder = searchFocused || q ? SEARCH_HINTS[0] : SEARCH_HINTS[hintIdx];
+  const isEmptyFeed = !loading && deals.length === 0 && !q.trim();
 
   return (
-    <div className="relative min-h-screen bg-background pb-28 text-foreground">
+    <div
+      className={
+        isEmptyFeed
+          ? "relative flex h-[100dvh] flex-col overflow-hidden bg-background text-foreground pb-[calc(4.25rem+env(safe-area-inset-bottom,0px))]"
+          : "relative min-h-screen bg-background pb-28 text-foreground"
+      }
+    >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(ellipse_at_top,_rgba(251,146,60,0.22),_transparent_58%)]" />
 
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/85 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
+      <header className="sticky top-0 z-20 shrink-0 border-b border-border/60 bg-background/85 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl">
         <div className="mb-3 flex items-center gap-2">
           <button
             type="button"
@@ -488,7 +495,7 @@ export default function DealsHomePage() {
         </div>
       ) : null}
 
-      <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-3 pb-1">
+      <div className="no-scrollbar mt-3 flex shrink-0 gap-2 overflow-x-auto px-3 pb-1">
         {DEAL_FILTERS.map((f) => (
           <button
             key={f.id}
@@ -505,7 +512,7 @@ export default function DealsHomePage() {
         ))}
       </div>
 
-      <section className="mt-4 px-3">
+      <section className="mt-3 shrink-0 px-3">
         <h2 className="mb-2 text-sm font-bold">Categories</h2>
         <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
           {DEAL_CATEGORIES.map((c) => {
@@ -538,7 +545,7 @@ export default function DealsHomePage() {
       </section>
 
       {!loading && trending.length > 0 ? (
-        <section className="mt-5 px-3">
+        <section className="mt-5 shrink-0 px-3">
           <h2 className="mb-2 text-base font-black tracking-tight">🔥 Trending Nearby</h2>
           <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
             {trending.map((d) => (
@@ -548,17 +555,24 @@ export default function DealsHomePage() {
         </section>
       ) : null}
 
-      <main className="mt-6 space-y-7 px-3">
+      <main
+        className={
+          isEmptyFeed
+            ? "mt-3 flex min-h-0 flex-1 flex-col px-3 pb-2"
+            : "mt-6 space-y-7 px-3"
+        }
+      >
         {loading ? (
           <div className="grid gap-3">
             <DealCardSkeleton />
             <DealCardSkeleton />
           </div>
         ) : deals.length === 0 ? (
-          // Onboarding hero only when there are truly zero deals in this view
+          // Onboarding hero fills remaining viewport — no dead white below
           <EmptyState
             q={q}
             filter={filter}
+            fillViewport={isEmptyFeed}
             onExpand={() => {
               setLocDraft({ ...loc, radiusMiles: Math.min(50, (loc.radiusMiles || 15) + 10) });
               setShowLoc(true);
@@ -585,8 +599,8 @@ export default function DealsHomePage() {
           </>
         )}
 
-        {/* Non-business shoppers only — disappears once registered */}
-        {!loading && !isDealBusiness ? (
+        {/* Only when deals exist — empty state already includes Become a Business */}
+        {!loading && !isDealBusiness && deals.length > 0 ? (
           <section className="rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-amber-400/5 p-4">
             <p className="text-sm font-black">Own a business?</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -707,6 +721,7 @@ function FeedSection({
 function EmptyState({
   q,
   filter,
+  fillViewport,
   onExpand,
   onOnline,
   onBecomeBusiness,
@@ -714,6 +729,7 @@ function EmptyState({
 }: {
   q: string;
   filter: string;
+  fillViewport?: boolean;
   onExpand: () => void;
   onOnline: () => void;
   onBecomeBusiness: () => void;
@@ -727,65 +743,66 @@ function EmptyState({
       </div>
     );
   }
+
+  const shellClass = fillViewport
+    ? "relative min-h-0 w-full flex-1 overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5"
+    : "relative w-full overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5 aspect-[4/5]";
+
   if (filter === "near-me") {
     return (
-      <div className="w-full overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_18px_40px_-24px_rgba(15,23,42,0.55)] ring-1 ring-black/5">
-        <div className="relative w-full aspect-[4/3]">
-          <img
-            src={lifestyleDining}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
-          <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-white shadow-lg backdrop-blur-xl">
-            <p className="text-base font-black">No deals nearby yet.</p>
-            <p className="mt-1 text-xs text-white/85">Expand your distance or browse online offers.</p>
-            <div className="mt-3 flex gap-2">
-              <button type="button" onClick={onExpand} className="rounded-full bg-white/20 px-3 py-2 text-xs font-bold backdrop-blur">
-                Expand distance
-              </button>
-              <button type="button" onClick={onOnline} className="rounded-full bg-white px-3 py-2 text-xs font-bold text-orange-600">
-                Browse online
-              </button>
-            </div>
+      <div className={shellClass}>
+        <img
+          src={lifestyleDining}
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-center"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
+        <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-white shadow-lg backdrop-blur-xl">
+          <p className="text-base font-black">No deals nearby yet.</p>
+          <p className="mt-1 text-xs text-white/85">Expand your distance or browse online offers.</p>
+          <div className="mt-3 flex gap-2">
+            <button type="button" onClick={onExpand} className="rounded-full bg-white/20 px-3 py-2 text-xs font-bold backdrop-blur">
+              Expand distance
+            </button>
+            <button type="button" onClick={onOnline} className="rounded-full bg-white px-3 py-2 text-xs font-bold text-orange-600">
+              Browse online
+            </button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Onboarding hero only when the feed is empty — image fills the card edge-to-edge
+  // Hero sits on top of the bottom nav — fills leftover viewport when empty
   return (
-    <div className="w-full overflow-hidden rounded-[1.5rem] bg-muted shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5">
-      <div className="relative w-full aspect-[4/5]">
-        <img
-          src={emptyHero}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
-        <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/30 bg-white/18 p-4 text-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-          <p className="text-lg font-black tracking-tight">🎉 Local Deals Start Here</p>
-          <p className="mt-1.5 text-xs leading-relaxed text-white/90">
-            Discover discounts from restaurants, shops, salons, gyms, and local businesses near you.
+    <div className={shellClass}>
+      <img
+        src={emptyHero}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover object-[center_20%]"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/10" />
+      <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/30 bg-white/18 p-4 text-white shadow-[0_12px_40px_-12px_rgba(0,0,0,0.55)] backdrop-blur-xl">
+        <p className="text-lg font-black tracking-tight">🎉 Local Deals Start Here</p>
+        <p className="mt-1.5 text-xs leading-relaxed text-white/90">
+          Discover discounts from restaurants, shops, salons, gyms, and local businesses near you.
+        </p>
+        {!isDealBusiness ? (
+          <>
+            <p className="mt-2 text-[11px] font-semibold text-amber-100">Own a business? Reach local customers.</p>
+            <button
+              type="button"
+              onClick={onBecomeBusiness}
+              className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.95)]"
+            >
+              Become a Business
+            </button>
+          </>
+        ) : (
+          <p className="mt-2 text-[11px] font-semibold text-amber-100">
+            Post your first offer from your Business Dashboard in Profile.
           </p>
-          {!isDealBusiness ? (
-            <>
-              <p className="mt-2 text-[11px] font-semibold text-amber-100">Own a business? Reach local customers.</p>
-              <button
-                type="button"
-                onClick={onBecomeBusiness}
-                className="mt-3 inline-flex h-11 w-full items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black text-white shadow-[0_12px_24px_-12px_rgba(234,88,12,0.95)]"
-              >
-                Become a Business
-              </button>
-            </>
-          ) : (
-            <p className="mt-2 text-[11px] font-semibold text-amber-100">
-              Post your first offer from your Business Dashboard in Profile.
-            </p>
-          )}
-        </div>
+        )}
       </div>
     </div>
   );
