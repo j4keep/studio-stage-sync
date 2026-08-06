@@ -224,7 +224,7 @@ export default function ExplorePage() {
                   dragIndex === index
                     ? "scale-105 opacity-80 z-10"
                     : editing
-                      ? "animate-[wiggle_0.4s_ease-in-out_infinite]"
+                      ? ""
                       : "active:scale-[0.97]"
                 }`}
                 style={editing && dragIndex !== index ? { animation: "yaj-wiggle 0.5s ease-in-out infinite" } : undefined}
