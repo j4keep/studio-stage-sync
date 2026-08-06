@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
@@ -12,20 +12,15 @@ import localHelpCard from "@/assets/explore/local-help.jpeg.asset.json";
 import postGigCard from "@/assets/explore/post-a-gig.jpeg.asset.json";
 import servicesCard from "@/assets/explore/services.jpeg.asset.json";
 import yajTvCard from "@/assets/explore/yaj-tv.jpeg.asset.json";
+import gamesCard from "@/assets/explore/games.jpeg.asset.json";
+import eventsCard from "@/assets/explore/events.jpeg.asset.json";
 
 type ExploreItem = {
   label: string;
   subtitle?: string;
-  emoji?: string;
-  image?: string;
-  background?: string;
+  image: string;
   route?: string;
 };
-
-const bg = {
-  indigo: "from-indigo-300 to-violet-500",
-  orange: "from-orange-300 to-amber-400",
-} as const;
 
 const TOP_PICKS: ExploreItem[] = [
   { label: "Battles", subtitle: "Compete. Rank. Win.", image: battlesCard.url, route: "/battles" },
@@ -38,72 +33,122 @@ const TOP_PICKS: ExploreItem[] = [
   { label: "Post a Gig", subtitle: "Offer your skills.", image: postGigCard.url, route: "/gigs" },
   { label: "Services", subtitle: "Book trusted professionals.", image: servicesCard.url, route: "/services" },
   { label: "YAJ TV", subtitle: "Watch. Enjoy. Share.", image: yajTvCard.url, route: "/tv/watch" },
-  { label: "Games", emoji: "🎮", background: bg.indigo },
-  { label: "Events", emoji: "🎪", background: bg.orange, route: "/events" },
+  { label: "Games", subtitle: "Play. Earn. Level up.", image: gamesCard.url },
+  { label: "Events", subtitle: "Local events you'll love.", image: eventsCard.url, route: "/events" },
 ];
 
-function ExploreCard({ item }: { item: ExploreItem }) {
-  const navigate = useNavigate();
+const ORDER_KEY = "yaj.explore.card-order.v1";
 
-  if (item.image) {
-    return (
-      <button
-        type="button"
-        onClick={item.route ? () => navigate(item.route!) : undefined}
-        className="text-left active:scale-[0.98] transition-transform"
-        aria-label={item.label}
-      >
-        <img
-          src={item.image}
-          alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
-          className="w-full rounded-2xl shadow-sm"
-          loading="lazy"
-        />
-      </button>
-    );
+function loadOrder(): ExploreItem[] {
+  try {
+    const raw = localStorage.getItem(ORDER_KEY);
+    if (!raw) return TOP_PICKS;
+    const labels: string[] = JSON.parse(raw);
+    const byLabel = new Map(TOP_PICKS.map((i) => [i.label, i]));
+    const ordered = labels.map((l) => byLabel.get(l)).filter(Boolean) as ExploreItem[];
+    const missing = TOP_PICKS.filter((i) => !labels.includes(i.label));
+    return [...ordered, ...missing];
+  } catch {
+    return TOP_PICKS;
   }
-
-  return (
-    <button
-      type="button"
-      onClick={item.route ? () => navigate(item.route!) : undefined}
-      className="text-left active:scale-[0.98] transition-transform"
-    >
-      <div
-        className={`relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br ${item.background} border border-black/5 shadow-sm flex items-center justify-center`}
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.6),transparent_38%)]" />
-        <span className="relative text-5xl drop-shadow-[0_6px_8px_rgba(0,0,0,0.25)]" aria-hidden>
-          {item.emoji}
-        </span>
-      </div>
-      <p className="mt-1.5 px-0.5 text-xs font-semibold text-foreground truncate">{item.label}</p>
-      {item.subtitle ? (
-        <p className="px-0.5 text-[10px] leading-tight text-muted-foreground line-clamp-2">{item.subtitle}</p>
-      ) : null}
-    </button>
-  );
 }
 
-
 export default function ExplorePage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<ExploreItem[]>(loadOrder);
+  const [editing, setEditing] = useState(false);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  const gridRef = useRef<HTMLDivElement>(null);
+  const longPress = useRef<number | null>(null);
+  const movedRef = useRef(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(order.map((i) => i.label)));
+    } catch {
+      /* ignore */
+    }
+  }, [order]);
 
   const items = useMemo(() => {
     const n = query.trim().toLowerCase();
-    if (!n) return TOP_PICKS;
-    return TOP_PICKS.filter((i) => {
+    if (!n) return order;
+    return order.filter((i) => {
       if (i.label.toLowerCase().includes(n)) return true;
       if (i.subtitle?.toLowerCase().includes(n)) return true;
-      if (i.label === "Wellness" && (n.includes("sleep") || n.includes("move") || n.includes("relax"))) {
-        return true;
-      }
-      if (i.label === "Deals" && (n.includes("coupon") || n.includes("discount") || n.includes("offer") || n.includes("promo"))) {
+      if (i.label === "Wellness" && (n.includes("sleep") || n.includes("move") || n.includes("relax"))) return true;
+      if (
+        i.label === "Deals" &&
+        (n.includes("coupon") || n.includes("discount") || n.includes("offer") || n.includes("promo"))
+      ) {
         return true;
       }
       return false;
     });
-  }, [query]);
+  }, [query, order]);
+
+  const isSearching = query.trim().length > 0;
+
+  const cardIndexAtPoint = useCallback((x: number, y: number) => {
+    const grid = gridRef.current;
+    if (!grid) return null;
+    const tiles = Array.from(grid.querySelectorAll<HTMLElement>("[data-tile-index]"));
+    for (const tile of tiles) {
+      const r = tile.getBoundingClientRect();
+      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+        return Number(tile.dataset.tileIndex);
+      }
+    }
+    return null;
+  }, []);
+
+  const clearLongPress = () => {
+    if (longPress.current) {
+      window.clearTimeout(longPress.current);
+      longPress.current = null;
+    }
+  };
+
+  const onPointerDown = (index: number) => (e: React.PointerEvent) => {
+    if (isSearching) return;
+    movedRef.current = false;
+    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    if (editing) {
+      setDragIndex(index);
+      return;
+    }
+    longPress.current = window.setTimeout(() => {
+      setEditing(true);
+      setDragIndex(index);
+      if (navigator.vibrate) navigator.vibrate(12);
+    }, 350);
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (dragIndex === null) {
+      if (longPress.current) clearLongPress();
+      return;
+    }
+    movedRef.current = true;
+    const over = cardIndexAtPoint(e.clientX, e.clientY);
+    if (over === null || over === dragIndex) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIndex, 1);
+      next.splice(over, 0, moved);
+      return next;
+    });
+    setDragIndex(over);
+  };
+
+  const onPointerUp = (item: ExploreItem) => () => {
+    const wasDragging = dragIndex !== null && movedRef.current;
+    clearLongPress();
+    setDragIndex(null);
+    if (!editing && !wasDragging && item.route) navigate(item.route);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -138,14 +183,60 @@ export default function ExplorePage() {
       </header>
 
       <section className="px-4 pb-24">
-        <div className="mb-2">
-          <h2 className="text-base font-bold text-foreground">🔥 Top picks</h2>
-          <p className="text-[11px] text-muted-foreground mt-0.5">This section helps people improve</p>
+        <div className="mb-2 flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-base font-bold text-foreground">🔥 Top picks</h2>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {editing ? "Drag cards to reorder" : "Hold a card to rearrange"}
+            </p>
+          </div>
+          {editing && (
+            <button
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setDragIndex(null);
+              }}
+              className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
+            >
+              Done
+            </button>
+          )}
         </div>
+
         {items.length ? (
-          <div className="grid grid-cols-2 gap-3">
-            {items.map((item) => (
-              <ExploreCard key={item.label} item={item} />
+          <div ref={gridRef} className="grid grid-cols-3 gap-2">
+            {items.map((item, index) => (
+              <button
+                key={item.label}
+                type="button"
+                data-tile-index={index}
+                aria-label={item.label}
+                onPointerDown={onPointerDown(index)}
+                onPointerMove={onPointerMove}
+                onPointerUp={onPointerUp(item)}
+                onPointerCancel={() => {
+                  clearLongPress();
+                  setDragIndex(null);
+                }}
+                onContextMenu={(e) => e.preventDefault()}
+                className={`text-left touch-none select-none transition-transform ${
+                  dragIndex === index
+                    ? "scale-105 opacity-80 z-10"
+                    : editing
+                      ? "animate-[wiggle_0.4s_ease-in-out_infinite]"
+                      : "active:scale-[0.97]"
+                }`}
+                style={editing && dragIndex !== index ? { animation: "yaj-wiggle 0.5s ease-in-out infinite" } : undefined}
+              >
+                <img
+                  src={item.image}
+                  alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
+                  className="w-full rounded-2xl shadow-sm pointer-events-none"
+                  draggable={false}
+                  loading="lazy"
+                />
+              </button>
             ))}
           </div>
         ) : (
