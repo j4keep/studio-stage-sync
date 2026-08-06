@@ -143,7 +143,7 @@ export default function ExplorePage() {
           <p className="text-[11px] text-muted-foreground mt-0.5">This section helps people improve</p>
         </div>
         {items.length ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {items.map((item) => (
               <ExploreCard key={item.label} item={item} />
             ))}
