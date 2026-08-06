@@ -6,6 +6,7 @@ import {
   Bookmark,
   MapPin,
   Search,
+  Store,
   Tag,
   X,
 } from "lucide-react";
@@ -28,40 +29,66 @@ import {
   type Deal,
 } from "@/lib/deals-api";
 import DealCard, { DealCardSkeleton } from "@/components/deals/DealCard";
+import TrendingDealChip from "@/components/deals/TrendingDealChip";
 import { toast } from "sonner";
 import emptyHero from "@/assets/deals/deals-empty-hero.jpg";
 import lifestyleDining from "@/assets/deals/deals-lifestyle-dining.jpg";
 import lifestyleShop from "@/assets/deals/deals-lifestyle-shop.jpg";
 
+/** Showcase slides when no live featured deals exist — marketing examples only. */
 const SHOWCASE = [
   {
-    id: "showcase-1",
+    id: "showcase-pizza",
     eyebrow: "Today’s Featured Deal",
-    title: "Local savings start here",
-    subtitle: "Restaurants, shops, salons & more near you",
-    cta: "Explore Deals",
-    image: emptyHero,
-    distance: null as string | null,
-  },
-  {
-    id: "showcase-2",
-    eyebrow: "Today’s Featured Deal",
-    title: "Dinner nights, better prices",
-    subtitle: "Discover limited offers from nearby kitchens",
+    badge: "50% OFF",
+    title: "Pizza Tonight",
+    subtitle: "Local kitchens · limited evening specials",
     cta: "See Food Deals",
     image: lifestyleDining,
-    distance: "Near you",
+    category: "food-drink",
   },
   {
-    id: "showcase-3",
+    id: "showcase-salon",
     eyebrow: "Today’s Featured Deal",
-    title: "Support local. Save more.",
-    subtitle: "Verified businesses posting fresh promotions",
-    cta: "Browse Shopping",
+    badge: "FREE",
+    title: "Hair Consultation",
+    subtitle: "Salons near you · book while it lasts",
+    cta: "Browse Beauty",
+    image: emptyHero,
+    category: "beauty",
+  },
+  {
+    id: "showcase-coffee",
+    eyebrow: "Today’s Featured Deal",
+    badge: "BOGO",
+    title: "Buy One Coffee Get One",
+    subtitle: "Cafés & bakeries in your area",
+    cta: "Find Coffee",
+    image: lifestyleDining,
+    category: "food-drink",
+  },
+  {
+    id: "showcase-events",
+    eyebrow: "Today’s Featured Deal",
+    badge: "TODAY ONLY",
+    title: "Weekend Event Specials",
+    subtitle: "Tickets, shows & nights out",
+    cta: "See Events",
     image: lifestyleShop,
-    distance: "Local picks",
+    category: "events",
   },
 ] as const;
+
+const SEARCH_HINTS = [
+  "Search restaurants, stores, services, or offers",
+  "🍕 Pizza",
+  "☕ Coffee",
+  "💇 Haircut",
+  "🛒 Grocery",
+  "🎬 Movie",
+  "💪 Gym trial",
+  "💅 Salon deals",
+];
 
 export default function DealsHomePage() {
   const nav = useNavigate();
@@ -71,6 +98,7 @@ export default function DealsHomePage() {
   const [category, setCategory] = useState<string | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [featured, setFeatured] = useState<Deal[]>([]);
+  const [trending, setTrending] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
@@ -78,6 +106,8 @@ export default function DealsHomePage() {
   const [showLoc, setShowLoc] = useState(false);
   const [locDraft, setLocDraft] = useState(loc);
   const [heroIdx, setHeroIdx] = useState(0);
+  const [hintIdx, setHintIdx] = useState(0);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   useEffect(() => {
     const on = () => setOffline(false);
@@ -90,11 +120,17 @@ export default function DealsHomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    if (q || searchFocused) return;
+    const t = setInterval(() => setHintIdx((i) => (i + 1) % SEARCH_HINTS.length), 2800);
+    return () => clearInterval(t);
+  }, [q, searchFocused]);
+
   const load = useCallback(async () => {
     setLoading(true);
     setSetupNeeded(false);
     try {
-      const [all, feat] = await Promise.all([
+      const [all, feat, trend] = await Promise.all([
         listDeals({
           q,
           filter,
@@ -109,9 +145,32 @@ export default function DealsHomePage() {
           location: loc,
           limit: 8,
         }),
+        listDeals({
+          filter: "near-me",
+          viewerId: user?.id,
+          location: loc,
+          limit: 16,
+        }),
       ]);
       setDeals(all);
-      setFeatured(feat.length ? feat : all.filter((d) => d.is_sponsored || d.is_featured).slice(0, 5));
+      const liveFeatured =
+        feat.length > 0
+          ? feat
+          : all.filter((d) => d.is_sponsored || d.is_featured).slice(0, 5);
+      // If still empty, rotate popular active deals in the banner so it feels live.
+      setFeatured(
+        liveFeatured.length
+          ? liveFeatured
+          : [...all].sort((a, b) => (b.claims_count || 0) - (a.claims_count || 0)).slice(0, 5),
+      );
+      const trendSorted = [...trend]
+        .sort((a, b) => {
+          const dist = (a.distance_miles ?? 99) - (b.distance_miles ?? 99);
+          if (Math.abs(dist) > 0.2) return dist;
+          return (b.claims_count || 0) - (a.claims_count || 0);
+        })
+        .slice(0, 12);
+      setTrending(trendSorted.length ? trendSorted : all.slice(0, 12));
     } catch (e: any) {
       const msg = e?.message || "Could not load deals";
       if (e?.setupNeeded || isMissingTableError(msg)) {
@@ -121,6 +180,7 @@ export default function DealsHomePage() {
       }
       setDeals([]);
       setFeatured([]);
+      setTrending([]);
     } finally {
       setLoading(false);
     }
@@ -130,17 +190,33 @@ export default function DealsHomePage() {
     void load();
   }, [load]);
 
-  const bannerCount = featured.length || SHOWCASE.length;
+  const hasLiveFeatured = featured.length > 0;
+  const bannerCount = hasLiveFeatured ? featured.length : SHOWCASE.length;
 
   useEffect(() => {
     if (bannerCount <= 1) return;
-    const t = setInterval(() => setHeroIdx((i) => (i + 1) % bannerCount), 4500);
+    const t = setInterval(() => setHeroIdx((i) => (i + 1) % bannerCount), 3500);
     return () => clearInterval(t);
   }, [bannerCount]);
 
   useEffect(() => {
     setHeroIdx(0);
-  }, [featured.length]);
+  }, [featured.length, hasLiveFeatured]);
+
+  const activity = useMemo(() => {
+    const pool = [...deals, ...trending, ...featured];
+    const seen = new Set<string>();
+    let claims = 0;
+    let newThisWeek = 0;
+    const weekAgo = Date.now() - 7 * 24 * 3_600_000;
+    for (const d of pool) {
+      if (seen.has(d.id)) continue;
+      seen.add(d.id);
+      claims += d.claims_count || 0;
+      if (new Date(d.created_at).getTime() >= weekAgo) newThisWeek += 1;
+    }
+    return { claims, newThisWeek, active: seen.size };
+  }, [deals, trending, featured]);
 
   const sections = useMemo(() => {
     const ending = [...deals]
@@ -166,11 +242,13 @@ export default function DealsHomePage() {
     const patch = (list: Deal[]) => list.map((d) => (d.id === deal.id ? { ...d, saved: next } : d));
     setDeals(patch);
     setFeatured(patch);
+    setTrending(patch);
     try {
       await toggleSaveDeal(user.id, deal.id, next);
     } catch {
       setDeals((prev) => prev.map((d) => (d.id === deal.id ? { ...d, saved: !next } : d)));
       setFeatured((prev) => prev.map((d) => (d.id === deal.id ? { ...d, saved: !next } : d)));
+      setTrending((prev) => prev.map((d) => (d.id === deal.id ? { ...d, saved: !next } : d)));
       toast.error("Could not update save");
     }
   };
@@ -215,8 +293,10 @@ export default function DealsHomePage() {
     );
   };
 
-  const liveHero = featured[heroIdx] || null;
+  const liveHero = hasLiveFeatured ? featured[heroIdx % featured.length] : null;
   const showcase = SHOWCASE[heroIdx % SHOWCASE.length];
+  const bannerBadge = liveHero?.badge || showcase.badge;
+  const placeholder = searchFocused || q ? SEARCH_HINTS[0] : SEARCH_HINTS[hintIdx];
 
   return (
     <div className="relative min-h-screen bg-background pb-28 text-foreground">
@@ -254,34 +334,38 @@ export default function DealsHomePage() {
           </button>
         </div>
 
-        {/* Rotating featured banner — above search */}
         <button
           type="button"
           onClick={() => {
             if (liveHero) nav(`/deals/${liveHero.id}`);
-            else if (showcase.id.includes("2")) setCategory("food-drink");
-            else if (showcase.id.includes("3")) setCategory("shopping");
+            else if (showcase.category) setCategory(showcase.category);
             else nav("/deals/create");
           }}
-          className="relative mb-3 block w-full overflow-hidden rounded-2xl text-left shadow-[0_16px_36px_-20px_rgba(15,23,42,0.55)] ring-1 ring-black/5"
+          className="relative mb-2 block w-full overflow-hidden rounded-2xl text-left shadow-[0_16px_36px_-20px_rgba(15,23,42,0.55)] ring-1 ring-black/5"
         >
-          <div className="relative aspect-[2.2/1] min-h-[7.5rem]">
+          <div className="relative aspect-[2.15/1] min-h-[8rem]">
             <img
               key={liveHero?.id || showcase.id}
               src={liveHero ? dealCoverUrl(liveHero) || showcase.image : showcase.image}
               alt=""
               className="deal-featured-photo absolute inset-0 h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/45 to-black/15" />
-            <div className="absolute inset-0 p-3.5 text-white">
-              <p className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide backdrop-blur-md">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-black/10" />
+
+            {/* Giant floating savings badge */}
+            <div className="deal-badge-float absolute right-3 top-3 z-10 flex max-w-[42%] flex-col items-end">
+              <span className="rounded-2xl bg-gradient-to-br from-orange-500 to-amber-400 px-3 py-2 text-right text-lg font-black leading-none tracking-tight text-white shadow-[0_12px_28px_-8px_rgba(234,88,12,0.95)] ring-2 ring-white/40">
+                {bannerBadge}
+              </span>
+            </div>
+
+            <div className="absolute inset-0 flex flex-col justify-end p-3.5 pr-28 text-white">
+              <p className="inline-flex w-fit items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide backdrop-blur-md">
                 <Tag className="h-3 w-3" />
-                {liveHero ? "Today’s Featured Deal" : showcase.eyebrow}
+                Today’s Featured Deal
               </p>
-              <h2 className="mt-1.5 line-clamp-2 text-base font-black leading-tight drop-shadow">
-                {liveHero
-                  ? `${liveHero.badge || "DEAL"} · ${liveHero.title}`
-                  : showcase.title}
+              <h2 className="mt-1.5 line-clamp-2 text-[1.05rem] font-black leading-tight drop-shadow">
+                {liveHero ? liveHero.title : showcase.title}
               </h2>
               <p className="mt-1 line-clamp-1 text-[11px] text-white/85">
                 {liveHero
@@ -293,14 +377,15 @@ export default function DealsHomePage() {
                       .join(" · ")
                   : showcase.subtitle}
               </p>
-              <span className="mt-2 inline-flex rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-orange-600 shadow">
+              <span className="mt-2 inline-flex w-fit rounded-full bg-white px-3 py-1.5 text-[11px] font-black text-orange-600 shadow">
                 {liveHero ? "Claim Now" : showcase.cta}
               </span>
             </div>
           </div>
         </button>
+
         {bannerCount > 1 ? (
-          <div className="-mt-1 mb-3 flex justify-center gap-1.5">
+          <div className="mb-2 flex justify-center gap-1.5">
             {Array.from({ length: bannerCount }).map((_, i) => (
               <button
                 key={i}
@@ -313,6 +398,23 @@ export default function DealsHomePage() {
               />
             ))}
           </div>
+        ) : null}
+
+        {/* Real activity only — never invent counts */}
+        {!loading && (activity.claims > 0 || activity.newThisWeek > 0) ? (
+          <p className="mb-2 text-center text-[11px] font-semibold text-orange-700 dark:text-orange-300">
+            {activity.claims > 0
+              ? `🔥 ${activity.claims.toLocaleString()} deal claim${activity.claims === 1 ? "" : "s"} so far`
+              : null}
+            {activity.claims > 0 && activity.newThisWeek > 0 ? " · " : null}
+            {activity.newThisWeek > 0
+              ? `🎉 ${activity.newThisWeek} new deal${activity.newThisWeek === 1 ? "" : "s"} this week`
+              : null}
+          </p>
+        ) : !loading && !hasLiveFeatured ? (
+          <p className="mb-2 text-center text-[11px] font-medium text-muted-foreground">
+            Fresh local offers rotate here as businesses post
+          </p>
         ) : null}
 
         <button
@@ -332,8 +434,10 @@ export default function DealsHomePage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search restaurants, stores, services, or offers"
-            className="h-11 w-full rounded-2xl border border-border/80 bg-muted/50 pl-10 pr-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-orange-400/35"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
+            placeholder={placeholder}
+            className="h-11 w-full rounded-2xl border border-border/80 bg-muted/50 pl-10 pr-10 text-sm shadow-sm outline-none transition-colors focus:ring-2 focus:ring-orange-400/35"
           />
           {q ? (
             <button
@@ -412,6 +516,17 @@ export default function DealsHomePage() {
         </div>
       </section>
 
+      {!loading && trending.length > 0 ? (
+        <section className="mt-5 px-3">
+          <h2 className="mb-2 text-base font-black tracking-tight">Trending Near You</h2>
+          <div className="no-scrollbar flex gap-2.5 overflow-x-auto pb-1">
+            {trending.map((d) => (
+              <TrendingDealChip key={d.id} deal={d} />
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <main className="mt-6 space-y-7 px-3">
         {loading ? (
           <div className="grid gap-3">
@@ -448,13 +563,21 @@ export default function DealsHomePage() {
         )}
       </main>
 
-      <div className="fixed bottom-24 right-4 z-30">
+      <div className="fixed bottom-24 right-4 z-30 flex flex-col items-end gap-2">
+        <button
+          type="button"
+          onClick={() => nav("/deals/create")}
+          className="rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 text-xs font-black text-white shadow-[0_12px_28px_-10px_rgba(234,88,12,0.9)]"
+        >
+          Post Deal
+        </button>
         <button
           type="button"
           onClick={() => nav("/deals/business")}
-          className="rounded-full bg-foreground px-4 py-2.5 text-xs font-bold text-background shadow-lg"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/95 px-3.5 py-2 text-[11px] font-bold text-foreground shadow-lg backdrop-blur"
         >
-          Business
+          <Store className="h-3.5 w-3.5" />
+          Business Portal
         </button>
       </div>
 
@@ -596,6 +719,7 @@ function EmptyState({
     );
   }
 
+  // Onboarding hero only when the feed is empty
   return (
     <div className="overflow-hidden rounded-[1.5rem] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.6)] ring-1 ring-black/5">
       <div className="relative aspect-[4/5] max-h-[28rem]">

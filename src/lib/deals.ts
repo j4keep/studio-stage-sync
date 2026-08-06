@@ -260,9 +260,12 @@ export function formatExpiresLabel(iso: string | null | undefined) {
   const now = Date.now();
   const ms = d.getTime() - now;
   if (ms <= 0) return "Expired";
+  const minutes = ms / 60_000;
+  if (minutes < 60) return `Ends in ${Math.max(1, Math.round(minutes))}m`;
   const hours = ms / 3_600_000;
   if (hours < 24) return `Ends in ${Math.max(1, Math.round(hours))}h`;
   const days = Math.ceil(hours / 24);
+  if (days === 1) return "Expires Tomorrow";
   if (days <= 7) {
     return `Valid through ${d.toLocaleDateString(undefined, { weekday: "long" })}`;
   }
@@ -369,7 +372,10 @@ export function statusBadges(deal: {
     badges.push("Expired");
   } else {
     if (isNewDeal(deal.created_at)) badges.push("New");
-    if (isEndingSoon(deal.expires_at)) badges.push("Ending Soon");
+    if (isEndingSoon(deal.expires_at)) {
+      badges.push("Limited Time");
+      badges.push("Ending Soon");
+    }
     if ((deal.claims_count || 0) >= 20) badges.push("Popular");
     if (deal.location_type === "online") badges.push("Online");
     if (deal.location_type === "in_store") badges.push("In Store");

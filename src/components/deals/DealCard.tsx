@@ -86,14 +86,21 @@ export default function DealCard({ deal, onSave, onShare }: Props) {
             {deal.badge || "DEAL"}
           </span>
 
+          {ending ? (
+            <span className="deal-ending-glow absolute right-3 top-3 rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black text-white shadow-md">
+              Limited Time
+            </span>
+          ) : null}
+
           <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
-            {badges.slice(0, 2).map((b) => (
+            {badges
+              .filter((b) => b !== "Ending Soon" || !ending)
+              .slice(0, 2)
+              .map((b) => (
               <span
                 key={b}
                 className={`rounded-full px-2 py-0.5 text-[10px] font-bold text-white backdrop-blur-md ${
-                  b === "Ending Soon" || ending
-                    ? "deal-ending-glow bg-orange-500/85"
-                    : "bg-black/45"
+                  b === "Ending Soon" ? "deal-ending-glow bg-orange-500/85" : "bg-black/45"
                 }`}
               >
                 {b}
