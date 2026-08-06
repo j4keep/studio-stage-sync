@@ -375,11 +375,7 @@ export async function markDealUsed(claimId: string): Promise<DealClaim> {
 }
 
 export async function listMyClaims(userId: string): Promise<DealClaim[]> {
-  try {
-    await sb.rpc("expire_stale_deals");
-  } catch {
-    /* ignore */
-  }
+  await sb.rpc("expire_stale_deals");
   const { data, error } = await sb
     .from("deal_claims")
     .select("*, deals(*, deal_businesses(*), deal_images(*))")
