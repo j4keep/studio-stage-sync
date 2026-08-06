@@ -1,115 +1,42 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Search, X } from "lucide-react";
+import { Search, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
+
+import cardBattles from "@/assets/explore/cards/battles.png";
+import cardWellness from "@/assets/explore/cards/wellness.png";
+import cardRadio from "@/assets/explore/cards/radio.png";
+import cardCareers from "@/assets/explore/cards/careers.png";
+import cardMarketplace from "@/assets/explore/cards/marketplace.png";
+import cardDeals from "@/assets/explore/cards/deals.png";
+import cardFindLocalHelp from "@/assets/explore/cards/find-local-help.png";
+import cardPostAGig from "@/assets/explore/cards/post-a-gig.png";
+import cardServices from "@/assets/explore/cards/services.png";
+import cardYajTv from "@/assets/explore/cards/yaj-tv.png";
+import cardGames from "@/assets/explore/cards/games.png";
+import cardEvents from "@/assets/explore/cards/events.png";
 
 type ExploreItem = {
   label: string;
   subtitle: string;
-  emoji: string;
-  background: string;
-  border: string;
+  image: string;
   route: string;
 };
 
-/** Exact Explore card set from the YAJ design (no YAJ AI card). */
+/** Square Explore tiles cropped from the design mockup (no YAJ AI card). */
 const TOP_PICKS: ExploreItem[] = [
-  {
-    label: "Battles",
-    subtitle: "Compete. Rank. Win.",
-    emoji: "⚔️",
-    background: "from-amber-100 via-yellow-100 to-amber-200",
-    border: "border-amber-300/70",
-    route: "/battles",
-  },
-  {
-    label: "Wellness",
-    subtitle: "Sleep • Move • Relax",
-    emoji: "🌿",
-    background: "from-emerald-100 via-green-100 to-teal-100",
-    border: "border-emerald-300/70",
-    route: "/wellness",
-  },
-  {
-    label: "Radio",
-    subtitle: "Listen. Vibe. Connect.",
-    emoji: "🎵",
-    background: "from-violet-100 via-fuchsia-100 to-purple-200",
-    border: "border-violet-300/70",
-    route: "/radio",
-  },
-  {
-    label: "Careers",
-    subtitle: "Find your path.",
-    emoji: "💼",
-    background: "from-indigo-100 via-violet-100 to-blue-100",
-    border: "border-indigo-300/70",
-    route: "/jobs",
-  },
-  {
-    label: "Marketplace",
-    subtitle: "Buy. Sell. Discover.",
-    emoji: "🛍️",
-    background: "from-pink-100 via-rose-100 to-pink-200",
-    border: "border-pink-300/70",
-    route: "/marketplace",
-  },
-  {
-    label: "Deals",
-    subtitle: "Local savings & limited offers.",
-    emoji: "🏷️",
-    background: "from-orange-100 via-amber-100 to-orange-200",
-    border: "border-orange-300/70",
-    route: "/deals",
-  },
-  {
-    label: "Find Local Help",
-    subtitle: "Help nearby. Fast.",
-    emoji: "📍",
-    background: "from-teal-100 via-cyan-100 to-sky-100",
-    border: "border-teal-300/70",
-    route: "/local-help",
-  },
-  {
-    label: "Post a Gig",
-    subtitle: "Offer your skills.",
-    emoji: "➕",
-    background: "from-yellow-50 via-amber-100 to-orange-100",
-    border: "border-amber-300/70",
-    route: "/gigs",
-  },
-  {
-    label: "Services",
-    subtitle: "Book trusted professionals.",
-    emoji: "📋",
-    background: "from-slate-100 via-sky-100 to-indigo-100",
-    border: "border-slate-300/70",
-    route: "/services",
-  },
-  {
-    label: "YAJ TV",
-    subtitle: "Watch. Enjoy. Share.",
-    emoji: "📺",
-    background: "from-rose-100 via-pink-100 to-orange-100",
-    border: "border-rose-300/70",
-    route: "/tv/watch",
-  },
-  {
-    label: "Games",
-    subtitle: "Play. Earn. Level up.",
-    emoji: "🎮",
-    background: "from-violet-100 via-purple-100 to-indigo-200",
-    border: "border-violet-300/70",
-    route: "/games",
-  },
-  {
-    label: "Events",
-    subtitle: "Local events you'll love.",
-    emoji: "🎪",
-    background: "from-yellow-100 via-amber-100 to-orange-200",
-    border: "border-amber-300/70",
-    route: "/events",
-  },
+  { label: "Battles", subtitle: "Compete. Rank. Win.", image: cardBattles, route: "/battles" },
+  { label: "Wellness", subtitle: "Sleep • Move • Relax", image: cardWellness, route: "/wellness" },
+  { label: "Radio", subtitle: "Listen. Vibe. Connect.", image: cardRadio, route: "/radio" },
+  { label: "Careers", subtitle: "Find your path.", image: cardCareers, route: "/jobs" },
+  { label: "Marketplace", subtitle: "Buy. Sell. Discover.", image: cardMarketplace, route: "/marketplace" },
+  { label: "Deals", subtitle: "Local savings & limited offers.", image: cardDeals, route: "/deals" },
+  { label: "Find Local Help", subtitle: "Help nearby. Fast.", image: cardFindLocalHelp, route: "/local-help" },
+  { label: "Post a Gig", subtitle: "Offer your skills.", image: cardPostAGig, route: "/gigs" },
+  { label: "Services", subtitle: "Book trusted professionals.", image: cardServices, route: "/services" },
+  { label: "YAJ TV", subtitle: "Watch. Enjoy. Share.", image: cardYajTv, route: "/tv/watch" },
+  { label: "Games", subtitle: "Play. Earn. Level up.", image: cardGames, route: "/games" },
+  { label: "Events", subtitle: "Local events you'll love.", image: cardEvents, route: "/events" },
 ];
 
 function ExploreCard({ item }: { item: ExploreItem }) {
@@ -118,23 +45,15 @@ function ExploreCard({ item }: { item: ExploreItem }) {
     <button
       type="button"
       onClick={() => navigate(item.route)}
-      className={`relative flex h-[150px] flex-col justify-between overflow-hidden rounded-2xl border bg-gradient-to-br p-3 text-left shadow-sm transition-transform active:scale-[0.98] ${item.background} ${item.border}`}
+      aria-label={`${item.label}. ${item.subtitle}`}
+      className="overflow-hidden rounded-[1.15rem] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
     >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255,255,255,0.7),transparent_45%)]" />
-      <div className="relative flex flex-1 items-center justify-center">
-        <span className="text-4xl drop-shadow-[0_5px_7px_rgba(0,0,0,0.2)]" aria-hidden>
-          {item.emoji}
-        </span>
-      </div>
-      <div className="relative flex items-end gap-1">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-bold leading-tight text-neutral-900">{item.label}</p>
-          <p className="line-clamp-2 text-[10px] leading-tight text-neutral-600">{item.subtitle}</p>
-        </div>
-        <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full border border-black/10 bg-white/70">
-          <ChevronRight className="h-3 w-3 text-neutral-700" />
-        </span>
-      </div>
+      <img
+        src={item.image}
+        alt=""
+        draggable={false}
+        className="aspect-square w-full object-cover"
+      />
     </button>
   );
 }
