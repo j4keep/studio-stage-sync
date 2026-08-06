@@ -400,6 +400,602 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          business_id: string | null
+          created_at: string
+          deal_id: string | null
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          business_id?: string | null
+          created_at?: string
+          deal_id?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_audit_log_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "deal_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_business_members: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          role: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          role?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_business_members_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "deal_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_businesses: {
+        Row: {
+          address: string | null
+          avg_rating: number
+          can_publish: boolean
+          category: string | null
+          city: string | null
+          cover_url: string | null
+          created_at: string
+          description: string | null
+          email: string | null
+          hours_json: Json
+          id: string
+          is_verified: boolean
+          latitude: number | null
+          logo_url: string | null
+          longitude: number | null
+          name: string
+          owner_id: string
+          phone: string | null
+          postal_code: string | null
+          review_count: number
+          slug: string | null
+          state: string | null
+          updated_at: string
+          verification_status: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          avg_rating?: number
+          can_publish?: boolean
+          category?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          hours_json?: Json
+          id?: string
+          is_verified?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name: string
+          owner_id: string
+          phone?: string | null
+          postal_code?: string | null
+          review_count?: number
+          slug?: string | null
+          state?: string | null
+          updated_at?: string
+          verification_status?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          avg_rating?: number
+          can_publish?: boolean
+          category?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          description?: string | null
+          email?: string | null
+          hours_json?: Json
+          id?: string
+          is_verified?: boolean
+          latitude?: number | null
+          logo_url?: string | null
+          longitude?: number | null
+          name?: string
+          owner_id?: string
+          phone?: string | null
+          postal_code?: string | null
+          review_count?: number
+          slug?: string | null
+          state?: string | null
+          updated_at?: string
+          verification_status?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      deal_claims: {
+        Row: {
+          barcode_value: string | null
+          business_id: string
+          claimed_at: string
+          deal_id: string
+          expires_at: string | null
+          id: string
+          qr_payload: string | null
+          redemption_code: string | null
+          redemption_type: string
+          status: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          barcode_value?: string | null
+          business_id: string
+          claimed_at?: string
+          deal_id: string
+          expires_at?: string | null
+          id?: string
+          qr_payload?: string | null
+          redemption_code?: string | null
+          redemption_type?: string
+          status?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          barcode_value?: string | null
+          business_id?: string
+          claimed_at?: string
+          deal_id?: string
+          expires_at?: string | null
+          id?: string
+          qr_payload?: string | null
+          redemption_code?: string | null
+          redemption_type?: string
+          status?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_claims_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "deal_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_claims_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_images: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          is_cover: boolean
+          sort_order: number
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          is_cover?: boolean
+          sort_order?: number
+          url: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          is_cover?: boolean
+          sort_order?: number
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_images_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_notification_preferences: {
+        Row: {
+          business_review_result: boolean
+          category_new: boolean
+          claim_limit_warning: boolean
+          claimed_expiring_soon: boolean
+          created_at: string
+          followed_business_new: boolean
+          nearby_new: boolean
+          saved_ending_soon: boolean
+          sold_out: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          business_review_result?: boolean
+          category_new?: boolean
+          claim_limit_warning?: boolean
+          claimed_expiring_soon?: boolean
+          created_at?: string
+          followed_business_new?: boolean
+          nearby_new?: boolean
+          saved_ending_soon?: boolean
+          sold_out?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          business_review_result?: boolean
+          category_new?: boolean
+          claim_limit_warning?: boolean
+          claimed_expiring_soon?: boolean
+          created_at?: string
+          followed_business_new?: boolean
+          nearby_new?: boolean
+          saved_ending_soon?: boolean
+          sold_out?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deal_reports: {
+        Row: {
+          created_at: string
+          deal_id: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_reports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_reviews: {
+        Row: {
+          body: string | null
+          business_id: string
+          business_responded_at: string | null
+          business_response: string | null
+          claim_id: string
+          created_at: string
+          deal_id: string
+          id: string
+          offer_matched: number
+          overall: number
+          redemption_easy: number
+          staff_honored: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          business_id: string
+          business_responded_at?: string | null
+          business_response?: string | null
+          claim_id: string
+          created_at?: string
+          deal_id: string
+          id?: string
+          offer_matched?: number
+          overall?: number
+          redemption_easy?: number
+          staff_honored?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          business_id?: string
+          business_responded_at?: string | null
+          business_response?: string | null
+          claim_id?: string
+          created_at?: string
+          deal_id?: string
+          id?: string
+          offer_matched?: number
+          overall?: number
+          redemption_easy?: number
+          staff_honored?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_reviews_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "deal_businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_reviews_claim_id_fkey"
+            columns: ["claim_id"]
+            isOneToOne: false
+            referencedRelation: "deal_claims"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_reviews_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_saves: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_saves_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deals: {
+        Row: {
+          address: string | null
+          age_restriction: number | null
+          barcode_value: string | null
+          business_id: string
+          category: string
+          city: string | null
+          claims_count: number
+          cover_url: string | null
+          created_at: string
+          creator_id: string
+          currency: string
+          deal_price: number | null
+          deal_type: string
+          description: string
+          discount_badge: string | null
+          discount_value: number | null
+          exclusions: string | null
+          expires_at: string
+          external_url: string | null
+          id: string
+          is_featured: boolean
+          is_sponsored: boolean
+          latitude: number | null
+          location_type: string
+          longitude: number | null
+          map_label: string | null
+          minimum_purchase: number | null
+          per_user_limit: number
+          postal_code: string | null
+          promo_code: string | null
+          qr_payload: string | null
+          redemption_count: number
+          redemption_type: string
+          regular_price: number | null
+          saves_count: number
+          slug: string | null
+          starts_at: string
+          state: string | null
+          status: string
+          tags: string[] | null
+          terms: string | null
+          title: string
+          total_claim_limit: number | null
+          updated_at: string
+          views_count: number
+        }
+        Insert: {
+          address?: string | null
+          age_restriction?: number | null
+          barcode_value?: string | null
+          business_id: string
+          category: string
+          city?: string | null
+          claims_count?: number
+          cover_url?: string | null
+          created_at?: string
+          creator_id: string
+          currency?: string
+          deal_price?: number | null
+          deal_type?: string
+          description?: string
+          discount_badge?: string | null
+          discount_value?: number | null
+          exclusions?: string | null
+          expires_at?: string
+          external_url?: string | null
+          id?: string
+          is_featured?: boolean
+          is_sponsored?: boolean
+          latitude?: number | null
+          location_type?: string
+          longitude?: number | null
+          map_label?: string | null
+          minimum_purchase?: number | null
+          per_user_limit?: number
+          postal_code?: string | null
+          promo_code?: string | null
+          qr_payload?: string | null
+          redemption_count?: number
+          redemption_type?: string
+          regular_price?: number | null
+          saves_count?: number
+          slug?: string | null
+          starts_at?: string
+          state?: string | null
+          status?: string
+          tags?: string[] | null
+          terms?: string | null
+          title: string
+          total_claim_limit?: number | null
+          updated_at?: string
+          views_count?: number
+        }
+        Update: {
+          address?: string | null
+          age_restriction?: number | null
+          barcode_value?: string | null
+          business_id?: string
+          category?: string
+          city?: string | null
+          claims_count?: number
+          cover_url?: string | null
+          created_at?: string
+          creator_id?: string
+          currency?: string
+          deal_price?: number | null
+          deal_type?: string
+          description?: string
+          discount_badge?: string | null
+          discount_value?: number | null
+          exclusions?: string | null
+          expires_at?: string
+          external_url?: string | null
+          id?: string
+          is_featured?: boolean
+          is_sponsored?: boolean
+          latitude?: number | null
+          location_type?: string
+          longitude?: number | null
+          map_label?: string | null
+          minimum_purchase?: number | null
+          per_user_limit?: number
+          postal_code?: string | null
+          promo_code?: string | null
+          qr_payload?: string | null
+          redemption_count?: number
+          redemption_type?: string
+          regular_price?: number | null
+          saves_count?: number
+          slug?: string | null
+          starts_at?: string
+          state?: string | null
+          status?: string
+          tags?: string[] | null
+          terms?: string | null
+          title?: string
+          total_claim_limit?: number | null
+          updated_at?: string
+          views_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "deal_businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employer_profiles: {
         Row: {
           company_name: string
@@ -3791,7 +4387,35 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      can_manage_deal_business: {
+        Args: { _business_id: string; _user_id: string }
+        Returns: boolean
+      }
+      claim_deal: {
+        Args: { p_deal_id: string }
+        Returns: {
+          barcode_value: string | null
+          business_id: string
+          claimed_at: string
+          deal_id: string
+          expires_at: string | null
+          id: string
+          qr_payload: string | null
+          redemption_code: string | null
+          redemption_type: string
+          status: string
+          used_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deal_claims"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       expire_pending_bookings: { Args: never; Returns: number }
+      expire_stale_deals: { Args: never; Returns: undefined }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       increment_battle_views: {
         Args: { battle_id: string }
@@ -3802,6 +4426,7 @@ export type Database = {
         Args: { boost_id: string }
         Returns: undefined
       }
+      increment_deal_views: { Args: { p_deal_id: string }; Returns: undefined }
       increment_podcast_plays: {
         Args: { podcast_id: string }
         Returns: undefined
@@ -3833,6 +4458,29 @@ export type Database = {
           user_id: string
         }[]
       }
+      mark_deal_used: {
+        Args: { p_claim_id: string }
+        Returns: {
+          barcode_value: string | null
+          business_id: string
+          claimed_at: string
+          deal_id: string
+          expires_at: string | null
+          id: string
+          qr_payload: string | null
+          redemption_code: string | null
+          redemption_type: string
+          status: string
+          used_at: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deal_claims"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       refresh_moderation_status: {
         Args: { p_user_id?: string }
         Returns: {
@@ -3842,6 +4490,62 @@ export type Database = {
           moderation_status: string
           moderation_until: string
         }[]
+      }
+      submit_deal_for_review: {
+        Args: { p_deal_id: string }
+        Returns: {
+          address: string | null
+          age_restriction: number | null
+          barcode_value: string | null
+          business_id: string
+          category: string
+          city: string | null
+          claims_count: number
+          cover_url: string | null
+          created_at: string
+          creator_id: string
+          currency: string
+          deal_price: number | null
+          deal_type: string
+          description: string
+          discount_badge: string | null
+          discount_value: number | null
+          exclusions: string | null
+          expires_at: string
+          external_url: string | null
+          id: string
+          is_featured: boolean
+          is_sponsored: boolean
+          latitude: number | null
+          location_type: string
+          longitude: number | null
+          map_label: string | null
+          minimum_purchase: number | null
+          per_user_limit: number
+          postal_code: string | null
+          promo_code: string | null
+          qr_payload: string | null
+          redemption_count: number
+          redemption_type: string
+          regular_price: number | null
+          saves_count: number
+          slug: string | null
+          starts_at: string
+          state: string | null
+          status: string
+          tags: string[] | null
+          terms: string | null
+          title: string
+          total_claim_limit: number | null
+          updated_at: string
+          views_count: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "deals"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       suggested_moderation_action: {
         Args: { p_offense_count: number }
