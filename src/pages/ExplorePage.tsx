@@ -3,18 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 import yajLogo from "@/assets/yaj-logo.png";
 
-import cardBattles from "@/assets/explore/cards/battles.png";
-import cardWellness from "@/assets/explore/cards/wellness.png";
-import cardRadio from "@/assets/explore/cards/radio.png";
-import cardCareers from "@/assets/explore/cards/careers.png";
-import cardMarketplace from "@/assets/explore/cards/marketplace.png";
-import cardDeals from "@/assets/explore/cards/deals.png";
-import cardFindLocalHelp from "@/assets/explore/cards/find-local-help.png";
-import cardPostAGig from "@/assets/explore/cards/post-a-gig.png";
-import cardServices from "@/assets/explore/cards/services.png";
-import cardYajTv from "@/assets/explore/cards/yaj-tv.png";
-import cardGames from "@/assets/explore/cards/games.png";
-import cardEvents from "@/assets/explore/cards/events.png";
+import cardBattles from "@/assets/explore/cards/battles.webp";
+import cardWellness from "@/assets/explore/cards/wellness.webp";
+import cardRadio from "@/assets/explore/cards/radio.webp";
+import cardCareers from "@/assets/explore/cards/careers.webp";
+import cardMarketplace from "@/assets/explore/cards/marketplace.webp";
+import cardDeals from "@/assets/explore/cards/deals.webp";
+import cardFindLocalHelp from "@/assets/explore/cards/find-local-help.webp";
+import cardPostAGig from "@/assets/explore/cards/post-a-gig.webp";
+import cardServices from "@/assets/explore/cards/services.webp";
+import cardYajTv from "@/assets/explore/cards/yaj-tv.webp";
+import cardGames from "@/assets/explore/cards/games.webp";
+import cardEvents from "@/assets/explore/cards/events.webp";
 
 type ExploreItem = {
   label: string;
@@ -23,7 +23,7 @@ type ExploreItem = {
   route: string;
 };
 
-/** Square Explore tiles cropped from the design mockup (no YAJ AI card). */
+/** Square Explore tiles — image only, no layered card chrome underneath. */
 const TOP_PICKS: ExploreItem[] = [
   { label: "Battles", subtitle: "Compete. Rank. Win.", image: cardBattles, route: "/battles" },
   { label: "Wellness", subtitle: "Sleep • Move • Relax", image: cardWellness, route: "/wellness" },
@@ -46,16 +46,14 @@ function ExploreCard({ item }: { item: ExploreItem }) {
       type="button"
       onClick={() => navigate(item.route)}
       aria-label={`${item.label}. ${item.subtitle}`}
-      className="block w-full appearance-none border-0 bg-transparent p-0 transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2"
-    >
-      {/* Image IS the card — no gradient/emoji layer underneath */}
-      <img
-        src={item.image}
-        alt=""
-        draggable={false}
-        className="aspect-square w-full rounded-2xl object-cover shadow-sm"
-      />
-    </button>
+      className="relative m-0 aspect-square w-full overflow-hidden rounded-2xl border-0 bg-transparent p-0 shadow-none outline-none transition-transform active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40"
+      style={{
+        backgroundImage: `url(${item.image})`,
+        backgroundSize: "100% 100%",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    />
   );
 }
 
@@ -119,7 +117,7 @@ export default function ExplorePage() {
           <p className="mt-0.5 text-[11px] text-muted-foreground">This section helps people improve</p>
         </div>
         {items.length ? (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2.5">
             {items.map((item) => (
               <ExploreCard key={item.label} item={item} />
             ))}
