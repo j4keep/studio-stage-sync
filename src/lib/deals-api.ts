@@ -201,7 +201,9 @@ export async function listDeals(opts: ListDealsOpts = {}): Promise<Deal[]> {
   const loc = opts.location || getDealLocationPrefs();
   const limit = opts.limit ?? 48;
 
-  await sb.rpc("expire_stale_deals").catch(() => null);
+  // Best-effort cleanup; ignore until migration/RPC exists. Do not .catch() —
+  // supabase.rpc() returns a builder/thenable without Promise.catch.
+  await sb.rpc("expire_stale_deals");
 
   let query = sb
     .from("deals")
@@ -373,7 +375,11 @@ export async function markDealUsed(claimId: string): Promise<DealClaim> {
 }
 
 export async function listMyClaims(userId: string): Promise<DealClaim[]> {
-  await sb.rpc("expire_stale_deals").catch(() => null);
+  try {
+    await sb.rpc("expire_stale_deals");
+  } catch {
+    /* ignore */
+  }
   const { data, error } = await sb
     .from("deal_claims")
     .select("*, deals(*, deal_businesses(*), deal_images(*))")
