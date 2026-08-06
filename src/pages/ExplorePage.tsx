@@ -163,8 +163,9 @@ export default function ExplorePage() {
 
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="px-4 pt-3 pb-2">
+    <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
+      <header className="shrink-0 px-4 pt-3 pb-2">
+
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-primary">Discover people, opportunities & circles</p>
