@@ -63,6 +63,8 @@ export default function ExplorePage() {
   const gridRef = useRef<HTMLDivElement>(null);
   const longPress = useRef<number | null>(null);
   const movedRef = useRef(false);
+  const startRef = useRef<{ x: number; y: number } | null>(null);
+
 
   useEffect(() => {
     try {
