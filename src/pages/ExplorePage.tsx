@@ -100,13 +100,6 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     image: eventsAsset.url,
     keywords: ["event", "events", "happening", "party"],
   },
-  {
-    label: "Find Local Help",
-    subtitle: "Trusted pros near you.",
-    route: "/local-help",
-    image: localHelpAsset.url,
-    keywords: ["local", "help", "handyman", "mover", "cleaner", "electrician"],
-  },
 ];
 
 export default function ExplorePage() {
