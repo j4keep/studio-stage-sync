@@ -3,18 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import postGigAsset from "@/assets/explore/post-a-gig.jpeg.asset.json";
-import battlesAsset from "@/assets/explore/battles.jpeg.asset.json";
-import dealsAsset from "@/assets/explore/deals.jpeg.asset.json";
-import marketplaceAsset from "@/assets/explore/marketplace.jpeg.asset.json";
-import yajTvAsset from "@/assets/explore/yaj-tv.jpeg.asset.json";
-import radioAsset from "@/assets/explore/radio.jpeg.asset.json";
-import wellnessAsset from "@/assets/explore/wellness.jpeg.asset.json";
-import careersAsset from "@/assets/explore/careers.jpeg.asset.json";
-import gamesAsset from "@/assets/explore/games.jpeg.asset.json";
-import eventsAsset from "@/assets/explore/events.jpeg.asset.json";
-import servicesAsset from "@/assets/explore/services.jpeg.asset.json";
-import localHelpAsset from "@/assets/explore/local-help.jpeg.asset.json";
+import postGigAsset from "@/assets/explore-v3/post-gig.png.asset.json";
+import battlesAsset from "@/assets/explore-v3/battles.png.asset.json";
+import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
+import marketplaceAsset from "@/assets/explore-v3/marketplace.png.asset.json";
+import yajTvAsset from "@/assets/explore-v3/yaj-tv.png.asset.json";
+import radioAsset from "@/assets/explore-v3/radio.png.asset.json";
+import wellnessAsset from "@/assets/explore-v3/wellness.png.asset.json";
+import careersAsset from "@/assets/explore-v3/careers.png.asset.json";
+import gamesAsset from "@/assets/explore-v3/games.png.asset.json";
+import eventsAsset from "@/assets/explore-v3/events.png.asset.json";
+import servicesAsset from "@/assets/explore-v3/services.png.asset.json";
+
 
 type ExploreItem = {
   label: string;
@@ -100,13 +100,6 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     image: eventsAsset.url,
     keywords: ["event", "events", "happening", "party"],
   },
-  {
-    label: "Find Local Help",
-    subtitle: "Trusted pros near you.",
-    route: "/local-help",
-    image: localHelpAsset.url,
-    keywords: ["local", "help", "handyman", "mover", "cleaner", "electrician"],
-  },
 ];
 
 export default function ExplorePage() {
@@ -180,7 +173,7 @@ export default function ExplorePage() {
                 onClick={() => {
                   if (item.route) navigate(item.route);
                 }}
-                className="group relative aspect-square overflow-hidden rounded-[18px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
+                className="group relative aspect-[4/3] overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
                 aria-label={`Open ${item.label}`}
               >
                 <img
