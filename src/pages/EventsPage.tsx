@@ -185,23 +185,29 @@ export default function EventsPage() {
       const startIso = startsAt ? new Date(startsAt).toISOString() : null;
       const endIso = endsAt ? new Date(endsAt).toISOString() : null;
       const cap = Number.parseInt(capacity, 10);
-      const { error } = await (supabase as any).from("event_listings").insert({
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        category,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        address: address.trim() || null,
-        map_url: mapUrl,
-        price_cents: priceCents,
-        starts_at: startIso,
-        ends_at: endIso,
-        expires_at: endIso || startIso,
-        capacity: Number.isFinite(cap) ? cap : null,
-      });
+      const { data: created, error } = await (supabase as any)
+        .from("event_listings")
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim() || null,
+          category,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          address: address.trim() || null,
+          map_url: mapUrl,
+          price_cents: priceCents,
+          starts_at: startIso,
+          ends_at: endIso,
+          expires_at: endIso || startIso,
+          capacity: Number.isFinite(cap) ? cap : null,
+        })
+        .select("*")
+        .single();
       if (error) throw error;
       toast.success("Event posted");
+      if (created) setShareEvent(created as EventRow);
+
       setTitle("");
       setDescription("");
       setAddress("");
