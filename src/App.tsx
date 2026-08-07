@@ -16,7 +16,7 @@ import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import FeedPage from "./pages/FeedPage";
 import ExplorePage from "./pages/ExplorePage";
-import ConnectionsPage from "./pages/ConnectionsPage";
+import RideTogetherPage from "./pages/RideTogetherPage";
 import BattlesPage from "./pages/BattlesPage";
 import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
@@ -366,7 +366,8 @@ const ProtectedRoutes = () => {
         <Route path="/services/:id" element={<ServiceDetailPage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
-        <Route path="/connections" element={<ConnectionsPage />} />
+        <Route path="/connections" element={<Navigate to="/circle" replace />} />
+        <Route path="/ride-together" element={<RideTogetherPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
