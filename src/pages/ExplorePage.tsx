@@ -2,25 +2,25 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
-import postGigImage from "@/assets/explore-v2/post-gig.png";
-import localHelpImage from "@/assets/explore-v2/local-help.png";
-import battlesImage from "@/assets/explore-v2/battles.png";
-import dealsImage from "@/assets/explore-v2/deals.png";
-import marketplaceImage from "@/assets/explore-v2/marketplace.png";
-import yajTvImage from "@/assets/explore-v2/yaj-tv.png";
-import radioImage from "@/assets/explore-v2/radio.png";
-import wellnessImage from "@/assets/explore-v2/wellness.png";
-import careersImage from "@/assets/explore-v2/careers.png";
-import gamesImage from "@/assets/explore-v2/games.png";
-
-type CardSize = "square" | "wide";
+import localHelpBanner from "@/assets/explore-v2/local-help.png";
+import postGigAsset from "@/assets/explore/post-a-gig.jpeg.asset.json";
+import battlesAsset from "@/assets/explore/battles.jpeg.asset.json";
+import dealsAsset from "@/assets/explore/deals.jpeg.asset.json";
+import marketplaceAsset from "@/assets/explore/marketplace.jpeg.asset.json";
+import yajTvAsset from "@/assets/explore/yaj-tv.jpeg.asset.json";
+import radioAsset from "@/assets/explore/radio.jpeg.asset.json";
+import wellnessAsset from "@/assets/explore/wellness.jpeg.asset.json";
+import careersAsset from "@/assets/explore/careers.jpeg.asset.json";
+import gamesAsset from "@/assets/explore/games.jpeg.asset.json";
+import eventsAsset from "@/assets/explore/events.jpeg.asset.json";
+import servicesAsset from "@/assets/explore/services.jpeg.asset.json";
+import localHelpAsset from "@/assets/explore/local-help.jpeg.asset.json";
 
 type ExploreItem = {
   label: string;
   subtitle: string;
   route?: string;
   image: string;
-  size: CardSize;
   keywords?: string[];
 };
 
@@ -29,110 +29,85 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Post a Gig",
     subtitle: "Let local helpers come to you.",
     route: "/gigs",
-    image: postGigImage,
-    size: "square",
+    image: postGigAsset.url,
     keywords: ["gig", "post", "hire", "request", "helper"],
   },
   {
-    label: "Find Local Help",
-    subtitle: "Trusted pros near you.",
-    route: "/local-help",
-    image: localHelpImage,
-    size: "square",
-    keywords: ["local", "help", "services", "handyman", "mover", "cleaner", "electrician"],
+    label: "Careers",
+    subtitle: "Jobs, internships & opportunities.",
+    route: "/jobs",
+    image: careersAsset.url,
+    keywords: ["career", "jobs", "internship", "work", "opportunity"],
   },
   {
-    label: "Battles",
-    subtitle: "Compete. Rank. Win.",
-    route: "/battles",
-    image: battlesImage,
-    size: "square",
-    keywords: ["battle", "creator", "music", "podcast", "competition", "vote"],
+    label: "Services",
+    subtitle: "Advertise your craft.",
+    route: "/services",
+    image: servicesAsset.url,
+    keywords: ["service", "business", "flyer", "advertise"],
   },
   {
     label: "Deals",
     subtitle: "Local savings & limited offers.",
     route: "/deals",
-    image: dealsImage,
-    size: "square",
+    image: dealsAsset.url,
     keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
     label: "Marketplace",
     subtitle: "Buy. Sell. Discover.",
     route: "/marketplace",
-    image: marketplaceImage,
-    size: "square",
+    image: marketplaceAsset.url,
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
+  },
+  {
+    label: "Battles",
+    subtitle: "Compete. Rank. Win.",
+    route: "/battles",
+    image: battlesAsset.url,
+    keywords: ["battle", "creator", "music", "competition", "vote"],
   },
   {
     label: "YAJ TV",
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
-    image: yajTvImage,
-    size: "square",
+    image: yajTvAsset.url,
     keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
     label: "Radio",
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
-    image: radioImage,
-    size: "square",
+    image: radioAsset.url,
     keywords: ["radio", "music", "listen", "audio"],
   },
   {
     label: "Wellness",
     subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
-    image: wellnessImage,
-    size: "square",
-    keywords: ["wellness", "sleep", "move", "relax", "health", "exercise"],
-  },
-  {
-    label: "Careers",
-    subtitle: "Jobs, internships & opportunities.",
-    route: "/jobs",
-    image: careersImage,
-    size: "square",
-    keywords: ["career", "jobs", "internship", "work", "opportunity"],
+    image: wellnessAsset.url,
+    keywords: ["wellness", "sleep", "move", "relax", "health"],
   },
   {
     label: "Games",
-    subtitle: "Play, compete and discover what's next.",
-    image: gamesImage,
-    size: "wide",
+    subtitle: "Play, compete and discover.",
+    image: gamesAsset.url,
     keywords: ["game", "games", "play", "gaming"],
   },
+  {
+    label: "Events",
+    subtitle: "What's happening near you.",
+    image: eventsAsset.url,
+    keywords: ["event", "events", "happening", "party"],
+  },
+  {
+    label: "Find Local Help",
+    subtitle: "Trusted pros near you.",
+    route: "/local-help",
+    image: localHelpAsset.url,
+    keywords: ["local", "help", "handyman", "mover", "cleaner", "electrician"],
+  },
 ];
-
-function Card({ item, onOpen }: { item: ExploreItem; onOpen: () => void }) {
-  const isWide = item.size === "wide";
-
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      className={`${isWide ? "col-span-2 aspect-[2.9/1]" : "aspect-square"} group relative overflow-hidden rounded-[20px] border border-border/60 bg-card shadow-[0_6px_18px_rgba(15,23,42,0.08)] transition duration-200 active:scale-[0.98]`}
-      aria-label={`Open ${item.label}`}
-    >
-      {/* Blurred fill so the artwork is never cropped or cut off */}
-      <img
-        src={item.image}
-        alt=""
-        aria-hidden
-        className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl saturate-150"
-        draggable={false}
-      />
-      <img
-        src={item.image}
-        alt={`${item.label} preview`}
-        className="relative z-10 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
-        draggable={false}
-      />
-    </button>
-  );
-}
 
 export default function ExplorePage() {
   const navigate = useNavigate();
@@ -149,8 +124,8 @@ export default function ExplorePage() {
   }, [query]);
 
   return (
-    <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
-      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
+    <div className="min-h-screen bg-background pb-28 text-foreground">
+      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
         <div className="flex items-baseline gap-2">
           <h1 className="text-[22px] font-black tracking-tight">Explore</h1>
           <p className="truncate text-[11px] text-muted-foreground">Local finds & live activity</p>
@@ -177,19 +152,44 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2.5">
+      <main className="px-3 pt-3">
+        {!query && (
+          <button
+            type="button"
+            onClick={() => navigate("/local-help")}
+            className="mb-3 block w-full overflow-hidden rounded-[20px] border border-border/60 bg-card shadow-[0_6px_18px_rgba(15,23,42,0.08)] active:scale-[0.99]"
+            aria-label="Open Find Local Help"
+          >
+            <img
+              src={localHelpBanner}
+              alt="Find local help — trusted pros near you"
+              className="block h-auto w-full"
+              draggable={false}
+            />
+          </button>
+        )}
+
         <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">🔥 Top picks</h2>
 
         {filteredItems.length ? (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-3 gap-2">
             {filteredItems.map((item) => (
-              <Card
+              <button
                 key={item.label}
-                item={item}
-                onOpen={() => {
+                type="button"
+                onClick={() => {
                   if (item.route) navigate(item.route);
                 }}
-              />
+                className="group relative aspect-square overflow-hidden rounded-[18px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
+                aria-label={`Open ${item.label}`}
+              >
+                <img
+                  src={item.image}
+                  alt={`${item.label} — ${item.subtitle}`}
+                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  draggable={false}
+                />
+              </button>
             ))}
           </div>
         ) : (
@@ -202,4 +202,3 @@ export default function ExplorePage() {
     </div>
   );
 }
-
