@@ -473,6 +473,7 @@ const App = () => {
                 <PlaylistProvider>
                   <RadioProvider>
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
+                      <ScrollLockGuard />
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
                         
