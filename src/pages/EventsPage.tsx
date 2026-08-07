@@ -477,6 +477,11 @@ export default function EventsPage() {
           })
         )}
       </section>
+
+      {shareEvent ? (
+        <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} />
+      ) : null}
     </div>
+
   );
 }
