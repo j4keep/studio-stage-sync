@@ -1,161 +1,145 @@
 import { useMemo, useState } from "react";
-import type { ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, Radio, BriefcaseBusiness, Gamepad2, HeartPulse, MapPin, ShoppingBag, Tag, Tv, Swords } from "lucide-react";
-import battlesImage from "@/assets/card-battles.jpg";
-import marketplaceImage from "@/assets/card-store.jpg";
-import dealsImage from "@/assets/deals/deals-lifestyle-shop.jpg";
-import tvImage from "@/assets/musicvideo-1.jpg";
-import radioImage from "@/assets/card-radio.jpg";
-import wellnessImage from "@/assets/wellness/coach-stills/brisk_walk.webp";
-import careersImage from "@/assets/studio-3.jpg";
-import localHelpImage from "@/assets/profile-banner.jpg";
-import gamesImage from "@/assets/genre-futurepop.jpg";
+import { Search, X } from "lucide-react";
+
+import postGigImage from "@/assets/explore-v2/post-gig.png";
+import localHelpImage from "@/assets/explore-v2/local-help.png";
+import battlesImage from "@/assets/explore-v2/battles.png";
+import dealsImage from "@/assets/explore-v2/deals.png";
+import marketplaceImage from "@/assets/explore-v2/marketplace.png";
+import yajTvImage from "@/assets/explore-v2/yaj-tv.png";
+import radioImage from "@/assets/explore-v2/radio.png";
+import wellnessImage from "@/assets/explore-v2/wellness.png";
+import careersImage from "@/assets/explore-v2/careers.png";
+import gamesImage from "@/assets/explore-v2/games.png";
+
+type CardSize = "gig" | "wide" | "feature" | "tile";
 
 type ExploreItem = {
   label: string;
   subtitle: string;
   route?: string;
   image: string;
-  eyebrow?: string;
-  badge?: string;
-  layout: "hero" | "tile" | "wide";
-  icon: ComponentType<{ className?: string }>;
+  size: CardSize;
+  keywords?: string[];
 };
 
 const EXPLORE_ITEMS: ExploreItem[] = [
+  {
+    label: "Post a Gig",
+    subtitle: "Let local helpers come to you.",
+    route: "/gigs",
+    image: postGigImage,
+    size: "gig",
+    keywords: ["gig", "post", "hire", "request", "helper"],
+  },
+  {
+    label: "Find Local Help",
+    subtitle: "Trusted pros near you.",
+    route: "/local-help",
+    image: localHelpImage,
+    size: "wide",
+    keywords: ["local", "help", "services", "handyman", "mover", "cleaner", "electrician"],
+  },
   {
     label: "Battles",
     subtitle: "Compete. Rank. Win.",
     route: "/battles",
     image: battlesImage,
-    eyebrow: "Trending now",
-    badge: "LIVE",
-    layout: "hero",
-    icon: Swords,
-  },
-  {
-    label: "Local Help",
-    subtitle: "Find trusted help nearby.",
-    route: "/local-help",
-    image: localHelpImage,
-    eyebrow: "Near you",
-    badge: "OPEN",
-    layout: "hero",
-    icon: MapPin,
+    size: "feature",
+    keywords: ["battle", "creator", "music", "podcast", "competition", "vote"],
   },
   {
     label: "Deals",
     subtitle: "Local savings & limited offers.",
     route: "/deals",
     image: dealsImage,
-    eyebrow: "Featured offer",
-    layout: "tile",
-    icon: Tag,
+    size: "tile",
+    keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
     label: "Marketplace",
     subtitle: "Buy. Sell. Discover.",
     route: "/marketplace",
     image: marketplaceImage,
-    eyebrow: "Fresh listings",
-    layout: "tile",
-    icon: ShoppingBag,
+    size: "tile",
+    keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
   },
   {
     label: "YAJ TV",
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
-    image: tvImage,
-    eyebrow: "Playing now",
-    badge: "LIVE",
-    layout: "tile",
-    icon: Tv,
+    image: yajTvImage,
+    size: "tile",
+    keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
     label: "Radio",
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
     image: radioImage,
-    eyebrow: "On air",
-    layout: "tile",
-    icon: Radio,
+    size: "tile",
+    keywords: ["radio", "music", "listen", "audio"],
   },
   {
     label: "Wellness",
-    subtitle: "Sleep · Move · Relax",
+    subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
     image: wellnessImage,
-    eyebrow: "Feel better",
-    layout: "tile",
-    icon: HeartPulse,
+    size: "tile",
+    keywords: ["wellness", "sleep", "move", "relax", "health", "exercise"],
   },
   {
     label: "Careers",
     subtitle: "Jobs, internships & opportunities.",
     route: "/jobs",
     image: careersImage,
-    eyebrow: "New opportunities",
-    layout: "tile",
-    icon: BriefcaseBusiness,
+    size: "tile",
+    keywords: ["career", "jobs", "internship", "work", "opportunity"],
   },
   {
     label: "Games",
     subtitle: "Play, compete and discover what's next.",
     image: gamesImage,
-    eyebrow: "Featured games",
-    layout: "wide",
-    icon: Gamepad2,
+    size: "wide",
+    keywords: ["game", "games", "play", "gaming"],
   },
 ];
 
-function ExploreCard({ item, onOpen }: { item: ExploreItem; onOpen: () => void }) {
-  const Icon = item.icon;
+function Card({ item, onOpen }: { item: ExploreItem; onOpen: () => void }) {
+  const sizing =
+    item.size === "gig"
+      ? "col-span-6 h-[88px]"
+      : item.size === "wide"
+        ? "col-span-6"
+        : item.size === "feature"
+          ? "col-span-6"
+          : "col-span-2";
+
+  const aspect =
+    item.size === "gig"
+      ? "h-full"
+      : item.size === "feature"
+        ? "aspect-[3.64/1]"
+        : item.size === "wide"
+          ? item.label === "Find Local Help"
+            ? "aspect-[2.44/1]"
+            : "aspect-[4.6/1]"
+          : "aspect-[1.1/1]";
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`group relative overflow-hidden rounded-[22px] border border-black/5 bg-card text-left shadow-[0_8px_24px_rgba(20,25,35,0.10)] transition-all duration-200 active:scale-[0.985] ${
-        item.layout === "hero"
-          ? "col-span-3 min-h-[190px]"
-          : item.layout === "wide"
-            ? "col-span-6 min-h-[118px]"
-            : "col-span-2 min-h-[158px]"
-      }`}
+      className={`${sizing} group relative overflow-hidden rounded-[22px] border border-black/5 bg-white text-left shadow-[0_10px_28px_rgba(15,23,42,0.10)] transition duration-200 active:scale-[0.985]`}
       aria-label={`Open ${item.label}`}
     >
       <img
         src={item.image}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        alt={`${item.label} preview`}
+        className={`block w-full ${aspect} object-cover transition-transform duration-500 group-hover:scale-[1.01]`}
         draggable={false}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
-      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/65 to-transparent" />
-
-      <div className="relative flex h-full min-h-[inherit] flex-col justify-between p-3.5">
-        <div className="flex items-start justify-between gap-2">
-          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md">
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">{item.eyebrow}</span>
-          </span>
-          {item.badge && (
-            <span className="rounded-full bg-white/92 px-2 py-1 text-[10px] font-black tracking-wide text-foreground shadow-sm">
-              {item.badge}
-            </span>
-          )}
-        </div>
-
-        <div>
-          <h3 className={`${item.layout === "hero" ? "text-[22px]" : "text-[17px]"} font-black leading-tight text-white drop-shadow-sm`}>
-            {item.label}
-          </h3>
-          <p className={`mt-1 line-clamp-2 text-white/90 ${item.layout === "wide" ? "text-sm" : "text-[11px]"}`}>
-            {item.subtitle}
-          </p>
-        </div>
-      </div>
     </button>
   );
 }
@@ -164,28 +148,22 @@ export default function ExplorePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
 
-  const items = useMemo(() => {
+  const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return EXPLORE_ITEMS;
 
     return EXPLORE_ITEMS.filter((item) => {
-      const haystack = `${item.label} ${item.subtitle} ${item.eyebrow ?? ""}`.toLowerCase();
-      if (haystack.includes(needle)) return true;
-      if (item.label === "Wellness" && ["sleep", "move", "relax", "health"].some((term) => needle.includes(term))) return true;
-      if (item.label === "Local Help" && ["gig", "services", "handyman", "local"].some((term) => needle.includes(term))) return true;
-      if (item.label === "Deals" && ["coupon", "discount", "offer", "promo"].some((term) => needle.includes(term))) return true;
-      return false;
+      const text = [item.label, item.subtitle, ...(item.keywords ?? [])].join(" ").toLowerCase();
+      return text.includes(needle);
     });
   }, [query]);
 
   return (
     <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
       <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
-        <div>
-          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Discover what’s happening</p>
-          <h1 className="mt-0.5 text-[28px] font-black tracking-tight">Explore</h1>
-          <p className="mt-0.5 text-xs text-muted-foreground">Live activity, local finds and things worth checking out.</p>
-        </div>
+        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Discover what's happening</p>
+        <h1 className="mt-0.5 text-[30px] font-black tracking-tight">Explore</h1>
+        <p className="mt-0.5 text-xs text-muted-foreground">Live activity, local finds and things worth checking out.</p>
 
         <div className="relative mt-3">
           <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -208,16 +186,16 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-3">
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-3">
         <div className="mb-3">
           <h2 className="text-lg font-black">🔥 Top picks</h2>
-          <p className="text-xs text-muted-foreground">A quick look at the best of YAJ right now.</p>
+          <p className="text-xs text-muted-foreground">Explore live activity, useful local tools and trending YAJ features.</p>
         </div>
 
-        {items.length > 0 ? (
+        {filteredItems.length ? (
           <div className="grid grid-cols-6 gap-2.5">
-            {items.map((item) => (
-              <ExploreCard
+            {filteredItems.map((item) => (
+              <Card
                 key={item.label}
                 item={item}
                 onOpen={() => {
@@ -229,7 +207,7 @@ export default function ExplorePage() {
         ) : (
           <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
             <p className="font-bold">Nothing matched that search.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Try jobs, deals, wellness, marketplace, battles, or local help.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try jobs, deals, marketplace, gigs, battles, wellness, or local help.</p>
           </div>
         )}
       </main>
