@@ -113,6 +113,17 @@ export default function EventsPage() {
     void load();
   }, [load]);
 
+  const deleteEvent = async (eventId: string) => {
+    if (!window.confirm("Delete this event? This can't be undone.")) return;
+    const { error } = await (supabase as any).from("event_listings").delete().eq("id", eventId);
+    if (error) {
+      toast.error("Could not delete event");
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.id !== eventId));
+    toast.success("Event deleted");
+  };
+
   const toggleGoing = async (eventId: string) => {
     if (!user) {
       toast.error("Sign in to RSVP");
