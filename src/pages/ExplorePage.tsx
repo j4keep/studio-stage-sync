@@ -296,9 +296,7 @@ export default function ExplorePage() {
                 className={`group relative aspect-[4/3] select-none overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition ${
                   dragId === item.id
                     ? "z-10 scale-[1.06] opacity-90 shadow-[0_10px_26px_rgba(15,23,42,0.22)]"
-                    : dragId
-                      ? "animate-pulse-none"
-                      : "active:scale-[0.97]"
+                    : "active:scale-[0.97]"
                 }`}
                 aria-label={`Open ${item.label}`}
               >
