@@ -410,13 +410,39 @@ export default function EventsPage() {
                     ) : null}
                   </div>
                 </button>
-                <div className="flex items-center gap-2 px-3 pb-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-2">
                   {isHost ? (
-                    <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
-                      <Users className="h-3.5 w-3.5" />
-                      {myCounts[row.id] || 0} going
-                      <span className="font-normal text-muted-foreground">· only you see this</span>
-                    </span>
+                    <>
+                      <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                        <Users className="h-3.5 w-3.5" />
+                        {myCounts[row.id] || 0} going
+                        <span className="font-normal text-muted-foreground">· only you see this</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShareEvent(row)}
+                        className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground active:scale-95"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                        Share
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => nav(`/events/${row.id}?edit=1`)}
+                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold active:scale-95"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteEvent(row.id)}
+                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold text-destructive active:scale-95"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -431,6 +457,7 @@ export default function EventsPage() {
                     </button>
                   )}
                 </div>
+
               </article>
             );
           })
