@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import connectionsImage from "@/assets/explore-v4/connections.png";
+import rideTogetherImage from "@/assets/explore-v6/ride-together.png";
 import battlesImage from "@/assets/explore-v4/battles.png";
 import careersImage from "@/assets/explore-v6/opportunities.png";
 import gamesImage from "@/assets/explore-v4/games.png";
@@ -24,13 +24,14 @@ type ExploreItem = {
 
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
-    id: "connections",
-    label: "Connections",
-    subtitle: "Find people nearby with similar interests.",
-    route: "/connections",
-    image: connectionsImage,
-    keywords: ["connect", "connections", "people", "dating", "friends", "meet", "networking", "nearby"],
+    id: "ride-together",
+    label: "Ride Together",
+    subtitle: "Share the ride to where you're headed.",
+    route: "/ride-together",
+    image: rideTogetherImage,
+    keywords: ["ride", "rides", "carpool", "commute", "together", "travel", "gas", "trip", "airport"],
   },
+
   {
     id: "careers",
     label: "Opportunities",
