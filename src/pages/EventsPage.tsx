@@ -378,11 +378,13 @@ export default function EventsPage() {
               >
                 <button type="button" onClick={() => nav(`/events/${row.id}`)} className="w-full text-left">
                   {row.media_url ? (
-                    row.media_type === "video" ? (
-                      <video src={row.media_url} muted playsInline className="aspect-[4/5] w-full object-cover" />
-                    ) : (
-                      <img src={row.media_url} alt="" className="aspect-[4/5] w-full object-cover" />
-                    )
+                    <div className="flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-muted">
+                      {row.media_type === "video" ? (
+                        <video src={row.media_url} muted playsInline className="h-full w-full object-contain" />
+                      ) : (
+                        <img src={row.media_url} alt="" className="h-full w-full object-contain" />
+                      )}
+                    </div>
                   ) : (
                     <div className="flex aspect-[4/5] items-center justify-center bg-muted text-sm text-muted-foreground">
                       Event
