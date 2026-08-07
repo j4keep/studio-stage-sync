@@ -173,7 +173,7 @@ export default function ExplorePage() {
                 onClick={() => {
                   if (item.route) navigate(item.route);
                 }}
-                className="group relative aspect-square overflow-hidden rounded-[18px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
+                className="group relative aspect-[4/3] overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
                 aria-label={`Open ${item.label}`}
               >
                 <img
