@@ -3,15 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import connectionsImage from "@/assets/explore-v4/connections.png";
-import battlesImage from "@/assets/explore-v4/battles.png";
-import careersImage from "@/assets/explore-v6/opportunities.png";
-import gamesImage from "@/assets/explore-v4/games.png";
-import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
-import marketplaceImage from "@/assets/explore-v5/marketplace.png";
-import yajTvAsset from "@/assets/explore-v3/yaj-tv.png.asset.json";
-import radioAsset from "@/assets/explore-v3/radio.png.asset.json";
-import wellnessAsset from "@/assets/explore-v3/wellness.png.asset.json";
+import connectionsImage from "@/assets/explore-v7/connections.png";
+import battlesImage from "@/assets/explore-v7/battles.png";
+import careersImage from "@/assets/explore-v7/opportunities.png";
+import gamesImage from "@/assets/explore-v7/games.png";
+import dealsImage from "@/assets/explore-v7/deals.png";
+import marketplaceImage from "@/assets/explore-v7/marketplace.png";
+import yajTvImage from "@/assets/explore-v7/yaj-tv.png";
+import radioImage from "@/assets/explore-v7/radio.png";
+import wellnessImage from "@/assets/explore-v7/wellness.png";
+
 
 type ExploreItem = {
   id: string;
@@ -44,7 +45,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Deals",
     subtitle: "Local savings & limited offers.",
     route: "/deals",
-    image: dealsAsset.url,
+    image: dealsImage,
     keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
@@ -68,7 +69,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "YAJ TV",
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
-    image: yajTvAsset.url,
+    image: yajTvImage,
     keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
@@ -76,7 +77,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Radio",
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
-    image: radioAsset.url,
+    image: radioImage,
     keywords: ["radio", "music", "listen", "audio"],
   },
   {
@@ -84,7 +85,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Wellness",
     subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
-    image: wellnessAsset.url,
+    image: wellnessImage,
     keywords: ["wellness", "sleep", "move", "relax", "health"],
   },
   {
@@ -298,6 +299,11 @@ export default function ExplorePage() {
                   className="pointer-events-none h-full w-full object-cover"
                   draggable={false}
                 />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                <span className="pointer-events-none absolute bottom-1.5 left-2 right-2 truncate text-left text-[11px] font-bold leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                  {item.label}
+                </span>
+
               </button>
             ))}
           </div>
