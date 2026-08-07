@@ -45,7 +45,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Deals",
     subtitle: "Local savings & limited offers.",
     route: "/deals",
-    image: dealsAsset.url,
+    image: dealsImage,
     keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
@@ -69,7 +69,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "YAJ TV",
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
-    image: yajTvAsset.url,
+    image: yajTvImage,
     keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
@@ -77,7 +77,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Radio",
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
-    image: radioAsset.url,
+    image: radioImage,
     keywords: ["radio", "music", "listen", "audio"],
   },
   {
@@ -85,7 +85,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Wellness",
     subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
-    image: wellnessAsset.url,
+    image: wellnessImage,
     keywords: ["wellness", "sleep", "move", "relax", "health"],
   },
   {
