@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarClock, MapPin, Plus, Users } from "lucide-react";
+import { ArrowLeft, CalendarClock, MapPin, Pencil, Plus, Share2, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ShareEventSheet from "@/components/events/ShareEventSheet";
+
 
 type EventRow = {
   id: string;
@@ -64,6 +66,7 @@ export default function EventsPage() {
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<"discover" | "mine">("discover");
   const [filter, setFilter] = useState<string | null>(null);
+  const [shareEvent, setShareEvent] = useState<EventRow | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -109,6 +112,17 @@ export default function EventsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const deleteEvent = async (eventId: string) => {
+    if (!window.confirm("Delete this event? This can't be undone.")) return;
+    const { error } = await (supabase as any).from("event_listings").delete().eq("id", eventId);
+    if (error) {
+      toast.error("Could not delete event");
+      return;
+    }
+    setRows((prev) => prev.filter((r) => r.id !== eventId));
+    toast.success("Event deleted");
+  };
 
   const toggleGoing = async (eventId: string) => {
     if (!user) {
@@ -171,23 +185,29 @@ export default function EventsPage() {
       const startIso = startsAt ? new Date(startsAt).toISOString() : null;
       const endIso = endsAt ? new Date(endsAt).toISOString() : null;
       const cap = Number.parseInt(capacity, 10);
-      const { error } = await (supabase as any).from("event_listings").insert({
-        user_id: user.id,
-        title: title.trim(),
-        description: description.trim() || null,
-        category,
-        media_url: mediaUrl,
-        media_type: mediaType,
-        address: address.trim() || null,
-        map_url: mapUrl,
-        price_cents: priceCents,
-        starts_at: startIso,
-        ends_at: endIso,
-        expires_at: endIso || startIso,
-        capacity: Number.isFinite(cap) ? cap : null,
-      });
+      const { data: created, error } = await (supabase as any)
+        .from("event_listings")
+        .insert({
+          user_id: user.id,
+          title: title.trim(),
+          description: description.trim() || null,
+          category,
+          media_url: mediaUrl,
+          media_type: mediaType,
+          address: address.trim() || null,
+          map_url: mapUrl,
+          price_cents: priceCents,
+          starts_at: startIso,
+          ends_at: endIso,
+          expires_at: endIso || startIso,
+          capacity: Number.isFinite(cap) ? cap : null,
+        })
+        .select("*")
+        .single();
       if (error) throw error;
       toast.success("Event posted");
+      if (created) setShareEvent(created as EventRow);
+
       setTitle("");
       setDescription("");
       setAddress("");
@@ -410,13 +430,39 @@ export default function EventsPage() {
                     ) : null}
                   </div>
                 </button>
-                <div className="flex items-center gap-2 px-3 pb-3 pt-2">
+                <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-2">
                   {isHost ? (
-                    <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
-                      <Users className="h-3.5 w-3.5" />
-                      {myCounts[row.id] || 0} going
-                      <span className="font-normal text-muted-foreground">· only you see this</span>
-                    </span>
+                    <>
+                      <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
+                        <Users className="h-3.5 w-3.5" />
+                        {myCounts[row.id] || 0} going
+                        <span className="font-normal text-muted-foreground">· only you see this</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShareEvent(row)}
+                        className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground active:scale-95"
+                      >
+                        <Share2 className="h-3.5 w-3.5" />
+                        Share
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => nav(`/events/${row.id}?edit=1`)}
+                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold active:scale-95"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void deleteEvent(row.id)}
+                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold text-destructive active:scale-95"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
+                    </>
                   ) : (
                     <button
                       type="button"
@@ -431,11 +477,17 @@ export default function EventsPage() {
                     </button>
                   )}
                 </div>
+
               </article>
             );
           })
         )}
       </section>
+
+      {shareEvent ? (
+        <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} />
+      ) : null}
     </div>
+
   );
 }
