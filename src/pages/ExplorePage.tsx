@@ -4,16 +4,14 @@ import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
 import postGigAsset from "@/assets/explore-v3/post-gig.png.asset.json";
-import battlesAsset from "@/assets/explore-v3/battles.png.asset.json";
+import battlesImage from "@/assets/explore-v4/battles.png";
 import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
 import marketplaceAsset from "@/assets/explore-v3/marketplace.png.asset.json";
 import yajTvAsset from "@/assets/explore-v3/yaj-tv.png.asset.json";
 import radioAsset from "@/assets/explore-v3/radio.png.asset.json";
 import wellnessAsset from "@/assets/explore-v3/wellness.png.asset.json";
-import careersAsset from "@/assets/explore-v3/careers.png.asset.json";
+import careersImage from "@/assets/explore-v4/careers.png";
 import gamesAsset from "@/assets/explore-v3/games.png.asset.json";
-import eventsAsset from "@/assets/explore-v3/events.png.asset.json";
-import servicesAsset from "@/assets/explore-v3/services.png.asset.json";
 
 
 type ExploreItem = {
@@ -36,15 +34,8 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Careers",
     subtitle: "Jobs, internships & opportunities.",
     route: "/jobs",
-    image: careersAsset.url,
+    image: careersImage,
     keywords: ["career", "jobs", "internship", "work", "opportunity"],
-  },
-  {
-    label: "Services",
-    subtitle: "Advertise your craft.",
-    route: "/services",
-    image: servicesAsset.url,
-    keywords: ["service", "business", "flyer", "advertise"],
   },
   {
     label: "Deals",
@@ -64,7 +55,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Battles",
     subtitle: "Compete. Rank. Win.",
     route: "/battles",
-    image: battlesAsset.url,
+    image: battlesImage,
     keywords: ["battle", "creator", "music", "competition", "vote"],
   },
   {
@@ -94,12 +85,6 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     image: gamesAsset.url,
     keywords: ["game", "games", "play", "gaming"],
   },
-  {
-    label: "Events",
-    subtitle: "What's happening near you.",
-    image: eventsAsset.url,
-    keywords: ["event", "events", "happening", "party"],
-  },
 ];
 
 export default function ExplorePage() {
@@ -117,8 +102,8 @@ export default function ExplorePage() {
   }, [query]);
 
   return (
-    <div className="min-h-screen bg-background pb-28 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background pb-20 text-foreground">
+      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
         <div className="flex items-baseline gap-2">
           <h1 className="text-[22px] font-black tracking-tight">Explore</h1>
           <p className="truncate text-[11px] text-muted-foreground">Local finds & live activity</p>
@@ -145,7 +130,7 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="px-3 pt-3">
+      <main className="min-h-0 flex-1 overflow-hidden px-3 pt-3">
         {!query && (
           <button
             type="button"
