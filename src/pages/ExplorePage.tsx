@@ -299,6 +299,11 @@ export default function ExplorePage() {
                   className="pointer-events-none h-full w-full object-cover"
                   draggable={false}
                 />
+                <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent" />
+                <span className="pointer-events-none absolute bottom-1.5 left-2 right-2 truncate text-left text-[11px] font-bold leading-tight text-white drop-shadow-[0_1px_3px_rgba(0,0,0,0.6)]">
+                  {item.label}
+                </span>
+
               </button>
             ))}
           </div>
