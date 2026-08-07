@@ -121,30 +121,22 @@ export default function ExplorePage() {
   const holdTimer = useRef<number | null>(null);
   const movedRef = useRef(false);
 
-  // App-like behaviour: no page scroll / rubber-band white space on this screen.
+  // App-like behaviour: no page scroll on this screen only. Always fully reset on leave.
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyOverflow: body.style.overflow,
-      bodyPosition: body.style.position,
-      bodyWidth: body.style.width,
-      overscroll: html.style.overscrollBehavior,
-    };
     html.style.overflow = "hidden";
     html.style.overscrollBehavior = "none";
     body.style.overflow = "hidden";
-    body.style.position = "fixed";
-    body.style.width = "100%";
     return () => {
-      html.style.overflow = prev.htmlOverflow;
-      html.style.overscrollBehavior = prev.overscroll;
-      body.style.overflow = prev.bodyOverflow;
-      body.style.position = prev.bodyPosition;
-      body.style.width = prev.bodyWidth;
+      html.style.overflow = "";
+      html.style.overscrollBehavior = "";
+      body.style.overflow = "";
+      body.style.position = "";
+      body.style.width = "";
     };
   }, []);
+
 
   useEffect(() => {
     try {
