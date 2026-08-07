@@ -13,7 +13,7 @@ import wellnessImage from "@/assets/explore-v2/wellness.png";
 import careersImage from "@/assets/explore-v2/careers.png";
 import gamesImage from "@/assets/explore-v2/games.png";
 
-type CardSize = "gig" | "wide" | "feature" | "tile";
+type CardSize = "square" | "wide";
 
 type ExploreItem = {
   label: string;
@@ -30,7 +30,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Let local helpers come to you.",
     route: "/gigs",
     image: postGigImage,
-    size: "gig",
+    size: "square",
     keywords: ["gig", "post", "hire", "request", "helper"],
   },
   {
@@ -38,7 +38,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Trusted pros near you.",
     route: "/local-help",
     image: localHelpImage,
-    size: "wide",
+    size: "square",
     keywords: ["local", "help", "services", "handyman", "mover", "cleaner", "electrician"],
   },
   {
@@ -46,7 +46,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Compete. Rank. Win.",
     route: "/battles",
     image: battlesImage,
-    size: "feature",
+    size: "square",
     keywords: ["battle", "creator", "music", "podcast", "competition", "vote"],
   },
   {
@@ -54,7 +54,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Local savings & limited offers.",
     route: "/deals",
     image: dealsImage,
-    size: "tile",
+    size: "square",
     keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
@@ -62,7 +62,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Buy. Sell. Discover.",
     route: "/marketplace",
     image: marketplaceImage,
-    size: "tile",
+    size: "square",
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
   },
   {
@@ -70,7 +70,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
     image: yajTvImage,
-    size: "tile",
+    size: "square",
     keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
@@ -78,7 +78,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
     image: radioImage,
-    size: "tile",
+    size: "square",
     keywords: ["radio", "music", "listen", "audio"],
   },
   {
@@ -86,7 +86,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
     image: wellnessImage,
-    size: "tile",
+    size: "square",
     keywords: ["wellness", "sleep", "move", "relax", "health", "exercise"],
   },
   {
@@ -94,7 +94,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     subtitle: "Jobs, internships & opportunities.",
     route: "/jobs",
     image: careersImage,
-    size: "tile",
+    size: "square",
     keywords: ["career", "jobs", "internship", "work", "opportunity"],
   },
   {
@@ -107,37 +107,27 @@ const EXPLORE_ITEMS: ExploreItem[] = [
 ];
 
 function Card({ item, onOpen }: { item: ExploreItem; onOpen: () => void }) {
-  const sizing =
-    item.size === "gig"
-      ? "col-span-6 h-[88px]"
-      : item.size === "wide"
-        ? "col-span-6"
-        : item.size === "feature"
-          ? "col-span-6"
-          : "col-span-2";
-
-  const aspect =
-    item.size === "gig"
-      ? "h-full"
-      : item.size === "feature"
-        ? "aspect-[3.64/1]"
-        : item.size === "wide"
-          ? item.label === "Find Local Help"
-            ? "aspect-[2.44/1]"
-            : "aspect-[4.6/1]"
-          : "aspect-[1.1/1]";
+  const isWide = item.size === "wide";
 
   return (
     <button
       type="button"
       onClick={onOpen}
-      className={`${sizing} group relative overflow-hidden rounded-[22px] border border-black/5 bg-white text-left shadow-[0_10px_28px_rgba(15,23,42,0.10)] transition duration-200 active:scale-[0.985]`}
+      className={`${isWide ? "col-span-2 aspect-[2.9/1]" : "aspect-square"} group relative overflow-hidden rounded-[20px] border border-border/60 bg-card shadow-[0_6px_18px_rgba(15,23,42,0.08)] transition duration-200 active:scale-[0.98]`}
       aria-label={`Open ${item.label}`}
     >
+      {/* Blurred fill so the artwork is never cropped or cut off */}
+      <img
+        src={item.image}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 h-full w-full scale-125 object-cover blur-2xl saturate-150"
+        draggable={false}
+      />
       <img
         src={item.image}
         alt={`${item.label} preview`}
-        className={`block w-full ${aspect} object-cover transition-transform duration-500 group-hover:scale-[1.01]`}
+        className="relative z-10 h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.02]"
         draggable={false}
       />
     </button>
@@ -160,40 +150,38 @@ export default function ExplorePage() {
 
   return (
     <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
-      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
-        <p className="text-[11px] font-black uppercase tracking-[0.18em] text-primary">Discover what's happening</p>
-        <h1 className="mt-0.5 text-[30px] font-black tracking-tight">Explore</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">Live activity, local finds and things worth checking out.</p>
+      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-[22px] font-black tracking-tight">Explore</h1>
+          <p className="truncate text-[11px] text-muted-foreground">Local finds & live activity</p>
+        </div>
 
-        <div className="relative mt-3">
-          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative mt-2">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people, jobs, deals, marketplace…"
-            className="h-12 w-full rounded-2xl border border-border bg-muted/70 pl-10 pr-10 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+            placeholder="Search jobs, deals, marketplace…"
+            className="h-9 w-full rounded-full border border-border bg-muted/70 pl-9 pr-9 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground"
               aria-label="Clear search"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-6 pt-3">
-        <div className="mb-3">
-          <h2 className="text-lg font-black">🔥 Top picks</h2>
-          <p className="text-xs text-muted-foreground">Explore live activity, useful local tools and trending YAJ features.</p>
-        </div>
+      <main className="min-h-0 flex-1 overflow-y-auto px-3 pb-4 pt-2.5">
+        <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">🔥 Top picks</h2>
 
         {filteredItems.length ? (
-          <div className="grid grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5">
             {filteredItems.map((item) => (
               <Card
                 key={item.label}
@@ -214,3 +202,4 @@ export default function ExplorePage() {
     </div>
   );
 }
+
