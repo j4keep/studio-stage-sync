@@ -1032,6 +1032,98 @@ export type Database = {
         }
         Relationships: []
       }
+      event_listings: {
+        Row: {
+          address: string | null
+          capacity: number | null
+          category: string
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          expires_at: string | null
+          id: string
+          map_url: string | null
+          media_type: string
+          media_url: string | null
+          price_cents: number | null
+          starts_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          capacity?: number | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          expires_at?: string | null
+          id?: string
+          map_url?: string | null
+          media_type?: string
+          media_url?: string | null
+          price_cents?: number | null
+          starts_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          capacity?: number | null
+          category?: string
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          expires_at?: string | null
+          id?: string
+          map_url?: string | null
+          media_type?: string
+          media_url?: string | null
+          price_cents?: number | null
+          starts_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      event_rsvps: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "event_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       followers: {
         Row: {
           created_at: string
