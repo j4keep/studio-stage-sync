@@ -3,15 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import connectionsImage from "@/assets/explore-v4/connections.png";
-import battlesImage from "@/assets/explore-v4/battles.png";
-import careersImage from "@/assets/explore-v6/opportunities.png";
-import gamesImage from "@/assets/explore-v4/games.png";
-import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
-import marketplaceImage from "@/assets/explore-v5/marketplace.png";
-import yajTvAsset from "@/assets/explore-v3/yaj-tv.png.asset.json";
-import radioAsset from "@/assets/explore-v3/radio.png.asset.json";
-import wellnessAsset from "@/assets/explore-v3/wellness.png.asset.json";
+import connectionsImage from "@/assets/explore-v7/connections.png";
+import battlesImage from "@/assets/explore-v7/battles.png";
+import careersImage from "@/assets/explore-v7/opportunities.png";
+import gamesImage from "@/assets/explore-v7/games.png";
+import dealsImage from "@/assets/explore-v7/deals.png";
+import marketplaceImage from "@/assets/explore-v7/marketplace.png";
+import yajTvImage from "@/assets/explore-v7/yaj-tv.png";
+import radioImage from "@/assets/explore-v7/radio.png";
+import wellnessImage from "@/assets/explore-v7/wellness.png";
+
 
 type ExploreItem = {
   id: string;
