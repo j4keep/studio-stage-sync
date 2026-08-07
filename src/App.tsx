@@ -5,7 +5,7 @@ import ImageLightbox from "@/components/ImageLightbox";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -459,6 +459,23 @@ const App = () => {
     );
   }
 
+/** Safety net: only /explore locks page scroll — clear any leftover lock elsewhere. */
+const ScrollLockGuard = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (pathname === "/explore") return;
+    const html = document.documentElement;
+    const body = document.body;
+    html.style.overflow = "";
+    html.style.overscrollBehavior = "";
+    body.style.overflow = "";
+    body.style.position = "";
+    body.style.width = "";
+    body.style.height = "";
+  }, [pathname]);
+  return null;
+};
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -473,6 +490,7 @@ const App = () => {
                 <PlaylistProvider>
                   <RadioProvider>
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
+                      <ScrollLockGuard />
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
                         
