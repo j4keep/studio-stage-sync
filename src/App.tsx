@@ -459,6 +459,23 @@ const App = () => {
     );
   }
 
+/** Safety net: only /explore locks page scroll — clear any leftover lock elsewhere. */
+const ScrollLockGuard = () => {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    if (pathname === "/explore") return;
+    const html = document.documentElement;
+    const body = document.body;
+    html.style.overflow = "";
+    html.style.overscrollBehavior = "";
+    body.style.overflow = "";
+    body.style.position = "";
+    body.style.width = "";
+    body.style.height = "";
+  }, [pathname]);
+  return null;
+};
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
