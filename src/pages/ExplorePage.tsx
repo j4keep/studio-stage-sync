@@ -5,7 +5,7 @@ import { Search, X } from "lucide-react";
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
 import connectionsImage from "@/assets/explore-v4/connections.png";
 import battlesImage from "@/assets/explore-v4/battles.png";
-import careersImage from "@/assets/explore-v5/opportunities.png";
+import careersImage from "@/assets/explore-v6/opportunities.png";
 import gamesImage from "@/assets/explore-v4/games.png";
 import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
 import marketplaceImage from "@/assets/explore-v5/marketplace.png";
@@ -265,7 +265,7 @@ export default function ExplorePage() {
 
         <div className="mb-2 flex items-center justify-between gap-2">
           <h2 className="text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-            ⭐ Pick your fave
+            ⭐ Pick your fav
           </h2>
           <p className="shrink-0 text-[10px] font-medium text-muted-foreground/80">
             Press &amp; hold to move
