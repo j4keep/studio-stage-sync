@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import postGigImage from "@/assets/explore-v4/post-gig.png";
+import connectionsImage from "@/assets/explore-v4/connections.png";
 import battlesImage from "@/assets/explore-v4/battles.png";
 import careersImage from "@/assets/explore-v4/careers.png";
 import gamesImage from "@/assets/explore-v4/games.png";
@@ -24,20 +24,20 @@ type ExploreItem = {
 
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
-    id: "gigs",
-    label: "Gigs",
-    subtitle: "Hire or get hired.",
-    route: "/gigs",
-    image: postGigImage,
-    keywords: ["gig", "gigs", "post", "hire", "request", "helper"],
+    id: "connections",
+    label: "Connections",
+    subtitle: "Find people nearby with similar interests.",
+    route: "/connections",
+    image: connectionsImage,
+    keywords: ["connect", "connections", "people", "dating", "friends", "meet", "networking", "nearby"],
   },
   {
     id: "careers",
-    label: "Careers",
+    label: "Opportunities",
     subtitle: "Jobs, internships & opportunities.",
     route: "/jobs",
     image: careersImage,
-    keywords: ["career", "jobs", "internship", "work", "opportunity"],
+    keywords: ["career", "careers", "opportunity", "opportunities", "jobs", "internship", "work"],
   },
   {
     id: "deals",
@@ -96,7 +96,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   },
 ];
 
-const ORDER_KEY = "yaj.explore.card-order.v4";
+const ORDER_KEY = "yaj.explore.card-order.v5";
 
 function loadOrder(): string[] {
   try {
