@@ -1,20 +1,20 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import postGigAsset from "@/assets/explore-v3/post-gig.png.asset.json";
+import postGigImage from "@/assets/explore-v4/post-gig.png";
 import battlesImage from "@/assets/explore-v4/battles.png";
+import careersImage from "@/assets/explore-v4/careers.png";
+import gamesImage from "@/assets/explore-v4/games.png";
 import dealsAsset from "@/assets/explore-v3/deals.png.asset.json";
 import marketplaceAsset from "@/assets/explore-v3/marketplace.png.asset.json";
 import yajTvAsset from "@/assets/explore-v3/yaj-tv.png.asset.json";
 import radioAsset from "@/assets/explore-v3/radio.png.asset.json";
 import wellnessAsset from "@/assets/explore-v3/wellness.png.asset.json";
-import careersImage from "@/assets/explore-v4/careers.png";
-import gamesAsset from "@/assets/explore-v3/games.png.asset.json";
-
 
 type ExploreItem = {
+  id: string;
   label: string;
   subtitle: string;
   route?: string;
@@ -24,13 +24,15 @@ type ExploreItem = {
 
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
-    label: "Post a Gig",
-    subtitle: "Let local helpers come to you.",
+    id: "gigs",
+    label: "Gigs",
+    subtitle: "Hire or get hired.",
     route: "/gigs",
-    image: postGigAsset.url,
-    keywords: ["gig", "post", "hire", "request", "helper"],
+    image: postGigImage,
+    keywords: ["gig", "gigs", "post", "hire", "request", "helper"],
   },
   {
+    id: "careers",
     label: "Careers",
     subtitle: "Jobs, internships & opportunities.",
     route: "/jobs",
@@ -38,6 +40,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["career", "jobs", "internship", "work", "opportunity"],
   },
   {
+    id: "deals",
     label: "Deals",
     subtitle: "Local savings & limited offers.",
     route: "/deals",
@@ -45,6 +48,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["deal", "coupon", "discount", "offer", "local"],
   },
   {
+    id: "marketplace",
     label: "Marketplace",
     subtitle: "Buy. Sell. Discover.",
     route: "/marketplace",
@@ -52,6 +56,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
   },
   {
+    id: "battles",
     label: "Battles",
     subtitle: "Compete. Rank. Win.",
     route: "/battles",
@@ -59,6 +64,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["battle", "creator", "music", "competition", "vote"],
   },
   {
+    id: "tv",
     label: "YAJ TV",
     subtitle: "Watch. Enjoy. Share.",
     route: "/tv/watch",
@@ -66,6 +72,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
+    id: "radio",
     label: "Radio",
     subtitle: "Listen. Vibe. Connect.",
     route: "/radio",
@@ -73,6 +80,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["radio", "music", "listen", "audio"],
   },
   {
+    id: "wellness",
     label: "Wellness",
     subtitle: "Move. Breathe. Live better.",
     route: "/wellness",
@@ -80,29 +88,145 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["wellness", "sleep", "move", "relax", "health"],
   },
   {
+    id: "games",
     label: "Games",
-    subtitle: "Play, compete and discover.",
-    image: gamesAsset.url,
-    keywords: ["game", "games", "play", "gaming"],
+    subtitle: "Play together.",
+    image: gamesImage,
+    keywords: ["game", "games", "play", "domino", "pool"],
   },
 ];
+
+const ORDER_KEY = "yaj.explore.card-order.v4";
+
+function loadOrder(): string[] {
+  try {
+    const raw = localStorage.getItem(ORDER_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!Array.isArray(parsed)) return EXPLORE_ITEMS.map((i) => i.id);
+    const known = parsed.filter((id): id is string => EXPLORE_ITEMS.some((i) => i.id === id));
+    const missing = EXPLORE_ITEMS.map((i) => i.id).filter((id) => !known.includes(id));
+    return [...known, ...missing];
+  } catch {
+    return EXPLORE_ITEMS.map((i) => i.id);
+  }
+}
 
 export default function ExplorePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<string[]>(loadOrder);
+  const [dragId, setDragId] = useState<string | null>(null);
+
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const holdTimer = useRef<number | null>(null);
+  const movedRef = useRef(false);
+
+  // App-like behaviour: no page scroll / rubber-band white space on this screen.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyWidth: body.style.width,
+      overscroll: html.style.overscrollBehavior,
+    };
+    html.style.overflow = "hidden";
+    html.style.overscrollBehavior = "none";
+    body.style.overflow = "hidden";
+    body.style.position = "fixed";
+    body.style.width = "100%";
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      html.style.overscrollBehavior = prev.overscroll;
+      body.style.overflow = prev.bodyOverflow;
+      body.style.position = prev.bodyPosition;
+      body.style.width = prev.bodyWidth;
+    };
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ORDER_KEY, JSON.stringify(order));
+    } catch {
+      /* ignore */
+    }
+  }, [order]);
+
+  const orderedItems = useMemo(
+    () =>
+      order
+        .map((id) => EXPLORE_ITEMS.find((i) => i.id === id))
+        .filter((i): i is ExploreItem => Boolean(i)),
+    [order],
+  );
 
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    if (!needle) return EXPLORE_ITEMS;
-
-    return EXPLORE_ITEMS.filter((item) => {
+    if (!needle) return orderedItems;
+    return orderedItems.filter((item) => {
       const text = [item.label, item.subtitle, ...(item.keywords ?? [])].join(" ").toLowerCase();
       return text.includes(needle);
     });
-  }, [query]);
+  }, [orderedItems, query]);
+
+  const clearHold = useCallback(() => {
+    if (holdTimer.current) {
+      window.clearTimeout(holdTimer.current);
+      holdTimer.current = null;
+    }
+  }, []);
+
+  const endDrag = useCallback(() => {
+    clearHold();
+    setDragId(null);
+  }, [clearHold]);
+
+  const handlePointerDown = (id: string) => (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (query) return;
+    movedRef.current = false;
+    const target = event.currentTarget;
+    clearHold();
+    holdTimer.current = window.setTimeout(() => {
+      setDragId(id);
+      try {
+        target.setPointerCapture(event.pointerId);
+      } catch {
+        /* ignore */
+      }
+      if ("vibrate" in navigator) navigator.vibrate?.(12);
+    }, 380);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!dragId) {
+      clearHold();
+      return;
+    }
+    movedRef.current = true;
+    event.preventDefault();
+    const el = document.elementFromPoint(event.clientX, event.clientY);
+    const tile = el?.closest?.("[data-tile-id]") as HTMLElement | null;
+    const overId = tile?.dataset.tileId;
+    if (!overId || overId === dragId) return;
+    setOrder((prev) => {
+      const next = [...prev];
+      const from = next.indexOf(dragId);
+      const to = next.indexOf(overId);
+      if (from < 0 || to < 0) return prev;
+      next.splice(to, 0, next.splice(from, 1)[0]);
+      return next;
+    });
+  };
+
+  const handleClick = (item: ExploreItem) => () => {
+    if (dragId || movedRef.current) return;
+    if (item.route) navigate(item.route);
+  };
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background pb-20 text-foreground">
+    <div className="flex h-[100dvh] touch-none flex-col overflow-hidden overscroll-none bg-background pb-20 text-foreground">
       <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
         <div className="flex items-baseline gap-2">
           <h1 className="text-[22px] font-black tracking-tight">Explore</h1>
@@ -115,7 +239,7 @@ export default function ExplorePage() {
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search jobs, deals, marketplace…"
-            className="h-9 w-full rounded-full border border-border bg-muted/70 pl-9 pr-9 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full touch-auto rounded-full border border-border bg-muted/70 pl-9 pr-9 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
           />
           {query && (
             <button
@@ -147,24 +271,41 @@ export default function ExplorePage() {
           </button>
         )}
 
-        <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">🔥 Top picks</h2>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h2 className="text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+            ⭐ Pick your fave
+          </h2>
+          <p className="shrink-0 text-[10px] font-medium text-muted-foreground/80">
+            Press &amp; hold to move
+          </p>
+        </div>
 
         {filteredItems.length ? (
-          <div className="grid grid-cols-3 gap-2">
+          <div ref={gridRef} className="grid grid-cols-3 gap-2">
             {filteredItems.map((item) => (
               <button
-                key={item.label}
+                key={item.id}
                 type="button"
-                onClick={() => {
-                  if (item.route) navigate(item.route);
-                }}
-                className="group relative aspect-[4/3] overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition active:scale-[0.97]"
+                data-tile-id={item.id}
+                onPointerDown={handlePointerDown(item.id)}
+                onPointerMove={handlePointerMove}
+                onPointerUp={endDrag}
+                onPointerCancel={endDrag}
+                onContextMenu={(e) => e.preventDefault()}
+                onClick={handleClick(item)}
+                className={`group relative aspect-[4/3] select-none overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition ${
+                  dragId === item.id
+                    ? "z-10 scale-[1.06] opacity-90 shadow-[0_10px_26px_rgba(15,23,42,0.22)]"
+                    : dragId
+                      ? "animate-pulse-none"
+                      : "active:scale-[0.97]"
+                }`}
                 aria-label={`Open ${item.label}`}
               >
                 <img
                   src={item.image}
                   alt={`${item.label} — ${item.subtitle}`}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                  className="pointer-events-none h-full w-full object-cover"
                   draggable={false}
                 />
               </button>
@@ -173,7 +314,9 @@ export default function ExplorePage() {
         ) : (
           <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
             <p className="font-bold">Nothing matched that search.</p>
-            <p className="mt-1 text-sm text-muted-foreground">Try jobs, deals, marketplace, gigs, battles, wellness, or local help.</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Try jobs, deals, marketplace, gigs, battles, wellness, or local help.
+            </p>
           </div>
         )}
       </main>
