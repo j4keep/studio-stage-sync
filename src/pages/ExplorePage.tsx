@@ -52,7 +52,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     label: "Marketplace",
     subtitle: "Buy. Sell. Discover.",
     route: "/marketplace",
-    image: marketplaceAsset.url,
+    image: marketplaceImage,
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
   },
   {
