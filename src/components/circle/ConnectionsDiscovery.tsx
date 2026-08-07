@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, MapPin, MessageCircle, Search, Users } from "lucide-react";
+import { MapPin, MessageCircle, Search, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,7 +33,8 @@ const INTERESTS = [
   { id: "dogs", label: "Dog lovers", emoji: "🐶" },
 ];
 
-export default function ConnectionsPage() {
+/** People discovery experience — lives inside My Circle. */
+export default function ConnectionsDiscovery() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
   const [intent, setIntent] = useState<string | null>(null);
@@ -62,37 +63,16 @@ export default function ConnectionsPage() {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return people;
-    return people.filter((p) =>
-      [p.display_name, p.bio].join(" ").toLowerCase().includes(needle),
-    );
+    return people.filter((p) => [p.display_name, p.bio].join(" ").toLowerCase().includes(needle));
   }, [people, query]);
 
   const toggleInterest = (id: string) =>
-    setActiveInterests((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setActiveInterests((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   return (
-    <div className="min-h-screen bg-background pb-32 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate(-1)}
-            className="rounded-full p-1.5 text-muted-foreground active:scale-95"
-            aria-label="Go back"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="text-[20px] font-black tracking-tight">Connections</h1>
-            <p className="text-[11px] text-muted-foreground">
-              Find people nearby with similar interests.
-            </p>
-          </div>
-        </div>
-
-        <div className="relative mt-3">
+    <div className="pb-6">
+      <div className="px-4 pt-4">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
@@ -101,7 +81,7 @@ export default function ConnectionsPage() {
             className="h-9 w-full rounded-full border border-border bg-muted/70 pl-9 pr-4 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
           />
         </div>
-      </header>
+      </div>
 
       <section className="px-4 pt-4">
         <h2 className="text-[12px] font-black uppercase tracking-[0.12em] text-muted-foreground">
@@ -139,9 +119,7 @@ export default function ConnectionsPage() {
                 type="button"
                 onClick={() => toggleInterest(i.id)}
                 className={`shrink-0 rounded-2xl border px-3 py-2 text-[12px] font-semibold transition active:scale-95 ${
-                  on
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-card text-foreground"
+                  on ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-foreground"
                 }`}
               >
                 <span className="mr-1">{i.emoji}</span>
@@ -161,10 +139,7 @@ export default function ConnectionsPage() {
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-44 animate-pulse rounded-2xl border border-border/60 bg-muted/40"
-              />
+              <div key={i} className="h-44 animate-pulse rounded-2xl border border-border/60 bg-muted/40" />
             ))}
           </div>
         ) : filtered.length ? (
@@ -189,9 +164,7 @@ export default function ConnectionsPage() {
                   )}
                 </div>
                 <div className="p-2.5">
-                  <p className="truncate text-[13px] font-bold">
-                    {p.display_name || "YAJ member"}
-                  </p>
+                  <p className="truncate text-[13px] font-bold">{p.display_name || "YAJ member"}</p>
                   <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
                     <MapPin className="h-3 w-3" /> Nearby
                   </p>
@@ -219,9 +192,7 @@ export default function ConnectionsPage() {
         ) : (
           <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-12 text-center">
             <p className="font-bold">No people matched that search.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try another interest or clear your search.
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Try another interest or clear your search.</p>
           </div>
         )}
       </section>

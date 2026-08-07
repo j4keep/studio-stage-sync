@@ -1,12 +1,18 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, HelpCircle, Copy, Info } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import ConnectionsDiscovery from "@/components/circle/ConnectionsDiscovery";
+
+const TABS = ["Top fans", "My Circle zone", "Connections"] as const;
 
 const MyCirclePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [activeTab, setActiveTab] = useState<(typeof TABS)[number]>("Top fans");
+
 
   const { data: profile } = useQuery({
     queryKey: ["my-circle-profile", user?.id],
@@ -63,12 +69,13 @@ const MyCirclePage = () => {
       </div>
 
       <div className="flex border-b border-border">
-        {["Top fans", "My Circle zone"].map((tab, index) => (
+        {TABS.map((tab) => (
           <button
             key={tab}
             type="button"
+            onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-sm font-semibold border-b-2 ${
-              index === 0 ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
+              activeTab === tab ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
             }`}
           >
             {tab}
@@ -76,14 +83,19 @@ const MyCirclePage = () => {
         ))}
       </div>
 
-      <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
-        <div className="text-6xl mb-4">❤️</div>
-        <h2 className="text-base font-bold mb-2">Viewers can send a Heart Me to join your My Circle</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Invite your viewers to join your My Circle and embark on a journey together.
-        </p>
-      </div>
+      {activeTab === "Connections" ? (
+        <ConnectionsDiscovery />
+      ) : (
+        <div className="flex flex-col items-center justify-center px-8 py-16 text-center">
+          <div className="text-6xl mb-4">❤️</div>
+          <h2 className="text-base font-bold mb-2">Viewers can send a Heart Me to join your My Circle</h2>
+          <p className="text-sm text-muted-foreground max-w-xs">
+            Invite your viewers to join your My Circle and embark on a journey together.
+          </p>
+        </div>
+      )}
     </div>
+
   );
 };
 
