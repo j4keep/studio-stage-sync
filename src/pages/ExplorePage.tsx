@@ -96,7 +96,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   },
 ];
 
-const ORDER_KEY = "yaj.explore.card-order.v4";
+const ORDER_KEY = "yaj.explore.card-order.v5";
 
 function loadOrder(): string[] {
   try {
