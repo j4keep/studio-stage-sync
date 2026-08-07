@@ -1,272 +1,238 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
+import type { ComponentType } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X } from "lucide-react";
-import yajLogo from "@/assets/yaj-logo.png";
-import battlesCard from "@/assets/explore/battles.jpeg.asset.json";
-import wellnessCard from "@/assets/explore/wellness.jpeg.asset.json";
-import radioCard from "@/assets/explore/radio.jpeg.asset.json";
-import careersCard from "@/assets/explore/careers.jpeg.asset.json";
-import marketplaceCard from "@/assets/explore/marketplace.jpeg.asset.json";
-import dealsCard from "@/assets/explore/deals.jpeg.asset.json";
-import localHelpCard from "@/assets/explore/local-help.jpeg.asset.json";
-import postGigCard from "@/assets/explore/post-a-gig.jpeg.asset.json";
-import servicesCard from "@/assets/explore/services.jpeg.asset.json";
-import yajTvCard from "@/assets/explore/yaj-tv.jpeg.asset.json";
-import gamesCard from "@/assets/explore/games.jpeg.asset.json";
-import eventsCard from "@/assets/explore/events.jpeg.asset.json";
+import { Search, X, Radio, BriefcaseBusiness, Gamepad2, HeartPulse, MapPin, ShoppingBag, Tag, Tv, Swords } from "lucide-react";
+import battlesImage from "@/assets/card-battles.jpg";
+import marketplaceImage from "@/assets/card-store.jpg";
+import dealsImage from "@/assets/deals/deals-lifestyle-shop.jpg";
+import tvImage from "@/assets/musicvideo-1.jpg";
+import radioImage from "@/assets/card-radio.jpg";
+import wellnessImage from "@/assets/wellness/coach-stills/brisk_walk.webp";
+import careersImage from "@/assets/studio-3.jpg";
+import localHelpImage from "@/assets/profile-banner.jpg";
+import gamesImage from "@/assets/genre-futurepop.jpg";
 
 type ExploreItem = {
   label: string;
-  subtitle?: string;
-  image: string;
+  subtitle: string;
   route?: string;
+  image: string;
+  eyebrow?: string;
+  badge?: string;
+  layout: "hero" | "tile" | "wide";
+  icon: ComponentType<{ className?: string }>;
 };
 
-const TOP_PICKS: ExploreItem[] = [
-  { label: "Battles", subtitle: "Compete. Rank. Win.", image: battlesCard.url, route: "/battles" },
-  { label: "Wellness", subtitle: "Sleep · Move · Relax", image: wellnessCard.url, route: "/wellness" },
-  { label: "Radio", subtitle: "Listen. Vibe. Connect.", image: radioCard.url, route: "/radio" },
-  { label: "Careers", subtitle: "Find your path.", image: careersCard.url, route: "/jobs" },
-  { label: "Marketplace", subtitle: "Buy. Sell. Discover.", image: marketplaceCard.url, route: "/marketplace" },
-  { label: "Deals", subtitle: "Local savings & limited offers.", image: dealsCard.url, route: "/deals" },
-  { label: "Find Local Help", subtitle: "Help nearby. Fast.", image: localHelpCard.url, route: "/local-help" },
-  { label: "Post a Gig", subtitle: "Offer your skills.", image: postGigCard.url, route: "/gigs" },
-  { label: "Services", subtitle: "Book trusted professionals.", image: servicesCard.url, route: "/services" },
-  { label: "YAJ TV", subtitle: "Watch. Enjoy. Share.", image: yajTvCard.url, route: "/tv/watch" },
-  { label: "Games", subtitle: "Play. Earn. Level up.", image: gamesCard.url },
-  { label: "Events", subtitle: "Local events you'll love.", image: eventsCard.url, route: "/events" },
+const EXPLORE_ITEMS: ExploreItem[] = [
+  {
+    label: "Battles",
+    subtitle: "Compete. Rank. Win.",
+    route: "/battles",
+    image: battlesImage,
+    eyebrow: "Trending now",
+    badge: "LIVE",
+    layout: "hero",
+    icon: Swords,
+  },
+  {
+    label: "Local Help",
+    subtitle: "Find trusted help nearby.",
+    route: "/local-help",
+    image: localHelpImage,
+    eyebrow: "Near you",
+    badge: "OPEN",
+    layout: "hero",
+    icon: MapPin,
+  },
+  {
+    label: "Deals",
+    subtitle: "Local savings & limited offers.",
+    route: "/deals",
+    image: dealsImage,
+    eyebrow: "Featured offer",
+    layout: "tile",
+    icon: Tag,
+  },
+  {
+    label: "Marketplace",
+    subtitle: "Buy. Sell. Discover.",
+    route: "/marketplace",
+    image: marketplaceImage,
+    eyebrow: "Fresh listings",
+    layout: "tile",
+    icon: ShoppingBag,
+  },
+  {
+    label: "YAJ TV",
+    subtitle: "Watch. Enjoy. Share.",
+    route: "/tv/watch",
+    image: tvImage,
+    eyebrow: "Playing now",
+    badge: "LIVE",
+    layout: "tile",
+    icon: Tv,
+  },
+  {
+    label: "Radio",
+    subtitle: "Listen. Vibe. Connect.",
+    route: "/radio",
+    image: radioImage,
+    eyebrow: "On air",
+    layout: "tile",
+    icon: Radio,
+  },
+  {
+    label: "Wellness",
+    subtitle: "Sleep · Move · Relax",
+    route: "/wellness",
+    image: wellnessImage,
+    eyebrow: "Feel better",
+    layout: "tile",
+    icon: HeartPulse,
+  },
+  {
+    label: "Careers",
+    subtitle: "Jobs, internships & opportunities.",
+    route: "/jobs",
+    image: careersImage,
+    eyebrow: "New opportunities",
+    layout: "tile",
+    icon: BriefcaseBusiness,
+  },
+  {
+    label: "Games",
+    subtitle: "Play, compete and discover what's next.",
+    image: gamesImage,
+    eyebrow: "Featured games",
+    layout: "wide",
+    icon: Gamepad2,
+  },
 ];
 
-const ORDER_KEY = "yaj.explore.card-order.v1";
+function ExploreCard({ item, onOpen }: { item: ExploreItem; onOpen: () => void }) {
+  const Icon = item.icon;
 
-function loadOrder(): ExploreItem[] {
-  try {
-    const raw = localStorage.getItem(ORDER_KEY);
-    if (!raw) return TOP_PICKS;
-    const labels: string[] = JSON.parse(raw);
-    const byLabel = new Map(TOP_PICKS.map((i) => [i.label, i]));
-    const ordered = labels.map((l) => byLabel.get(l)).filter(Boolean) as ExploreItem[];
-    const missing = TOP_PICKS.filter((i) => !labels.includes(i.label));
-    return [...ordered, ...missing];
-  } catch {
-    return TOP_PICKS;
-  }
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`group relative overflow-hidden rounded-[22px] border border-black/5 bg-card text-left shadow-[0_8px_24px_rgba(20,25,35,0.10)] transition-all duration-200 active:scale-[0.985] ${
+        item.layout === "hero"
+          ? "col-span-3 min-h-[190px]"
+          : item.layout === "wide"
+            ? "col-span-6 min-h-[118px]"
+            : "col-span-2 min-h-[158px]"
+      }`}
+      aria-label={`Open ${item.label}`}
+    >
+      <img
+        src={item.image}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+        draggable={false}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/5" />
+      <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/65 to-transparent" />
+
+      <div className="relative flex h-full min-h-[inherit] flex-col justify-between p-3.5">
+        <div className="flex items-start justify-between gap-2">
+          <span className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.08em] text-white backdrop-blur-md">
+            <Icon className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{item.eyebrow}</span>
+          </span>
+          {item.badge && (
+            <span className="rounded-full bg-white/92 px-2 py-1 text-[10px] font-black tracking-wide text-foreground shadow-sm">
+              {item.badge}
+            </span>
+          )}
+        </div>
+
+        <div>
+          <h3 className={`${item.layout === "hero" ? "text-[22px]" : "text-[17px]"} font-black leading-tight text-white drop-shadow-sm`}>
+            {item.label}
+          </h3>
+          <p className={`mt-1 line-clamp-2 text-white/90 ${item.layout === "wide" ? "text-sm" : "text-[11px]"}`}>
+            {item.subtitle}
+          </p>
+        </div>
+      </div>
+    </button>
+  );
 }
 
 export default function ExplorePage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState("");
-  const [order, setOrder] = useState<ExploreItem[]>(loadOrder);
-  const [editing, setEditing] = useState(false);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-
-  const gridRef = useRef<HTMLDivElement>(null);
-  const longPress = useRef<number | null>(null);
-  const movedRef = useRef(false);
-  const startRef = useRef<{ x: number; y: number } | null>(null);
-
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(ORDER_KEY, JSON.stringify(order.map((i) => i.label)));
-    } catch {
-      /* ignore */
-    }
-  }, [order]);
 
   const items = useMemo(() => {
-    const n = query.trim().toLowerCase();
-    if (!n) return order;
-    return order.filter((i) => {
-      if (i.label.toLowerCase().includes(n)) return true;
-      if (i.subtitle?.toLowerCase().includes(n)) return true;
-      if (i.label === "Wellness" && (n.includes("sleep") || n.includes("move") || n.includes("relax"))) return true;
-      if (
-        i.label === "Deals" &&
-        (n.includes("coupon") || n.includes("discount") || n.includes("offer") || n.includes("promo"))
-      ) {
-        return true;
-      }
+    const needle = query.trim().toLowerCase();
+    if (!needle) return EXPLORE_ITEMS;
+
+    return EXPLORE_ITEMS.filter((item) => {
+      const haystack = `${item.label} ${item.subtitle} ${item.eyebrow ?? ""}`.toLowerCase();
+      if (haystack.includes(needle)) return true;
+      if (item.label === "Wellness" && ["sleep", "move", "relax", "health"].some((term) => needle.includes(term))) return true;
+      if (item.label === "Local Help" && ["gig", "services", "handyman", "local"].some((term) => needle.includes(term))) return true;
+      if (item.label === "Deals" && ["coupon", "discount", "offer", "promo"].some((term) => needle.includes(term))) return true;
       return false;
     });
-  }, [query, order]);
-
-  const isSearching = query.trim().length > 0;
-
-  const cardIndexAtPoint = useCallback((x: number, y: number) => {
-    const grid = gridRef.current;
-    if (!grid) return null;
-    const tiles = Array.from(grid.querySelectorAll<HTMLElement>("[data-tile-index]"));
-    for (const tile of tiles) {
-      const r = tile.getBoundingClientRect();
-      if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
-        return Number(tile.dataset.tileIndex);
-      }
-    }
-    return null;
-  }, []);
-
-  const clearLongPress = () => {
-    if (longPress.current) {
-      window.clearTimeout(longPress.current);
-      longPress.current = null;
-    }
-  };
-
-  const onPointerDown = (index: number) => (e: React.PointerEvent) => {
-    if (isSearching) return;
-    movedRef.current = false;
-    startRef.current = { x: e.clientX, y: e.clientY };
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-    if (editing) {
-      setDragIndex(index);
-      return;
-    }
-    longPress.current = window.setTimeout(() => {
-      longPress.current = null;
-      setEditing(true);
-      setDragIndex(index);
-      if (navigator.vibrate) navigator.vibrate(12);
-    }, 550);
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const start = startRef.current;
-    if (start) {
-      const dist = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-      if (dist < 12) return;
-      movedRef.current = true;
-    }
-    if (dragIndex === null) {
-      clearLongPress();
-      return;
-    }
-    const over = cardIndexAtPoint(e.clientX, e.clientY);
-    if (over === null || over === dragIndex) return;
-    setOrder((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(dragIndex, 1);
-      next.splice(over, 0, moved);
-      return next;
-    });
-    setDragIndex(over);
-  };
-
-  const onPointerUp = (item: ExploreItem) => () => {
-    const wasLongPress = longPress.current === null && dragIndex !== null;
-    const moved = movedRef.current;
-    clearLongPress();
-    setDragIndex(null);
-    startRef.current = null;
-    if (!editing && !moved && !wasLongPress && item.route) navigate(item.route);
-  };
-
+  }, [query]);
 
   return (
     <div className="flex h-[calc(100dvh-133px)] flex-col overflow-hidden bg-background text-foreground lg:h-auto">
-      <header className="shrink-0 px-4 pt-3 pb-2">
-
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-semibold text-primary">Discover people, opportunities & circles</p>
-            <h1 className="text-2xl font-black tracking-tight">Explore</h1>
-          </div>
-          <img src={yajLogo} alt="YAJ" className="h-14 w-auto -my-3" />
+      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-primary">Discover what’s happening</p>
+          <h1 className="mt-0.5 text-[28px] font-black tracking-tight">Explore</h1>
+          <p className="mt-0.5 text-xs text-muted-foreground">Live activity, local finds and things worth checking out.</p>
         </div>
 
         <div className="relative mt-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search interests, people, jobs, deals"
-            className="w-full h-11 rounded-xl bg-muted border border-border pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/35"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search people, jobs, deals, marketplace…"
+            className="h-12 w-full rounded-2xl border border-border bg-muted/70 pl-10 pr-10 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground"
               aria-label="Clear search"
             >
-              <X className="w-4 h-4" />
+              <X className="h-4 w-4" />
             </button>
           )}
         </div>
       </header>
 
-      <section className="flex min-h-0 flex-1 flex-col px-4 pb-2">
-        <div className="mb-2 flex items-end justify-between gap-3">
-          <div>
-            <h2 className="text-base font-bold text-foreground">🔥 Top picks</h2>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              {editing ? "Drag cards to reorder" : "Hold a card to rearrange"}
-            </p>
-          </div>
-          {editing && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setDragIndex(null);
-              }}
-              className="rounded-full bg-primary px-3 py-1.5 text-xs font-bold text-primary-foreground"
-            >
-              Done
-            </button>
-          )}
+      <main className="min-h-0 flex-1 overflow-y-auto px-4 pb-5 pt-3">
+        <div className="mb-3">
+          <h2 className="text-lg font-black">🔥 Top picks</h2>
+          <p className="text-xs text-muted-foreground">A quick look at the best of YAJ right now.</p>
         </div>
 
-        {items.length ? (
-          <div
-            ref={gridRef}
-            className={`grid min-h-0 flex-1 grid-cols-3 gap-2 ${
-              isSearching ? "auto-rows-min overflow-y-auto" : "grid-rows-4 overflow-hidden"
-            }`}
-          >
-
-            {items.map((item, index) => (
-              <button
+        {items.length > 0 ? (
+          <div className="grid grid-cols-6 gap-2.5">
+            {items.map((item) => (
+              <ExploreCard
                 key={item.label}
-                type="button"
-                data-tile-index={index}
-                aria-label={item.label}
-                onPointerDown={onPointerDown(index)}
-                onPointerMove={onPointerMove}
-                onPointerUp={onPointerUp(item)}
-                onPointerCancel={() => {
-                  clearLongPress();
-                  setDragIndex(null);
+                item={item}
+                onOpen={() => {
+                  if (item.route) navigate(item.route);
                 }}
-                onContextMenu={(e) => e.preventDefault()}
-                className={`min-h-0 text-left touch-none select-none transition-transform ${
-                  dragIndex === index
-                    ? "scale-105 opacity-80 z-10"
-                    : editing
-                      ? ""
-                      : "active:scale-[0.97]"
-                }`}
-                style={editing && dragIndex !== index ? { animation: "yaj-wiggle 0.5s ease-in-out infinite" } : undefined}
-              >
-                <img
-                  src={item.image}
-                  alt={`${item.label}${item.subtitle ? ` — ${item.subtitle}` : ""}`}
-                  className={`w-full rounded-2xl shadow-sm pointer-events-none ${
-                    isSearching ? "" : "h-full object-cover"
-                  }`}
-                  draggable={false}
-                />
-
-              </button>
+              />
             ))}
           </div>
         ) : (
-          <div className="px-6 py-16 text-center">
-            <p className="font-semibold">No results</p>
-            <p className="mt-1 text-sm text-muted-foreground">Try a different search.</p>
+          <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
+            <p className="font-bold">Nothing matched that search.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try jobs, deals, wellness, marketplace, battles, or local help.</p>
           </div>
         )}
-      </section>
+      </main>
     </div>
   );
 }
