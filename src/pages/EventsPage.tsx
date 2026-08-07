@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarClock, MapPin, Plus, Users } from "lucide-react";
+import { ArrowLeft, CalendarClock, MapPin, Pencil, Plus, Share2, Trash2, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import ShareEventSheet from "@/components/events/ShareEventSheet";
+
 
 type EventRow = {
   id: string;
@@ -64,6 +66,7 @@ export default function EventsPage() {
   const [showForm, setShowForm] = useState(false);
   const [tab, setTab] = useState<"discover" | "mine">("discover");
   const [filter, setFilter] = useState<string | null>(null);
+  const [shareEvent, setShareEvent] = useState<EventRow | null>(null);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
