@@ -43,36 +43,9 @@ type JobRow = {
   __kind: "job";
 };
 
-type GigRow = {
-  id: string;
-  title: string;
-  description?: string | null;
-  category: string;
-  location: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
-  urgency: string;
-  created_at: string;
-  poster_id: string;
-  media?: unknown;
-  __kind: "gig";
-};
-
-type FeedItem = JobRow | GigRow;
-type FeedKind = "all" | "jobs" | "gigs";
+type FeedItem = JobRow;
 
 const RECENT_KEY = "yaj_jobs_recent_searches";
-
-function gigCover(media: unknown): string | null {
-  if (!Array.isArray(media)) return null;
-  for (const item of media) {
-    if (typeof item === "string" && item) return item;
-    if (item && typeof item === "object" && typeof (item as { url?: string }).url === "string") {
-      return (item as { url: string }).url;
-    }
-  }
-  return null;
-}
 
 function matchesNearYou(location: string | null, prefs: Prefs | null): boolean {
   const loc = (location || "").trim().toLowerCase();
@@ -87,7 +60,6 @@ export default function JobsPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("featured");
-  const [feedKind, setFeedKind] = useState<FeedKind>("all");
   const [listings, setListings] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [forYou, setForYou] = useState(false);
