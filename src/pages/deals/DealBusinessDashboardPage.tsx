@@ -9,6 +9,7 @@ import {
   Pause,
   Pencil,
   Plus,
+  Share2,
   Square,
   Trash2,
   Wallet,
@@ -16,6 +17,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { conversionRate, formatExpiresLabel, remainingClaims } from "@/lib/deals";
 import {
+  deleteDeal,
   duplicateDeal,
   getBusinessDashboard,
   listBusinessDocuments,
@@ -27,6 +29,7 @@ import {
   type DealBusinessDocument,
 } from "@/lib/deals-api";
 import VerifiedBusinessBadge from "@/components/deals/VerifiedBusinessBadge";
+import ShareDealSheet from "@/components/deals/ShareDealSheet";
 import { toast } from "sonner";
 
 type DashTab = "dashboard" | "verification";
@@ -42,6 +45,7 @@ export default function DealBusinessDashboardPage() {
   const [conversion, setConversion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DashTab>("dashboard");
+  const [shareDeal, setShareDeal] = useState<Deal | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -357,7 +361,12 @@ export default function DealBusinessDashboardPage() {
                   />
                 ) : null}
                 <Action
-                  icon={Trash2}
+                  icon={Share2}
+                  label="Share"
+                  onClick={() => setShareDeal(d)}
+                />
+                <Action
+                  icon={Square}
                   label="Archive"
                   onClick={async () => {
                     try {
@@ -369,11 +378,27 @@ export default function DealBusinessDashboardPage() {
                     }
                   }}
                 />
+                <Action
+                  icon={Trash2}
+                  label="Delete"
+                  onClick={async () => {
+                    if (!window.confirm(`Delete "${d.title}" permanently? This cannot be undone.`)) return;
+                    try {
+                      await deleteDeal(d.id, d.business_id);
+                      toast.success("Deal deleted");
+                      void load();
+                    } catch (e: any) {
+                      toast.error(e?.message || "Could not delete deal");
+                    }
+                  }}
+                />
               </div>
             </div>
           ))
         )}
       </div>
+
+      {shareDeal ? <ShareDealSheet deal={shareDeal} onClose={() => setShareDeal(null)} /> : null}
     </div>
   );
 }
