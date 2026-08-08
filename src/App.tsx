@@ -96,6 +96,8 @@ import BlockingSettingsPage from "./pages/BlockingSettingsPage";
 import ResumeBuilderPage from "./pages/ResumeBuilderPage";
 import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
+import ProDashboardPage from "./pages/pro/ProDashboardPage";
+import ProOpportunitiesDashboardPage from "./pages/pro/ProOpportunitiesDashboardPage";
 import JobInterviewPage from "./pages/JobInterviewPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -358,6 +360,8 @@ const ProtectedRoutes = () => {
         <Route path="/resume-builder" element={<ResumeBuilderPage />} />
         <Route path="/job-preferences" element={<JobPreferencesPage />} />
         <Route path="/employer-dashboard" element={<EmployerDashboardPage />} />
+        <Route path="/pro" element={<ProDashboardPage />} />
+        <Route path="/pro/opportunities" element={<ProOpportunitiesDashboardPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />
