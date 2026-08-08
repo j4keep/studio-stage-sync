@@ -101,6 +101,8 @@ import ProOpportunitiesDashboardPage from "./pages/pro/ProOpportunitiesDashboard
 import ProEventsDashboardPage from "./pages/pro/ProEventsDashboardPage";
 import JobInterviewPage from "./pages/JobInterviewPage";
 import ChatCallPage from "./pages/ChatCallPage";
+import IncomingCallListener from "./components/call/IncomingCallListener";
+
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
@@ -514,6 +516,8 @@ const ScrollLockGuard = () => {
                   <RadioProvider>
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <ScrollLockGuard />
+                      <IncomingCallListener />
+
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
                         
