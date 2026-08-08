@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl, resolveJobCover } from "@/lib/jobs";
+import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl, resolveJobCover, notifyJobEmployer } from "@/lib/jobs";
 import MessageUserButton from "@/components/MessageUserButton";
 
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
