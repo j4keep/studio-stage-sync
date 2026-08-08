@@ -111,6 +111,14 @@ export default function JobInterviewPage() {
 
       room.on(RoomEvent.TrackSubscribed, () => attachRemote(room));
       room.on(RoomEvent.TrackUnsubscribed, () => attachRemote(room));
+      room.on(RoomEvent.LocalTrackPublished, () => {
+        setMicOn(room.localParticipant.isMicrophoneEnabled);
+        setCamOn(room.localParticipant.isCameraEnabled);
+      });
+      room.on(RoomEvent.LocalTrackUnpublished, () => {
+        setMicOn(room.localParticipant.isMicrophoneEnabled);
+        setCamOn(room.localParticipant.isCameraEnabled);
+      });
       room.on(RoomEvent.ParticipantConnected, () => {
         setRemoteJoined(true);
         attachRemote(room);
@@ -124,6 +132,7 @@ export default function JobInterviewPage() {
         setConn("idle");
       });
 
+
       await room.connect(data.url, data.token);
       setRemoteJoined(room.remoteParticipants.size > 0);
 
@@ -131,26 +140,25 @@ export default function JobInterviewPage() {
       // Publish mic and camera separately so a camera failure never kills audio (iOS Safari).
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
-        setMicOn(true);
       } catch (micErr) {
-        setMicOn(false);
-        toast.error("Microphone unavailable — check permissions");
+        toast.error("Microphone unavailable — tap the mic button to retry");
         console.warn("mic publish failed", micErr);
       }
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
       if (videoWanted) {
         try {
           await room.localParticipant.setCameraEnabled(true);
-          setCamOn(true);
           const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
           if (pub?.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
         } catch (camErr) {
-          setCamOn(false);
           toast.error("Camera unavailable — continuing with audio only");
           console.warn("camera publish failed", camErr);
         }
+        setCamOn(room.localParticipant.isCameraEnabled);
       } else {
         setCamOn(false);
       }
+
       attachRemote(room);
       setConn("connected");
     } catch (e: any) {
@@ -206,18 +214,31 @@ export default function JobInterviewPage() {
   const toggleMic = async () => {
     const room = roomRef.current;
     if (!room) return;
-    const next = !micOn;
-    await room.localParticipant.setMicrophoneEnabled(next);
-    setMicOn(next);
+    const next = !room.localParticipant.isMicrophoneEnabled;
+    try {
+      await room.localParticipant.setMicrophoneEnabled(next);
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+    } catch (e: any) {
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+      toast.error(e?.message || "Microphone blocked — allow mic access in your browser settings");
+    }
   };
 
   const toggleCam = async () => {
     const room = roomRef.current;
     if (!room || invite?.call_kind !== "video") return;
-    const next = !camOn;
-    await room.localParticipant.setCameraEnabled(next);
-    setCamOn(next);
+    const next = !room.localParticipant.isCameraEnabled;
+    try {
+      await room.localParticipant.setCameraEnabled(next);
+      setCamOn(room.localParticipant.isCameraEnabled);
+      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+      if (pub?.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
+    } catch (e: any) {
+      setCamOn(room.localParticipant.isCameraEnabled);
+      toast.error(e?.message || "Camera blocked");
+    }
   };
+
 
   useEffect(() => {
     return () => {

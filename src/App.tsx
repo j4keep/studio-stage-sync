@@ -100,6 +100,7 @@ import ProDashboardPage from "./pages/pro/ProDashboardPage";
 import ProOpportunitiesDashboardPage from "./pages/pro/ProOpportunitiesDashboardPage";
 import ProEventsDashboardPage from "./pages/pro/ProEventsDashboardPage";
 import JobInterviewPage from "./pages/JobInterviewPage";
+import ChatCallPage from "./pages/ChatCallPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
@@ -359,6 +360,7 @@ const ProtectedRoutes = () => {
         <Route path="/wellness/food" element={<WellnessFoodPage />} />
         <Route path="/jobs" element={<JobsPage />} />
         <Route path="/jobs/interview/:applicationId" element={<JobInterviewPage />} />
+        <Route path="/call/:conversationId" element={<ChatCallPage />} />
         <Route path="/jobs/:id" element={<JobDetailPage />} />
         <Route path="/gigs" element={<GigBoardPage />} />
         <Route path="/gigs/:id" element={<GigDetailPage />} />

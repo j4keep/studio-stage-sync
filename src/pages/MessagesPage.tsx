@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Send, Paperclip, Image, X, Plus, MessageCircle, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, Send, Paperclip, Image, X, Plus, MessageCircle, MoreHorizontal, Video, Phone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import MarketplaceMoreOptionsSheet, {
 } from "@/components/marketplace/MarketplaceMoreOptionsSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { toast as sonnerToast } from "sonner";
+import { encodeCallInvite, parseCallInvite, callInviteLabel, type MessageCallKind } from "@/lib/message-call";
 
 
 interface Profile {
@@ -157,7 +158,11 @@ const MessagesPage = () => {
           id: conv.id,
           updated_at: conv.updated_at,
           other_user: otherParticipant ? profileMap[otherParticipant.user_id] || null : null,
-          last_message: lastMsg?.content || "No messages yet",
+          last_message: (() => {
+            const ci = parseCallInvite(lastMsg?.content);
+            if (ci) return ci.kind === "audio" ? "Audio call" : "Video call";
+            return lastMsg?.content || "No messages yet";
+          })(),
           context: ctx,
           openMarketplaceProfile: ctx === "marketplace",
           openBusinessProfile: ctx === "local_help",
@@ -289,6 +294,31 @@ const MessagesPage = () => {
       return () => window.clearTimeout(t);
     }
   }, [activeConversation?.id]);
+
+  const startCall = async (kind: MessageCallKind) => {
+    if (!activeConversation || !user) return;
+    const otherId = activeConversation.other_user?.user_id;
+    if (otherId && (await isBlockedBetween(user.id, otherId))) {
+      toast({
+        title: "Can't call this user",
+        description: "You're blocked from each other on YAJ.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await supabase.from("messages").insert({
+      conversation_id: activeConversation.id,
+      sender_id: user.id,
+      content: encodeCallInvite(kind, activeConversation.id),
+    });
+    await supabase
+      .from("conversations")
+      .update({ updated_at: new Date().toISOString() })
+      .eq("id", activeConversation.id);
+    queryClient.invalidateQueries({ queryKey: ["messages", activeConversation.id] });
+    queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    navigate(`/call/${activeConversation.id}?kind=${kind}`);
+  };
 
   const sendMessage = async () => {
     if (!messageText.trim() || !activeConversation || !user || sending) return;
@@ -596,6 +626,24 @@ const MessagesPage = () => {
               )}
             </div>
           </button>
+          <button
+            type="button"
+            onClick={() => void startCall("audio")}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
+            aria-label="Audio call"
+            title="Audio call"
+          >
+            <Phone className="h-4 w-4 text-foreground" />
+          </button>
+          <button
+            type="button"
+            onClick={() => void startCall("video")}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
+            aria-label="Video call"
+            title="Video call"
+          >
+            <Video className="h-4 w-4 text-foreground" />
+          </button>
           {activeConversation.other_user?.user_id && (
             <button
               type="button"
@@ -621,6 +669,29 @@ const MessagesPage = () => {
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-3">
           {messages.map((msg) => {
             const isMine = msg.sender_id === user?.id;
+            const callInvite = parseCallInvite(msg.content);
+            if (callInvite) {
+              return (
+                <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+                  <div className="max-w-[80%] rounded-2xl border border-border bg-card px-3 py-2.5">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      {callInvite.kind === "audio" ? <Phone className="h-4 w-4" /> : <Video className="h-4 w-4" />}
+                      {callInviteLabel(callInvite.kind, isMine)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/call/${callInvite.conversationId}?kind=${callInvite.kind}`)}
+                      className="mt-2 rounded-full bg-primary px-4 py-1.5 text-xs font-bold text-primary-foreground"
+                    >
+                      Join call
+                    </button>
+                    <p className="mt-1 text-[9px] text-muted-foreground">
+                      {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    </p>
+                  </div>
+                </div>
+              );
+            }
             return (
               <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                 <div
