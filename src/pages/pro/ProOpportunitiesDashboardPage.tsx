@@ -8,14 +8,12 @@ import {
   FileText,
   Plus,
   Settings2,
-  Wrench,
   Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatSalary, timeAgo, EMPLOYMENT_TYPES } from "@/lib/jobs";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
-import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 type MyJob = {
   id: string;
@@ -36,7 +34,6 @@ export default function ProOpportunitiesDashboardPage() {
   const [applicantCounts, setApplicantCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showJobSheet, setShowJobSheet] = useState(false);
-  const [showGigSheet, setShowGigSheet] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -78,7 +75,6 @@ export default function ProOpportunitiesDashboardPage() {
     { icon: Building2, label: "Hiring pipeline", sub: "Review, interview & hire applicants", route: "/employer-dashboard" },
     { icon: FileText, label: "Resume", sub: "Build, upload & manage your resume", route: "/resume-builder" },
     { icon: Briefcase, label: "My applications", sub: "Track jobs you applied to", route: "/my-jobs" },
-    { icon: Wrench, label: "My gigs", sub: "Posted, working & completed gigs", route: "/my-gigs" },
     { icon: Settings2, label: "Job preferences", sub: "Match settings & alerts", route: "/job-preferences" },
   ];
 
@@ -101,28 +97,17 @@ export default function ProOpportunitiesDashboardPage() {
         </div>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 px-4 pt-4">
+      <section className="px-4 pt-4">
         <button
           type="button"
           onClick={() => setShowJobSheet(true)}
-          className="rounded-2xl border border-border bg-card p-4 text-left active:scale-[0.98]"
+          className="w-full rounded-2xl border border-border bg-card p-4 text-left active:scale-[0.98]"
         >
           <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10">
             <Plus className="h-4 w-4 text-primary" />
           </span>
           <p className="text-[15px] font-bold leading-tight">Post a job</p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">Full-time, part-time, contract</p>
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowGigSheet(true)}
-          className="rounded-2xl border border-border bg-card p-4 text-left active:scale-[0.98]"
-        >
-          <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-muted">
-            <Wrench className="h-4 w-4 text-foreground" />
-          </span>
-          <p className="text-[15px] font-bold leading-tight">Post a gig</p>
-          <p className="mt-0.5 text-[12px] text-muted-foreground">One-off local help</p>
         </button>
       </section>
 
@@ -201,7 +186,6 @@ export default function ProOpportunitiesDashboardPage() {
       </section>
 
       <PostJobSheet open={showJobSheet} onClose={() => setShowJobSheet(false)} onCreated={load} />
-      <PostGigSheet open={showGigSheet} onClose={() => setShowGigSheet(false)} onCreated={load} />
     </div>
   );
 }
