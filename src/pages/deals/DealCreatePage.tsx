@@ -75,7 +75,8 @@ export default function DealCreatePage() {
           return;
         }
         setBusinesses(list);
-        setBusinessId(list[0].id);
+        setBusinessId((prev) => prev || list[0].id);
+
       } catch (e: any) {
         toast.error(e?.message || "Could not load business");
       }
