@@ -372,6 +372,8 @@ const ProtectedRoutes = () => {
         <Route path="/events" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/connections" element={<Navigate to="/circle" replace />} />
+        <Route path="/games" element={<GamesHubPage />} />
+        <Route path="/games/tic-tac-toe/:id" element={<TicTacToePage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
