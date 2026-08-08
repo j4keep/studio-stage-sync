@@ -33,8 +33,7 @@ type CardDef = {
   desc: string;
   difficulty: string;
   players: string;
-  gradient: string;
-  glyph: string;
+  image: string;
   live: boolean;
   solo: boolean;
   multi: boolean;
@@ -48,9 +47,8 @@ const CARDS: CardDef[] = [
     desc: "The YAJ classic. Draw, block, win.",
     difficulty: "Medium",
     players: "2 players",
-    gradient: "from-[hsl(215_45%_18%)] to-[hsl(215_60%_32%)]",
-    glyph: "🁫",
-    live: false,
+    image: dominoesArt,
+    live: true,
     solo: true,
     multi: true,
     featured: true,
@@ -61,8 +59,7 @@ const CARDS: CardDef[] = [
     desc: "Fast rounds. Solo or challenge a friend.",
     difficulty: "Easy",
     players: "2 players",
-    gradient: "from-[hsl(255_60%_30%)] to-[hsl(280_65%_45%)]",
-    glyph: "✕◯",
+    image: tttArt,
     live: true,
     solo: true,
     multi: true,
@@ -74,9 +71,8 @@ const CARDS: CardDef[] = [
     desc: "Drop, stack, line up four.",
     difficulty: "Easy",
     players: "2 players",
-    gradient: "from-[hsl(200_70%_28%)] to-[hsl(190_70%_45%)]",
-    glyph: "🔵🔴",
-    live: false,
+    image: connectFourArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -86,9 +82,8 @@ const CARDS: CardDef[] = [
     desc: "Captures, kings, comebacks.",
     difficulty: "Medium",
     players: "2 players",
-    gradient: "from-[hsl(20_60%_28%)] to-[hsl(35_70%_45%)]",
-    glyph: "⛃",
-    live: false,
+    image: checkersArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -98,9 +93,8 @@ const CARDS: CardDef[] = [
     desc: "Music, movies, sports & more.",
     difficulty: "Easy",
     players: "1–2 players",
-    gradient: "from-[hsl(160_55%_25%)] to-[hsl(150_60%_40%)]",
-    glyph: "❓",
-    live: false,
+    image: triviaArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -110,9 +104,8 @@ const CARDS: CardDef[] = [
     desc: "Run, dodge, collect stars.",
     difficulty: "Easy",
     players: "Solo",
-    gradient: "from-[hsl(300_55%_28%)] to-[hsl(330_70%_48%)]",
-    glyph: "⭐",
-    live: false,
+    image: dashArt,
+    live: true,
     solo: true,
     multi: false,
   },
