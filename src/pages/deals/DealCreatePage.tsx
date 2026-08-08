@@ -362,10 +362,18 @@ export default function DealCreatePage() {
               <input className="input" type="number" min="0" step="0.01" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />
             </Field>
           </div>
-          <Field label="Promotional image">
+          <Field label="Your flyer image">
             <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            {previewUrl ? <img src={previewUrl} alt="" className="mt-2 h-32 w-full rounded-xl object-cover" /> : null}
+            <p className="mt-1 text-[11px] font-normal text-muted-foreground">
+              Upload your own flyer — it’s auto-fitted to the deal card frame (16:10) so it always looks right.
+            </p>
+            {previewUrl ? (
+              <div className="mt-2 overflow-hidden rounded-xl border border-border">
+                <img src={previewUrl} alt="" className="aspect-[16/10] w-full object-cover" />
+              </div>
+            ) : null}
           </Field>
+
           <div className="grid grid-cols-2 gap-2">
             <Field label="Starts">
               <input className="input" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
