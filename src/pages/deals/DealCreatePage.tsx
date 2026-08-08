@@ -474,7 +474,16 @@ export default function DealCreatePage() {
             onClick={publish}
             className="h-12 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-sm font-black text-white disabled:opacity-50"
           >
-            {submitting ? "Publishing…" : canPublish ? "Publish deal" : "Submit for review"}
+            {submitting
+              ? editId
+                ? "Saving…"
+                : "Publishing…"
+              : editId
+                ? "Save changes"
+                : canPublish
+                  ? "Publish deal"
+                  : "Submit for review"}
+
           </button>
         </div>
       )}
