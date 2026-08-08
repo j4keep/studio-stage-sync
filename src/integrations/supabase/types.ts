@@ -1252,6 +1252,222 @@ export type Database = {
           },
         ]
       }
+      game_invites: {
+        Row: {
+          created_at: string
+          from_user_id: string
+          game_id: string | null
+          game_type: string
+          id: string
+          message: string | null
+          responded_at: string | null
+          status: string
+          to_user_id: string
+        }
+        Insert: {
+          created_at?: string
+          from_user_id: string
+          game_id?: string | null
+          game_type: string
+          id?: string
+          message?: string | null
+          responded_at?: string | null
+          status?: string
+          to_user_id: string
+        }
+        Update: {
+          created_at?: string
+          from_user_id?: string
+          game_id?: string | null
+          game_type?: string
+          id?: string
+          message?: string | null
+          responded_at?: string | null
+          status?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_invites_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_moves: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          move: Json
+          move_number: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          move: Json
+          move_number: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          move?: Json
+          move_number?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_moves_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_players: {
+        Row: {
+          created_at: string
+          game_id: string
+          id: string
+          is_computer: boolean
+          result: string | null
+          seat: number
+          symbol: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          game_id: string
+          id?: string
+          is_computer?: boolean
+          result?: string | null
+          seat: number
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          game_id?: string
+          id?: string
+          is_computer?: boolean
+          result?: string | null
+          seat?: number
+          symbol?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_players_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      game_stats: {
+        Row: {
+          best_streak: number
+          created_at: string
+          current_streak: number
+          draws: number
+          game_type: string
+          games_played: number
+          high_score: number
+          id: string
+          last_played_at: string | null
+          losses: number
+          updated_at: string
+          user_id: string
+          wins: number
+          xp: number
+        }
+        Insert: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          draws?: number
+          game_type: string
+          games_played?: number
+          high_score?: number
+          id?: string
+          last_played_at?: string | null
+          losses?: number
+          updated_at?: string
+          user_id: string
+          wins?: number
+          xp?: number
+        }
+        Update: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          draws?: number
+          game_type?: string
+          games_played?: number
+          high_score?: number
+          id?: string
+          last_played_at?: string | null
+          losses?: number
+          updated_at?: string
+          user_id?: string
+          wins?: number
+          xp?: number
+        }
+        Relationships: []
+      }
+      games: {
+        Row: {
+          created_at: string
+          current_turn_user_id: string | null
+          finished_at: string | null
+          game_state: Json
+          game_type: string
+          host_user_id: string
+          id: string
+          is_draw: boolean
+          mode: string
+          status: string
+          updated_at: string
+          winner_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_turn_user_id?: string | null
+          finished_at?: string | null
+          game_state?: Json
+          game_type: string
+          host_user_id: string
+          id?: string
+          is_draw?: boolean
+          mode?: string
+          status?: string
+          updated_at?: string
+          winner_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_turn_user_id?: string | null
+          finished_at?: string | null
+          game_state?: Json
+          game_type?: string
+          host_user_id?: string
+          id?: string
+          is_draw?: boolean
+          mode?: string
+          status?: string
+          updated_at?: string
+          winner_user_id?: string | null
+        }
+        Relationships: []
+      }
       gig_interests: {
         Row: {
           created_at: string
@@ -4533,6 +4749,10 @@ export type Database = {
       }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_game_participant: {
+        Args: { _game_id: string; _user_id: string }
         Returns: boolean
       }
       is_podcast_participant: {
