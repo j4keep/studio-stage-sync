@@ -67,25 +67,14 @@ export const GAME_LABELS: Record<GameType, string> = {
 
 /** Create a solo game vs the computer. */
 export async function createSoloGame(gameType: GameType, userId: string, initialState: any) {
-  const { data: game, error } = await db
-    .from("games")
-    .insert({
-      game_type: gameType,
-      host_user_id: userId,
-      mode: "solo",
-      status: "active",
-      current_turn_user_id: userId,
-      game_state: initialState,
-    })
-    .select()
-    .single();
+  const { data: game, error } = await db.rpc("create_game", {
+    p_game_type: gameType,
+    p_mode: "solo",
+    p_initial_state: initialState,
+    p_opponent_id: null,
+  });
   if (error) throw error;
-
-  const { error: pErr } = await db.from("game_players").insert([
-    { game_id: game.id, user_id: userId, seat: 1, symbol: "X" },
-    { game_id: game.id, user_id: null, is_computer: true, seat: 2, symbol: "O" },
-  ]);
-  if (pErr) throw pErr;
+  if (!game || game.host_user_id !== userId) throw new Error("The game could not be created securely.");
   return game as GameRow;
 }
 
@@ -96,34 +85,14 @@ export async function createMultiplayerGame(
   opponentId: string,
   initialState: any,
 ) {
-  const { data: game, error } = await db
-    .from("games")
-    .insert({
-      game_type: gameType,
-      host_user_id: userId,
-      mode: "multiplayer",
-      status: "waiting",
-      current_turn_user_id: userId,
-      game_state: initialState,
-    })
-    .select()
-    .single();
-  if (error) throw error;
-
-  const { error: pErr } = await db.from("game_players").insert([
-    { game_id: game.id, user_id: userId, seat: 1, symbol: "X" },
-    { game_id: game.id, user_id: opponentId, seat: 2, symbol: "O" },
-  ]);
-  if (pErr) throw pErr;
-
-  const { error: iErr } = await db.from("game_invites").insert({
-    game_id: game.id,
-    game_type: gameType,
-    from_user_id: userId,
-    to_user_id: opponentId,
+  const { data: game, error } = await db.rpc("create_game", {
+    p_game_type: gameType,
+    p_mode: "multiplayer",
+    p_initial_state: initialState,
+    p_opponent_id: opponentId,
   });
-  if (iErr) throw iErr;
-
+  if (error) throw error;
+  if (!game || game.host_user_id !== userId) throw new Error("The challenge could not be created securely.");
   return game as GameRow;
 }
 
