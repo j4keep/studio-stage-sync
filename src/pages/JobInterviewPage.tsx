@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Mic, MicOff, PhoneOff, Video, VideoOff, Loader2 } from "lucide-react";
-import { Room, RoomEvent, Track } from "livekit-client";
+import { createLocalAudioTrack, Room, RoomEvent, Track, type LocalAudioTrack } from "livekit-client";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatInterviewWhen, getInterviewInvite, interviewJoinState } from "@/lib/job-interview";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
+import { setIosAudioSessionForRecording } from "@/lib/feed-video-playback";
 
 export default function JobInterviewPage() {
   const { applicationId } = useParams();
@@ -26,6 +27,7 @@ export default function JobInterviewPage() {
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
+  const localAudioRef = useRef<LocalAudioTrack | null>(null);
 
   useEffect(() => {
     if (!user || !applicationId) return;
@@ -92,9 +94,25 @@ export default function JobInterviewPage() {
 
     setConn("connecting");
     setError(null);
+    let capturedMic: LocalAudioTrack | null = null;
     try {
       // Free the iOS audio session held by feed/radio players before capturing.
       stopAllPageMedia();
+      setIosAudioSessionForRecording();
+
+      // Capture directly from this tap. On iPhone, waiting for profile/token
+      // requests before getUserMedia can lose the user-gesture capture window.
+      try {
+        capturedMic = await createLocalAudioTrack({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        });
+        localAudioRef.current = capturedMic;
+      } catch (micErr) {
+        console.warn("initial mic capture failed", micErr);
+      }
+
       const { data: profile } = await supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle();
       const { data, error: fnErr } = await supabase.functions.invoke("livekit-token", {
         body: {
@@ -139,7 +157,13 @@ export default function JobInterviewPage() {
       const videoWanted = invite.call_kind === "video";
       // Publish mic and camera separately so a camera failure never kills audio (iOS Safari).
       try {
-        await room.localParticipant.setMicrophoneEnabled(true);
+        const micTrack = capturedMic ?? await createLocalAudioTrack({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        });
+        localAudioRef.current = micTrack;
+        await room.localParticipant.publishTrack(micTrack);
       } catch (micErr) {
         toast.error("Microphone unavailable — tap the mic button to retry");
         console.warn("mic publish failed", micErr);
@@ -162,6 +186,8 @@ export default function JobInterviewPage() {
       attachRemote(room);
       setConn("connected");
     } catch (e: any) {
+      capturedMic?.stop();
+      if (localAudioRef.current === capturedMic) localAudioRef.current = null;
       setConn("error");
       setError(e.message || "Failed to join interview");
       toast.error(e.message || "Failed to join interview");
@@ -201,6 +227,7 @@ export default function JobInterviewPage() {
       remoteAudioRef.current.srcObject = null;
       remoteAudioRef.current.pause();
     }
+    localAudioRef.current = null;
     setConn("idle");
     setMicOn(true);
     setCamOn(true);
@@ -216,7 +243,18 @@ export default function JobInterviewPage() {
     if (!room) return;
     const next = !room.localParticipant.isMicrophoneEnabled;
     try {
-      await room.localParticipant.setMicrophoneEnabled(next);
+      if (next && !room.localParticipant.getTrackPublication(Track.Source.Microphone)?.track) {
+        setIosAudioSessionForRecording();
+        const micTrack = await createLocalAudioTrack({
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        });
+        localAudioRef.current = micTrack;
+        await room.localParticipant.publishTrack(micTrack);
+      } else {
+        await room.localParticipant.setMicrophoneEnabled(next);
+      }
       setMicOn(room.localParticipant.isMicrophoneEnabled);
     } catch (e: any) {
       setMicOn(room.localParticipant.isMicrophoneEnabled);
@@ -251,6 +289,7 @@ export default function JobInterviewPage() {
           track?.detach?.();
         });
         room?.disconnect();
+        localAudioRef.current = null;
       } catch {
         /* ignore */
       }
