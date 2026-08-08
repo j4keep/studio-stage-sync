@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -12,22 +12,30 @@ import {
 import {
   addDealImage,
   createDealDraft,
+  getDeal,
   listMyBusinesses,
   submitDeal,
+  updateDeal,
   uploadDealImage,
+  resolveDealMediaUrl,
   type DealBusiness,
 } from "@/lib/deals-api";
+import { normalizeDealFlyer } from "@/lib/deal-flyer";
 import { toast } from "sonner";
 
 export default function DealCreatePage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const editId = params.get("edit");
   const [businesses, setBusinesses] = useState<DealBusiness[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [step, setStep] = useState<"form" | "preview">("form");
   const [submitting, setSubmitting] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [existingCover, setExistingCover] = useState<string | null>(null);
+
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>(DEAL_CATEGORIES[0].id);
@@ -67,7 +75,8 @@ export default function DealCreatePage() {
           return;
         }
         setBusinesses(list);
-        setBusinessId(list[0].id);
+        setBusinessId((prev) => prev || list[0].id);
+
       } catch (e: any) {
         toast.error(e?.message || "Could not load business");
       }
@@ -76,13 +85,54 @@ export default function DealCreatePage() {
 
   useEffect(() => {
     if (!file) {
-      setPreviewUrl(null);
+      setPreviewUrl(existingCover ? resolveDealMediaUrl(existingCover) : null);
       return;
     }
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, existingCover]);
+
+  // Edit mode: prefill every field from the existing deal card.
+  useEffect(() => {
+    if (!editId) return;
+    void (async () => {
+      try {
+        const d = await getDeal(editId);
+        if (!d) {
+          toast.error("Deal not found");
+          return;
+        }
+        setBusinessId(d.business_id);
+        setTitle(d.title);
+        setCategory(d.category);
+        setDescription(d.description || "");
+        setDealType(d.deal_type);
+        setRegularPrice(d.regular_price != null ? String(d.regular_price) : "");
+        setDealPrice(d.deal_price != null ? String(d.deal_price) : "");
+        setDiscountValue(d.discount_value != null ? String(d.discount_value) : "");
+        setStartsAt(new Date(d.starts_at).toISOString().slice(0, 16));
+        setExpiresAt(new Date(d.expires_at).toISOString().slice(0, 16));
+        setRedemptionType(d.redemption_type);
+        setPromoCode(d.promo_code || "");
+        setTotalLimit(d.total_claim_limit != null ? String(d.total_claim_limit) : "");
+        setPerUserLimit(String(d.per_user_limit ?? 1));
+        setLocationType(d.location_type || "in_store");
+        setAddress(d.address || "");
+        setCity(d.city || "");
+        setState(d.state || "");
+        setPostal(d.postal_code || "");
+        setTerms(d.terms || "");
+        setMinimumPurchase(d.minimum_purchase != null ? String(d.minimum_purchase) : "");
+        setAgeRestriction(d.age_restriction != null ? String(d.age_restriction) : "");
+        setExternalUrl(d.external_url || "");
+        setExistingCover(d.cover_url || null);
+      } catch (e: any) {
+        toast.error(e?.message || "Could not load deal");
+      }
+    })();
+  }, [editId]);
+
 
   const selectedBiz = businesses.find((b) => b.id === businessId);
   // Launch model: verification is optional. Only admin-blocked businesses are gated.
@@ -139,7 +189,42 @@ export default function DealCreatePage() {
     setSubmitting(true);
     try {
       let coverUrl: string | null = null;
-      if (file) coverUrl = await uploadDealImage(user.id, file);
+      if (file) coverUrl = await uploadDealImage(user.id, await normalizeDealFlyer(file));
+
+      if (editId) {
+        await updateDeal(editId, businessId, {
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          deal_type: dealType,
+          regular_price: regularPrice ? Number(regularPrice) : null,
+          deal_price: dealPrice ? Number(dealPrice) : null,
+          discount_value: discountValue ? Number(discountValue) : null,
+          discount_badge: badge,
+          starts_at: new Date(startsAt).toISOString(),
+          expires_at: new Date(expiresAt).toISOString(),
+          redemption_type: redemptionType,
+          promo_code: promoCode || null,
+          total_claim_limit: totalLimit ? Number(totalLimit) : null,
+          per_user_limit: perUserLimit ? Number(perUserLimit) : 1,
+          location_type: locationType,
+          address: locationType === "online" ? null : address,
+          city: locationType === "online" ? null : city,
+          state: locationType === "online" ? null : state,
+          postal_code: locationType === "online" ? null : postal,
+          terms: terms || null,
+          minimum_purchase: minimumPurchase ? Number(minimumPurchase) : null,
+          age_restriction: ageRestriction ? Number(ageRestriction) : null,
+          external_url: externalUrl || null,
+          ...(coverUrl ? { cover_url: coverUrl } : {}),
+        });
+        if (coverUrl) await addDealImage(editId, coverUrl, true);
+        toast.success("Deal updated");
+        nav("/deals/business");
+        return;
+      }
+
+
 
       const draft = await createDealDraft({
         businessId,
@@ -210,7 +295,10 @@ export default function DealCreatePage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-lg font-black">{step === "form" ? "Create deal" : "Preview"}</h1>
+        <h1 className="text-lg font-black">
+          {step === "preview" ? "Preview" : editId ? "Edit deal" : "Create deal"}
+        </h1>
+
       </header>
 
       {!canPublish ? (
@@ -274,10 +362,18 @@ export default function DealCreatePage() {
               <input className="input" type="number" min="0" step="0.01" value={discountValue} onChange={(e) => setDiscountValue(e.target.value)} />
             </Field>
           </div>
-          <Field label="Promotional image">
+          <Field label="Your flyer image">
             <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} />
-            {previewUrl ? <img src={previewUrl} alt="" className="mt-2 h-32 w-full rounded-xl object-cover" /> : null}
+            <p className="mt-1 text-[11px] font-normal text-muted-foreground">
+              Upload your own flyer — it’s auto-fitted to the deal card frame (16:10) so it always looks right.
+            </p>
+            {previewUrl ? (
+              <div className="mt-2 overflow-hidden rounded-xl border border-border">
+                <img src={previewUrl} alt="" className="aspect-[16/10] w-full object-cover" />
+              </div>
+            ) : null}
           </Field>
+
           <div className="grid grid-cols-2 gap-2">
             <Field label="Starts">
               <input className="input" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
@@ -378,7 +474,16 @@ export default function DealCreatePage() {
             onClick={publish}
             className="h-12 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-sm font-black text-white disabled:opacity-50"
           >
-            {submitting ? "Publishing…" : canPublish ? "Publish deal" : "Submit for review"}
+            {submitting
+              ? editId
+                ? "Saving…"
+                : "Publishing…"
+              : editId
+                ? "Save changes"
+                : canPublish
+                  ? "Publish deal"
+                  : "Submit for review"}
+
           </button>
         </div>
       )}
