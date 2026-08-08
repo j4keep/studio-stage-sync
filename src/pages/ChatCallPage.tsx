@@ -297,7 +297,7 @@ export default function ChatCallPage() {
         {error && <p className="text-xs text-rose-400">{error}</p>}
       </div>
 
-      <div className="flex items-center justify-center gap-3 border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+      <div className="relative z-[10] flex shrink-0 items-center justify-center gap-4 border-t border-white/10 bg-zinc-950 px-4 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] pt-4">
         {conn === "connected" ? (
           <>
             <button onClick={toggleMic} className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10" aria-label={micOn ? "Mute" : "Unmute"}>
