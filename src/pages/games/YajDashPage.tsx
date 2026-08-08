@@ -20,6 +20,7 @@ export default function YajDashPage() {
   const [over, setOver] = useState(false);
   const [best, setBest] = useState(0);
   const laneRef = useRef(1);
+  const scoreRef = useRef(0);
   const raf = useRef<number | null>(null);
   const last = useRef(0);
   const spawn = useRef(0);
@@ -90,7 +91,7 @@ export default function YajDashPage() {
     [stop],
   );
 
-  const scoreRef = useRef(0);
+  
 
   const start = () => {
     scoreRef.current = 0;
