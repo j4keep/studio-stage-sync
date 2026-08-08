@@ -98,6 +98,7 @@ import JobPreferencesPage from "./pages/JobPreferencesPage";
 import EmployerDashboardPage from "./pages/EmployerDashboardPage";
 import ProDashboardPage from "./pages/pro/ProDashboardPage";
 import ProOpportunitiesDashboardPage from "./pages/pro/ProOpportunitiesDashboardPage";
+import ProEventsDashboardPage from "./pages/pro/ProEventsDashboardPage";
 import JobInterviewPage from "./pages/JobInterviewPage";
 import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
 import ServicesPage from "./pages/ServicesPage";
@@ -369,6 +370,7 @@ const ProtectedRoutes = () => {
         <Route path="/employer-dashboard" element={<EmployerDashboardPage />} />
         <Route path="/pro" element={<ProDashboardPage />} />
         <Route path="/pro/opportunities" element={<ProOpportunitiesDashboardPage />} />
+        <Route path="/pro/events" element={<ProEventsDashboardPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
         <Route path="/tv/*" element={<Navigate to="/" replace />} />

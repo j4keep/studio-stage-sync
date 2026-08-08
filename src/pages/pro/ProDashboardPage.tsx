@@ -33,7 +33,7 @@ const SECTIONS: Section[] = [
   { id: "local-help", label: "Local Help", sub: "Your service business profile & gigs", icon: Wrench, route: "/local-help/business", ready: true },
   { id: "deals", label: "Deals", sub: "Business deals, redemptions & verification", icon: Tag, route: "/deals/business", ready: true },
   { id: "marketplace", label: "Marketplace", sub: "Your listings, offers & sales", icon: Store, route: "/marketplace/account", ready: true },
-  { id: "events", label: "Events", sub: "Manage events & RSVPs", icon: CalendarDays, route: "/events", ready: true },
+  { id: "events", label: "Events", sub: "Manage events & RSVPs", icon: CalendarDays, route: "/pro/events", ready: true },
   { id: "radio", label: "Radio", sub: "Songs, playlists & rotation", icon: Radio, route: "/my-songs", ready: true },
   { id: "tv", label: "YAJ TV", sub: "Videos & shows you publish", icon: Tv, route: "/my-videos", ready: true },
   { id: "wellness", label: "Wellness", sub: "Coach content & programs", icon: HeartPulse, ready: false },
