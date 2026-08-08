@@ -239,3 +239,13 @@ export async function notifyJobApplicant(applicationId: string): Promise<{ ok: b
   }
   return { ok: false, error: msg };
 }
+
+/** Notify the employer that a new application came in. */
+export async function notifyJobEmployer(applicationId: string): Promise<{ ok: boolean; error?: string }> {
+  const { data, error } = await supabase.functions.invoke("notify-job-employer", {
+    body: { application_id: applicationId },
+  });
+  if (!error && data && (data as { ok?: boolean }).ok) return { ok: true };
+  return { ok: false, error: error?.message || "Notification failed" };
+}
+
