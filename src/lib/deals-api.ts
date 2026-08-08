@@ -1006,3 +1006,28 @@ export function dealClaimBlockedReason(deal: Deal): string | null {
 }
 
 export { isMissingTableError };
+
+/** Business owner edits an existing deal (any field on the card). */
+export async function updateDeal(
+  dealId: string,
+  businessId: string,
+  patch: Record<string, unknown>,
+): Promise<Deal> {
+  const { data, error } = await sb
+    .from("deals")
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq("id", dealId)
+    .eq("business_id", businessId)
+    .select("*, deal_businesses(*), deal_images(*)")
+    .single();
+  if (error) throw error;
+  return data as Deal;
+}
+
+/** Permanently deletes a deal the business created, plus its images. */
+export async function deleteDeal(dealId: string, businessId: string) {
+  await sb.from("deal_images").delete().eq("deal_id", dealId);
+  await sb.from("deal_saves").delete().eq("deal_id", dealId);
+  const { error } = await sb.from("deals").delete().eq("id", dealId).eq("business_id", businessId);
+  if (error) throw error;
+}
