@@ -140,26 +140,25 @@ export default function JobInterviewPage() {
       // Publish mic and camera separately so a camera failure never kills audio (iOS Safari).
       try {
         await room.localParticipant.setMicrophoneEnabled(true);
-        setMicOn(true);
       } catch (micErr) {
-        setMicOn(false);
-        toast.error("Microphone unavailable — check permissions");
+        toast.error("Microphone unavailable — tap the mic button to retry");
         console.warn("mic publish failed", micErr);
       }
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
       if (videoWanted) {
         try {
           await room.localParticipant.setCameraEnabled(true);
-          setCamOn(true);
           const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
           if (pub?.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
         } catch (camErr) {
-          setCamOn(false);
           toast.error("Camera unavailable — continuing with audio only");
           console.warn("camera publish failed", camErr);
         }
+        setCamOn(room.localParticipant.isCameraEnabled);
       } else {
         setCamOn(false);
       }
+
       attachRemote(room);
       setConn("connected");
     } catch (e: any) {
