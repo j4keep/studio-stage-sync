@@ -17,9 +17,15 @@ import {
   listMyInvites,
   respondToInvite,
 } from "@/lib/games";
-import { EMPTY_BOARD } from "@/lib/tic-tac-toe";
+import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import dominoesArt from "@/assets/games/dominoes.jpg";
+import tttArt from "@/assets/games/tic-tac-toe.jpg";
+import connectFourArt from "@/assets/games/connect-four.jpg";
+import checkersArt from "@/assets/games/checkers.jpg";
+import triviaArt from "@/assets/games/trivia.jpg";
+import dashArt from "@/assets/games/yaj-dash.jpg";
 
 type CardDef = {
   type: GameType;
