@@ -196,14 +196,11 @@ export default function GamesHubPage() {
 
   const startSolo = async (type: GameType) => {
     if (!user) return navigate("/auth");
-    if (type !== "tic_tac_toe") {
-      toast({ title: `${GAME_LABELS[type]} is coming soon` });
-      return;
-    }
+    if (type === "yaj_dash") return navigate(gameRoute("yaj_dash"));
     setBusy(true);
     try {
-      const game = await createSoloGame(type, user.id, { board: EMPTY_BOARD, moveNumber: 0 });
-      navigate(`/games/tic-tac-toe/${game.id}`);
+      const game = await createSoloGame(type, user.id, initialStateFor(type));
+      navigate(gameRoute(type, game.id));
     } catch (e: any) {
       toast({ title: "Could not start the game", description: e.message, variant: "destructive" });
     } finally {
@@ -213,10 +210,6 @@ export default function GamesHubPage() {
 
   const startMulti = (type: GameType) => {
     if (!user) return navigate("/auth");
-    if (type !== "tic_tac_toe") {
-      toast({ title: `${GAME_LABELS[type]} multiplayer is coming soon` });
-      return;
-    }
     setPickerFor(type);
   };
 
@@ -224,13 +217,11 @@ export default function GamesHubPage() {
     if (!user || !pickerFor) return;
     setBusy(true);
     try {
-      const game = await createMultiplayerGame(pickerFor, user.id, opponentId, {
-        board: EMPTY_BOARD,
-        moveNumber: 0,
-      });
+      const game = await createMultiplayerGame(pickerFor, user.id, opponentId, initialStateFor(pickerFor));
+      const type = pickerFor;
       setPickerFor(null);
       toast({ title: `Challenge sent to ${name}` });
-      navigate(`/games/tic-tac-toe/${game.id}`);
+      navigate(gameRoute(type, game.id));
     } catch (e: any) {
       toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
     } finally {
@@ -242,11 +233,12 @@ export default function GamesHubPage() {
     try {
       await respondToInvite(invite.id, accept);
       await refresh();
-      if (accept && invite.game_id) navigate(`/games/tic-tac-toe/${invite.game_id}`);
+      if (accept && invite.game_id) navigate(gameRoute(invite.game_type, invite.game_id));
     } catch (e: any) {
       toast({ title: "Could not respond", description: e.message, variant: "destructive" });
     }
   };
+
 
   const featured = CARDS.filter((c) => c.featured);
 
