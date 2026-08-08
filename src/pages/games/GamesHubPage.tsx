@@ -374,7 +374,7 @@ export default function GamesHubPage() {
                     <li key={g.id}>
                       <button
                         type="button"
-                        onClick={() => navigate(`/games/tic-tac-toe/${g.id}`)}
+                        onClick={() => navigate(gameRoute(g.game_type, g.id))}
                         className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-3 text-left"
                       >
                         <span className="text-sm font-bold">{GAME_LABELS[g.game_type]}</span>
