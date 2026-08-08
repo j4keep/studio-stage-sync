@@ -182,7 +182,8 @@ export default function DealBusinessDashboardPage() {
                 {biz?.is_verified ? <VerifiedBusinessBadge /> : null}
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Pending accounts can save drafts. Public deals unlock after admin approval.
+                Verification is optional. You can create and publish deals right now — getting verified just adds the
+                ✔ Verified Business badge so shoppers trust your offers faster.
               </p>
               {biz?.admin_request_message ? (
                 <p className="mt-3 rounded-xl bg-sky-500/10 px-3 py-2 text-xs font-semibold text-sky-800 dark:text-sky-200">
@@ -199,13 +200,13 @@ export default function DealBusinessDashboardPage() {
                   Deal posting is temporarily suspended. Contact support if you believe this is an error.
                 </p>
               ) : null}
-              {!biz?.is_verified && !biz?.can_publish ? (
-                <p className="mt-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-800 dark:text-amber-200">
-                  🟡 Verification required before offers go live.
+              {biz?.is_verified ? (
+                <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                  ✔ Verified Business — badge shown on all your deals.
                 </p>
               ) : (
                 <p className="mt-3 rounded-xl bg-emerald-500/10 px-3 py-2 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-                  You’re cleared to publish active deals.
+                  You’re cleared to publish deals now. Verification is optional.
                 </p>
               )}
               {biz && !biz.is_verified ? (
@@ -216,9 +217,10 @@ export default function DealBusinessDashboardPage() {
                 >
                   {biz.verification_status === "needs_info" || biz.verification_status === "rejected"
                     ? "Update profile & resubmit"
-                    : "Complete verification"}
+                    : "Get the Verified badge (optional)"}
                 </button>
               ) : null}
+
             </div>
 
             <div className="rounded-2xl border border-border bg-card p-4">
@@ -246,11 +248,12 @@ export default function DealBusinessDashboardPage() {
           </div>
         ) : null}
 
-        {!biz?.is_verified && !biz?.can_publish && tab === "dashboard" ? (
+        {biz?.posting_suspended && tab === "dashboard" ? (
           <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-            Business verification required to publish active public deals.
+            Deal posting is temporarily suspended for this business.
           </div>
         ) : null}
+
 
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Views" value={totals.views} />

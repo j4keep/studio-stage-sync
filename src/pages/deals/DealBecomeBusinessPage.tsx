@@ -40,6 +40,7 @@ export default function DealBecomeBusinessPage() {
   const [docFile, setDocFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -150,7 +151,7 @@ export default function DealBecomeBusinessPage() {
       }
       const submitted = await submitBusinessVerification(biz.id);
       setExisting(submitted);
-      toast.success("Submitted for review — Pending Verification");
+      toast.success("Submitted — verification in review. You can keep posting deals.");
       nav("/deals/business");
     } catch (e: any) {
       toast.error(e?.message || "Could not submit verification");
@@ -159,7 +160,7 @@ export default function DealBecomeBusinessPage() {
     }
   };
 
-  const status = existing?.verification_status || "pending";
+  const status = existing?.verification_status || "unverified";
 
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
@@ -172,7 +173,7 @@ export default function DealBecomeBusinessPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-lg font-black">Become a Business</h1>
+        <h1 className="text-lg font-black">Business profile</h1>
       </header>
 
       <div className="space-y-4 px-4 py-5">
@@ -182,12 +183,12 @@ export default function DealBecomeBusinessPage() {
           </div>
           <h2 className="text-base font-black">Create your business profile</h2>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Anyone can register. You’ll start as Pending Verification — drafts are allowed, public deals unlock after
-            approval.
+            Anyone can register and start publishing deals right away. Verification is optional — submit a document
+            whenever you want the ✔ Verified Business badge.
           </p>
           {existing ? (
             <p className="mt-2 inline-flex rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-800 dark:text-amber-200">
-              🟡 {verificationStatusLabel(status)}
+              {existing.is_verified ? "✔" : "•"} {verificationStatusLabel(status)}
             </p>
           ) : null}
           {existing?.admin_request_message ? (
@@ -237,9 +238,9 @@ export default function DealBecomeBusinessPage() {
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-3">
-          <p className="text-sm font-black">Verification document</p>
+          <p className="text-sm font-black">Verification document (optional)</p>
           <p className="mt-1 text-[11px] text-muted-foreground">
-            Upload one proof of legitimacy — license, EIN/tax doc, utility bill, state registration, or matching
+            Only needed for the badge. Upload one proof of legitimacy — license, EIN/tax doc, utility bill, state registration, or matching
             website/social. You don’t need every document.
           </p>
           <label className="mt-3 block text-xs font-semibold">
@@ -282,17 +283,39 @@ export default function DealBecomeBusinessPage() {
         </div>
 
         <p className="text-[11px] text-muted-foreground">
-          Flow: create profile → verify contact → upload one document → admin reviews → Approve / Reject / Request
-          more info. Verified businesses earn the ✔ Verified Business badge.
+          Save your profile to start posting deals immediately. If you want the badge: upload one document → admin
+          reviews → Approve / Reject / Request more info. YAJ verifies business documents only, not identity.
         </p>
+
+        <button
+          type="button"
+          disabled={savingProfile}
+          onClick={async () => {
+            setSavingProfile(true);
+            try {
+              const biz = await saveProfile();
+              if (biz) {
+                toast.success("Business saved — you can post deals now");
+                nav("/deals/business");
+              }
+            } catch (e: any) {
+              toast.error(e?.message || "Could not save business");
+            } finally {
+              setSavingProfile(false);
+            }
+          }}
+          className="h-12 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-sm font-black text-white disabled:opacity-50"
+        >
+          {savingProfile ? "Saving…" : "Save & start posting deals"}
+        </button>
 
         <button
           type="button"
           disabled={submitting}
           onClick={submit}
-          className="h-12 w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-sm font-black text-white disabled:opacity-50"
+          className="h-11 w-full rounded-xl border border-border text-xs font-bold disabled:opacity-50"
         >
-          {submitting ? "Submitting…" : "Submit for verification"}
+          {submitting ? "Submitting…" : "Submit for Verified badge (optional)"}
         </button>
       </div>
 
