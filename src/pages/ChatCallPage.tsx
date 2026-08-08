@@ -7,6 +7,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
 import { callRoomId } from "@/lib/message-call";
+import { startRing, stopRing } from "@/lib/call-ring";
+
 
 /** 1:1 audio/video call between two people in a chat conversation. */
 export default function ChatCallPage() {
