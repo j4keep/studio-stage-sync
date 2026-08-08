@@ -205,6 +205,7 @@ export default function ChatCallPage() {
 
   useEffect(() => {
     return () => {
+      stopRing();
       const room = roomRef.current;
       roomRef.current = null;
       try {
@@ -218,6 +219,21 @@ export default function ChatCallPage() {
     };
   }, []);
 
+  // Ringback tone while waiting for the other person to pick up.
+  useEffect(() => {
+    if ((conn === "connecting" || conn === "connected") && !remoteJoined) startRing("outgoing");
+    else stopRing();
+  }, [conn, remoteJoined]);
+
+  // Accepted from the incoming-call banner → join straight away.
+  const autoJoin = params.get("auto") === "1";
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (!autoJoin || autoTried.current || !allowed || conn !== "idle") return;
+    autoTried.current = true;
+    void connect();
+  }, [autoJoin, allowed, conn]);
+
   if (loading) return <div className="min-h-screen bg-zinc-950 p-6 text-sm text-white">Loading call…</div>;
   if (error && !allowed) {
     return (
@@ -229,8 +245,8 @@ export default function ChatCallPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-[95] flex min-h-screen flex-col bg-zinc-950 text-white">
-      <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+    <div className="fixed inset-0 z-[200] flex h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-white">
+      <header className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
         <button onClick={() => { void hangUp(true); }} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10">
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -240,12 +256,13 @@ export default function ChatCallPage() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
-        <div className={`relative min-h-[240px] flex-1 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 ${kind === "audio" ? "flex items-center justify-center" : ""}`}>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+        <div className={`relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-zinc-900 ${kind === "audio" ? "flex items-center justify-center" : ""}`}>
           {kind === "video" ? (
             <>
               <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 h-full w-full object-cover" />
-              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-3 right-3 h-40 w-28 rounded-xl border border-white/20 bg-black object-cover" />
+              <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-3 right-3 h-32 w-24 rounded-xl border border-white/20 bg-black object-cover" />
+
               {(conn !== "connected" || !remoteJoined || !remoteVideoOn) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-zinc-900/80 px-6 text-center text-sm text-zinc-400">
                   {conn === "connecting"
