@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Briefcase, Sparkles, Video, Phone, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatSalary, timeAgo, applicationStatusLabel, normalizeAppStatus } from "@/lib/jobs";
+import { formatSalary, timeAgo, applicationStatusLabel, normalizeAppStatus, notifyJobEmployer } from "@/lib/jobs";
 import {
   formatInterviewWhen,
   getInterviewInvite,
