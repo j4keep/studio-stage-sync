@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -12,22 +12,30 @@ import {
 import {
   addDealImage,
   createDealDraft,
+  getDeal,
   listMyBusinesses,
   submitDeal,
+  updateDeal,
   uploadDealImage,
+  resolveDealMediaUrl,
   type DealBusiness,
 } from "@/lib/deals-api";
+import { normalizeDealFlyer } from "@/lib/deal-flyer";
 import { toast } from "sonner";
 
 export default function DealCreatePage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const [params] = useSearchParams();
+  const editId = params.get("edit");
   const [businesses, setBusinesses] = useState<DealBusiness[]>([]);
   const [businessId, setBusinessId] = useState("");
   const [step, setStep] = useState<"form" | "preview">("form");
   const [submitting, setSubmitting] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [existingCover, setExistingCover] = useState<string | null>(null);
+
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>(DEAL_CATEGORIES[0].id);
