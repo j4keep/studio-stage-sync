@@ -92,8 +92,9 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     id: "games",
     label: "Games",
     subtitle: "Play together.",
+    route: "/games",
     image: gamesImage,
-    keywords: ["game", "games", "play", "domino", "pool"],
+    keywords: ["game", "games", "play", "domino", "pool", "trivia", "tic tac toe"],
   },
 ];
 
