@@ -514,6 +514,8 @@ const ScrollLockGuard = () => {
                   <RadioProvider>
                     <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
                       <ScrollLockGuard />
+                      <IncomingCallListener />
+
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
                         
