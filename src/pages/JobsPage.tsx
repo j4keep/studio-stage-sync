@@ -85,7 +85,7 @@ export default function JobsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: jobs }, { data: gigs }] = await Promise.all([
+    const { data: jobs } = await (async () =>
       supabase
         .from("job_listings")
         .select(
@@ -93,27 +93,15 @@ export default function JobsPage() {
         )
         .eq("status", "open")
         .order("created_at", { ascending: false })
-        .limit(50),
-      (supabase as any)
-        .from("gig_listings")
-        .select("id,title,description,category,location,budget_min,budget_max,urgency,created_at,poster_id,media")
-        .eq("status", "open")
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+        .limit(50))();
 
     const blocked = user ? await listBlockedPeerIds(user.id) : new Set<string>();
     const openJobs = ((jobs ?? []) as Omit<JobRow, "__kind">[]).filter(
       (j) => !j.employer_id || !blocked.has(j.employer_id),
     );
-    const openGigs = ((gigs ?? []) as Omit<GigRow, "__kind">[]).filter(
-      (g) => !g.poster_id || !blocked.has(g.poster_id),
-    );
-
-    const merged: FeedItem[] = [
-      ...openJobs.map((j) => ({ ...j, __kind: "job" as const })),
-      ...openGigs.map((g) => ({ ...g, __kind: "gig" as const })),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const merged: FeedItem[] = openJobs
+      .map((j) => ({ ...j, __kind: "job" as const }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     setListings(merged);
 
@@ -154,31 +142,16 @@ export default function JobsPage() {
     const n = query.trim().toLowerCase();
     let items = listings;
 
-    if (feedKind === "jobs") items = items.filter((i) => i.__kind === "job");
-    if (feedKind === "gigs") items = items.filter((i) => i.__kind === "gig");
-
     if (activeCategory === "remote") {
       items = items.filter((i) => i.__kind === "job" && i.remote_mode === "remote");
     } else if (activeCategory === "near-you") {
       items = items.filter((i) => matchesNearYou(i.location, prefs));
     } else if (activeCategory !== "featured") {
-      items = items.filter((i) => {
-        if (i.__kind === "job") return i.category === activeCategory;
-        // Gigs use local-help categories; keep them only on Featured / Near You / All-gigs feed
-        return false;
-      });
+      items = items.filter((i) => i.category === activeCategory);
     }
 
     if (n) {
       items = items.filter((i) => {
-        if (i.__kind === "gig") {
-          return (
-            i.title.toLowerCase().includes(n) ||
-            (i.description || "").toLowerCase().includes(n) ||
-            (i.location ?? "").toLowerCase().includes(n) ||
-            i.category.toLowerCase().includes(n)
-          );
-        }
         const brand = employerBrands[i.employer_id];
         const skillsHit = (i.skills || []).some((s) => s.toLowerCase().includes(n));
         return (
@@ -191,7 +164,7 @@ export default function JobsPage() {
       });
     }
     return items;
-  }, [query, activeCategory, listings, employerBrands, feedKind, prefs]);
+  }, [query, activeCategory, listings, employerBrands, prefs]);
 
   const displayed = useMemo(() => {
     if (!forYou || !prefs) return filtered;
@@ -231,7 +204,7 @@ export default function JobsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search jobs, skills, companies, gigs"
+            placeholder="Search jobs, skills, companies"
             className="w-full h-11 rounded-xl bg-muted border border-border pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/35"
           />
           {query && (
