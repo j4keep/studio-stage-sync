@@ -111,6 +111,14 @@ export default function JobInterviewPage() {
 
       room.on(RoomEvent.TrackSubscribed, () => attachRemote(room));
       room.on(RoomEvent.TrackUnsubscribed, () => attachRemote(room));
+      room.on(RoomEvent.LocalTrackPublished, () => {
+        setMicOn(room.localParticipant.isMicrophoneEnabled);
+        setCamOn(room.localParticipant.isCameraEnabled);
+      });
+      room.on(RoomEvent.LocalTrackUnpublished, () => {
+        setMicOn(room.localParticipant.isMicrophoneEnabled);
+        setCamOn(room.localParticipant.isCameraEnabled);
+      });
       room.on(RoomEvent.ParticipantConnected, () => {
         setRemoteJoined(true);
         attachRemote(room);
@@ -123,6 +131,7 @@ export default function JobInterviewPage() {
         setRemoteJoined(false);
         setConn("idle");
       });
+
 
       await room.connect(data.url, data.token);
       setRemoteJoined(room.remoteParticipants.size > 0);
