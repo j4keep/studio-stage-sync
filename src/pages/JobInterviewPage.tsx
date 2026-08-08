@@ -215,18 +215,31 @@ export default function JobInterviewPage() {
   const toggleMic = async () => {
     const room = roomRef.current;
     if (!room) return;
-    const next = !micOn;
-    await room.localParticipant.setMicrophoneEnabled(next);
-    setMicOn(next);
+    const next = !room.localParticipant.isMicrophoneEnabled;
+    try {
+      await room.localParticipant.setMicrophoneEnabled(next);
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+    } catch (e: any) {
+      setMicOn(room.localParticipant.isMicrophoneEnabled);
+      toast.error(e?.message || "Microphone blocked — allow mic access in your browser settings");
+    }
   };
 
   const toggleCam = async () => {
     const room = roomRef.current;
     if (!room || invite?.call_kind !== "video") return;
-    const next = !camOn;
-    await room.localParticipant.setCameraEnabled(next);
-    setCamOn(next);
+    const next = !room.localParticipant.isCameraEnabled;
+    try {
+      await room.localParticipant.setCameraEnabled(next);
+      setCamOn(room.localParticipant.isCameraEnabled);
+      const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+      if (pub?.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
+    } catch (e: any) {
+      setCamOn(room.localParticipant.isCameraEnabled);
+      toast.error(e?.message || "Camera blocked");
+    }
   };
+
 
   useEffect(() => {
     return () => {
