@@ -105,6 +105,11 @@ import ServiceDetailPage from "./pages/ServiceDetailPage";
 import EventsPage from "./pages/EventsPage";
 import GamesHubPage from "./pages/games/GamesHubPage";
 import TicTacToePage from "./pages/games/TicTacToePage";
+import ConnectFourPage from "./pages/games/ConnectFourPage";
+import CheckersPage from "./pages/games/CheckersPage";
+import DominoesPage from "./pages/games/DominoesPage";
+import TriviaPage from "./pages/games/TriviaPage";
+import YajDashPage from "./pages/games/YajDashPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import DealsHomePage from "./pages/deals/DealsHomePage";
 import DealDetailPage from "./pages/deals/DealDetailPage";
@@ -374,6 +379,11 @@ const ProtectedRoutes = () => {
         <Route path="/connections" element={<Navigate to="/circle" replace />} />
         <Route path="/games" element={<GamesHubPage />} />
         <Route path="/games/tic-tac-toe/:id" element={<TicTacToePage />} />
+        <Route path="/games/connect-four/:id" element={<ConnectFourPage />} />
+        <Route path="/games/checkers/:id" element={<CheckersPage />} />
+        <Route path="/games/dominoes/:id" element={<DominoesPage />} />
+        <Route path="/games/trivia/:id" element={<TriviaPage />} />
+        <Route path="/games/dash" element={<YajDashPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />

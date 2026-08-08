@@ -17,9 +17,15 @@ import {
   listMyInvites,
   respondToInvite,
 } from "@/lib/games";
-import { EMPTY_BOARD } from "@/lib/tic-tac-toe";
+import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import dominoesArt from "@/assets/games/dominoes.jpg";
+import tttArt from "@/assets/games/tic-tac-toe.jpg";
+import connectFourArt from "@/assets/games/connect-four.jpg";
+import checkersArt from "@/assets/games/checkers.jpg";
+import triviaArt from "@/assets/games/trivia.jpg";
+import dashArt from "@/assets/games/yaj-dash.jpg";
 
 type CardDef = {
   type: GameType;
@@ -27,8 +33,7 @@ type CardDef = {
   desc: string;
   difficulty: string;
   players: string;
-  gradient: string;
-  glyph: string;
+  image: string;
   live: boolean;
   solo: boolean;
   multi: boolean;
@@ -42,9 +47,8 @@ const CARDS: CardDef[] = [
     desc: "The YAJ classic. Draw, block, win.",
     difficulty: "Medium",
     players: "2 players",
-    gradient: "from-[hsl(215_45%_18%)] to-[hsl(215_60%_32%)]",
-    glyph: "🁫",
-    live: false,
+    image: dominoesArt,
+    live: true,
     solo: true,
     multi: true,
     featured: true,
@@ -55,8 +59,7 @@ const CARDS: CardDef[] = [
     desc: "Fast rounds. Solo or challenge a friend.",
     difficulty: "Easy",
     players: "2 players",
-    gradient: "from-[hsl(255_60%_30%)] to-[hsl(280_65%_45%)]",
-    glyph: "✕◯",
+    image: tttArt,
     live: true,
     solo: true,
     multi: true,
@@ -68,9 +71,8 @@ const CARDS: CardDef[] = [
     desc: "Drop, stack, line up four.",
     difficulty: "Easy",
     players: "2 players",
-    gradient: "from-[hsl(200_70%_28%)] to-[hsl(190_70%_45%)]",
-    glyph: "🔵🔴",
-    live: false,
+    image: connectFourArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -80,9 +82,8 @@ const CARDS: CardDef[] = [
     desc: "Captures, kings, comebacks.",
     difficulty: "Medium",
     players: "2 players",
-    gradient: "from-[hsl(20_60%_28%)] to-[hsl(35_70%_45%)]",
-    glyph: "⛃",
-    live: false,
+    image: checkersArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -92,9 +93,8 @@ const CARDS: CardDef[] = [
     desc: "Music, movies, sports & more.",
     difficulty: "Easy",
     players: "1–2 players",
-    gradient: "from-[hsl(160_55%_25%)] to-[hsl(150_60%_40%)]",
-    glyph: "❓",
-    live: false,
+    image: triviaArt,
+    live: true,
     solo: true,
     multi: true,
   },
@@ -104,9 +104,8 @@ const CARDS: CardDef[] = [
     desc: "Run, dodge, collect stars.",
     difficulty: "Easy",
     players: "Solo",
-    gradient: "from-[hsl(300_55%_28%)] to-[hsl(330_70%_48%)]",
-    glyph: "⭐",
-    live: false,
+    image: dashArt,
+    live: true,
     solo: true,
     multi: false,
   },
@@ -197,14 +196,11 @@ export default function GamesHubPage() {
 
   const startSolo = async (type: GameType) => {
     if (!user) return navigate("/auth");
-    if (type !== "tic_tac_toe") {
-      toast({ title: `${GAME_LABELS[type]} is coming soon` });
-      return;
-    }
+    if (type === "yaj_dash") return navigate(gameRoute("yaj_dash"));
     setBusy(true);
     try {
-      const game = await createSoloGame(type, user.id, { board: EMPTY_BOARD, moveNumber: 0 });
-      navigate(`/games/tic-tac-toe/${game.id}`);
+      const game = await createSoloGame(type, user.id, initialStateFor(type));
+      navigate(gameRoute(type, game.id));
     } catch (e: any) {
       toast({ title: "Could not start the game", description: e.message, variant: "destructive" });
     } finally {
@@ -214,10 +210,6 @@ export default function GamesHubPage() {
 
   const startMulti = (type: GameType) => {
     if (!user) return navigate("/auth");
-    if (type !== "tic_tac_toe") {
-      toast({ title: `${GAME_LABELS[type]} multiplayer is coming soon` });
-      return;
-    }
     setPickerFor(type);
   };
 
@@ -225,13 +217,11 @@ export default function GamesHubPage() {
     if (!user || !pickerFor) return;
     setBusy(true);
     try {
-      const game = await createMultiplayerGame(pickerFor, user.id, opponentId, {
-        board: EMPTY_BOARD,
-        moveNumber: 0,
-      });
+      const game = await createMultiplayerGame(pickerFor, user.id, opponentId, initialStateFor(pickerFor));
+      const type = pickerFor;
       setPickerFor(null);
       toast({ title: `Challenge sent to ${name}` });
-      navigate(`/games/tic-tac-toe/${game.id}`);
+      navigate(gameRoute(type, game.id));
     } catch (e: any) {
       toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
     } finally {
@@ -243,11 +233,12 @@ export default function GamesHubPage() {
     try {
       await respondToInvite(invite.id, accept);
       await refresh();
-      if (accept && invite.game_id) navigate(`/games/tic-tac-toe/${invite.game_id}`);
+      if (accept && invite.game_id) navigate(gameRoute(invite.game_type, invite.game_id));
     } catch (e: any) {
       toast({ title: "Could not respond", description: e.message, variant: "destructive" });
     }
   };
+
 
   const featured = CARDS.filter((c) => c.featured);
 
@@ -256,61 +247,68 @@ export default function GamesHubPage() {
     return (
       <div
         key={card.type}
-        className={`relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br ${card.gradient} p-4 text-primary-foreground shadow-[0_10px_28px_rgba(15,23,42,0.18)]`}
+        className="relative overflow-hidden rounded-3xl border border-border/60 shadow-[0_10px_28px_rgba(15,23,42,0.18)]"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-black tracking-tight">{card.title}</h3>
-            <p className="mt-0.5 text-xs text-primary-foreground/80">{card.desc}</p>
+        <img
+          src={card.image}
+          alt={`${card.title} game artwork`}
+          loading="lazy"
+          width={1024}
+          height={768}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/25" />
+
+        <div className="relative p-4 text-white">
+          <h3 className="truncate text-lg font-black tracking-tight">{card.title}</h3>
+          <p className="mt-0.5 text-xs text-white/85">{card.desc}</p>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {card.solo && <Badge>Solo</Badge>}
+            {card.multi && <Badge>Multiplayer</Badge>}
+            <Badge>{card.difficulty}</Badge>
+            <Badge>{card.players}</Badge>
           </div>
-          <span className="text-2xl leading-none opacity-90">{card.glyph}</span>
-        </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {card.solo && <Badge>Solo</Badge>}
-          {card.multi && <Badge>Multiplayer</Badge>}
-          <Badge>{card.difficulty}</Badge>
-          <Badge>{card.players}</Badge>
-          {!card.live && <Badge>Coming Soon</Badge>}
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          {inProgress ? (
-            <button
-              type="button"
-              onClick={() => navigate(`/games/tic-tac-toe/${inProgress.id}`)}
-              className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
-            >
-              Continue
-            </button>
-          ) : (
-            <>
-              {card.solo && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => startSolo(card.type)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98] disabled:opacity-60"
-                >
-                  <Bot className="h-4 w-4" /> {card.live ? "Play Solo" : "Coming Soon"}
-                </button>
-              )}
-              {card.multi && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => startMulti(card.type)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-background/50 px-3 py-2 text-sm font-black active:scale-[0.98] disabled:opacity-60"
-                >
-                  <Users className="h-4 w-4" /> {card.live ? "Invite" : "Coming Soon"}
-                </button>
-              )}
-            </>
-          )}
+          <div className="mt-4 flex gap-2">
+            {inProgress ? (
+              <button
+                type="button"
+                onClick={() => navigate(gameRoute(inProgress.game_type, inProgress.id))}
+                className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
+              >
+                Continue
+              </button>
+            ) : (
+              <>
+                {card.solo && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => startSolo(card.type)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98] disabled:opacity-60"
+                  >
+                    <Bot className="h-4 w-4" /> Play Solo
+                  </button>
+                )}
+                {card.multi && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => startMulti(card.type)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/60 px-3 py-2 text-sm font-black text-white active:scale-[0.98] disabled:opacity-60"
+                  >
+                    <Users className="h-4 w-4" /> Invite
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
   };
+
 
   return (
     <div className="min-h-[100dvh] bg-background pb-28 text-foreground">
@@ -376,7 +374,7 @@ export default function GamesHubPage() {
                     <li key={g.id}>
                       <button
                         type="button"
-                        onClick={() => navigate(`/games/tic-tac-toe/${g.id}`)}
+                        onClick={() => navigate(gameRoute(g.game_type, g.id))}
                         className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-3 text-left"
                       >
                         <span className="text-sm font-bold">{GAME_LABELS[g.game_type]}</span>
