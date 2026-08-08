@@ -29,7 +29,7 @@ type Section = {
  * (Battles are intentionally excluded — those are created in-page.)
  */
 const SECTIONS: Section[] = [
-  { id: "opportunities", label: "Opportunities", sub: "Post jobs & gigs, resume, applications, hiring pipeline", icon: Briefcase, route: "/pro/opportunities", ready: true },
+  { id: "opportunities", label: "Opportunities", sub: "Post jobs, resume, applications, hiring pipeline", icon: Briefcase, route: "/pro/opportunities", ready: true },
   { id: "local-help", label: "Local Help", sub: "Your service business profile & gigs", icon: Wrench, route: "/local-help/business", ready: true },
   { id: "deals", label: "Deals", sub: "Business deals, redemptions & verification", icon: Tag, route: "/deals/business", ready: true },
   { id: "marketplace", label: "Marketplace", sub: "Your listings, offers & sales", icon: Store, route: "/marketplace/account", ready: true },

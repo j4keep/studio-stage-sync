@@ -26,7 +26,7 @@ type MyJob = {
   created_at: string;
 };
 
-/** Professional Dashboard → Opportunities (jobs & gigs you publish). */
+/** Professional Dashboard → Opportunities (jobs you publish). */
 export default function ProOpportunitiesDashboardPage() {
   const nav = useNavigate();
   const { user } = useAuth();
