@@ -23,7 +23,6 @@ import {
   resolveJobCover,
   type Prefs,
 } from "@/lib/jobs";
-import { formatGigBudget } from "@/lib/gigs";
 import { listBlockedPeerIds } from "@/lib/blocks";
 
 type JobRow = {
@@ -253,28 +252,6 @@ export default function JobsPage() {
         </div>
       </header>
 
-      <div className="px-4 pb-2 flex gap-2">
-        {(
-          [
-            { id: "all", label: "All" },
-            { id: "jobs", label: "Jobs" },
-            { id: "gigs", label: "Gigs" },
-          ] as const
-        ).map((k) => (
-          <button
-            key={k.id}
-            type="button"
-            onClick={() => setFeedKind(k.id)}
-            className={`h-8 px-3 rounded-full text-[11px] font-bold border transition-colors ${
-              feedKind === k.id
-                ? "bg-foreground text-background border-foreground"
-                : "bg-card text-foreground border-border"
-            }`}
-          >
-            {k.label}
-          </button>
-        ))}
-      </div>
 
       <div className="h-scroll-isolate flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
         {JOB_CATEGORIES.map((cat) => {
@@ -309,47 +286,6 @@ export default function JobsPage() {
           </div>
         ) : (
           displayed.map((item) => {
-            if (item.__kind === "gig") {
-              const cover = gigCover(item.media);
-              return (
-                <button
-                  key={`gig-${item.id}`}
-                  type="button"
-                  onClick={() => nav(`/gigs/${item.id}`)}
-                  className="w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 active:scale-[0.99]"
-                >
-                  <span className="inline-block rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                    Local gig
-                  </span>
-                  <div className="mt-2 flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
-                      {cover ? (
-                        <img src={cover} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <Wrench className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[17px] font-bold leading-snug text-foreground">{item.title}</p>
-                      <p className="mt-0.5 text-[13px] capitalize text-muted-foreground">{item.category}</p>
-                      <p className="text-[13px] text-muted-foreground">{item.location ?? "—"}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-[13px] font-bold text-emerald-700 dark:text-emerald-400">
-                      {formatGigBudget(item.budget_min, item.budget_max)}
-                    </span>
-                    <span className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold capitalize">
-                      {item.urgency?.replace(/_/g, " ") || "Flexible"}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {timeAgo(item.created_at)} ago
-                    </span>
-                  </div>
-                </button>
-              );
-            }
 
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
             const verified = verifiedEmployers.has(item.employer_id);
