@@ -192,6 +192,14 @@ const ProfilePage = () => {
 
   const quickActions = [
     {
+      icon: Briefcase,
+      label: "Professional Dashboard",
+      sub: "Post & manage jobs, deals, listings, events",
+      action: () => navigate("/pro"),
+      pro: false,
+      section: null as NotifSection | null,
+    },
+    {
       icon: Sparkles,
       label: "YAJ AI Generator",
       sub: `Voice · ${getYajAiVoiceLabel()}`,
@@ -199,6 +207,7 @@ const ProfilePage = () => {
       pro: false,
       section: null as NotifSection | null,
     },
+
     { icon: Bookmark, label: "Saved Deals", sub: "Offers you bookmarked", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
     { icon: Ticket, label: "My Coupons", sub: "Claimed & ready to use", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
     ...(isDealBusiness
