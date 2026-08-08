@@ -247,61 +247,68 @@ export default function GamesHubPage() {
     return (
       <div
         key={card.type}
-        className={`relative overflow-hidden rounded-3xl border border-border/60 bg-gradient-to-br ${card.gradient} p-4 text-primary-foreground shadow-[0_10px_28px_rgba(15,23,42,0.18)]`}
+        className="relative overflow-hidden rounded-3xl border border-border/60 shadow-[0_10px_28px_rgba(15,23,42,0.18)]"
       >
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-black tracking-tight">{card.title}</h3>
-            <p className="mt-0.5 text-xs text-primary-foreground/80">{card.desc}</p>
+        <img
+          src={card.image}
+          alt={`${card.title} game artwork`}
+          loading="lazy"
+          width={1024}
+          height={768}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/55 to-black/25" />
+
+        <div className="relative p-4 text-white">
+          <h3 className="truncate text-lg font-black tracking-tight">{card.title}</h3>
+          <p className="mt-0.5 text-xs text-white/85">{card.desc}</p>
+
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {card.solo && <Badge>Solo</Badge>}
+            {card.multi && <Badge>Multiplayer</Badge>}
+            <Badge>{card.difficulty}</Badge>
+            <Badge>{card.players}</Badge>
           </div>
-          <span className="text-2xl leading-none opacity-90">{card.glyph}</span>
-        </div>
 
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {card.solo && <Badge>Solo</Badge>}
-          {card.multi && <Badge>Multiplayer</Badge>}
-          <Badge>{card.difficulty}</Badge>
-          <Badge>{card.players}</Badge>
-          {!card.live && <Badge>Coming Soon</Badge>}
-        </div>
-
-        <div className="mt-4 flex gap-2">
-          {inProgress ? (
-            <button
-              type="button"
-              onClick={() => navigate(`/games/tic-tac-toe/${inProgress.id}`)}
-              className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
-            >
-              Continue
-            </button>
-          ) : (
-            <>
-              {card.solo && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => startSolo(card.type)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98] disabled:opacity-60"
-                >
-                  <Bot className="h-4 w-4" /> {card.live ? "Play Solo" : "Coming Soon"}
-                </button>
-              )}
-              {card.multi && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => startMulti(card.type)}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-background/50 px-3 py-2 text-sm font-black active:scale-[0.98] disabled:opacity-60"
-                >
-                  <Users className="h-4 w-4" /> {card.live ? "Invite" : "Coming Soon"}
-                </button>
-              )}
-            </>
-          )}
+          <div className="mt-4 flex gap-2">
+            {inProgress ? (
+              <button
+                type="button"
+                onClick={() => navigate(gameRoute(inProgress.game_type, inProgress.id))}
+                className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
+              >
+                Continue
+              </button>
+            ) : (
+              <>
+                {card.solo && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => startSolo(card.type)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98] disabled:opacity-60"
+                  >
+                    <Bot className="h-4 w-4" /> Play Solo
+                  </button>
+                )}
+                {card.multi && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => startMulti(card.type)}
+                    className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/60 px-3 py-2 text-sm font-black text-white active:scale-[0.98] disabled:opacity-60"
+                  >
+                    <Users className="h-4 w-4" /> Invite
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     );
   };
+
 
   return (
     <div className="min-h-[100dvh] bg-background pb-28 text-foreground">
