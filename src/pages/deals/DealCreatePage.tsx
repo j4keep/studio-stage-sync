@@ -84,13 +84,54 @@ export default function DealCreatePage() {
 
   useEffect(() => {
     if (!file) {
-      setPreviewUrl(null);
+      setPreviewUrl(existingCover ? resolveDealMediaUrl(existingCover) : null);
       return;
     }
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, existingCover]);
+
+  // Edit mode: prefill every field from the existing deal card.
+  useEffect(() => {
+    if (!editId) return;
+    void (async () => {
+      try {
+        const d = await getDeal(editId);
+        if (!d) {
+          toast.error("Deal not found");
+          return;
+        }
+        setBusinessId(d.business_id);
+        setTitle(d.title);
+        setCategory(d.category);
+        setDescription(d.description || "");
+        setDealType(d.deal_type);
+        setRegularPrice(d.regular_price != null ? String(d.regular_price) : "");
+        setDealPrice(d.deal_price != null ? String(d.deal_price) : "");
+        setDiscountValue(d.discount_value != null ? String(d.discount_value) : "");
+        setStartsAt(new Date(d.starts_at).toISOString().slice(0, 16));
+        setExpiresAt(new Date(d.expires_at).toISOString().slice(0, 16));
+        setRedemptionType(d.redemption_type);
+        setPromoCode(d.promo_code || "");
+        setTotalLimit(d.total_claim_limit != null ? String(d.total_claim_limit) : "");
+        setPerUserLimit(String(d.per_user_limit ?? 1));
+        setLocationType(d.location_type || "in_store");
+        setAddress(d.address || "");
+        setCity(d.city || "");
+        setState(d.state || "");
+        setPostal(d.postal_code || "");
+        setTerms(d.terms || "");
+        setMinimumPurchase(d.minimum_purchase != null ? String(d.minimum_purchase) : "");
+        setAgeRestriction(d.age_restriction != null ? String(d.age_restriction) : "");
+        setExternalUrl(d.external_url || "");
+        setExistingCover(d.cover_url || null);
+      } catch (e: any) {
+        toast.error(e?.message || "Could not load deal");
+      }
+    })();
+  }, [editId]);
+
 
   const selectedBiz = businesses.find((b) => b.id === businessId);
   // Launch model: verification is optional. Only admin-blocked businesses are gated.
