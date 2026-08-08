@@ -525,8 +525,8 @@ export async function getOrCreateBusinessForUser(userId: string, name?: string):
     .insert({
       owner_id: userId,
       name: name?.trim() || "My Business",
-      verification_status: "pending",
-      can_publish: false,
+      verification_status: "unverified",
+      can_publish: true,
       is_verified: false,
     })
     .select("*")
@@ -632,8 +632,8 @@ export async function registerDealBusiness(input: {
       description: input.description.trim(),
       hours_json: input.hoursJson || {},
       logo_url: input.logoUrl || null,
-      verification_status: "pending",
-      can_publish: false,
+      verification_status: "unverified",
+      can_publish: true,
       is_verified: false,
       email_verified_at: input.email?.trim() ? new Date().toISOString() : null,
     })
@@ -771,8 +771,10 @@ export function verificationStatusLabel(status: string | null | undefined) {
       return "Needs more info";
     case "suspended":
       return "Suspended";
+    case "pending":
+      return "Verification in review";
     default:
-      return "Pending Verification";
+      return "Unverified";
   }
 }
 

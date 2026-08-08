@@ -85,7 +85,8 @@ export default function DealCreatePage() {
   }, [file]);
 
   const selectedBiz = businesses.find((b) => b.id === businessId);
-  const canPublish = !!(selectedBiz?.can_publish || selectedBiz?.is_verified);
+  // Launch model: verification is optional. Only admin-blocked businesses are gated.
+  const canPublish = !(selectedBiz?.posting_suspended || selectedBiz?.verification_status === "suspended" || selectedBiz?.verification_status === "rejected");
 
   const badge = useMemo(
     () =>
@@ -132,7 +133,7 @@ export default function DealCreatePage() {
   const publish = async () => {
     if (!validate() || !user) return;
     if (!canPublish) {
-      toast.error("Business verification required before publishing active offers");
+      toast.error("Deal posting is suspended for this business — contact support");
       return;
     }
     setSubmitting(true);
@@ -214,10 +215,9 @@ export default function DealCreatePage() {
 
       {!canPublish ? (
         <div className="mx-3 mt-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-3 text-sm">
-          <p className="font-semibold">Business verification required</p>
+          <p className="font-semibold">Deal posting suspended</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Only verified businesses, approved sellers, admins, and authorized partners can publish active deals.
-            You can still draft; publishing stays pending until approval.
+            An admin has paused publishing for this business. You can still draft — contact support to restore posting.
           </p>
         </div>
       ) : null}
@@ -238,7 +238,7 @@ export default function DealCreatePage() {
             >
               {businesses.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.name} {b.is_verified ? "✓" : "(pending)"}
+                  {b.name} {b.is_verified ? "✓ Verified" : ""}
                 </option>
               ))}
             </select>
