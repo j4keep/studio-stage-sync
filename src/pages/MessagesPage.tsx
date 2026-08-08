@@ -158,7 +158,11 @@ const MessagesPage = () => {
           id: conv.id,
           updated_at: conv.updated_at,
           other_user: otherParticipant ? profileMap[otherParticipant.user_id] || null : null,
-          last_message: lastMsg?.content || "No messages yet",
+          last_message: (() => {
+            const ci = parseCallInvite(lastMsg?.content);
+            if (ci) return ci.kind === "audio" ? "Audio call" : "Video call";
+            return lastMsg?.content || "No messages yet";
+          })(),
           context: ctx,
           openMarketplaceProfile: ctx === "marketplace",
           openBusinessProfile: ctx === "local_help",
