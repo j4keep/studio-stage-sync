@@ -18,7 +18,9 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) return json({ error: "Unauthorized" }, 401);
 
-    const { application_id } = await req.json();
+    const { application_id, event } = await req.json();
+    const kind = event === "interview_accepted" ? "interview_accepted"
+      : event === "interview_declined" ? "interview_declined" : "applied";
     if (!application_id || typeof application_id !== "string") {
       return json({ error: "application_id required" }, 400);
     }
@@ -59,8 +61,15 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const who = app.full_name || profile?.display_name || "Someone";
-    const title = "New job application";
-    const body = `${who} applied for ${job.title || "your job post"}. Open your hiring pipeline to review.`;
+    let title = "New job application";
+    let body = `${who} applied for ${job.title || "your job post"}. Open your hiring pipeline to review.`;
+    if (kind === "interview_accepted") {
+      title = "Interview accepted";
+      body = `${who} accepted the interview for ${job.title || "your job post"}. You can start the meeting at the scheduled time.`;
+    } else if (kind === "interview_declined") {
+      title = "Interview declined";
+      body = `${who} declined the interview for ${job.title || "your job post"}.`;
+    }
 
     const since = new Date(Date.now() - 20_000).toISOString();
     const { data: recent } = await admin
