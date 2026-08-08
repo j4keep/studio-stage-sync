@@ -4,7 +4,7 @@ import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles,
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl, resolveJobCover } from "@/lib/jobs";
+import { formatSalary, timeAgo, EMPLOYMENT_TYPES, REMOTE_MODES, SHIFT_OPTIONS, googleMapsUrl, normalizeExternalApplyUrl, resolveJobCover, notifyJobEmployer } from "@/lib/jobs";
 import MessageUserButton from "@/components/MessageUserButton";
 
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
@@ -215,7 +215,7 @@ export default function JobDetailPage() {
       return toast.error("Name, email, phone, and address are required");
     }
     setSubmitting(true);
-    const { error } = await supabase.from("job_applications").insert({
+    const { data: inserted, error } = await supabase.from("job_applications").insert({
       job_id: job.id,
       applicant_id: user.id,
       status: "reviewing",
@@ -241,13 +241,15 @@ export default function JobDetailPage() {
       employment_history: employment.filter((e) => e.employer.trim()) as any,
       education_history: education.filter((e) => e.school.trim()) as any,
       references_json: [],
-    });
+    }).select("id").maybeSingle();
     setSubmitting(false);
     if (error) return toast.error(error.message);
     setApplied(true);
     setShowApply(false);
     toast.success("Application sent!");
+    if (inserted?.id) void notifyJobEmployer(inserted.id);
   };
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!job) return <div className="p-6 text-sm">Job not found.</div>;

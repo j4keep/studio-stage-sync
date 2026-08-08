@@ -205,14 +205,42 @@ export default function MyJobsPage() {
                     <span className="text-[11px] text-muted-foreground shrink-0">{timeAgo(a.created_at)}</span>
                   </div>
                 </button>
-                {normalizeAppStatus(a.status) === "interview" && getInterviewInvite(a) && (
-                  <button
-                    onClick={() => setTab("interviews")}
-                    className="mt-2 text-[11px] font-bold text-amber-600"
-                  >
-                    View interview invite →
-                  </button>
-                )}
+                {(() => {
+                  if (normalizeAppStatus(a.status) !== "interview") return null;
+                  const invite = getInterviewInvite(a);
+                  if (!invite) return null;
+                  const state = interviewJoinState({ invite, applicantAccepted: !!a.applicant_accepted });
+                  return (
+                    <div className="mt-3 rounded-xl border border-amber-500/25 bg-amber-500/10 p-3 space-y-2">
+                      <p className="text-[11px] font-bold text-amber-700 inline-flex items-center gap-1">
+                        {invite.call_kind === "video" ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
+                        {invite.call_kind === "video" ? "Video" : "Phone"} interview · {formatInterviewWhen(invite.at)}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground">
+                        Join by {formatInterviewWhen(invite.join_deadline)}
+                      </p>
+                      {state === "expired" ? (
+                        <p className="text-[11px] font-semibold text-rose-500">Join deadline passed</p>
+                      ) : !a.applicant_accepted ? (
+                        <button
+                          onClick={() => acceptInterview(a.id)}
+                          className="w-full h-10 rounded-full bg-primary text-primary-foreground text-xs font-bold inline-flex items-center justify-center gap-1.5"
+                        >
+                          <Check className="w-4 h-4" /> Accept interview
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => nav(`/jobs/interview/${a.id}`)}
+                          className="w-full h-10 rounded-full bg-emerald-500 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5"
+                        >
+                          {invite.call_kind === "video" ? <Video className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                          Join meeting
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 {a.status !== "withdrawn" && a.status !== "hired" && a.status !== "rejected" && (
                   <button
                     onClick={async () => {

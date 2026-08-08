@@ -10,7 +10,6 @@ import {
   Settings2,
   Building2,
   BadgeCheck,
-  Wrench,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +22,6 @@ import {
   resolveJobCover,
   type Prefs,
 } from "@/lib/jobs";
-import { formatGigBudget } from "@/lib/gigs";
 import { listBlockedPeerIds } from "@/lib/blocks";
 
 type JobRow = {
@@ -43,36 +41,9 @@ type JobRow = {
   __kind: "job";
 };
 
-type GigRow = {
-  id: string;
-  title: string;
-  description?: string | null;
-  category: string;
-  location: string | null;
-  budget_min: number | null;
-  budget_max: number | null;
-  urgency: string;
-  created_at: string;
-  poster_id: string;
-  media?: unknown;
-  __kind: "gig";
-};
-
-type FeedItem = JobRow | GigRow;
-type FeedKind = "all" | "jobs" | "gigs";
+type FeedItem = JobRow;
 
 const RECENT_KEY = "yaj_jobs_recent_searches";
-
-function gigCover(media: unknown): string | null {
-  if (!Array.isArray(media)) return null;
-  for (const item of media) {
-    if (typeof item === "string" && item) return item;
-    if (item && typeof item === "object" && typeof (item as { url?: string }).url === "string") {
-      return (item as { url: string }).url;
-    }
-  }
-  return null;
-}
 
 function matchesNearYou(location: string | null, prefs: Prefs | null): boolean {
   const loc = (location || "").trim().toLowerCase();
@@ -87,7 +58,6 @@ export default function JobsPage() {
   const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("featured");
-  const [feedKind, setFeedKind] = useState<FeedKind>("all");
   const [listings, setListings] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [forYou, setForYou] = useState(false);
@@ -113,7 +83,7 @@ export default function JobsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [{ data: jobs }, { data: gigs }] = await Promise.all([
+    const { data: jobs } = await (async () =>
       supabase
         .from("job_listings")
         .select(
@@ -121,27 +91,15 @@ export default function JobsPage() {
         )
         .eq("status", "open")
         .order("created_at", { ascending: false })
-        .limit(50),
-      (supabase as any)
-        .from("gig_listings")
-        .select("id,title,description,category,location,budget_min,budget_max,urgency,created_at,poster_id,media")
-        .eq("status", "open")
-        .order("created_at", { ascending: false })
-        .limit(50),
-    ]);
+        .limit(50))();
 
     const blocked = user ? await listBlockedPeerIds(user.id) : new Set<string>();
     const openJobs = ((jobs ?? []) as Omit<JobRow, "__kind">[]).filter(
       (j) => !j.employer_id || !blocked.has(j.employer_id),
     );
-    const openGigs = ((gigs ?? []) as Omit<GigRow, "__kind">[]).filter(
-      (g) => !g.poster_id || !blocked.has(g.poster_id),
-    );
-
-    const merged: FeedItem[] = [
-      ...openJobs.map((j) => ({ ...j, __kind: "job" as const })),
-      ...openGigs.map((g) => ({ ...g, __kind: "gig" as const })),
-    ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const merged: FeedItem[] = openJobs
+      .map((j) => ({ ...j, __kind: "job" as const }))
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     setListings(merged);
 
@@ -182,31 +140,16 @@ export default function JobsPage() {
     const n = query.trim().toLowerCase();
     let items = listings;
 
-    if (feedKind === "jobs") items = items.filter((i) => i.__kind === "job");
-    if (feedKind === "gigs") items = items.filter((i) => i.__kind === "gig");
-
     if (activeCategory === "remote") {
       items = items.filter((i) => i.__kind === "job" && i.remote_mode === "remote");
     } else if (activeCategory === "near-you") {
       items = items.filter((i) => matchesNearYou(i.location, prefs));
     } else if (activeCategory !== "featured") {
-      items = items.filter((i) => {
-        if (i.__kind === "job") return i.category === activeCategory;
-        // Gigs use local-help categories; keep them only on Featured / Near You / All-gigs feed
-        return false;
-      });
+      items = items.filter((i) => i.category === activeCategory);
     }
 
     if (n) {
       items = items.filter((i) => {
-        if (i.__kind === "gig") {
-          return (
-            i.title.toLowerCase().includes(n) ||
-            (i.description || "").toLowerCase().includes(n) ||
-            (i.location ?? "").toLowerCase().includes(n) ||
-            i.category.toLowerCase().includes(n)
-          );
-        }
         const brand = employerBrands[i.employer_id];
         const skillsHit = (i.skills || []).some((s) => s.toLowerCase().includes(n));
         return (
@@ -219,7 +162,7 @@ export default function JobsPage() {
       });
     }
     return items;
-  }, [query, activeCategory, listings, employerBrands, feedKind, prefs]);
+  }, [query, activeCategory, listings, employerBrands, prefs]);
 
   const displayed = useMemo(() => {
     if (!forYou || !prefs) return filtered;
@@ -259,7 +202,7 @@ export default function JobsPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search jobs, skills, companies, gigs"
+            placeholder="Search jobs, skills, companies"
             className="w-full h-11 rounded-xl bg-muted border border-border pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-primary/35"
           />
           {query && (
@@ -308,28 +251,6 @@ export default function JobsPage() {
         </div>
       </header>
 
-      <div className="px-4 pb-2 flex gap-2">
-        {(
-          [
-            { id: "all", label: "All" },
-            { id: "jobs", label: "Jobs" },
-            { id: "gigs", label: "Gigs" },
-          ] as const
-        ).map((k) => (
-          <button
-            key={k.id}
-            type="button"
-            onClick={() => setFeedKind(k.id)}
-            className={`h-8 px-3 rounded-full text-[11px] font-bold border transition-colors ${
-              feedKind === k.id
-                ? "bg-foreground text-background border-foreground"
-                : "bg-card text-foreground border-border"
-            }`}
-          >
-            {k.label}
-          </button>
-        ))}
-      </div>
 
       <div className="h-scroll-isolate flex gap-2 overflow-x-auto px-4 pb-3 scrollbar-hide">
         {JOB_CATEGORIES.map((cat) => {
@@ -364,47 +285,6 @@ export default function JobsPage() {
           </div>
         ) : (
           displayed.map((item) => {
-            if (item.__kind === "gig") {
-              const cover = gigCover(item.media);
-              return (
-                <button
-                  key={`gig-${item.id}`}
-                  type="button"
-                  onClick={() => nav(`/gigs/${item.id}`)}
-                  className="w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 active:scale-[0.99]"
-                >
-                  <span className="inline-block rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">
-                    Local gig
-                  </span>
-                  <div className="mt-2 flex items-start gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
-                      {cover ? (
-                        <img src={cover} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <Wrench className="h-5 w-5 text-muted-foreground" />
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[17px] font-bold leading-snug text-foreground">{item.title}</p>
-                      <p className="mt-0.5 text-[13px] capitalize text-muted-foreground">{item.category}</p>
-                      <p className="text-[13px] text-muted-foreground">{item.location ?? "—"}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-[13px] font-bold text-emerald-700 dark:text-emerald-400">
-                      {formatGigBudget(item.budget_min, item.budget_max)}
-                    </span>
-                    <span className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold capitalize">
-                      {item.urgency?.replace(/_/g, " ") || "Flexible"}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {timeAgo(item.created_at)} ago
-                    </span>
-                  </div>
-                </button>
-              );
-            }
 
             const s = forYou && prefs ? scoreListing(item, prefs) : 0;
             const verified = verifiedEmployers.has(item.employer_id);
