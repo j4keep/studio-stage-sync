@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarClock, MapPin, Pencil, Plus, Share2, Trash2, Users } from "lucide-react";
+import { ArrowLeft, CalendarClock, MapPin, Search, Share2, SlidersHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ShareEventSheet from "@/components/events/ShareEventSheet";
-
+import EventFilterSheet, {
+  DEFAULT_EVENT_FILTERS,
+  EVENT_CATEGORIES,
+  type EventFilters,
+} from "@/components/events/EventFilterSheet";
 
 type EventRow = {
   id: string;
@@ -25,28 +29,18 @@ type EventRow = {
   created_at: string;
 };
 
-const CATEGORIES = [
-  { id: "party", label: "🎉 Party" },
-  { id: "music", label: "🎵 Music / Concert" },
-  { id: "food", label: "🍔 Food & Drinks" },
-  { id: "sports", label: "🏀 Sports" },
-  { id: "gaming", label: "🎮 Gaming" },
-  { id: "business", label: "💼 Business / Networking" },
-  { id: "community", label: "🤝 Community" },
-  { id: "wellness", label: "🌿 Wellness" },
-  { id: "family", label: "👨‍👩‍👧 Family / Kids" },
-  { id: "other", label: "✨ Other" },
-];
+type HostProfile = { user_id: string; display_name: string | null; avatar_url: string | null };
 
 function formatPrice(cents: number | null) {
   if (cents == null) return null;
   if (cents === 0) return "Free";
-  return `$${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
+  return `From $${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
 
 function formatWhen(iso: string | null) {
   if (!iso) return null;
   return new Date(iso).toLocaleString(undefined, {
+    weekday: "short",
     month: "short",
     day: "numeric",
     hour: "numeric",
@@ -54,29 +48,19 @@ function formatWhen(iso: string | null) {
   });
 }
 
-/** Explore → Events: create & discover events. "Going" counts stay private to the host. */
+/** Explore → Events: discovery only. Creating/managing events lives in the Professional Dashboard. */
 export default function EventsPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState<EventRow[]>([]);
+  const [hosts, setHosts] = useState<Record<string, HostProfile>>({});
   const [goingIds, setGoingIds] = useState<string[]>([]);
-  const [myCounts, setMyCounts] = useState<Record<string, number>>({});
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const [posting, setPosting] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [tab, setTab] = useState<"discover" | "mine">("discover");
-  const [filter, setFilter] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<EventFilters>(DEFAULT_EVENT_FILTERS);
+  const [showFilters, setShowFilters] = useState(false);
   const [shareEvent, setShareEvent] = useState<EventRow | null>(null);
-
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [category, setCategory] = useState("party");
-  const [address, setAddress] = useState("");
-  const [price, setPrice] = useState("");
-  const [startsAt, setStartsAt] = useState("");
-  const [endsAt, setEndsAt] = useState("");
-  const [capacity, setCapacity] = useState("");
-  const [file, setFile] = useState<File | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,22 +73,33 @@ export default function EventsPage() {
     const list = error ? [] : ((data as EventRow[]) || []);
     setRows(list);
 
+    const hostIds = Array.from(new Set(list.map((r) => r.user_id)));
+    if (hostIds.length) {
+      const { data: profs } = await (supabase as any)
+        .from("profiles")
+        .select("user_id, display_name, avatar_url")
+        .in("user_id", hostIds);
+      const map: Record<string, HostProfile> = {};
+      ((profs as HostProfile[]) || []).forEach((p) => {
+        map[p.user_id] = p;
+      });
+      setHosts(map);
+    }
+
     if (user) {
       const { data: rsvps } = await (supabase as any)
         .from("event_rsvps")
         .select("event_id, user_id")
-        .in("event_id", list.map((r) => r.id).slice(0, 200));
-      const all = (rsvps as { event_id: string; user_id: string }[]) || [];
-      setGoingIds(all.filter((r) => r.user_id === user.id).map((r) => r.event_id));
-      const mine = new Set(list.filter((r) => r.user_id === user.id).map((r) => r.id));
-      const counts: Record<string, number> = {};
-      all.forEach((r) => {
-        if (mine.has(r.event_id)) counts[r.event_id] = (counts[r.event_id] || 0) + 1;
-      });
-      setMyCounts(counts);
+        .eq("user_id", user.id);
+      setGoingIds(((rsvps as { event_id: string }[]) || []).map((r) => r.event_id));
+      const { data: fol } = await (supabase as any)
+        .from("follows")
+        .select("following_id")
+        .eq("follower_id", user.id);
+      setFollowingIds(((fol as { following_id: string }[]) || []).map((f) => f.following_id));
     } else {
       setGoingIds([]);
-      setMyCounts({});
+      setFollowingIds([]);
     }
     setLoading(false);
   }, [user]);
@@ -113,15 +108,28 @@ export default function EventsPage() {
     void load();
   }, [load]);
 
-  const deleteEvent = async (eventId: string) => {
-    if (!window.confirm("Delete this event? This can't be undone.")) return;
-    const { error } = await (supabase as any).from("event_listings").delete().eq("id", eventId);
-    if (error) {
-      toast.error("Could not delete event");
+  const toggleFollow = async (hostId: string) => {
+    if (!user) {
+      toast.error("Sign in to follow");
       return;
     }
-    setRows((prev) => prev.filter((r) => r.id !== eventId));
-    toast.success("Event deleted");
+    const isFollowing = followingIds.includes(hostId);
+    setFollowingIds((prev) => (isFollowing ? prev.filter((id) => id !== hostId) : [...prev, hostId]));
+    if (isFollowing) {
+      await (supabase as any)
+        .from("follows")
+        .delete()
+        .eq("follower_id", user.id)
+        .eq("following_id", hostId);
+    } else {
+      const { error } = await (supabase as any)
+        .from("follows")
+        .insert({ follower_id: user.id, following_id: hostId });
+      if (error) {
+        setFollowingIds((prev) => prev.filter((id) => id !== hostId));
+        toast.error("Could not follow");
+      }
+    }
   };
 
   const toggleGoing = async (eventId: string) => {
@@ -154,84 +162,34 @@ export default function EventsPage() {
     }
   };
 
-  const publish = async () => {
-    if (!user) {
-      toast.error("Sign in to post an event");
-      return;
-    }
-    if (!title.trim()) {
-      toast.error("Add an event title");
-      return;
-    }
-    setPosting(true);
-    try {
-      let mediaUrl: string | null = null;
-      let mediaType = "image";
-      if (file) {
-        mediaType = file.type.startsWith("video/") ? "video" : "image";
-        const ext = file.name.split(".").pop() || (mediaType === "video" ? "mp4" : "jpg");
-        const path = `events/${user.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("media")
-          .upload(path, file, { contentType: file.type || undefined });
-        if (upErr) throw upErr;
-        mediaUrl = supabase.storage.from("media").getPublicUrl(path).data.publicUrl;
-      }
-      const dollars = Number.parseFloat(price);
-      const priceCents = Number.isFinite(dollars) ? Math.round(dollars * 100) : null;
-      const mapUrl = address.trim()
-        ? `https://maps.google.com/?q=${encodeURIComponent(address.trim())}`
-        : null;
-      const startIso = startsAt ? new Date(startsAt).toISOString() : null;
-      const endIso = endsAt ? new Date(endsAt).toISOString() : null;
-      const cap = Number.parseInt(capacity, 10);
-      const { data: created, error } = await (supabase as any)
-        .from("event_listings")
-        .insert({
-          user_id: user.id,
-          title: title.trim(),
-          description: description.trim() || null,
-          category,
-          media_url: mediaUrl,
-          media_type: mediaType,
-          address: address.trim() || null,
-          map_url: mapUrl,
-          price_cents: priceCents,
-          starts_at: startIso,
-          ends_at: endIso,
-          expires_at: endIso || startIso,
-          capacity: Number.isFinite(cap) ? cap : null,
-        })
-        .select("*")
-        .single();
-      if (error) throw error;
-      toast.success("Event posted");
-      if (created) setShareEvent(created as EventRow);
-
-      setTitle("");
-      setDescription("");
-      setAddress("");
-      setPrice("");
-      setStartsAt("");
-      setEndsAt("");
-      setCapacity("");
-      setCategory("party");
-      setFile(null);
-      setShowForm(false);
-      void load();
-    } catch (e: any) {
-      toast.error(e?.message || "Could not post event");
-    } finally {
-      setPosting(false);
-    }
-  };
+  const activeFilterCount =
+    filters.categories.length + (filters.price !== "any" ? 1 : 0) + (filters.sort !== "relevance" ? 1 : 0);
 
   const visible = useMemo(() => {
     let list = rows;
-    if (tab === "mine") list = list.filter((r) => user && r.user_id === user.id);
-    if (filter) list = list.filter((r) => r.category === filter);
+    const q = query.trim().toLowerCase();
+    if (q) {
+      list = list.filter((r) => {
+        const host = hosts[r.user_id]?.display_name?.toLowerCase() || "";
+        return (
+          r.title.toLowerCase().includes(q) ||
+          (r.description || "").toLowerCase().includes(q) ||
+          (r.address || "").toLowerCase().includes(q) ||
+          host.includes(q)
+        );
+      });
+    }
+    if (filters.categories.length) list = list.filter((r) => filters.categories.includes(r.category));
+    if (filters.price === "free") list = list.filter((r) => (r.price_cents ?? 0) === 0);
+    if (filters.price === "25") list = list.filter((r) => (r.price_cents ?? 0) <= 2500);
+    if (filters.price === "50") list = list.filter((r) => (r.price_cents ?? 0) <= 5000);
+    if (filters.sort === "date") {
+      list = [...list].sort(
+        (a, b) => new Date(a.starts_at || a.created_at).getTime() - new Date(b.starts_at || b.created_at).getTime(),
+      );
+    }
     return list;
-  }, [rows, tab, filter, user]);
+  }, [rows, query, filters, hosts]);
 
   return (
     <div className="min-h-screen bg-background pb-32 text-foreground">
@@ -240,254 +198,174 @@ export default function EventsPage() {
           <button
             type="button"
             onClick={() => nav("/explore")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
             aria-label="Back"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">What’s on</p>
-            <h1 className="text-lg font-black tracking-tight">Events</h1>
+          <div className="flex h-11 flex-1 items-center gap-2 rounded-full border border-border bg-card px-4 shadow-sm">
+            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find things to do"
+              className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
+            />
           </div>
           <button
             type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-xs font-bold text-primary-foreground"
+            onClick={() => setShowFilters(true)}
+            aria-label="Filter"
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card"
           >
-            <Plus className="h-3.5 w-3.5" />
-            Post
+            <SlidersHorizontal className="h-4 w-4" />
+            {activeFilterCount ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            ) : null}
           </button>
         </div>
-
-        <div className="mt-3 flex gap-2">
-          {(["discover", "mine"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`rounded-full px-3 py-1.5 text-[12px] font-bold ${
-                tab === t ? "bg-primary text-primary-foreground" : "border border-border bg-card text-foreground"
-              }`}
-            >
-              {t === "discover" ? "Discover" : "My events"}
-            </button>
-          ))}
-        </div>
-
-        <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4 pb-1">
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.id}
-              type="button"
-              onClick={() => setFilter((p) => (p === c.id ? null : c.id))}
-              className={`whitespace-nowrap rounded-full border px-3 py-1 text-[11px] font-semibold ${
-                filter === c.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-muted-foreground"
-              }`}
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
+        {filters.categories.length ? (
+          <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
+            {filters.categories.map((c) => (
+              <span
+                key={c}
+                className="whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground"
+              >
+                {EVENT_CATEGORIES.find((x) => x.id === c)?.label || c}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </header>
 
-      {showForm ? (
-        <div className="space-y-3 border-b border-border px-4 py-4">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Event title"
-            className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-          />
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.label}
-              </option>
-            ))}
-          </select>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Event details"
-            rows={3}
-            className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-          />
-          <input
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Address (opens in Maps)"
-            className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="Price ($, 0 = free)"
-              inputMode="decimal"
-              className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-            />
-            <input
-              value={capacity}
-              onChange={(e) => setCapacity(e.target.value)}
-              placeholder="Spots (optional)"
-              inputMode="numeric"
-              className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <label className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Starts</span>
-              <input
-                type="datetime-local"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Ends / expires</span>
-              <input
-                type="datetime-local"
-                value={endsAt}
-                onChange={(e) => setEndsAt(e.target.value)}
-                className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm outline-none focus:ring-2 focus:ring-primary/35"
-              />
-            </label>
-          </div>
-          <label className="flex h-11 cursor-pointer items-center justify-center rounded-xl border border-dashed border-border bg-muted text-xs font-semibold text-muted-foreground">
-            {file ? file.name : "Upload flyer or video"}
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={posting}
-            onClick={() => void publish()}
-            className="h-11 w-full rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-50"
-          >
-            {posting ? "Posting…" : "Publish event"}
-          </button>
-        </div>
-      ) : null}
-
-      <section className="space-y-3 px-4 py-4">
+      <section className="space-y-6 px-4 py-4">
         {loading ? (
           <p className="text-center text-sm text-muted-foreground">Loading…</p>
         ) : visible.length === 0 ? (
           <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            {tab === "mine" ? "You haven’t posted an event yet." : "No events yet. Post a flyer or video to get started."}
+            No events match your search.
           </p>
         ) : (
           visible.map((row) => {
-            const isHost = user?.id === row.user_id;
+            const host = hosts[row.user_id];
             const isGoing = goingIds.includes(row.id);
+            const isHost = user?.id === row.user_id;
             return (
-              <article
-                key={row.id}
-                className="overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm"
-              >
-                <button type="button" onClick={() => nav(`/events/${row.id}`)} className="w-full text-left">
-                  {row.media_url ? (
-                    <div className="flex aspect-[4/5] w-full items-center justify-center overflow-hidden bg-muted">
-                      {row.media_type === "video" ? (
-                        <video src={row.media_url} muted playsInline className="h-full w-full object-contain" />
+              <article key={row.id} className="text-left">
+                <div className="mb-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => nav(`/artist/${row.user_id}`)}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
+                      {host?.avatar_url ? (
+                        <img src={host.avatar_url} alt="" className="h-full w-full object-cover" />
                       ) : (
-                        <img src={row.media_url} alt="" className="h-full w-full object-contain" />
+                        <span className="flex h-full w-full items-center justify-center text-[11px] font-bold text-muted-foreground">
+                          {(host?.display_name || "?")[0]?.toUpperCase()}
+                        </span>
                       )}
-                    </div>
-                  ) : (
-                    <div className="flex aspect-[4/5] items-center justify-center bg-muted text-sm text-muted-foreground">
-                      Event
-                    </div>
-                  )}
-                  <div className="space-y-1 px-3 pt-2.5">
-                    <p className="font-bold">{row.title}</p>
-                    {formatWhen(row.starts_at) ? (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <CalendarClock className="h-3 w-3" />
-                        {formatWhen(row.starts_at)}
-                        {formatWhen(row.ends_at) ? ` → ${formatWhen(row.ends_at)}` : ""}
-                      </p>
-                    ) : null}
-                    {row.address ? (
-                      <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <MapPin className="h-3 w-3" />
-                        {row.address}
-                      </p>
-                    ) : null}
-                    {formatPrice(row.price_cents) ? (
-                      <p className="text-xs font-semibold text-primary">{formatPrice(row.price_cents)}</p>
-                    ) : null}
-                  </div>
-                </button>
-                <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-2">
-                  {isHost ? (
-                    <>
-                      <span className="flex items-center gap-1 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold">
-                        <Users className="h-3.5 w-3.5" />
-                        {myCounts[row.id] || 0} going
-                        <span className="font-normal text-muted-foreground">· only you see this</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShareEvent(row)}
-                        className="flex items-center gap-1 rounded-full bg-primary px-3 py-1.5 text-[12px] font-bold text-primary-foreground active:scale-95"
-                      >
-                        <Share2 className="h-3.5 w-3.5" />
-                        Share
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => nav(`/events/${row.id}?edit=1`)}
-                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold active:scale-95"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void deleteEvent(row.id)}
-                        className="flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 text-[12px] font-bold text-destructive active:scale-95"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        Delete
-                      </button>
-                    </>
-                  ) : (
+                    </span>
+                    <span className="min-w-0 truncate text-[13px] font-bold">
+                      {host?.display_name || "Creator"}
+                    </span>
+                  </button>
+                  {!isHost ? (
                     <button
                       type="button"
-                      onClick={() => void toggleGoing(row.id)}
-                      className={`rounded-full px-4 py-1.5 text-[12px] font-bold active:scale-95 ${
-                        isGoing
+                      onClick={() => void toggleFollow(row.user_id)}
+                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold ${
+                        followingIds.includes(row.user_id)
                           ? "border border-border bg-muted text-foreground"
                           : "bg-primary text-primary-foreground"
                       }`}
                     >
-                      {isGoing ? "Going ✓" : "Going"}
+                      {followingIds.includes(row.user_id) ? "Following" : "Follow"}
                     </button>
-                  )}
+                  ) : null}
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => nav(`/events/${row.id}`)}
+                  className="w-full overflow-hidden rounded-2xl text-left"
+                >
+                  {row.media_url ? (
+                    <div className="aspect-[3/2] w-full overflow-hidden rounded-2xl bg-muted">
+                      {row.media_type === "video" ? (
+                        <video src={row.media_url} muted playsInline className="h-full w-full object-cover" />
+                      ) : (
+                        <img src={row.media_url} alt="" className="h-full w-full object-cover" />
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex aspect-[3/2] items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground">
+                      Event
+                    </div>
+                  )}
+                </button>
+
+                <div className="mt-2 flex items-start gap-3">
+                  <button
+                    type="button"
+                    onClick={() => nav(`/events/${row.id}`)}
+                    className="min-w-0 flex-1 space-y-1 text-left"
+                  >
+                    <p className="text-[17px] font-black leading-snug">{row.title}</p>
+                    {formatWhen(row.starts_at) ? (
+                      <p className="flex items-center gap-1 text-[13px] text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {formatWhen(row.starts_at)}
+                      </p>
+                    ) : null}
+                    {row.address ? (
+                      <p className="flex items-center gap-1 text-[13px] text-muted-foreground">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {row.address}
+                      </p>
+                    ) : null}
+                    {formatPrice(row.price_cents) ? (
+                      <p className="text-[13px] font-bold">{formatPrice(row.price_cents)}</p>
+                    ) : null}
+                  </button>
+                  <div className="flex shrink-0 items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShareEvent(row)}
+                      aria-label="Share event"
+                      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    {!isHost ? (
+                      <button
+                        type="button"
+                        onClick={() => void toggleGoing(row.id)}
+                        className={`rounded-full px-4 py-2 text-[12px] font-bold active:scale-95 ${
+                          isGoing
+                            ? "border border-border bg-muted text-foreground"
+                            : "bg-primary text-primary-foreground"
+                        }`}
+                      >
+                        {isGoing ? "Going ✓" : "Going"}
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </article>
             );
           })
         )}
       </section>
 
-      {shareEvent ? (
-        <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} />
+      {showFilters ? (
+        <EventFilterSheet value={filters} onApply={setFilters} onClose={() => setShowFilters(false)} />
       ) : null}
-    </div>
 
+      {shareEvent ? <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} /> : null}
+    </div>
   );
 }
