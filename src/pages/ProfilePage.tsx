@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import {
+  Briefcase,
   User, FolderHeart, Building2, Heart, Download, DollarSign,
   Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
   CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones,
