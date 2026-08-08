@@ -189,7 +189,42 @@ export default function DealCreatePage() {
     setSubmitting(true);
     try {
       let coverUrl: string | null = null;
-      if (file) coverUrl = await uploadDealImage(user.id, file);
+      if (file) coverUrl = await uploadDealImage(user.id, await normalizeDealFlyer(file));
+
+      if (editId) {
+        await updateDeal(editId, businessId, {
+          title: title.trim(),
+          category,
+          description: description.trim(),
+          deal_type: dealType,
+          regular_price: regularPrice ? Number(regularPrice) : null,
+          deal_price: dealPrice ? Number(dealPrice) : null,
+          discount_value: discountValue ? Number(discountValue) : null,
+          discount_badge: badge,
+          starts_at: new Date(startsAt).toISOString(),
+          expires_at: new Date(expiresAt).toISOString(),
+          redemption_type: redemptionType,
+          promo_code: promoCode || null,
+          total_claim_limit: totalLimit ? Number(totalLimit) : null,
+          per_user_limit: perUserLimit ? Number(perUserLimit) : 1,
+          location_type: locationType,
+          address: locationType === "online" ? null : address,
+          city: locationType === "online" ? null : city,
+          state: locationType === "online" ? null : state,
+          postal_code: locationType === "online" ? null : postal,
+          terms: terms || null,
+          minimum_purchase: minimumPurchase ? Number(minimumPurchase) : null,
+          age_restriction: ageRestriction ? Number(ageRestriction) : null,
+          external_url: externalUrl || null,
+          ...(coverUrl ? { cover_url: coverUrl } : {}),
+        });
+        if (coverUrl) await addDealImage(editId, coverUrl, true);
+        toast.success("Deal updated");
+        nav("/deals/business");
+        return;
+      }
+
+
 
       const draft = await createDealDraft({
         businessId,
