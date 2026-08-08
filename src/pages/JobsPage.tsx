@@ -4,9 +4,7 @@ import {
   Search,
   MapPin,
   Clock,
-  Briefcase,
   Sparkles,
-  Plus,
   X,
   User,
   Settings2,
@@ -27,8 +25,6 @@ import {
 } from "@/lib/jobs";
 import { formatGigBudget } from "@/lib/gigs";
 import { listBlockedPeerIds } from "@/lib/blocks";
-import PostJobSheet from "@/components/jobs/PostJobSheet";
-import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 type JobRow = {
   id: string;
@@ -64,7 +60,6 @@ type GigRow = {
 
 type FeedItem = JobRow | GigRow;
 type FeedKind = "all" | "jobs" | "gigs";
-type HireMode = null | "choose";
 
 const RECENT_KEY = "yaj_jobs_recent_searches";
 
@@ -95,9 +90,6 @@ export default function JobsPage() {
   const [feedKind, setFeedKind] = useState<FeedKind>("all");
   const [listings, setListings] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showJobSheet, setShowJobSheet] = useState(false);
-  const [showGigSheet, setShowGigSheet] = useState(false);
-  const [hireMode, setHireMode] = useState<HireMode>(null);
   const [forYou, setForYou] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [recents, setRecents] = useState<string[]>(() => {
@@ -186,14 +178,6 @@ export default function JobsPage() {
     } catch {}
   };
 
-  const findWork = () => {
-    setFeedKind("all");
-    setActiveCategory("featured");
-    setQuery("");
-    setForYou(false);
-    setHireMode(null);
-  };
-
   const filtered = useMemo(() => {
     const n = query.trim().toLowerCase();
     let items = listings;
@@ -251,28 +235,17 @@ export default function JobsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-primary">Create • Connect • Elevate</p>
-            <h1 className="text-2xl font-black tracking-tight">Jobs</h1>
+            <h1 className="text-2xl font-black tracking-tight">Opportunities</h1>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => nav("/my-jobs")}
-              className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-2.5 text-[11px] font-bold"
-              aria-label="My jobs dashboard"
-              title="My Jobs"
-            >
-              <User className="h-3.5 w-3.5" />
-              My Jobs
-            </button>
-            <button
-              type="button"
-              onClick={() => setHireMode("choose")}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold shadow-sm active:scale-95 transition-transform"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Post
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => nav("/my-jobs")}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full bg-muted px-3 text-[11px] font-bold"
+            aria-label="My applications"
+          >
+            <User className="h-3.5 w-3.5" />
+            My Jobs
+          </button>
         </div>
 
         <form
@@ -329,12 +302,6 @@ export default function JobsPage() {
           >
             <Settings2 className="w-3 h-3" /> Preferences
           </button>
-          <button
-            onClick={() => nav("/employer-dashboard")}
-            className="inline-flex items-center gap-1 px-3 h-8 rounded-full bg-muted text-[11px] font-semibold"
-          >
-            <Building2 className="w-3 h-3" /> Hiring
-          </button>
           {forYou && !prefs && (
             <span className="text-[10px] text-muted-foreground">Set preferences for personalized matches</span>
           )}
@@ -385,28 +352,7 @@ export default function JobsPage() {
         })}
       </div>
 
-      {activeCategory === "featured" && !query && (
-        <section className="px-4 mb-4">
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={findWork}
-              className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-emerald-400 to-cyan-500 text-white shadow-sm active:scale-[0.98] transition"
-            >
-              <Sparkles className="w-5 h-5 mb-2" />
-              <p className="text-sm font-bold">Find Work</p>
-              <p className="text-[11px] opacity-90">Browse jobs & gigs</p>
-            </button>
-            <button
-              onClick={() => setHireMode("choose")}
-              className="relative overflow-hidden rounded-2xl p-4 text-left bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white shadow-sm active:scale-[0.98] transition"
-            >
-              <Briefcase className="w-5 h-5 mb-2" />
-              <p className="text-sm font-bold">Hire Someone</p>
-              <p className="text-[11px] opacity-90">Post a job or gig</p>
-            </button>
-          </div>
-        </section>
-      )}
+
 
       <section className="px-4 pb-24 space-y-3">
         {loading ? (
@@ -414,9 +360,7 @@ export default function JobsPage() {
         ) : displayed.length === 0 ? (
           <div className="text-center py-16">
             <p className="font-semibold">No listings yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {user ? "Be the first to post a job or gig." : "Sign in to post."}
-            </p>
+            <p className="mt-1 text-sm text-muted-foreground">Check back soon for new opportunities.</p>
           </div>
         ) : (
           displayed.map((item) => {
@@ -427,45 +371,36 @@ export default function JobsPage() {
                   key={`gig-${item.id}`}
                   type="button"
                   onClick={() => nav(`/gigs/${item.id}`)}
-                  className="w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors active:scale-[0.99]"
+                  className="w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 active:scale-[0.99]"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
-                      <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                        {cover ? (
-                          <img src={cover} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <Wrench className="w-5 h-5 text-muted-foreground" />
-                        )}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-amber-500/15 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded">
-                            Gig
-                          </span>
-                          <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
-                        </div>
-                        <p className="text-xs text-muted-foreground truncate capitalize">{item.category}</p>
-                        <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <MapPin className="w-3 h-3" />
-                            {item.location ?? "—"}
-                          </span>
-                          <span className="inline-flex items-center gap-1">
-                            <Clock className="w-3 h-3" />
-                            {timeAgo(item.created_at)}
-                          </span>
-                        </div>
-                      </div>
+                  <span className="inline-block rounded-md bg-amber-500/15 px-2 py-1 text-[11px] font-bold text-amber-700 dark:text-amber-400">
+                    Local gig
+                  </span>
+                  <div className="mt-2 flex items-start gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-muted">
+                      {cover ? (
+                        <img src={cover} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <Wrench className="h-5 w-5 text-muted-foreground" />
+                      )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-foreground">
-                        {formatGigBudget(item.budget_min, item.budget_max)}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 capitalize">
-                        {item.urgency?.replace(/_/g, " ") || "Flexible"}
-                      </p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[17px] font-bold leading-snug text-foreground">{item.title}</p>
+                      <p className="mt-0.5 text-[13px] capitalize text-muted-foreground">{item.category}</p>
+                      <p className="text-[13px] text-muted-foreground">{item.location ?? "—"}</p>
                     </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-[13px] font-bold text-emerald-700 dark:text-emerald-400">
+                      {formatGigBudget(item.budget_min, item.budget_max)}
+                    </span>
+                    <span className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold capitalize">
+                      {item.urgency?.replace(/_/g, " ") || "Flexible"}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {timeAgo(item.created_at)} ago
+                    </span>
                   </div>
                 </button>
               );
@@ -475,115 +410,82 @@ export default function JobsPage() {
             const verified = verifiedEmployers.has(item.employer_id);
             const brand = employerBrands[item.employer_id];
             const jobCover = resolveJobCover(item);
+            const typeLabel = EMPLOYMENT_TYPES.find((t) => t.id === item.employment_type)?.label;
             return (
               <button
                 key={`job-${item.id}`}
                 type="button"
                 onClick={() => nav(`/jobs/${item.id}`)}
-                className="w-full text-left p-4 rounded-2xl bg-card border border-border hover:border-primary/40 transition-colors active:scale-[0.99]"
+                className="w-full rounded-2xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40 active:scale-[0.99]"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="w-11 h-11 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
-                      {jobCover ? (
-                        <img src={jobCover} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Building2 className="w-5 h-5 text-muted-foreground" />
+                <div className="flex items-center gap-2">
+                  <span className="rounded-md bg-primary/10 px-2 py-1 text-[11px] font-bold text-primary">
+                    Easily apply
+                  </span>
+                  {s >= 30 && (
+                    <span className="rounded-md bg-emerald-500/15 px-2 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                      Great match
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-2.5 flex items-start gap-3">
+                  {jobCover && (
+                    <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl border border-border bg-muted">
+                      <img src={jobCover} alt="" className="h-full w-full object-cover" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[17px] font-bold leading-snug tracking-tight text-foreground">{item.title}</p>
+                    <div className="mt-1 flex items-center gap-1">
+                      <p className="truncate text-[13px] text-muted-foreground">
+                        {brand?.company_name || "Employer"}
+                      </p>
+                      {verified && (
+                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-sky-500" aria-label="Verified employer" />
                       )}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      {brand?.company_name && (
-                        <div className="flex items-center gap-1 mb-0.5">
-                          <p className="text-[11px] font-semibold text-muted-foreground truncate">{brand.company_name}</p>
-                          {verified && (
-                            <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
-                          )}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">
-                          Job
-                        </span>
-                        <p className="text-sm font-bold text-foreground truncate">{item.title}</p>
-                        {!brand?.company_name && verified && (
-                          <BadgeCheck className="w-3.5 h-3.5 text-sky-500 shrink-0" aria-label="Verified employer" />
-                        )}
-                        {s >= 30 && (
-                          <span className="shrink-0 text-[9px] font-bold uppercase tracking-wide bg-primary/15 text-primary px-1.5 py-0.5 rounded">
-                            Match
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate capitalize">{item.category}</p>
-                      <div className="flex items-center gap-3 mt-2 text-[11px] text-muted-foreground">
-                        <span className="inline-flex items-center gap-1">
-                          <MapPin className="w-3 h-3" />
-                          {item.location ?? "—"}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {timeAgo(item.created_at)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm font-bold text-foreground">{formatSalary(item.salary_min, item.salary_max)}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">
-                      {EMPLOYMENT_TYPES.find((t) => t.id === item.employment_type)?.label}
+                    <p className="inline-flex items-center gap-1 text-[13px] text-muted-foreground">
+                      <MapPin className="h-3 w-3" />
+                      {item.location ?? "—"}
                     </p>
                   </div>
                 </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="rounded-md bg-emerald-500/10 px-2.5 py-1.5 text-[13px] font-bold text-emerald-700 dark:text-emerald-400">
+                    ✓ {formatSalary(item.salary_min, item.salary_max)}
+                  </span>
+                  {typeLabel && (
+                    <span className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold">{typeLabel}</span>
+                  )}
+                  {item.remote_mode && (
+                    <span className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold capitalize">
+                      {item.remote_mode}
+                    </span>
+                  )}
+                </div>
+
+                {(item.skills || []).length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {(item.skills || []).slice(0, 3).map((sk) => (
+                      <span key={sk} className="rounded-md bg-muted px-2.5 py-1.5 text-[13px] font-semibold">
+                        {sk}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <p className="mt-2.5 inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+                  <Clock className="h-3 w-3" />
+                  Posted {timeAgo(item.created_at)} ago
+                </p>
               </button>
             );
           })
         )}
       </section>
-
-      {hireMode === "choose" && (
-        <div className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-4" onClick={() => setHireMode(null)}>
-          <div
-            className="w-full max-w-sm rounded-2xl bg-background border border-border p-4 space-y-3 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold">Hire someone</h2>
-              <button type="button" onClick={() => setHireMode(null)} className="h-8 w-8 rounded-full bg-muted flex items-center justify-center" aria-label="Close">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setHireMode(null);
-                setShowJobSheet(true);
-              }}
-              className="w-full text-left rounded-xl border border-border p-3 hover:bg-muted/60 transition"
-            >
-              <p className="text-sm font-bold flex items-center gap-2">
-                <Briefcase className="w-4 h-4" /> Post a job
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Full-time, part-time, contract, internship</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setHireMode(null);
-                setShowGigSheet(true);
-              }}
-              className="w-full text-left rounded-xl border border-border p-3 hover:bg-muted/60 transition"
-            >
-              <p className="text-sm font-bold flex items-center gap-2">
-                <Wrench className="w-4 h-4" /> Post a gig
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">One-off help — moving, repairs, yard work</p>
-            </button>
-          </div>
-        </div>
-      )}
-
-      <PostJobSheet open={showJobSheet} onClose={() => setShowJobSheet(false)} onCreated={load} />
-      <PostGigSheet open={showGigSheet} onClose={() => setShowGigSheet(false)} onCreated={load} />
     </div>
   );
 }
+
