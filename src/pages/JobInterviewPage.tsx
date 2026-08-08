@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { formatInterviewWhen, getInterviewInvite, interviewJoinState } from "@/lib/job-interview";
+import { stopAllPageMedia } from "@/lib/stop-page-media";
 
 export default function JobInterviewPage() {
   const { applicationId } = useParams();
@@ -19,6 +20,8 @@ export default function JobInterviewPage() {
   const [conn, setConn] = useState<"idle" | "connecting" | "connected" | "error">("idle");
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
+  const [remoteJoined, setRemoteJoined] = useState(false);
+  const [remoteVideoOn, setRemoteVideoOn] = useState(false);
   const roomRef = useRef<Room | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -57,18 +60,28 @@ export default function JobInterviewPage() {
   });
 
   const attachRemote = (room: Room) => {
+    let sawVideo = false;
     room.remoteParticipants.forEach((p) => {
       p.trackPublications.forEach((pub) => {
         const track = pub.track;
         if (!track) return;
-        if (pub.kind === Track.Kind.Video && remoteVideoRef.current) {
-          track.attach(remoteVideoRef.current);
+        if (track.kind === Track.Kind.Video && remoteVideoRef.current && !sawVideo) {
+          try {
+            track.attach(remoteVideoRef.current);
+            void remoteVideoRef.current.play?.().catch(() => {});
+          } catch { /* ignore */ }
+          sawVideo = true;
         }
-        if (pub.kind === Track.Kind.Audio && remoteAudioRef.current) {
-          track.attach(remoteAudioRef.current);
+        if (track.kind === Track.Kind.Audio && remoteAudioRef.current) {
+          try {
+            track.attach(remoteAudioRef.current);
+            void remoteAudioRef.current.play?.().catch(() => {});
+          } catch { /* ignore */ }
         }
       });
     });
+    setRemoteJoined(room.remoteParticipants.size > 0);
+    setRemoteVideoOn(sawVideo);
   };
 
   const connect = async () => {
@@ -80,6 +93,8 @@ export default function JobInterviewPage() {
     setConn("connecting");
     setError(null);
     try {
+      // Free the iOS audio session held by feed/radio players before capturing.
+      stopAllPageMedia();
       const { data: profile } = await supabase.from("profiles").select("display_name").eq("user_id", user.id).maybeSingle();
       const { data, error: fnErr } = await supabase.functions.invoke("livekit-token", {
         body: {
@@ -94,20 +109,47 @@ export default function JobInterviewPage() {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
 
-      room.on(RoomEvent.TrackSubscribed, (track) => {
-        if (track.kind === Track.Kind.Video && remoteVideoRef.current) track.attach(remoteVideoRef.current);
-        if (track.kind === Track.Kind.Audio && remoteAudioRef.current) track.attach(remoteAudioRef.current);
+      room.on(RoomEvent.TrackSubscribed, () => attachRemote(room));
+      room.on(RoomEvent.TrackUnsubscribed, () => attachRemote(room));
+      room.on(RoomEvent.ParticipantConnected, () => {
+        setRemoteJoined(true);
+        attachRemote(room);
       });
-      room.on(RoomEvent.ParticipantConnected, () => attachRemote(room));
-      room.on(RoomEvent.Disconnected, () => setConn("idle"));
+      room.on(RoomEvent.ParticipantDisconnected, () => {
+        setRemoteJoined(room.remoteParticipants.size > 0);
+        attachRemote(room);
+      });
+      room.on(RoomEvent.Disconnected, () => {
+        setRemoteJoined(false);
+        setConn("idle");
+      });
 
       await room.connect(data.url, data.token);
+      setRemoteJoined(room.remoteParticipants.size > 0);
+
       const videoWanted = invite.call_kind === "video";
-      setCamOn(videoWanted);
-      const tracks = await createLocalTracks({ audio: true, video: videoWanted });
-      for (const t of tracks) {
-        await room.localParticipant.publishTrack(t);
-        if (t.kind === "video" && localVideoRef.current) t.attach(localVideoRef.current);
+      // Publish mic and camera separately so a camera failure never kills audio (iOS Safari).
+      try {
+        await room.localParticipant.setMicrophoneEnabled(true);
+        setMicOn(true);
+      } catch (micErr) {
+        setMicOn(false);
+        toast.error("Microphone unavailable — check permissions");
+        console.warn("mic publish failed", micErr);
+      }
+      if (videoWanted) {
+        try {
+          await room.localParticipant.setCameraEnabled(true);
+          setCamOn(true);
+          const pub = room.localParticipant.getTrackPublication(Track.Source.Camera);
+          if (pub?.track && localVideoRef.current) pub.track.attach(localVideoRef.current);
+        } catch (camErr) {
+          setCamOn(false);
+          toast.error("Camera unavailable — continuing with audio only");
+          console.warn("camera publish failed", camErr);
+        }
+      } else {
+        setCamOn(false);
       }
       attachRemote(room);
       setConn("connected");
@@ -154,6 +196,8 @@ export default function JobInterviewPage() {
     setConn("idle");
     setMicOn(true);
     setCamOn(true);
+    setRemoteJoined(false);
+    setRemoteVideoOn(false);
     if (leavePage) {
       nav(isEmployer ? "/employer-dashboard" : "/my-jobs", { replace: true });
     }
@@ -239,9 +283,15 @@ export default function JobInterviewPage() {
             <>
               <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
               <video ref={localVideoRef} autoPlay playsInline muted className="absolute bottom-3 right-3 w-28 h-40 rounded-xl object-cover border border-white/20 bg-black" />
-              {conn !== "connected" && (
-                <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400">
-                  {conn === "connecting" ? "Connecting…" : "Waiting to join…"}
+              {(conn !== "connected" || !remoteJoined || !remoteVideoOn) && (
+                <div className="absolute inset-0 flex items-center justify-center text-center px-6 text-sm text-zinc-400 bg-zinc-900/80">
+                  {conn === "connecting"
+                    ? "Connecting…"
+                    : conn !== "connected"
+                      ? "Tap the button below to join"
+                      : !remoteJoined
+                        ? "Waiting for the other person to join…"
+                        : "Their camera is off"}
                 </div>
               )}
             </>
@@ -251,7 +301,13 @@ export default function JobInterviewPage() {
                 <Mic className="w-7 h-7" />
               </div>
               <p className="text-sm font-semibold">{conn === "connected" ? "Audio interview connected" : "Audio interview"}</p>
-              <p className="text-[11px] text-zinc-400">{conn === "connecting" ? "Connecting…" : "Mic only — no camera"}</p>
+              <p className="text-[11px] text-zinc-400">
+                {conn === "connecting"
+                  ? "Connecting…"
+                  : conn === "connected"
+                    ? remoteJoined ? "Both parties connected" : "Waiting for the other person to join…"
+                    : "Mic only — no camera"}
+              </p>
             </div>
           )}
           <audio ref={remoteAudioRef} autoPlay />
