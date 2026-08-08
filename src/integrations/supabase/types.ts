@@ -4722,6 +4722,34 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_game: {
+        Args: {
+          p_game_type: string
+          p_initial_state: Json
+          p_mode: string
+          p_opponent_id?: string
+        }
+        Returns: {
+          created_at: string
+          current_turn_user_id: string | null
+          finished_at: string | null
+          game_state: Json
+          game_type: string
+          host_user_id: string
+          id: string
+          is_draw: boolean
+          mode: string
+          status: string
+          updated_at: string
+          winner_user_id: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "games"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       expire_pending_bookings: { Args: never; Returns: number }
       expire_stale_deals: { Args: never; Returns: undefined }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
