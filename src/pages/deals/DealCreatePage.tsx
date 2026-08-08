@@ -295,7 +295,10 @@ export default function DealCreatePage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-lg font-black">{step === "form" ? "Create deal" : "Preview"}</h1>
+        <h1 className="text-lg font-black">
+          {step === "preview" ? "Preview" : editId ? "Edit deal" : "Create deal"}
+        </h1>
+
       </header>
 
       {!canPublish ? (
