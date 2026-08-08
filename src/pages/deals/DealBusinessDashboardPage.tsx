@@ -248,11 +248,12 @@ export default function DealBusinessDashboardPage() {
           </div>
         ) : null}
 
-        {!biz?.is_verified && !biz?.can_publish && tab === "dashboard" ? (
+        {biz?.posting_suspended && tab === "dashboard" ? (
           <div className="mb-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs">
-            Business verification required to publish active public deals.
+            Deal posting is temporarily suspended for this business.
           </div>
         ) : null}
+
 
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Views" value={totals.views} />
