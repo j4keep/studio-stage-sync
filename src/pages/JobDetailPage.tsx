@@ -215,7 +215,7 @@ export default function JobDetailPage() {
       return toast.error("Name, email, phone, and address are required");
     }
     setSubmitting(true);
-    const { error } = await supabase.from("job_applications").insert({
+    const { data: inserted, error } = await supabase.from("job_applications").insert({
       job_id: job.id,
       applicant_id: user.id,
       status: "reviewing",
@@ -241,13 +241,15 @@ export default function JobDetailPage() {
       employment_history: employment.filter((e) => e.employer.trim()) as any,
       education_history: education.filter((e) => e.school.trim()) as any,
       references_json: [],
-    });
+    }).select("id").maybeSingle();
     setSubmitting(false);
     if (error) return toast.error(error.message);
     setApplied(true);
     setShowApply(false);
     toast.success("Application sent!");
+    if (inserted?.id) void notifyJobEmployer(inserted.id);
   };
+
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
   if (!job) return <div className="p-6 text-sm">Job not found.</div>;
