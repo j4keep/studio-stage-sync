@@ -366,11 +366,11 @@ export default function GamesHubPage() {
               </section>
             )}
 
-            {activeGames.length > 0 && (
-              <section>
-                <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-                  Your Active Games
-                </h2>
+            <section>
+              <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                Your Active Games
+              </h2>
+              {activeGames.length > 0 ? (
                 <ul className="space-y-2">
                   {activeGames.map((g) => (
                     <li key={g.id}>
@@ -391,8 +391,13 @@ export default function GamesHubPage() {
                     </li>
                   ))}
                 </ul>
-              </section>
-            )}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-4 text-center">
+                  <p className="text-sm font-bold text-foreground">No active games yet</p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">Start a solo game or challenge a friend.</p>
+                </div>
+              )}
+            </section>
 
             <section>
               <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
