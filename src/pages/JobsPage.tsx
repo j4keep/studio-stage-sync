@@ -4,9 +4,7 @@ import {
   Search,
   MapPin,
   Clock,
-  Briefcase,
   Sparkles,
-  Plus,
   X,
   User,
   Settings2,
@@ -27,8 +25,6 @@ import {
 } from "@/lib/jobs";
 import { formatGigBudget } from "@/lib/gigs";
 import { listBlockedPeerIds } from "@/lib/blocks";
-import PostJobSheet from "@/components/jobs/PostJobSheet";
-import PostGigSheet from "@/components/jobs/PostGigSheet";
 
 type JobRow = {
   id: string;
@@ -64,7 +60,6 @@ type GigRow = {
 
 type FeedItem = JobRow | GigRow;
 type FeedKind = "all" | "jobs" | "gigs";
-type HireMode = null | "choose";
 
 const RECENT_KEY = "yaj_jobs_recent_searches";
 
@@ -95,9 +90,6 @@ export default function JobsPage() {
   const [feedKind, setFeedKind] = useState<FeedKind>("all");
   const [listings, setListings] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showJobSheet, setShowJobSheet] = useState(false);
-  const [showGigSheet, setShowGigSheet] = useState(false);
-  const [hireMode, setHireMode] = useState<HireMode>(null);
   const [forYou, setForYou] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [recents, setRecents] = useState<string[]>(() => {
@@ -184,14 +176,6 @@ export default function JobsPage() {
     try {
       localStorage.setItem(RECENT_KEY, JSON.stringify(next));
     } catch {}
-  };
-
-  const findWork = () => {
-    setFeedKind("all");
-    setActiveCategory("featured");
-    setQuery("");
-    setForYou(false);
-    setHireMode(null);
   };
 
   const filtered = useMemo(() => {
