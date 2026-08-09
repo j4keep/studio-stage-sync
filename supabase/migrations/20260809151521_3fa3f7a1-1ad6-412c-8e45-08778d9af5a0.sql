@@ -1,0 +1,3 @@
+REVOKE EXECUTE ON FUNCTION public.mp_set_cart_item(UUID, INTEGER) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mp_submit_cart(UUID, TEXT, TEXT, TEXT) FROM anon;
+REVOKE EXECUTE ON FUNCTION public.mp_set_cart_status(UUID, TEXT, NUMERIC) FROM anon;
