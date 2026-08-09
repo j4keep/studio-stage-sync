@@ -57,6 +57,9 @@ export default function StoreProductPage() {
   );
 
   const stock = Number(listing?.quantity ?? 0);
+  const perMile = Number(store?.delivery_per_mile || 0);
+  const minFee = Number(store?.delivery_min_fee || 0);
+  const maxMiles = Number(store?.delivery_max_miles || 0);
   const photos = useMemo(() => {
     if (!listing) return [] as string[];
     const urls = (listing.media || []).map((m) => m.url).filter(Boolean) as string[];
