@@ -286,6 +286,9 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       response_time_minutes: data?.response_time_minutes ?? null,
       created_at: data?.created_at || yaj?.created_at || new Date().toISOString(),
       member_since: data?.created_at || yaj?.created_at,
+      store_name: data?.store_name ?? null,
+      store_banner_url: resolveMarketplaceMediaUrl(data?.store_banner_url),
+      store_tagline: data?.store_tagline ?? null,
     };
   }
   return null;
@@ -293,7 +296,20 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
 
 export async function updateMarketplaceProfile(
   userId: string,
-  patch: Partial<Pick<MarketplaceProfile, "display_name" | "bio" | "avatar_url" | "city" | "service_area" | "is_business">>,
+  patch: Partial<
+    Pick<
+      MarketplaceProfile,
+      | "display_name"
+      | "bio"
+      | "avatar_url"
+      | "city"
+      | "service_area"
+      | "is_business"
+      | "store_name"
+      | "store_banner_url"
+      | "store_tagline"
+    >
+  >,
 ) {
   await ensureMarketplaceProfile(userId);
   const { data, error } = await (supabase as any)
@@ -318,7 +334,8 @@ export type ListListingsOpts = {
   minPrice?: number;
   maxPrice?: number;
   listingType?: string;
-
+  /** Keep $1–$5 store products out of the regular Marketplace surfaces */
+  excludeFiveUnder?: boolean;
 };
 
 export async function listMarketplaceListings(opts: ListListingsOpts = {}): Promise<MarketplaceListing[]> {
