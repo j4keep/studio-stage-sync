@@ -75,13 +75,18 @@ export default function MarketplaceCartPage() {
 
   const send = async (cart: MarketplaceCart) => {
     const mode = fulfillment[cart.id] || "pickup";
+    const q = quote[cart.id];
     if (mode === "delivery" && !(address[cart.id] || "").trim()) {
       return toast.error("Add a delivery address");
     }
+    if (mode === "delivery" && q?.tooFar) {
+      return toast.error(`This seller only delivers up to ${q.maxMiles} miles`);
+    }
     setBusy(cart.id);
     try {
-      await submitCart(cart.id, mode, address[cart.id], note[cart.id]);
+      await submitCart(cart.id, mode, address[cart.id], note[cart.id], mode === "delivery" ? q?.miles ?? null : null);
       toast.success("Sent to the seller — they'll confirm and set any delivery fee");
+      setQuote((s) => ({ ...s, [cart.id]: null }));
       await load();
     } catch (e: any) {
       toast.error(e?.message || "Could not send order");
@@ -89,6 +94,7 @@ export default function MarketplaceCartPage() {
       setBusy(null);
     }
   };
+
 
   if (!user) {
     return (
