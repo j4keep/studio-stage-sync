@@ -26,10 +26,11 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-/** Turn a typed address into coordinates (used when a seller saves their store address). */
-export function geocodeAddress(address: string) {
-  return call<{ lat: number; lng: number; label: string }>({ action: "geocode", address });
+/** Turn a typed address (or a picked Google place) into coordinates. */
+export function geocodeAddress(address: string, placeId?: string | null) {
+  return call<{ lat: number; lng: number; label: string }>({ action: "geocode", address, placeId });
 }
+
 
 /** Turn phone GPS coordinates into a readable address label. */
 export function reverseGeocode(lat: number, lng: number) {
