@@ -35,7 +35,7 @@ import {
 const MAX_PHOTOS = 20;
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u) || u.startsWith("blob:video");
 
-type DraftMedia = { url: string; local?: boolean };
+type DraftMedia = { url: string; local?: boolean; video?: boolean };
 
 type HomeDetails = {
   deal: string;
