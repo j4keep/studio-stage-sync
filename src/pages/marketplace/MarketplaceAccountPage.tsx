@@ -29,6 +29,7 @@ export default function MarketplaceAccountPage() {
 
   const links = [
     { label: "$1–$5 Store dashboard", icon: Store, to: "/marketplace/store-dashboard" },
+    { label: "Receipts", icon: Receipt, to: "/marketplace/receipts" },
     { label: "Saved items", icon: Heart, to: "/marketplace/saved" },
     { label: "Offers", icon: Package, to: "/marketplace/offers" },
     { label: "Sales", icon: Tag, to: "/marketplace/sales" },
