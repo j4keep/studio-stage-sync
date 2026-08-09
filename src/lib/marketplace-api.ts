@@ -209,6 +209,7 @@ function mapListing(row: any, extras?: Partial<MarketplaceListing>): Marketplace
     firm_price: Boolean(row.firm_price),
     open_to_offers: row.open_to_offers !== false,
     delivery: Boolean(row.delivery),
+    delivery_fee: Number(row.delivery_fee || 0),
     shipping: Boolean(row.shipping),
     local_pickup: row.local_pickup !== false,
     city: row.city,
