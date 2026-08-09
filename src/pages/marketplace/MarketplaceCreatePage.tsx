@@ -88,6 +88,21 @@ export default function MarketplaceCreatePage() {
   const startsAsFiveUnder = !editId && requestedType === "five_under";
   const [listingType, setListingType] = useState<ListingType | string>(startsAsFiveUnder ? "five_under" : "item");
   const [media, setMedia] = useState<DraftMedia[]>([]);
+  const [storeHasAddress, setStoreHasAddress] = useState(true);
+
+  // Sellers need a pickup address for automatic per-mile delivery pricing.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void getMarketplaceProfile(user.id)
+      .then((p) => {
+        if (alive) setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
+      })
+      .catch(() => alive && setStoreHasAddress(true));
+    return () => {
+      alive = false;
+    };
+  }, [user]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("for-sale");
