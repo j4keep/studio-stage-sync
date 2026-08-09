@@ -6,7 +6,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
 import { getMarketplaceListing, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
-import { getOrCreateConversation } from "@/lib/messaging";
 
 /** Amazon-style product detail for the $1–$5 store. */
 export default function StoreProductPage() {
@@ -75,15 +74,19 @@ export default function StoreProductPage() {
     }
   };
 
-  const message = async () => {
+  const message = () => {
     if (!listing) return;
     if (!user) return nav("/auth");
-    try {
-      const convoId = await getOrCreateConversation(user.id, listing.seller_id, { context: "marketplace" });
-      nav(`/messages/${convoId}`);
-    } catch {
-      nav("/messages");
-    }
+    nav("/messages", {
+      state: {
+        startWithUserId: listing.seller_id,
+        startWithProfile: {
+          user_id: listing.seller_id,
+          display_name: listing.seller?.display_name ?? null,
+          avatar_url: listing.seller?.avatar_url ?? null,
+        },
+      },
+    });
   };
 
   if (loading) {
