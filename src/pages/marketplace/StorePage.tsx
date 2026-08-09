@@ -12,6 +12,7 @@ import {
   type MarketplaceProfile,
 } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
+import { useSellerDistance } from "@/hooks/use-seller-distance";
 
 /** One seller's $1–$5 storefront: header, tagline, delivery terms and all of their products. */
 export default function StorePage() {
@@ -60,6 +61,7 @@ export default function StorePage() {
 
   const storeName = store?.store_name || store?.display_name || "Store";
   const perMile = Number(store?.delivery_per_mile || 0);
+  const { away } = useSellerDistance(sellerId);
 
   const addOne = async (listing: MarketplaceListing) => {
     if (!user) return nav("/auth");
@@ -132,6 +134,13 @@ export default function StorePage() {
               {store?.store_tagline && (
                 <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
                   {store.store_tagline}
+                </p>
+              )}
+              {away && (
+                <p className="flex items-center gap-1.5 text-[13px] font-bold">
+                  <MapPin className="h-4 w-4 text-primary" />
+                  {away}
+                  {store?.city ? <span className="font-semibold text-muted-foreground">· {store.city}</span> : null}
                 </p>
               )}
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-muted-foreground">
