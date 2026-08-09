@@ -11,7 +11,6 @@ import FollowersSheet from "@/components/FollowersSheet";
 import MessageUserButton from "@/components/MessageUserButton";
 
 import ProfileFeedSection from "@/components/ProfileFeedSection";
-import UserReviewsSection from "@/components/UserReviewsSection";
 import BattleWinsSheet from "@/components/BattleWinsSheet";
 import UserProjectsSheet from "@/components/UserProjectsSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
