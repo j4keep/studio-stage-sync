@@ -2289,6 +2289,9 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
+          buyer_address: string | null
+          buyer_lat: number | null
+          buyer_lng: number | null
           city: string | null
           created_at: string
           delivery_max_miles: number
@@ -2298,6 +2301,7 @@ export type Database = {
           is_business: boolean
           response_time_minutes: number | null
           service_area: string | null
+          share_location: boolean
           store_address: string | null
           store_banner_url: string | null
           store_lat: number | null
@@ -2310,6 +2314,9 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
+          buyer_address?: string | null
+          buyer_lat?: number | null
+          buyer_lng?: number | null
           city?: string | null
           created_at?: string
           delivery_max_miles?: number
@@ -2319,6 +2326,7 @@ export type Database = {
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          share_location?: boolean
           store_address?: string | null
           store_banner_url?: string | null
           store_lat?: number | null
@@ -2331,6 +2339,9 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
+          buyer_address?: string | null
+          buyer_lat?: number | null
+          buyer_lng?: number | null
           city?: string | null
           created_at?: string
           delivery_max_miles?: number
@@ -2340,6 +2351,7 @@ export type Database = {
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          share_location?: boolean
           store_address?: string | null
           store_banner_url?: string | null
           store_lat?: number | null

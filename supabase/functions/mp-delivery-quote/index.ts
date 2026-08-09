@@ -41,19 +41,36 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, address, sellerId } = await req.json();
+    const { action, address, sellerId, lat, lng } = await req.json();
     const clean = typeof address === "string" ? address.trim().slice(0, 200) : "";
-    if (!clean) return json({ error: "An address is required" }, 400);
+    const hasCoords = Number.isFinite(Number(lat)) && Number.isFinite(Number(lng));
 
     if (action === "geocode") {
+      if (!clean) return json({ error: "An address is required" }, 400);
       const point = await geocode(clean);
       if (!point) return json({ error: "We could not find that address" }, 404);
       return json({ lat: point.lat, lng: point.lng, label: point.label });
     }
 
+    /** Turn coordinates back into a readable place name (used by "use my current location"). */
+    if (action === "reverse") {
+      if (!hasCoords) return json({ error: "Coordinates are required" }, 400);
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${Number(lat)}&lon=${Number(lng)}`,
+        { headers: { "User-Agent": "YAJ-Marketplace/1.0 (delivery quotes)" } },
+      );
+      const body = res.ok ? ((await res.json()) as { display_name?: string }) : null;
+      return json({
+        lat: Number(lat),
+        lng: Number(lng),
+        label: body?.display_name || `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`,
+      });
+    }
+
     if (action !== "quote" || typeof sellerId !== "string") {
       return json({ error: "Invalid request" }, 400);
     }
+    if (!clean && !hasCoords) return json({ error: "An address is required" }, 400);
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -67,23 +84,29 @@ Deno.serve(async (req) => {
     if (error) return json({ error: error.message }, 500);
 
     const rate = Number(store?.delivery_per_mile || 0);
-    if (!store || rate <= 0) return json({ configured: false });
 
     let origin: Point | null =
-      store.store_lat != null && store.store_lng != null
+      store?.store_lat != null && store?.store_lng != null
         ? { lat: Number(store.store_lat), lng: Number(store.store_lng), label: store.store_address || "Store" }
-        : store.store_address
+        : store?.store_address
           ? await geocode(store.store_address)
           : null;
     if (!origin) return json({ configured: false });
 
-    const dest = await geocode(clean);
+    const dest: Point | null = hasCoords
+      ? { lat: Number(lat), lng: Number(lng), label: clean || "Your location" }
+      : await geocode(clean);
     if (!dest) return json({ error: "We could not find that address" }, 404);
 
     const distance = miles(origin, dest);
-    const maxMiles = Number(store.delivery_max_miles || 0);
-    const minFee = Number(store.delivery_min_fee || 0);
+    const maxMiles = Number(store?.delivery_max_miles || 0);
+    const minFee = Number(store?.delivery_min_fee || 0);
     const fee = Math.max(Math.round(rate * distance * 100) / 100, minFee);
+
+    // Distance is always useful ("3.2 mi away"), even before a seller sets a rate.
+    if (rate <= 0) {
+      return json({ configured: false, miles: distance, maxMiles, label: dest.label });
+    }
 
     return json({
       configured: true,

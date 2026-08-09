@@ -212,6 +212,38 @@ export default function MarketplaceCreatePage() {
     }
   };
 
+  /** One short video is allowed, and it counts as one of the media slots. */
+  const onPickVideo = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !user) return;
+    if (media.some((m) => isVideoUrl(m.url))) {
+      toast.error("You can add one video per item");
+      return;
+    }
+    if (media.length >= photoLimit) {
+      toast.error(`You can add up to ${photoLimit} photos or videos`);
+      return;
+    }
+    if (file.size > 60 * 1024 * 1024) {
+      toast.error("Keep videos under 60MB");
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    setMedia((m) => [...m, { url: localUrl, local: true }]);
+    try {
+      setUploadPct(0);
+      const url = await uploadListingImage(user.id, file, (p) => setUploadPct(Math.round(p)));
+      setMedia((m) => m.map((item) => (item.url === localUrl ? { url } : item)));
+      URL.revokeObjectURL(localUrl);
+    } catch (e: any) {
+      setMedia((m) => m.filter((item) => item.url !== localUrl));
+      URL.revokeObjectURL(localUrl);
+      toast.error(e?.message || "Video upload failed");
+    } finally {
+      setUploadPct(null);
+    }
+  };
+
   const moveMedia = (from: number, to: number) => {
     setMedia((arr) => {
       const next = [...arr];

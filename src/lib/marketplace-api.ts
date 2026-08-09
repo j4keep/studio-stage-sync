@@ -76,6 +76,11 @@ export type MarketplaceProfile = {
   delivery_per_mile?: number;
   delivery_min_fee?: number;
   delivery_max_miles?: number;
+  /** Shopper's saved delivery location + on/off switch */
+  buyer_address?: string | null;
+  buyer_lat?: number | null;
+  buyer_lng?: number | null;
+  share_location?: boolean;
 };
 
 export type VehicleDetails = {
@@ -310,6 +315,10 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       delivery_per_mile: Number(data?.delivery_per_mile ?? 0),
       delivery_min_fee: Number(data?.delivery_min_fee ?? 0),
       delivery_max_miles: Number(data?.delivery_max_miles ?? 0),
+      buyer_address: data?.buyer_address ?? null,
+      buyer_lat: data?.buyer_lat ?? null,
+      buyer_lng: data?.buyer_lng ?? null,
+      share_location: Boolean(data?.share_location),
     };
   }
   return null;
@@ -335,6 +344,10 @@ export async function updateMarketplaceProfile(
       | "delivery_per_mile"
       | "delivery_min_fee"
       | "delivery_max_miles"
+      | "buyer_address"
+      | "buyer_lat"
+      | "buyer_lng"
+      | "share_location"
     >
   >,
 ) {

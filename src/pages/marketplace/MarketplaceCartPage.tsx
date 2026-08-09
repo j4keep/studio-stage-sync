@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, MapPin, Minus, Plus, Truck } from "lucide-react";
-import { getDeliveryQuote, type DeliveryQuote } from "@/lib/marketplace-delivery";
+import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/marketplace-delivery";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
 import {
   CART_STATUS_LABEL,
   listCartsForUser,
@@ -22,25 +24,10 @@ export default function MarketplaceCartPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [fulfillment, setFulfillment] = useState<Record<string, "pickup" | "delivery">>({});
-  const [address, setAddress] = useState<Record<string, string>>({});
   const [note, setNote] = useState<Record<string, string>>({});
   const [quote, setQuote] = useState<Record<string, DeliveryQuote | null>>({});
-  const [quoting, setQuoting] = useState<string | null>(null);
-
-  const checkAddress = async (cart: MarketplaceCart) => {
-    const addr = (address[cart.id] || "").trim();
-    if (!addr) return toast.error("Enter your delivery address first");
-    setQuoting(cart.id);
-    try {
-      const result = await getDeliveryQuote(cart.seller_id, addr);
-      setQuote((q) => ({ ...q, [cart.id]: result }));
-      if (!result.configured) toast.info("This seller hasn't set a per-mile delivery rate yet");
-    } catch (e: any) {
-      toast.error(e?.message || "Could not check that address");
-    } finally {
-      setQuoting(null);
-    }
-  };
+  const { location, ready: locationReady } = useMyMarketplaceLocation(user?.id);
+  const [showLocation, setShowLocation] = useState(false);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -60,6 +47,28 @@ export default function MarketplaceCartPage() {
     void load();
   }, [load]);
 
+  /** Prices every open cart automatically from the saved location — no typing. */
+  useEffect(() => {
+    if (!locationReady || location.lat == null || location.lng == null || open.length === 0) return;
+    let alive = true;
+    void Promise.all(
+      open.map(async (cart) => {
+        try {
+          const q = await getDeliveryQuoteAt(cart.seller_id, location.lat!, location.lng!, location.address || undefined);
+          return [cart.id, q] as const;
+        } catch {
+          return [cart.id, null] as const;
+        }
+      }),
+    ).then((rows) => {
+      if (alive) setQuote(Object.fromEntries(rows));
+    });
+    return () => {
+      alive = false;
+    };
+  }, [open, locationReady, location.lat, location.lng, location.address]);
+
+
   const change = async (cartId: string, listingId: string, qty: number, stock: number) => {
     if (qty > stock) return toast.error(`Only ${stock} in stock`);
     setBusy(cartId);
@@ -76,15 +85,22 @@ export default function MarketplaceCartPage() {
   const send = async (cart: MarketplaceCart) => {
     const mode = fulfillment[cart.id] || "pickup";
     const q = quote[cart.id];
-    if (mode === "delivery" && !(address[cart.id] || "").trim()) {
-      return toast.error("Add a delivery address");
+    if (mode === "delivery" && !locationReady) {
+      setShowLocation(true);
+      return toast.error("Turn on your location so we can price delivery");
     }
     if (mode === "delivery" && q?.tooFar) {
       return toast.error(`This seller only delivers up to ${q.maxMiles} miles`);
     }
     setBusy(cart.id);
     try {
-      await submitCart(cart.id, mode, address[cart.id], note[cart.id], mode === "delivery" ? q?.miles ?? null : null);
+      await submitCart(
+        cart.id,
+        mode,
+        mode === "delivery" ? location.address || undefined : undefined,
+        note[cart.id],
+        mode === "delivery" ? q?.miles ?? null : null,
+      );
       toast.success("Sent to the seller — they'll confirm and set any delivery fee");
       setQuote((s) => ({ ...s, [cart.id]: null }));
       await load();
@@ -203,30 +219,27 @@ export default function MarketplaceCartPage() {
                   </div>
                   {mode === "delivery" && (
                     <>
-                      <div className="flex gap-2">
-                        <input
-                          value={address[cart.id] || ""}
-                          onChange={(e) => {
-                            setAddress((a) => ({ ...a, [cart.id]: e.target.value }));
-                            setQuote((q) => ({ ...q, [cart.id]: null }));
-                          }}
-                          placeholder="Delivery address (local only)"
-                          className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-muted px-3 text-sm"
-                        />
-                        <button
-                          type="button"
-                          disabled={quoting === cart.id}
-                          onClick={() => void checkAddress(cart)}
-                          className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-foreground px-3.5 text-[12px] font-black text-background disabled:opacity-60"
-                        >
-                          {quoting === cart.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <MapPin className="h-3.5 w-3.5" />
-                          )}
-                          Get price
-                        </button>
-                      </div>
+                      {locationReady ? (
+                        <div className="flex items-start justify-between gap-2 rounded-xl bg-muted/60 px-3 py-2">
+                          <p className="flex min-w-0 items-start gap-1.5 text-[11.5px]">
+                            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                            <span className="line-clamp-2">{location.address}</span>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setShowLocation((s) => !s)}
+                            className="shrink-0 text-[11.5px] font-black text-primary"
+                          >
+                            Change
+                          </button>
+                        </div>
+                      ) : (
+                        <MarketplaceLocationCard userId={user.id} title="Your delivery location" />
+                      )}
+                      {locationReady && showLocation && (
+                        <MarketplaceLocationCard userId={user.id} title="Your delivery location" />
+                      )}
+
                       {q?.configured && q.miles != null ? (
                         <p
                           className={`flex items-center gap-1.5 text-[11.5px] font-semibold ${
@@ -235,20 +248,21 @@ export default function MarketplaceCartPage() {
                         >
                           <Truck className="h-3.5 w-3.5 text-primary" />
                           {q.tooFar
-                            ? `${q.miles} mi away — this seller only delivers up to ${q.maxMiles} mi. Choose pickup or message them about shipping.`
-                            : `${q.miles} mi · ${formatPrice(q.fee || 0)} delivery (${formatPrice(q.perMile || 0)}/mile)`}
+                            ? `${q.miles} mi away — this seller only delivers up to ${q.maxMiles} mi. Choose pickup instead.`
+                            : `${milesAwayLabel(q.miles)} · ${formatPrice(q.fee || 0)} delivery`}
                         </p>
                       ) : q && !q.configured ? (
                         <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                           <Truck className="h-3.5 w-3.5" />
-                          This seller hasn't set a per-mile rate — they'll confirm the delivery fee after they approve.
+                          {q.miles != null ? `${milesAwayLabel(q.miles)} · ` : ""}
+                          No per-mile rate set — the seller confirms the fee.
                         </p>
-                      ) : (
+                      ) : locationReady ? (
                         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <Truck className="h-3.5 w-3.5" />
-                          Enter your address and tap “Get price” to see the mileage delivery fee.
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          Getting your delivery price…
                         </p>
-                      )}
+                      ) : null}
                     </>
                   )}
                   <input

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
@@ -12,6 +12,12 @@ import {
   type MarketplaceProfile,
 } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/marketplace-delivery";
+import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
+
+const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
+
 
 /** Amazon-style product detail for the $1–$5 store. */
 export default function StoreProductPage() {
@@ -60,12 +66,35 @@ export default function StoreProductPage() {
   const perMile = Number(store?.delivery_per_mile || 0);
   const minFee = Number(store?.delivery_min_fee || 0);
   const maxMiles = Number(store?.delivery_max_miles || 0);
+
+  const { location, ready: locationReady } = useMyMarketplaceLocation(user?.id);
+  const [quote, setQuote] = useState<DeliveryQuote | null>(null);
+  const [wantDelivery, setWantDelivery] = useState(false);
+  const [showLocation, setShowLocation] = useState(false);
+
+  // Distance + delivery price fill in on their own once the shopper's location is on.
+  useEffect(() => {
+    if (!listing?.seller_id || !locationReady || location.lat == null || location.lng == null) {
+      setQuote(null);
+      return;
+    }
+    let alive = true;
+    void getDeliveryQuoteAt(listing.seller_id, location.lat, location.lng, location.address || undefined)
+      .then((q) => alive && setQuote(q))
+      .catch(() => alive && setQuote(null));
+    return () => {
+      alive = false;
+    };
+  }, [listing?.seller_id, locationReady, location.lat, location.lng, location.address]);
+
+  const away = milesAwayLabel(quote?.miles);
   const photos = useMemo(() => {
     if (!listing) return [] as string[];
     const urls = (listing.media || []).map((m) => m.url).filter(Boolean) as string[];
     const cover = listingCoverUrl(listing);
     return urls.length ? urls : cover ? [cover] : [];
   }, [listing]);
+
 
   const add = async (buyNow: boolean) => {
     if (!listing) return;
@@ -187,15 +216,26 @@ export default function StoreProductPage() {
               }}
               className="flex snap-x snap-mandatory gap-0 overflow-x-auto rounded-2xl bg-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {photos.map((u, i) => (
-                <img
-                  key={u + i}
-                  src={u}
-                  alt={`${listing.title} photo ${i + 1}`}
-                  className="h-72 w-full shrink-0 snap-center object-contain"
-                  loading={i === 0 ? "eager" : "lazy"}
-                />
-              ))}
+              {photos.map((u, i) =>
+                isVideoUrl(u) ? (
+                  <video
+                    key={u + i}
+                    src={u}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    className="h-72 w-full shrink-0 snap-center bg-black object-contain"
+                  />
+                ) : (
+                  <img
+                    key={u + i}
+                    src={u}
+                    alt={`${listing.title} photo ${i + 1}`}
+                    className="h-72 w-full shrink-0 snap-center object-contain"
+                    loading={i === 0 ? "eager" : "lazy"}
+                  />
+                ),
+              )}
             </div>
             {photos.length > 1 && (
               <>
@@ -223,7 +263,13 @@ export default function StoreProductPage() {
                         i === photo ? "border-primary" : "border-border"
                       }`}
                     >
-                      <img src={u} alt="" className="h-full w-full object-cover" />
+                      {isVideoUrl(u) ? (
+                        <span className="flex h-full w-full items-center justify-center bg-black text-[10px] font-black text-white">
+                          ▶ Video
+                        </span>
+                      ) : (
+                        <img src={u} alt="" className="h-full w-full object-cover" />
+                      )}
                     </button>
                   ))}
                 </div>
@@ -262,36 +308,74 @@ export default function StoreProductPage() {
           </div>
         )}
 
-        <div className="mt-4 space-y-1.5 rounded-2xl border border-border bg-card p-3 text-[13px]">
+        <div className="mt-4 space-y-2 rounded-2xl border border-border bg-card p-3 text-[13px]">
+          {away && (
+            <p className="flex items-center gap-1.5 font-black">
+              <MapPin className="h-4 w-4 text-primary" />
+              {away}
+            </p>
+          )}
           {listing.local_pickup && <p className="font-semibold">Pickup available</p>}
+
           {listing.delivery && (
             <>
-              <p className="flex items-center gap-1.5 font-semibold">
-                <Truck className="h-4 w-4 text-primary" />
-                {perMile > 0
-                  ? `Local delivery · ${formatPrice(perMile)} per mile`
-                  : Number(listing.delivery_fee) > 0
-                    ? `Local delivery · ${formatPrice(listing.delivery_fee)} flat fee`
-                    : "Local delivery · Free"}
-              </p>
-              {perMile > 0 ? (
-                <p className="text-muted-foreground">
-                  This seller charges {formatPrice(perMile)} for every mile between their pickup address and yours
-                  {minFee > 0 ? `, with a ${formatPrice(minFee)} minimum` : ""}
-                  {maxMiles > 0 ? `, up to ${maxMiles} miles` : ""}. Add your address at checkout to see the exact
-                  mileage fee before you send the order.
+              <div className="flex items-center justify-between gap-3">
+                <p className="flex items-center gap-1.5 font-semibold">
+                  <Truck className="h-4 w-4 text-primary" />
+                  Delivery
+                  {perMile > 0 && (
+                    <span className="text-muted-foreground">· {formatPrice(perMile)}/mile</span>
+                  )}
                 </p>
-              ) : (
-                <p className="text-muted-foreground">
-                  This seller hasn't set a per-mile rate yet — they'll confirm the delivery fee when they approve your
-                  order.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !wantDelivery;
+                    setWantDelivery(next);
+                    if (next && !locationReady) setShowLocation(true);
+                  }}
+                  aria-label="Delivery"
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    wantDelivery ? "bg-primary" : "bg-muted"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-background shadow transition-all ${
+                      wantDelivery ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {wantDelivery && (
+                <>
+                  {quote?.configured && quote.fee != null ? (
+                    quote.tooFar ? (
+                      <p className="font-bold text-red-500">
+                        Too far — this seller delivers up to {quote.maxMiles} mi. Pick pickup instead.
+                      </p>
+                    ) : (
+                      <p className="font-black text-emerald-600">
+                        Delivery {formatPrice(quote.fee)} · {quote.miles} mi
+                      </p>
+                    )
+                  ) : locationReady ? (
+                    <p className="text-muted-foreground">
+                      No per-mile rate set — the seller confirms the fee when they approve.
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">Turn on your location to see the price.</p>
+                  )}
+                </>
               )}
             </>
           )}
-          <p className="text-muted-foreground">
-            Buy here, then arrange pickup, delivery or shipping with the seller in Messages.
-          </p>
+
+          {user && (showLocation || !locationReady) && (
+            <div className="pt-1">
+              <MarketplaceLocationCard userId={user.id} title="Your delivery location" />
+            </div>
+          )}
         </div>
 
 
