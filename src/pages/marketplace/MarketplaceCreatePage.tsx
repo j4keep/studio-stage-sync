@@ -538,8 +538,8 @@ export default function MarketplaceCreatePage() {
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Up to {photoLimit} photos ({media.length}/{photoLimit} added). First photo is the cover, and buyers swipe
-              through the rest.
+              Up to {photoLimit} photos or videos ({media.length}/{photoLimit} added) — one video allowed. First item is
+              the cover, and buyers swipe through the rest.
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <label
