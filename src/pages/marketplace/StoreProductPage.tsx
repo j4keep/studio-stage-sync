@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronDown, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { getMarketplaceListing, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
+import {
+  getMarketplaceListing,
+  getMarketplaceProfile,
+  listingCoverUrl,
+  type MarketplaceListing,
+  type MarketplaceProfile,
+} from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 
 /** Amazon-style product detail for the $1–$5 store. */
@@ -13,11 +19,13 @@ export default function StoreProductPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [store, setStore] = useState<MarketplaceProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [photo, setPhoto] = useState(0);
   const [busy, setBusy] = useState(false);
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
+  const stripRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -25,6 +33,7 @@ export default function StoreProductPage() {
     try {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
+      if (row?.seller_id) setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
       if (user) setCarts(await listMyOpenCarts(user.id));
     } catch (e: any) {
       toast.error(e?.message || "Could not load this item");
@@ -32,6 +41,7 @@ export default function StoreProductPage() {
       setLoading(false);
     }
   }, [id, user]);
+
 
   useEffect(() => {
     void load();
