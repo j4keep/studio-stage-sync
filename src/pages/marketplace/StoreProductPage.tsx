@@ -262,16 +262,35 @@ export default function StoreProductPage() {
         <div className="mt-4 space-y-1.5 rounded-2xl border border-border bg-card p-3 text-[13px]">
           {listing.local_pickup && <p className="font-semibold">Pickup available</p>}
           {listing.delivery && (
-            <p className="flex items-center gap-1.5 font-semibold">
-              <Truck className="h-4 w-4 text-primary" />
-              Seller delivery ·{" "}
-              {Number(listing.delivery_fee) > 0 ? `${formatPrice(listing.delivery_fee)} fee` : "Free"}
-            </p>
+            <>
+              <p className="flex items-center gap-1.5 font-semibold">
+                <Truck className="h-4 w-4 text-primary" />
+                {perMile > 0
+                  ? `Local delivery · ${formatPrice(perMile)} per mile`
+                  : Number(listing.delivery_fee) > 0
+                    ? `Local delivery · ${formatPrice(listing.delivery_fee)} flat fee`
+                    : "Local delivery · Free"}
+              </p>
+              {perMile > 0 ? (
+                <p className="text-muted-foreground">
+                  This seller charges {formatPrice(perMile)} for every mile between their pickup address and yours
+                  {minFee > 0 ? `, with a ${formatPrice(minFee)} minimum` : ""}
+                  {maxMiles > 0 ? `, up to ${maxMiles} miles` : ""}. Add your address at checkout to see the exact
+                  mileage fee before you send the order.
+                </p>
+              ) : (
+                <p className="text-muted-foreground">
+                  This seller hasn't set a per-mile rate yet — they'll confirm the delivery fee when they approve your
+                  order.
+                </p>
+              )}
+            </>
           )}
           <p className="text-muted-foreground">
             Buy here, then arrange pickup, delivery or shipping with the seller in Messages.
           </p>
         </div>
+
 
         {listing.description && (
           <div className="mt-4">
