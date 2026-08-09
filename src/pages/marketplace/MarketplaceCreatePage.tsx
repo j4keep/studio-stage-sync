@@ -4,9 +4,21 @@ import { ArrowLeft, GripVertical, ImagePlus, Loader2, Trash2, X } from "lucide-r
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
+  AC_TYPES,
   CONDITIONS,
+  FIVE_UNDER_MAX,
+  FIVE_UNDER_MIN,
+  HEATING_TYPES,
+  HOME_AMENITIES,
+  HOME_DEAL_TYPES,
+  HOME_LISTING_TYPES,
+  LAUNDRY_TYPES,
+  LEASE_TERMS,
   LISTING_TYPES,
   MARKETPLACE_CATEGORIES,
+  PARKING_TYPES,
+  PROPERTY_TYPES,
+  VEHICLE_KINDS,
   VEHICLE_LISTING_TYPES,
   type ListingType,
 } from "@/lib/marketplace";
@@ -23,6 +35,40 @@ import {
 const MAX_PHOTOS = 20;
 
 type DraftMedia = { url: string; local?: boolean };
+
+type HomeDetails = {
+  deal: string;
+  property_type: string;
+  bedrooms: string;
+  bathrooms: string;
+  square_feet: string;
+  laundry: string;
+  parking: string;
+  ac: string;
+  heating: string;
+  lease_term: string;
+  available_date: string;
+  pets_allowed: boolean;
+  address_private: boolean;
+  amenities: string[];
+};
+
+const EMPTY_HOME: HomeDetails = {
+  deal: "For rent",
+  property_type: "",
+  bedrooms: "",
+  bathrooms: "",
+  square_feet: "",
+  laundry: "",
+  parking: "",
+  ac: "",
+  heating: "",
+  lease_term: "",
+  available_date: "",
+  pets_allowed: false,
+  address_private: true,
+  amenities: [],
+};
 
 export default function MarketplaceCreatePage() {
   const { id: editId } = useParams();
@@ -46,6 +92,7 @@ export default function MarketplaceCreatePage() {
   const [model, setModel] = useState("");
   const [color, setColor] = useState("");
   const [price, setPrice] = useState("");
+  const [quantity, setQuantity] = useState("1");
   const [firmPrice, setFirmPrice] = useState(false);
   const [openOffers, setOpenOffers] = useState(true);
   const [delivery, setDelivery] = useState(false);
@@ -55,6 +102,9 @@ export default function MarketplaceCreatePage() {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [tags, setTags] = useState("");
+
+  const [vehicleKind, setVehicleKind] = useState<string>(VEHICLE_KINDS[0]);
+  const [home, setHome] = useState<HomeDetails>(EMPTY_HOME);
 
   const [veh, setVeh] = useState<VehicleDetails>({
     year: null,
@@ -79,7 +129,11 @@ export default function MarketplaceCreatePage() {
           nav("/marketplace");
           return;
         }
-        setListingType(row.listing_type);
+        // Legacy ids collapse into the new flows
+        const legacy = String(row.listing_type);
+        setListingType(
+          VEHICLE_LISTING_TYPES.has(legacy) ? "automotive" : HOME_LISTING_TYPES.has(legacy) ? "home" : legacy,
+        );
         setTitle(row.title);
         setDescription(row.description);
         setCategory(row.category);
@@ -88,6 +142,7 @@ export default function MarketplaceCreatePage() {
         setModel(row.model || "");
         setColor(row.color || "");
         setPrice(row.price != null ? String(row.price) : "");
+        setQuantity(String(row.quantity ?? 1));
         setFirmPrice(row.firm_price);
         setOpenOffers(row.open_to_offers);
         setDelivery(row.delivery);
@@ -97,6 +152,9 @@ export default function MarketplaceCreatePage() {
         setState(row.state || "");
         setZip(row.zip || "");
         setTags((row.tags || []).join(", "));
+        const attrs = (row.attributes || {}) as Record<string, any>;
+        if (attrs.vehicle_kind) setVehicleKind(String(attrs.vehicle_kind));
+        if (attrs.home) setHome({ ...EMPTY_HOME, ...attrs.home });
         const urls = row.media?.length ? row.media.map((m) => m.url) : row.cover_url ? [row.cover_url] : [];
         setMedia(urls.map((url) => ({ url })));
         if (row.vehicle) setVeh(row.vehicle);
@@ -107,7 +165,10 @@ export default function MarketplaceCreatePage() {
     })();
   }, [editId, user, nav]);
 
-  const isVehicle = VEHICLE_LISTING_TYPES.has(String(listingType));
+  const isVehicle = listingType === "automotive";
+  const isHome = listingType === "home";
+  const isFiveUnder = listingType === "five_under";
+  const isRent = isHome && home.deal === "For rent";
 
   const onPickFiles = async (files: FileList | null) => {
     if (!files || !user) return;
@@ -145,17 +206,26 @@ export default function MarketplaceCreatePage() {
     listing_type: listingType,
     title,
     description,
-    category: listingType === "free" ? "free" : listingType === "rental" ? "rentals" : isVehicle ? "vehicles" : category,
-    condition,
-    brand: brand || null,
-    model: model || null,
-    color: color || null,
+    category: isFiveUnder
+      ? "for-sale"
+      : listingType === "free"
+        ? "free"
+        : isHome
+          ? "rentals"
+          : isVehicle
+            ? "vehicles"
+            : category,
+    condition: isHome ? null : condition,
+    brand: isHome || isVehicle ? null : brand || null,
+    model: isHome || isVehicle ? null : model || null,
+    color: isHome || isVehicle ? null : color || null,
+    quantity: isFiveUnder ? Math.max(1, Number(quantity) || 1) : 1,
     price: listingType === "free" ? 0 : price ? Number(price) : null,
     firm_price: firmPrice,
-    open_to_offers: openOffers,
+    open_to_offers: isFiveUnder ? false : openOffers,
     delivery,
-    shipping,
-    local_pickup: pickup,
+    shipping: isHome ? false : shipping,
+    local_pickup: isHome ? false : pickup,
     city: city || null,
     state: state || null,
     zip: zip || null,
@@ -167,9 +237,17 @@ export default function MarketplaceCreatePage() {
     status,
     mediaUrls: media.map((m) => m.url),
     cover_url: media[0]?.url || null,
+    attributes: isHome
+      ? { home }
+      : isVehicle
+        ? { vehicle_kind: vehicleKind }
+        : isFiveUnder
+          ? { five_under: true }
+          : {},
     vehicle: isVehicle
       ? {
           ...veh,
+          body_style: veh.body_style || vehicleKind,
           year: veh.year ? Number(veh.year) : null,
           mileage: veh.mileage != null ? Number(veh.mileage) : null,
         }
@@ -192,6 +270,42 @@ export default function MarketplaceCreatePage() {
     toast.error(message);
   };
 
+  const priceProblem = () => {
+    if (listingType === "free") return null;
+    const n = Number(price);
+    if (!price || Number.isNaN(n) || n < 0) return "Enter a price";
+    if (isFiveUnder && (n < FIVE_UNDER_MIN || n > FIVE_UNDER_MAX)) {
+      return `$1–$5 Finds must be priced between $${FIVE_UNDER_MIN} and $${FIVE_UNDER_MAX}`;
+    }
+    return null;
+  };
+
+  const detailProblems = () => {
+    const missing: string[] = [];
+    if (!title.trim()) missing.push("title");
+    if (priceProblem()) missing.push("price");
+    if (isFiveUnder && (!quantity || Number(quantity) < 1)) missing.push("quantity");
+    if (isVehicle) {
+      if (!veh.year) missing.push("veh_year");
+      if (!(veh.make || "").trim()) missing.push("veh_make");
+      if (!(veh.model || "").trim()) missing.push("veh_model");
+    }
+    if (isHome) {
+      if (!home.property_type) missing.push("home_property_type");
+      if (!home.bedrooms) missing.push("home_bedrooms");
+      if (!home.bathrooms) missing.push("home_bathrooms");
+    }
+    return missing;
+  };
+
+  const detailMessage = (missing: string[]) => {
+    if (missing.includes("title")) return "Add a title";
+    if (missing.includes("price")) return priceProblem() || "Enter a price";
+    if (missing.includes("quantity")) return "How many do you have in stock?";
+    if (missing.some((m) => m.startsWith("home_"))) return "Property type, bedrooms and bathrooms are required";
+    return "Year, make, and model are required for vehicles";
+  };
+
   /** Per-step gates so Continue / Preview never skip empty required fields. */
   const goNextFromStep = (from: number) => {
     if (from === 2) {
@@ -208,23 +322,9 @@ export default function MarketplaceCreatePage() {
       return;
     }
     if (from === 3) {
-      const missing: string[] = [];
-      if (!title.trim()) missing.push("title");
-      if (listingType !== "free" && (!price || Number(price) < 0 || Number.isNaN(Number(price)))) {
-        missing.push("price");
-      }
-      if (isVehicle) {
-        if (!veh.year) missing.push("veh_year");
-        if (!(veh.make || "").trim()) missing.push("veh_make");
-        if (!(veh.model || "").trim()) missing.push("veh_model");
-      }
+      const missing = detailProblems();
       if (missing.length) {
-        const msg = !title.trim()
-          ? "Add a title"
-          : missing.includes("price")
-            ? "Enter a price"
-            : "Year, make, and model are required for vehicles";
-        markErrors(missing, msg);
+        markErrors(missing, detailMessage(missing));
         return;
       }
       setFieldErrors({});
@@ -242,26 +342,15 @@ export default function MarketplaceCreatePage() {
   };
 
   const validate = () => {
-    const missing: string[] = [];
+    const missing = detailProblems();
     if (!media.length) missing.push("photos");
-    if (!title.trim()) missing.push("title");
     if (media.some((m) => m.local)) return "Wait for photos to finish uploading";
-    if (listingType !== "free" && (!price || Number(price) < 0 || Number.isNaN(Number(price)))) {
-      missing.push("price");
-    }
-    if (isVehicle) {
-      if (!veh.year) missing.push("veh_year");
-      if (!(veh.make || "").trim()) missing.push("veh_make");
-      if (!(veh.model || "").trim()) missing.push("veh_model");
-    }
     if (!city.trim()) missing.push("city");
     if (missing.length) {
       setFieldErrors(Object.fromEntries(missing.map((k) => [k, true])));
-      if (missing.includes("title")) return "Add a title";
       if (missing.includes("photos")) return "Add at least one photo";
-      if (missing.includes("price")) return "Enter a price";
       if (missing.includes("city")) return "Add a city";
-      return "Year, make, and model are required for vehicles";
+      return detailMessage(missing);
     }
     setFieldErrors({});
     return null;
@@ -302,12 +391,18 @@ export default function MarketplaceCreatePage() {
 
   const typeEmoji: Record<string, string> = {
     item: "✨",
-    vehicle: "🚗",
-    motorcycle: "🏍",
-    boat: "⛵️",
-    rv: "🚐",
-    rental: "🔑",
+    automotive: "🚗",
+    home: "🏠",
+    five_under: "🖐",
     free: "🎁",
+  };
+
+  const typeHint: Record<string, string> = {
+    item: "Anything you're selling",
+    automotive: "Cars, trucks, motorcycles, boats, RVs",
+    home: "Home or space for rent or for sale",
+    five_under: "Everything $1 to $5, with inventory & cart",
+    free: "Give it away",
   };
 
   if (!user) {
@@ -358,7 +453,7 @@ export default function MarketplaceCreatePage() {
 
       <div className="relative px-4 pt-4">
         {step === 1 && (
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="space-y-2.5">
             {LISTING_TYPES.map((t) => (
               <button
                 key={t.id}
@@ -366,18 +461,22 @@ export default function MarketplaceCreatePage() {
                 onClick={() => {
                   setListingType(t.id);
                   if (t.id === "free") setCategory("free");
-                  if (t.id === "rental") setCategory("rentals");
-                  if (VEHICLE_LISTING_TYPES.has(t.id)) setCategory("vehicles");
+                  if (t.id === "home") setCategory("rentals");
+                  if (t.id === "automotive") setCategory("vehicles");
+                  if (t.id === "five_under") setCategory("for-sale");
                   setStep(2);
                 }}
-                className={`rounded-[1.35rem] border p-4 text-left transition active:scale-[0.98] ${
+                className={`flex w-full items-center gap-3 rounded-[1.35rem] border p-4 text-left transition active:scale-[0.99] ${
                   listingType === t.id
                     ? "border-primary bg-primary/10 shadow-[0_12px_30px_-18px_hsl(var(--primary))]"
                     : "border-border/80 bg-card/90"
                 }`}
               >
                 <span className="text-2xl">{typeEmoji[t.id] || "✨"}</span>
-                <p className="mt-2 text-[13px] font-black leading-snug">{t.label}</p>
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-black leading-snug">{t.label}</span>
+                  <span className="block text-[11px] text-muted-foreground">{typeHint[t.id]}</span>
+                </span>
               </button>
             ))}
           </div>
@@ -458,6 +557,11 @@ export default function MarketplaceCreatePage() {
 
         {step === 3 && (
           <div className="space-y-3">
+            {isFiveUnder && (
+              <div className="rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2.5 text-[12px] font-semibold">
+                🖐 $1–$5 Finds · price must be ${FIVE_UNDER_MIN}–${FIVE_UNDER_MAX} and you set the inventory count.
+              </div>
+            )}
             <Field
               label="Title"
               value={title}
@@ -465,7 +569,7 @@ export default function MarketplaceCreatePage() {
                 clearFieldError("title");
                 setTitle(v);
               }}
-              placeholder="What are you selling?"
+              placeholder={isHome ? "e.g. 2 bed apartment in Hollywood" : "What are you selling?"}
               error={fieldErrors.title}
             />
             <div>
@@ -475,10 +579,13 @@ export default function MarketplaceCreatePage() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={4}
                 className="mt-1 w-full rounded-xl border border-border bg-muted px-3 py-2 text-sm"
-                placeholder="Condition, details, reason for selling…"
+                placeholder={
+                  isHome ? "Neighborhood, what's included, rules…" : "Condition, details, reason for selling…"
+                }
               />
             </div>
-            {!isVehicle && listingType !== "free" && listingType !== "rental" && (
+
+            {!isVehicle && !isHome && listingType !== "free" && !isFiveUnder && (
               <div>
                 <label className="text-xs font-bold">Category</label>
                 <select
@@ -494,33 +601,58 @@ export default function MarketplaceCreatePage() {
                 </select>
               </div>
             )}
-            <div>
-              <label className="text-xs font-bold">Condition</label>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {CONDITIONS.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setCondition(c)}
-                    className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
-                      condition === c ? "bg-primary text-primary-foreground" : "bg-muted"
-                    }`}
-                  >
-                    {c}
-                  </button>
-                ))}
+
+            {!isHome && (
+              <div>
+                <label className="text-xs font-bold">Condition</label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {CONDITIONS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCondition(c)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                        condition === c ? "bg-primary text-primary-foreground" : "bg-muted"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            {!isVehicle && (
+            )}
+
+            {!isVehicle && !isHome && (
               <>
                 <Field label="Brand" value={brand} onChange={setBrand} optional />
                 <Field label="Model" value={model} onChange={setModel} optional />
                 <Field label="Color" value={color} onChange={setColor} optional />
               </>
             )}
+
+            {isFiveUnder && (
+              <Field
+                label="Inventory (how many you have)"
+                value={quantity}
+                onChange={(v) => {
+                  clearFieldError("quantity");
+                  setQuantity(v.replace(/[^0-9]/g, ""));
+                }}
+                type="number"
+                error={fieldErrors.quantity}
+                placeholder="e.g. 20"
+              />
+            )}
+
             {isVehicle && (
               <div className="space-y-3 rounded-2xl border border-border bg-card p-3">
-                <p className="text-xs font-black uppercase text-primary">Vehicle details</p>
+                <p className="text-xs font-black uppercase text-primary">Automotive details</p>
+                <Select
+                  label="Vehicle type"
+                  value={vehicleKind}
+                  onChange={setVehicleKind}
+                  options={[...VEHICLE_KINDS]}
+                />
                 <Field
                   label="Year"
                   value={veh.year != null ? String(veh.year) : ""}
@@ -551,12 +683,14 @@ export default function MarketplaceCreatePage() {
                 />
                 <Field label="Trim" value={veh.trim || ""} onChange={(v) => setVeh((x) => ({ ...x, trim: v }))} optional />
                 <Field
-                  label="Mileage"
+                  label="Mileage / Hours"
                   value={veh.mileage != null ? String(veh.mileage) : ""}
                   onChange={(v) => setVeh((x) => ({ ...x, mileage: v ? Number(v) : null }))}
                   type="number"
+                  optional
                 />
-                <Field label="VIN" value={veh.vin || ""} onChange={(v) => setVeh((x) => ({ ...x, vin: v }))} optional />
+                <Field label="Exterior color" value={veh.exterior_color || ""} onChange={(v) => setVeh((x) => ({ ...x, exterior_color: v }))} optional />
+                <Field label="VIN / HIN" value={veh.vin || ""} onChange={(v) => setVeh((x) => ({ ...x, vin: v }))} optional />
                 <Field
                   label="Transmission"
                   value={veh.transmission || ""}
@@ -575,53 +709,137 @@ export default function MarketplaceCreatePage() {
                   onChange={(v) => setVeh((x) => ({ ...x, title_status: v }))}
                   optional
                 />
-                {listingType === "motorcycle" && (
+                {(vehicleKind === "Boat" || vehicleKind === "Trailer") && (
                   <Field
-                    label="Motorcycle type"
-                    value={veh.motorcycle_type || ""}
-                    onChange={(v) => setVeh((x) => ({ ...x, motorcycle_type: v }))}
+                    label="Length (ft)"
+                    value={veh.length_ft != null ? String(veh.length_ft) : ""}
+                    onChange={(v) => setVeh((x) => ({ ...x, length_ft: v ? Number(v) : null }))}
+                    type="number"
                     optional
                   />
                 )}
-                {listingType === "boat" && (
-                  <>
-                    <Field
-                      label="Boat type"
-                      value={veh.boat_type || ""}
-                      onChange={(v) => setVeh((x) => ({ ...x, boat_type: v }))}
-                      optional
-                    />
-                    <Field
-                      label="Length (ft)"
-                      value={veh.length_ft != null ? String(veh.length_ft) : ""}
-                      onChange={(v) => setVeh((x) => ({ ...x, length_ft: v ? Number(v) : null }))}
-                      type="number"
-                      optional
-                    />
-                  </>
-                )}
-                {listingType === "rv" && (
-                  <>
-                    <Field
-                      label="RV type"
-                      value={veh.rv_type || ""}
-                      onChange={(v) => setVeh((x) => ({ ...x, rv_type: v }))}
-                      optional
-                    />
-                    <Field
-                      label="Sleeping capacity"
-                      value={veh.sleeping_capacity != null ? String(veh.sleeping_capacity) : ""}
-                      onChange={(v) => setVeh((x) => ({ ...x, sleeping_capacity: v ? Number(v) : null }))}
-                      type="number"
-                      optional
-                    />
-                  </>
+                {vehicleKind === "RV / Camper" && (
+                  <Field
+                    label="Sleeping capacity"
+                    value={veh.sleeping_capacity != null ? String(veh.sleeping_capacity) : ""}
+                    onChange={(v) => setVeh((x) => ({ ...x, sleeping_capacity: v ? Number(v) : null }))}
+                    type="number"
+                    optional
+                  />
                 )}
               </div>
             )}
+
+            {isHome && (
+              <div className="space-y-3 rounded-2xl border border-border bg-card p-3">
+                <p className="text-xs font-black uppercase text-primary">Home or space details</p>
+                <div className="flex gap-2">
+                  {HOME_DEAL_TYPES.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setHome((h) => ({ ...h, deal: d }))}
+                      className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold ${
+                        home.deal === d ? "bg-primary text-primary-foreground" : "bg-muted"
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <Select
+                  label="Property type"
+                  value={home.property_type}
+                  onChange={(v) => {
+                    clearFieldError("home_property_type");
+                    setHome((h) => ({ ...h, property_type: v }));
+                  }}
+                  options={[...PROPERTY_TYPES]}
+                  error={fieldErrors.home_property_type}
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <Field
+                    label="Bedrooms"
+                    value={home.bedrooms}
+                    onChange={(v) => {
+                      clearFieldError("home_bedrooms");
+                      setHome((h) => ({ ...h, bedrooms: v.replace(/[^0-9]/g, "") }));
+                    }}
+                    type="number"
+                    error={fieldErrors.home_bedrooms}
+                  />
+                  <Field
+                    label="Bathrooms"
+                    value={home.bathrooms}
+                    onChange={(v) => {
+                      clearFieldError("home_bathrooms");
+                      setHome((h) => ({ ...h, bathrooms: v.replace(/[^0-9.]/g, "") }));
+                    }}
+                    error={fieldErrors.home_bathrooms}
+                  />
+                </div>
+                <Field
+                  label="Square feet"
+                  value={home.square_feet}
+                  onChange={(v) => setHome((h) => ({ ...h, square_feet: v.replace(/[^0-9]/g, "") }))}
+                  type="number"
+                  optional
+                />
+                <Select label="Laundry type" value={home.laundry} onChange={(v) => setHome((h) => ({ ...h, laundry: v }))} options={[...LAUNDRY_TYPES]} optional />
+                <Select label="Parking type" value={home.parking} onChange={(v) => setHome((h) => ({ ...h, parking: v }))} options={[...PARKING_TYPES]} optional />
+                <Select label="Air conditioning" value={home.ac} onChange={(v) => setHome((h) => ({ ...h, ac: v }))} options={[...AC_TYPES]} optional />
+                <Select label="Heating type" value={home.heating} onChange={(v) => setHome((h) => ({ ...h, heating: v }))} options={[...HEATING_TYPES]} optional />
+                {isRent && (
+                  <>
+                    <Select label="Lease term" value={home.lease_term} onChange={(v) => setHome((h) => ({ ...h, lease_term: v }))} options={[...LEASE_TERMS]} optional />
+                    <Field
+                      label="Available date"
+                      value={home.available_date}
+                      onChange={(v) => setHome((h) => ({ ...h, available_date: v }))}
+                      type="date"
+                      optional
+                    />
+                  </>
+                )}
+                <div>
+                  <label className="text-xs font-bold">
+                    Amenities <span className="font-normal text-muted-foreground">· optional</span>
+                  </label>
+                  <div className="mt-1.5 flex flex-wrap gap-2">
+                    {HOME_AMENITIES.map((a) => {
+                      const on = home.amenities.includes(a);
+                      return (
+                        <button
+                          key={a}
+                          type="button"
+                          onClick={() =>
+                            setHome((h) => ({
+                              ...h,
+                              amenities: on ? h.amenities.filter((x) => x !== a) : [...h.amenities, a],
+                            }))
+                          }
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                            on ? "border-primary bg-primary/10 text-primary" : "border-border bg-muted"
+                          }`}
+                        >
+                          {on ? "✓" : "+"} {a}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <Toggle label="Pets allowed" value={home.pets_allowed} onChange={(v) => setHome((h) => ({ ...h, pets_allowed: v }))} />
+                <Toggle
+                  label="Keep exact address private"
+                  value={home.address_private}
+                  onChange={(v) => setHome((h) => ({ ...h, address_private: v }))}
+                />
+              </div>
+            )}
+
             {listingType !== "free" && (
               <Field
-                label="Price ($)"
+                label={isHome ? (isRent ? "Rent per month ($)" : "Asking price ($)") : "Price ($)"}
                 value={price}
                 onChange={(v) => {
                   clearFieldError("price");
@@ -631,11 +849,11 @@ export default function MarketplaceCreatePage() {
                 error={fieldErrors.price}
               />
             )}
-            <Toggle label="Firm price" value={firmPrice} onChange={setFirmPrice} />
-            <Toggle label="Open to offers" value={openOffers} onChange={setOpenOffers} />
-            <Toggle label="Local pickup" value={pickup} onChange={setPickup} />
-            <Toggle label="Delivery available" value={delivery} onChange={setDelivery} />
-            <Toggle label="Shipping available" value={shipping} onChange={setShipping} />
+            {!isFiveUnder && <Toggle label="Firm price" value={firmPrice} onChange={setFirmPrice} />}
+            {!isFiveUnder && <Toggle label="Open to offers" value={openOffers} onChange={setOpenOffers} />}
+            {!isHome && <Toggle label="Local pickup" value={pickup} onChange={setPickup} />}
+            <Toggle label={isHome ? "Tours available" : "Delivery available"} value={delivery} onChange={setDelivery} />
+            {!isHome && <Toggle label="Shipping available" value={shipping} onChange={setShipping} />}
             <Field label="Tags (comma-separated)" value={tags} onChange={setTags} optional />
             <button
               type="button"
@@ -650,7 +868,9 @@ export default function MarketplaceCreatePage() {
         {step === 4 && (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Private sellers show an approximate area only. Exact meetup details stay in chat.
+              {isHome && home.address_private
+                ? "Only the approximate area shows publicly. Share the exact address in chat."
+                : "Private sellers show an approximate area only. Exact meetup details stay in chat."}
             </p>
             <Field
               label="City"
@@ -696,8 +916,21 @@ export default function MarketplaceCreatePage() {
                 </div>
                 <span className="absolute right-3 top-3 rounded-full bg-white px-3 py-1 text-sm font-black text-foreground shadow-sm">
                   {listingType === "free" ? "Free" : `$${Number(price || 0).toLocaleString()}`}
+                  {isHome && isRent ? "/mo" : ""}
                 </span>
               </div>
+              {isHome && (
+                <p className="px-4 pt-3 text-[12px] font-semibold text-muted-foreground">
+                  {[home.deal, home.property_type, home.bedrooms && `${home.bedrooms} bd`, home.bathrooms && `${home.bathrooms} ba`]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+              {isFiveUnder && (
+                <p className="px-4 pt-3 text-[12px] font-semibold text-primary">
+                  $1–$5 Find · {Number(quantity) || 1} in stock
+                </p>
+              )}
               {description ? (
                 <p className="line-clamp-3 px-4 py-3 text-sm text-muted-foreground">{description}</p>
               ) : null}
@@ -762,6 +995,46 @@ function Field({
             : "border-border focus:ring-primary/30"
         }`}
       />
+    </div>
+  );
+}
+
+function Select({
+  label,
+  value,
+  onChange,
+  options,
+  optional,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  optional?: boolean;
+  error?: boolean;
+}) {
+  return (
+    <div>
+      <label className={`text-xs font-bold ${error ? "text-red-500" : ""}`}>
+        {label}
+        {optional ? <span className="font-normal text-muted-foreground"> · optional</span> : null}
+        {error ? <span className="font-semibold text-red-500"> · required</span> : null}
+      </label>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className={`mt-1 h-11 w-full rounded-xl border bg-muted px-3 text-sm outline-none focus:ring-2 ${
+          error ? "border-red-500 ring-2 ring-red-500/40" : "border-border focus:ring-primary/30"
+        }`}
+      >
+        <option value="">Select…</option>
+        {options.map((o) => (
+          <option key={o} value={o}>
+            {o}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

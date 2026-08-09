@@ -106,7 +106,7 @@ export default function MarketplaceHomePage() {
     [listings],
   );
   const vehicles = useMemo(
-    () => listings.filter((l) => ["vehicle", "motorcycle", "boat", "rv"].includes(String(l.listing_type))).slice(0, 4),
+    () => listings.filter((l) => ["automotive", "vehicle", "motorcycle", "boat", "rv"].includes(String(l.listing_type))).slice(0, 4),
     [listings],
   );
 
@@ -197,6 +197,27 @@ export default function MarketplaceHomePage() {
           ))}
         </div>
       </header>
+
+      <div className="px-3 pt-3">
+        <button
+          type="button"
+          onClick={() => nav("/marketplace/five-under")}
+          className="flex w-full items-center gap-3 overflow-hidden rounded-[1.35rem] border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent px-4 py-3.5 text-left active:scale-[0.99]"
+        >
+          <span className="text-2xl">🖐</span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-black leading-tight">$1–$5 Finds</span>
+            <span className="block text-[11px] text-muted-foreground">
+              Everything five dollars or less · build a cart, pick up or get it delivered
+            </span>
+          </span>
+          <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-black text-primary-foreground">
+            Shop
+          </span>
+        </button>
+      </div>
+
+
 
       {setupNeeded && (
         <div className="mx-4 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">
