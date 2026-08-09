@@ -14,7 +14,10 @@ export default function MarketplaceLocationGate({ children }: { children: React.
   if (!user || loading || ready) return <>{children}</>;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end bg-background/95 backdrop-blur-sm sm:items-center sm:justify-center">
+    <>
+      {children}
+      <div className="fixed inset-0 z-[60] flex items-end bg-background/95 backdrop-blur-sm sm:items-center sm:justify-center">
+
       <div className="w-full space-y-3 rounded-t-3xl border-t border-border bg-background p-4 pb-8 sm:max-w-md sm:rounded-3xl sm:border">
         <p className="flex items-center gap-2 text-base font-black">
           <MapPin className="h-5 w-5 text-primary" />
