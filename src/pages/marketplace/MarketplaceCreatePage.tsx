@@ -182,10 +182,17 @@ export default function MarketplaceCreatePage() {
   const isFiveUnder = listingType === "five_under";
   const isRent = isHome && home.deal === "For rent";
 
+  const photoLimit = isFiveUnder ? 5 : MAX_PHOTOS;
+
   const onPickFiles = async (files: FileList | null) => {
     if (!files || !user) return;
-    const remaining = MAX_PHOTOS - media.length;
+    const remaining = photoLimit - media.length;
+    if (remaining <= 0) {
+      toast.error(`You can add up to ${photoLimit} photos`);
+      return;
+    }
     const list = Array.from(files).slice(0, remaining);
+
     for (const file of list) {
       const localUrl = URL.createObjectURL(file);
       setMedia((m) => [...m, { url: localUrl, local: true }]);
