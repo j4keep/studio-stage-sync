@@ -101,13 +101,14 @@ export async function listMyOpenCarts(buyerId: string): Promise<MarketplaceCart[
 }
 
 export async function listCartsForUser(userId: string, role: "buyer" | "seller"): Promise<MarketplaceCart[]> {
-  const { data, error } = await (supabase as any)
+  let query = (supabase as any)
     .from("marketplace_carts")
     .select("*")
     .eq(role === "buyer" ? "buyer_id" : "seller_id", userId)
-    .neq("status", "open")
     .order("updated_at", { ascending: false })
     .limit(60);
+  if (role === "buyer") query = query.neq("status", "open");
+  const { data, error } = await query;
   if (error) throw error;
   return hydrate(data || []);
 }
