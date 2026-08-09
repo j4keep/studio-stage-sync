@@ -275,7 +275,7 @@ const ArtistProfilePage = () => {
         </div>
       )}
 
-      {userId && <UserReviewsSection userId={userId} title="Reviews & comments" />}
+      
 
 
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
