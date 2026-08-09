@@ -54,15 +54,10 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
     }
   };
 
-  const pick = async (s: AddressSuggestion) => {
-    setBusy(true);
-    try {
-      await commit(await resolveSuggestion(s));
-    } catch (e: any) {
-      toast.error(e?.message || "Could not save that address");
-    } finally {
-      setBusy(false);
-    }
+  /** Tapping a suggestion only fills the box — saving stays in the person's hands. */
+  const pick = (s: AddressSuggestion) => {
+    setPicked(s);
+    setDraft(s.label);
   };
 
 
@@ -71,8 +66,13 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
     if (!address) return toast.error("Enter your address first");
     setBusy(true);
     try {
-      const point = await geocodeAddress(address);
-      await commit({ ...point, label: point.label || address });
+      if (picked && picked.label === address) {
+        await commit(await resolveSuggestion(picked));
+      } else {
+        const point = await geocodeAddress(address);
+        await commit({ ...point, label: point.label || address });
+      }
+      setPicked(null);
     } catch (e: any) {
       toast.error(e?.message || "We could not find that address");
     } finally {
