@@ -361,6 +361,7 @@ export async function listMarketplaceListings(opts: ListListingsOpts = {}): Prom
 
   if (opts.category) q = q.eq("category", opts.category);
   if (opts.listingType) q = q.eq("listing_type", opts.listingType);
+  if (opts.excludeFiveUnder) q = q.neq("listing_type", "five_under");
   if (opts.minPrice != null) q = q.gte("price", opts.minPrice);
   if (opts.maxPrice != null) q = q.lte("price", opts.maxPrice);
 
