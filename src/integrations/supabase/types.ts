@@ -2011,6 +2011,87 @@ export type Database = {
           },
         ]
       }
+      marketplace_cart_items: {
+        Row: {
+          cart_id: string
+          created_at: string
+          id: string
+          listing_id: string
+          qty: number
+          unit_price: number
+        }
+        Insert: {
+          cart_id: string
+          created_at?: string
+          id?: string
+          listing_id: string
+          qty?: number
+          unit_price?: number
+        }
+        Update: {
+          cart_id?: string
+          created_at?: string
+          id?: string
+          listing_id?: string
+          qty?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_cart_items_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_carts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_cart_items_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_carts: {
+        Row: {
+          buyer_id: string
+          created_at: string
+          delivery_address: string | null
+          delivery_fee: number
+          fulfillment: string
+          id: string
+          note: string | null
+          seller_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          created_at?: string
+          delivery_address?: string | null
+          delivery_fee?: number
+          fulfillment?: string
+          id?: string
+          note?: string | null
+          seller_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          created_at?: string
+          delivery_address?: string | null
+          delivery_fee?: number
+          fulfillment?: string
+          id?: string
+          note?: string | null
+          seller_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       marketplace_listing_media: {
         Row: {
           created_at: string
@@ -4820,6 +4901,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      mp_set_cart_item: {
+        Args: { p_listing_id: string; p_qty: number }
+        Returns: string
+      }
+      mp_set_cart_status: {
+        Args: { p_cart_id: string; p_delivery_fee?: number; p_status: string }
+        Returns: undefined
+      }
+      mp_submit_cart: {
+        Args: {
+          p_address?: string
+          p_cart_id: string
+          p_fulfillment: string
+          p_note?: string
+        }
+        Returns: undefined
       }
       refresh_moderation_status: {
         Args: { p_user_id?: string }
