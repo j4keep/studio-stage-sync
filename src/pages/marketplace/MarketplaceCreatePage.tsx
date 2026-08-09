@@ -504,30 +504,54 @@ export default function MarketplaceCreatePage() {
 
         {step === 2 && (
           <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">Up to {MAX_PHOTOS} photos. First photo is the cover.</p>
-            <label
-              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed py-10 ${
-                fieldErrors.photos
-                  ? "border-red-500 bg-red-500/10 ring-2 ring-red-500/40"
-                  : "border-border bg-muted/50"
-              }`}
-            >
-              <ImagePlus className={`h-8 w-8 ${fieldErrors.photos ? "text-red-500" : "text-primary"}`} />
-              <span className={`text-sm font-bold ${fieldErrors.photos ? "text-red-500" : ""}`}>
-                {fieldErrors.photos ? "Photo required" : "Add photos"}
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                capture="environment"
-                className="hidden"
-                onChange={(e) => {
-                  clearFieldError("photos");
-                  void onPickFiles(e.target.files);
-                }}
-              />
-            </label>
+            <p className="text-sm text-muted-foreground">
+              Up to {photoLimit} photos ({media.length}/{photoLimit} added). First photo is the cover, and buyers swipe
+              through the rest.
+            </p>
+            <div className="grid grid-cols-2 gap-2.5">
+              <label
+                className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed py-8 ${
+                  fieldErrors.photos
+                    ? "border-red-500 bg-red-500/10 ring-2 ring-red-500/40"
+                    : "border-border bg-muted/50"
+                }`}
+              >
+                <ImagePlus className={`h-7 w-7 ${fieldErrors.photos ? "text-red-500" : "text-primary"}`} />
+                <span className={`text-[13px] font-bold ${fieldErrors.photos ? "text-red-500" : ""}`}>
+                  Upload photos
+                </span>
+                <span className="text-[10.5px] text-muted-foreground">From your library</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    clearFieldError("photos");
+                    void onPickFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-8">
+                <Camera className="h-7 w-7 text-primary" />
+                <span className="text-[13px] font-bold">Take a photo</span>
+                <span className="text-[10.5px] text-muted-foreground">Use your camera</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  onChange={(e) => {
+                    clearFieldError("photos");
+                    void onPickFiles(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+            {fieldErrors.photos && <p className="text-[12px] font-bold text-red-500">Add at least one photo</p>}
+
             {uploadPct != null && (
               <div className="h-2 overflow-hidden rounded-full bg-muted">
                 <div className="h-full bg-primary transition-all" style={{ width: `${uploadPct}%` }} />
