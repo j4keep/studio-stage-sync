@@ -150,7 +150,9 @@ Deno.serve(async (req) => {
     );
     const { data: store, error } = await supabase
       .from("marketplace_profiles")
-      .select("store_lat, store_lng, store_address, delivery_per_mile, delivery_min_fee, delivery_max_miles")
+      .select(
+        "store_lat, store_lng, store_address, city, buyer_lat, buyer_lng, buyer_address, delivery_per_mile, delivery_min_fee, delivery_max_miles",
+      )
       .eq("user_id", sellerId)
       .maybeSingle();
     if (error) return json({ error: error.message }, 500);
@@ -162,12 +164,17 @@ Deno.serve(async (req) => {
     const estimated = sellerRate <= 0;
     const rate = estimated ? DEFAULT_PER_MILE : sellerRate;
 
+    /** Best available origin: store pin, store address, then the seller's own saved location. */
     let origin: Point | null =
       store?.store_lat != null && store?.store_lng != null
         ? { lat: Number(store.store_lat), lng: Number(store.store_lng), label: store.store_address || "Store" }
-        : store?.store_address
-          ? await geocode(store.store_address)
+        : store?.buyer_lat != null && store?.buyer_lng != null
+          ? { lat: Number(store.buyer_lat), lng: Number(store.buyer_lng), label: store.buyer_address || "Store" }
           : null;
+    for (const candidate of [store?.store_address, store?.buyer_address, store?.city]) {
+      if (origin) break;
+      if (candidate) origin = await geocode(String(candidate));
+    }
     if (!origin) return json({ configured: false });
 
     const dest: Point | null = hasCoords
