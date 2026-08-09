@@ -2139,6 +2139,7 @@ export type Database = {
           created_at: string
           deleted_at: string | null
           delivery: boolean
+          delivery_fee: number
           description: string
           firm_price: boolean
           id: string
@@ -2174,6 +2175,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivery?: boolean
+          delivery_fee?: number
           description?: string
           firm_price?: boolean
           id?: string
@@ -2209,6 +2211,7 @@ export type Database = {
           created_at?: string
           deleted_at?: string | null
           delivery?: boolean
+          delivery_fee?: number
           description?: string
           firm_price?: boolean
           id?: string
@@ -4914,7 +4917,7 @@ export type Database = {
         Args: {
           p_address?: string
           p_cart_id: string
-          p_fulfillment: string
+          p_fulfillment?: string
           p_note?: string
         }
         Returns: undefined
