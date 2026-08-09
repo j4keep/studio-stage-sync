@@ -293,6 +293,10 @@ export type ListListingsOpts = {
   offset?: number;
   viewerId?: string | null;
   sort?: "newest" | "price_asc" | "price_desc";
+  minPrice?: number;
+  maxPrice?: number;
+  listingType?: string;
+
 };
 
 export async function listMarketplaceListings(opts: ListListingsOpts = {}): Promise<MarketplaceListing[]> {
