@@ -53,6 +53,15 @@ export default function FiveUnderPage() {
   );
   const cartTotal = useMemo(() => carts.reduce((s, c) => s + c.subtotal, 0), [carts]);
 
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    let out = rows;
+    if (q) out = out.filter((l) => `${l.title} ${l.description}`.toLowerCase().includes(q));
+    if (sort === "low") out = [...out].sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    if (sort === "high") out = [...out].sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    return out;
+  }, [rows, query, sort]);
+
   const stores = useMemo(() => {
     const map = new Map<
       string,
@@ -73,17 +82,6 @@ export default function FiveUnderPage() {
     }
     return [...map.values()];
   }, [visible]);
-
-  const visibleMemoPlaceholder = null;
-
-  const _visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let out = rows;
-    if (q) out = out.filter((l) => `${l.title} ${l.description}`.toLowerCase().includes(q));
-    if (sort === "low") out = [...out].sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
-    if (sort === "high") out = [...out].sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
-    return out;
-  }, [rows, query, sort]);
 
   const addOne = async (listing: MarketplaceListing) => {
     if (!user) return nav("/auth");
