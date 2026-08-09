@@ -176,27 +176,59 @@ export default function StoreProductPage() {
 
         {photos.length > 0 && (
           <div className="mt-3">
-            <div className="overflow-hidden rounded-2xl bg-muted">
-              <img src={photos[photo]} alt={listing.title} className="h-72 w-full object-contain" />
+            <div
+              ref={stripRef}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                setPhoto(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+              }}
+              className="flex snap-x snap-mandatory gap-0 overflow-x-auto rounded-2xl bg-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {photos.map((u, i) => (
+                <img
+                  key={u + i}
+                  src={u}
+                  alt={`${listing.title} photo ${i + 1}`}
+                  className="h-72 w-full shrink-0 snap-center object-contain"
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              ))}
             </div>
             {photos.length > 1 && (
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                {photos.map((u, i) => (
-                  <button
-                    key={u + i}
-                    type="button"
-                    onClick={() => setPhoto(i)}
-                    className={`h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2 ${
-                      i === photo ? "border-primary" : "border-border"
-                    }`}
-                  >
-                    <img src={u} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="mt-2 flex items-center justify-center gap-1.5">
+                  {photos.map((u, i) => (
+                    <span
+                      key={`dot-${u}-${i}`}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === photo ? "w-5 bg-primary" : "w-1.5 bg-border"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {photos.map((u, i) => (
+                    <button
+                      key={u + i}
+                      type="button"
+                      onClick={() => {
+                        const el = stripRef.current;
+                        if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+                        setPhoto(i);
+                      }}
+                      className={`h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2 ${
+                        i === photo ? "border-primary" : "border-border"
+                      }`}
+                    >
+                      <img src={u} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
+
 
         <p className={`mt-4 text-sm font-black ${stock > 0 ? "text-emerald-600" : "text-red-500"}`}>
           {stock > 0 ? `In stock · ${stock} available` : "Out of stock"}
