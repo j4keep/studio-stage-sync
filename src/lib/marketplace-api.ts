@@ -322,12 +322,12 @@ export async function updateMarketplaceProfile(
   await ensureMarketplaceProfile(userId);
   const { data, error } = await (supabase as any)
     .from("marketplace_profiles")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
+    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     .select("*")
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data as MarketplaceProfile;
+
 }
 
 export type ListListingsOpts = {
