@@ -106,7 +106,7 @@ export default function MarketplaceHomePage() {
     [listings],
   );
   const vehicles = useMemo(
-    () => listings.filter((l) => ["vehicle", "motorcycle", "boat", "rv"].includes(String(l.listing_type))).slice(0, 4),
+    () => listings.filter((l) => ["automotive", "vehicle", "motorcycle", "boat", "rv"].includes(String(l.listing_type))).slice(0, 4),
     [listings],
   );
 
