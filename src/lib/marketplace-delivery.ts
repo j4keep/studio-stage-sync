@@ -2,6 +2,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type DeliveryQuote = {
   configured: boolean;
+  /** True when the price uses the platform default rate (seller hasn't set one). */
+  estimated?: boolean;
   miles?: number;
   fee?: number;
   perMile?: number;
