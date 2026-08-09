@@ -57,6 +57,7 @@ import AdminDealsVerificationPage from "./pages/AdminDealsVerificationPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import CommunityTimeoutPage from "./pages/CommunityTimeoutPage";
 import CommunityTimeoutScreen from "./components/CommunityTimeoutScreen";
+import LocationGate from "@/components/location/LocationGate";
 import ModerationBanner from "./components/ModerationBanner";
 import { useModerationStatus } from "./hooks/use-moderation-status";
 import AskYajPage from "./pages/AskYajPage";
@@ -311,7 +312,9 @@ const ProtectedRoutes = () => {
     <SessionProvider>
     <AppLayout>
       <ModerationBanner />
+      <LocationGate />
       <Routes>
+
         <Route path="/" element={<HomePage />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/projects" element={<Navigate to="/my-projects" replace />} />

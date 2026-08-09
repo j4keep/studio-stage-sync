@@ -59,7 +59,7 @@ export default function AddressAutocomplete({ value, onChange, onPick, placehold
       {open && items.length > 0 && (
         <ul className="absolute left-0 right-0 top-[calc(100%+4px)] z-40 max-h-64 overflow-y-auto rounded-xl border border-border bg-popover shadow-lg">
           {items.map((s) => (
-            <li key={`${s.lat}-${s.lng}-${s.label}`}>
+            <li key={s.placeId || `${s.lat}-${s.lng}-${s.label}`}>
               <button
                 type="button"
                 onClick={() => {

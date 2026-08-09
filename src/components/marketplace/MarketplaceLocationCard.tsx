@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { geocodeAddress, getBrowserPosition, reverseGeocode } from "@/lib/marketplace-delivery";
+import {
+  geocodeAddress,
+  getBrowserPosition,
+  resolveSuggestion,
+  reverseGeocode,
+  type AddressSuggestion,
+} from "@/lib/marketplace-delivery";
+
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 import AddressAutocomplete from "@/components/marketplace/AddressAutocomplete";
 
@@ -45,16 +52,17 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
     }
   };
 
-  const pick = async (s: { lat: number; lng: number; label: string }) => {
+  const pick = async (s: AddressSuggestion) => {
     setBusy(true);
     try {
-      await commit(s);
+      await commit(await resolveSuggestion(s));
     } catch (e: any) {
       toast.error(e?.message || "Could not save that address");
     } finally {
       setBusy(false);
     }
   };
+
 
   const saveTyped = async () => {
     const address = draft.trim();

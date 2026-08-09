@@ -26,10 +26,11 @@ async function call<T>(body: Record<string, unknown>): Promise<T> {
   return data as T;
 }
 
-/** Turn a typed address into coordinates (used when a seller saves their store address). */
-export function geocodeAddress(address: string) {
-  return call<{ lat: number; lng: number; label: string }>({ action: "geocode", address });
+/** Turn a typed address (or a picked Google place) into coordinates. */
+export function geocodeAddress(address: string, placeId?: string | null) {
+  return call<{ lat: number; lng: number; label: string }>({ action: "geocode", address, placeId });
 }
+
 
 /** Turn phone GPS coordinates into a readable address label. */
 export function reverseGeocode(lat: number, lng: number) {
@@ -61,7 +62,7 @@ export function getBrowserPosition(): Promise<{ lat: number; lng: number }> {
 export const milesAwayLabel = (m?: number | null) =>
   m == null ? null : m < 1 ? "Less than 1 mi away" : `${m} mi away`;
 
-export type AddressSuggestion = { lat: number; lng: number; label: string };
+export type AddressSuggestion = { lat?: number; lng?: number; label: string; placeId?: string | null };
 
 /** Type-ahead address matches, so people pick instead of typing a full address. */
 export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> {
@@ -73,3 +74,11 @@ export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> 
     return [];
   }
 }
+
+/** Coordinates for a picked suggestion (Google place ids resolve on selection). */
+export async function resolveSuggestion(s: AddressSuggestion) {
+  if (s.lat != null && s.lng != null) return { lat: s.lat, lng: s.lng, label: s.label };
+  const point = await geocodeAddress(s.label, s.placeId);
+  return { ...point, label: point.label || s.label };
+}
+
