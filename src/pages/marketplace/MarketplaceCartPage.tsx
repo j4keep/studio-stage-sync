@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Minus, Plus, Truck } from "lucide-react";
+import { ArrowLeft, Loader2, MapPin, Minus, Plus, Truck } from "lucide-react";
+import { getDeliveryQuote, type DeliveryQuote } from "@/lib/marketplace-delivery";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
