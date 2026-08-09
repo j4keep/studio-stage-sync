@@ -2,7 +2,7 @@
 
 export const MARKETPLACE_CATEGORIES = [
   { id: "for-sale", label: "For Sale", emoji: "🏷" },
-  { id: "vehicles", label: "Vehicles", emoji: "🚗" },
+  { id: "vehicles", label: "Automotive", emoji: "🚗" },
   { id: "electronics", label: "Electronics", emoji: "📱" },
   { id: "home", label: "Home", emoji: "🏠" },
   { id: "fashion", label: "Fashion", emoji: "👗" },
@@ -12,26 +12,86 @@ export const MARKETPLACE_CATEGORIES = [
   { id: "baby-kids", label: "Baby & Kids", emoji: "🍼" },
   { id: "tools", label: "Tools", emoji: "🔧" },
   { id: "free", label: "Free", emoji: "🎁" },
-  { id: "rentals", label: "Rentals", emoji: "🔑" },
+  { id: "rentals", label: "Homes & Rentals", emoji: "🔑" },
   { id: "local-businesses", label: "Local Businesses", emoji: "🏪" },
 ] as const;
 
 export const LISTING_TYPES = [
   { id: "item", label: "Item for Sale" },
-  { id: "vehicle", label: "Vehicle" },
-  { id: "motorcycle", label: "Motorcycle" },
-  { id: "boat", label: "Boat" },
-  { id: "rv", label: "Recreational Vehicle" },
-  { id: "rental", label: "Rental" },
+  { id: "automotive", label: "Automotive" },
+  { id: "home", label: "Home or Space" },
+  { id: "five_under", label: "$1–$5 Find" },
   { id: "free", label: "Free Item" },
 ] as const;
 
 export const CONDITIONS = ["New", "Like New", "Good", "Fair", "For Parts"] as const;
 
-export const VEHICLE_LISTING_TYPES = new Set(["vehicle", "motorcycle", "boat", "rv"]);
+/** Legacy ids stay supported so older listings keep rendering. */
+export const VEHICLE_LISTING_TYPES = new Set(["automotive", "vehicle", "motorcycle", "boat", "rv"]);
+export const HOME_LISTING_TYPES = new Set(["home", "rental"]);
+
+/** One automotive flow — the seller picks the kind of vehicle. */
+export const VEHICLE_KINDS = [
+  "Car / Truck / SUV",
+  "Motorcycle",
+  "Boat",
+  "RV / Camper",
+  "Trailer",
+  "Powersports / ATV",
+  "Commercial",
+] as const;
+
+export const HOME_DEAL_TYPES = ["For rent", "For sale"] as const;
+
+export const PROPERTY_TYPES = [
+  "Apartment",
+  "House",
+  "Townhouse",
+  "Condo",
+  "Duplex",
+  "Room",
+  "Studio",
+  "Mobile / Manufactured",
+  "Land / Lot",
+  "Office / Commercial space",
+  "Storage / Parking space",
+] as const;
+
+export const LAUNDRY_TYPES = ["In unit", "In building", "Hookups only", "None"] as const;
+export const PARKING_TYPES = ["Garage", "Driveway", "Assigned spot", "Street", "None"] as const;
+export const AC_TYPES = ["Central", "Wall / Window unit", "Mini split", "None"] as const;
+export const HEATING_TYPES = ["Central", "Electric", "Gas", "Baseboard", "None"] as const;
+export const LEASE_TERMS = ["Month to month", "6 months", "12 months", "Short term"] as const;
+
+export const HOME_AMENITIES = [
+  "Balcony",
+  "Basement",
+  "Bike parking",
+  "Cable TV",
+  "Dishwasher",
+  "Elevator",
+  "Furnished",
+  "Gym",
+  "Pool",
+  "Pets allowed",
+  "Wheelchair accessible",
+  "Yard",
+  "Utilities included",
+  "Washer / Dryer",
+] as const;
+
+/** Hard cap for the $1–$5 Finds section. */
+export const FIVE_UNDER_MIN = 1;
+export const FIVE_UNDER_MAX = 5;
+
+export function isFiveUnderListing(l: { listing_type?: string | null; price?: number | null }) {
+  const price = Number(l.price ?? 0);
+  return String(l.listing_type) === "five_under" || (price > 0 && price <= FIVE_UNDER_MAX);
+}
 
 export type ListingType = (typeof LISTING_TYPES)[number]["id"];
 export type ListingStatus = "draft" | "active" | "pending" | "sold" | "expired" | "archived" | "removed";
+
 
 export function formatPrice(price: number | null | undefined, listingType?: string) {
   if (listingType === "free" || price == null || Number(price) === 0) return "Free";
