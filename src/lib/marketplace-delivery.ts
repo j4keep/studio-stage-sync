@@ -60,3 +60,16 @@ export function getBrowserPosition(): Promise<{ lat: number; lng: number }> {
 
 export const milesAwayLabel = (m?: number | null) =>
   m == null ? null : m < 1 ? "Less than 1 mi away" : `${m} mi away`;
+
+export type AddressSuggestion = { lat: number; lng: number; label: string };
+
+/** Type-ahead address matches, so people pick instead of typing a full address. */
+export async function suggestAddresses(q: string): Promise<AddressSuggestion[]> {
+  if (q.trim().length < 3) return [];
+  try {
+    const { results } = await call<{ results: AddressSuggestion[] }>({ action: "suggest", address: q });
+    return results || [];
+  } catch {
+    return [];
+  }
+}
