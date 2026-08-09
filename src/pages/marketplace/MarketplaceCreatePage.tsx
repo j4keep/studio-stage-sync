@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Camera, GripVertical, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, GripVertical, ImagePlus, Loader2, Trash2, Video, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -26,6 +26,7 @@ import {
   compressImage,
   createMarketplaceListing,
   getMarketplaceListing,
+  getMarketplaceProfile,
   updateMarketplaceListing,
   uploadListingImage,
   type ListingInput,
@@ -33,8 +34,9 @@ import {
 } from "@/lib/marketplace-api";
 
 const MAX_PHOTOS = 20;
+const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u) || u.startsWith("blob:video");
 
-type DraftMedia = { url: string; local?: boolean };
+type DraftMedia = { url: string; local?: boolean; video?: boolean };
 
 type HomeDetails = {
   deal: string;
@@ -87,6 +89,21 @@ export default function MarketplaceCreatePage() {
   const startsAsFiveUnder = !editId && requestedType === "five_under";
   const [listingType, setListingType] = useState<ListingType | string>(startsAsFiveUnder ? "five_under" : "item");
   const [media, setMedia] = useState<DraftMedia[]>([]);
+  const [storeHasAddress, setStoreHasAddress] = useState(true);
+
+  // Sellers need a pickup address for automatic per-mile delivery pricing.
+  useEffect(() => {
+    if (!user) return;
+    let alive = true;
+    void getMarketplaceProfile(user.id)
+      .then((p) => {
+        if (alive) setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
+      })
+      .catch(() => alive && setStoreHasAddress(true));
+    return () => {
+      alive = false;
+    };
+  }, [user]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("for-sale");
@@ -209,6 +226,38 @@ export default function MarketplaceCreatePage() {
       } finally {
         setUploadPct(null);
       }
+    }
+  };
+
+  /** One short video is allowed, and it counts as one of the media slots. */
+  const onPickVideo = async (files: FileList | null) => {
+    const file = files?.[0];
+    if (!file || !user) return;
+    if (media.some((m) => m.video || isVideoUrl(m.url))) {
+      toast.error("You can add one video per item");
+      return;
+    }
+    if (media.length >= photoLimit) {
+      toast.error(`You can add up to ${photoLimit} photos or videos`);
+      return;
+    }
+    if (file.size > 60 * 1024 * 1024) {
+      toast.error("Keep videos under 60MB");
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    setMedia((m) => [...m, { url: localUrl, local: true, video: true }]);
+    try {
+      setUploadPct(0);
+      const url = await uploadListingImage(user.id, file, (p) => setUploadPct(Math.round(p)));
+      setMedia((m) => m.map((item) => (item.url === localUrl ? { url, video: true } : item)));
+      URL.revokeObjectURL(localUrl);
+    } catch (e: any) {
+      setMedia((m) => m.filter((item) => item.url !== localUrl));
+      URL.revokeObjectURL(localUrl);
+      toast.error(e?.message || "Video upload failed");
+    } finally {
+      setUploadPct(null);
     }
   };
 
@@ -505,8 +554,8 @@ export default function MarketplaceCreatePage() {
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Up to {photoLimit} photos ({media.length}/{photoLimit} added). First photo is the cover, and buyers swipe
-              through the rest.
+              Up to {photoLimit} photos or videos ({media.length}/{photoLimit} added) — one video allowed. First item is
+              the cover, and buyers swipe through the rest.
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <label
@@ -549,6 +598,21 @@ export default function MarketplaceCreatePage() {
                   }}
                 />
               </label>
+              <label className="col-span-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-4">
+                <Video className="h-6 w-6 text-primary" />
+                <span className="text-[13px] font-bold">Add a video</span>
+                <span className="text-[10.5px] text-muted-foreground">One per item · under 60MB</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    clearFieldError("photos");
+                    void onPickVideo(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
             {fieldErrors.photos && <p className="text-[12px] font-bold text-red-500">Add at least one photo</p>}
 
@@ -560,7 +624,16 @@ export default function MarketplaceCreatePage() {
             <div className="grid grid-cols-3 gap-2">
               {media.map((m, i) => (
                 <div key={m.url + i} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-                  <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  {m.video || isVideoUrl(m.url) ? (
+                    <video src={m.url} muted playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  )}
+                  {(m.video || isVideoUrl(m.url)) && (
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      Video
+                    </span>
+                  )}
                   {i === 0 && (
                     <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
                       Cover
@@ -928,9 +1001,18 @@ export default function MarketplaceCreatePage() {
                 />
                 <p className="-mt-1 text-[11px] text-muted-foreground">
                   {isFiveUnder
-                    ? "This is a per-mile rate, not a flat fee. Buyers enter their address at checkout and we multiply the miles from your pickup address by this rate. Set it in My store → delivery settings to keep every listing in sync."
+                    ? "This is a per-mile rate, not a flat fee. We use your store address and the buyer's saved location to price delivery automatically."
                     : "Buyers see this fee when they pick delivery at checkout."}
                 </p>
+                {isFiveUnder && !storeHasAddress && (
+                  <button
+                    type="button"
+                    onClick={() => nav("/marketplace/store-dashboard")}
+                    className="-mt-1 w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-left text-[11.5px] font-semibold text-amber-700"
+                  >
+                    Add your store pickup address in My store so delivery prices calculate automatically. Tap to set it.
+                  </button>
+                )}
               </>
 
             )}

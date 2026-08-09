@@ -31,7 +31,32 @@ export function geocodeAddress(address: string) {
   return call<{ lat: number; lng: number; label: string }>({ action: "geocode", address });
 }
 
+/** Turn phone GPS coordinates into a readable address label. */
+export function reverseGeocode(lat: number, lng: number) {
+  return call<{ lat: number; lng: number; label: string }>({ action: "reverse", lat, lng });
+}
+
 /** Miles + delivery price for a buyer's address, using the seller's per-mile rate. */
 export function getDeliveryQuote(sellerId: string, address: string) {
   return call<DeliveryQuote>({ action: "quote", sellerId, address });
 }
+
+/** Same quote, but straight from saved coordinates — no typing, instant price. */
+export function getDeliveryQuoteAt(sellerId: string, lat: number, lng: number, label?: string) {
+  return call<DeliveryQuote>({ action: "quote", sellerId, lat, lng, address: label });
+}
+
+/** Ask the phone for its current position (used by the location toggle). */
+export function getBrowserPosition(): Promise<{ lat: number; lng: number }> {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error("Location isn't available on this device"));
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => reject(new Error("We couldn't get your location — allow location access or type your address")),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 },
+    );
+  });
+}
+
+export const milesAwayLabel = (m?: number | null) =>
+  m == null ? null : m < 1 ? "Less than 1 mi away" : `${m} mi away`;
