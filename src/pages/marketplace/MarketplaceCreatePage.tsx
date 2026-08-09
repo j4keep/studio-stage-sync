@@ -915,19 +915,24 @@ export default function MarketplaceCreatePage() {
             {delivery && !isHome && (
               <>
                 <Field
-                  label="Delivery fee you charge ($)"
+                  label={isFiveUnder ? "Delivery rate you charge ($ per mile)" : "Delivery fee you charge ($)"}
                   value={deliveryFee}
                   onChange={(v) => setDeliveryFee(v.replace(/[^0-9.]/g, ""))}
                   type="number"
                   min={0}
                   step={0.5}
                   optional
-                  placeholder="e.g. 3 — leave blank for free delivery"
+                  placeholder={
+                    isFiveUnder ? "e.g. 1 — $1 for every mile" : "e.g. 3 — leave blank for free delivery"
+                  }
                 />
                 <p className="-mt-1 text-[11px] text-muted-foreground">
-                  Buyers see this fee when they pick delivery at checkout.
+                  {isFiveUnder
+                    ? "This is a per-mile rate, not a flat fee. Buyers enter their address at checkout and we multiply the miles from your pickup address by this rate. Set it in My store → delivery settings to keep every listing in sync."
+                    : "Buyers see this fee when they pick delivery at checkout."}
                 </p>
               </>
+
             )}
             {!isHome && <Toggle label="Shipping available" value={shipping} onChange={setShipping} />}
             <Field label="Tags (comma-separated)" value={tags} onChange={setTags} optional />
