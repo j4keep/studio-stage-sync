@@ -239,6 +239,24 @@ export default function MarketplaceCreatePage() {
     }
   };
 
+  /** Product videos are commercial-length only — 30 seconds, the US TV standard. */
+  const MAX_VIDEO_SECONDS = 30;
+
+  const readVideoSeconds = (file: File) =>
+    new Promise<number>((resolve) => {
+      const el = document.createElement("video");
+      const src = URL.createObjectURL(file);
+      const done = (v: number) => {
+        URL.revokeObjectURL(src);
+        resolve(v);
+      };
+      el.preload = "metadata";
+      el.onloadedmetadata = () => done(Number.isFinite(el.duration) ? el.duration : 0);
+      el.onerror = () => done(0);
+      el.src = src;
+      window.setTimeout(() => done(Number.isFinite(el.duration) ? el.duration : 0), 4000);
+    });
+
   /** One short video is allowed, and it counts as one of the media slots. */
   const onPickVideo = async (files: FileList | null) => {
     const file = files?.[0];
@@ -253,6 +271,13 @@ export default function MarketplaceCreatePage() {
     }
     if (file.size > 60 * 1024 * 1024) {
       toast.error("Keep videos under 60MB");
+      return;
+    }
+    const seconds = await readVideoSeconds(file);
+    if (seconds > MAX_VIDEO_SECONDS + 0.75) {
+      toast.error(
+        `Keep it commercial length — ${MAX_VIDEO_SECONDS} seconds max (yours is ${Math.round(seconds)}s)`,
+      );
       return;
     }
     const localUrl = URL.createObjectURL(file);
@@ -280,7 +305,13 @@ export default function MarketplaceCreatePage() {
     });
   };
 
+  /** Photos first, the video always last, so shoppers see the product before the clip. */
+  const orderedMedia = [...media].sort(
+    (a, b) => Number(a.video || isVideoUrl(a.url)) - Number(b.video || isVideoUrl(b.url)),
+  );
+
   const buildInput = (status: "draft" | "active"): ListingInput => ({
+
     listing_type: listingType,
     title,
     description,
@@ -314,8 +345,8 @@ export default function MarketplaceCreatePage() {
       .map((t) => t.trim())
       .filter(Boolean),
     status,
-    mediaUrls: media.map((m) => m.url),
-    cover_url: media[0]?.url || null,
+    mediaUrls: orderedMedia.map((m) => m.url),
+    cover_url: orderedMedia[0]?.url || null,
     attributes: isHome
       ? { home }
       : isVehicle
@@ -564,8 +595,8 @@ export default function MarketplaceCreatePage() {
         {step === 2 && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Up to {photoLimit} photos or videos ({media.length}/{photoLimit} added) — one video allowed. First item is
-              the cover, and buyers swipe through the rest.
+              Up to {photoLimit} photos or videos ({media.length}/{photoLimit} added) — one video allowed, and the video
+              always plays last. Your first photo is the cover, and buyers swipe through the rest.
             </p>
             <div className="grid grid-cols-2 gap-2.5">
               <label
@@ -611,7 +642,7 @@ export default function MarketplaceCreatePage() {
               <label className="col-span-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-4">
                 <Video className="h-6 w-6 text-primary" />
                 <span className="text-[13px] font-bold">Add a video</span>
-                <span className="text-[10.5px] text-muted-foreground">One per item · under 60MB</span>
+                <span className="text-[10.5px] text-muted-foreground">One per item · 30 seconds max</span>
                 <input
                   type="file"
                   accept="video/*"

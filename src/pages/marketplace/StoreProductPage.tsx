@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, Share2, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
@@ -16,6 +16,7 @@ import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/marketplace-delivery";
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
 import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
+import ShareListingSheet from "@/components/marketplace/ShareListingSheet";
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
 
@@ -32,6 +33,7 @@ export default function StoreProductPage() {
   const [photo, setPhoto] = useState(0);
   const [busy, setBusy] = useState(false);
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
+  const [shareOpen, setShareOpen] = useState(false);
   const stripRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
@@ -93,7 +95,9 @@ export default function StoreProductPage() {
     if (!listing) return [] as string[];
     const urls = (listing.media || []).map((m) => m.url).filter(Boolean) as string[];
     const cover = listingCoverUrl(listing);
-    return urls.length ? urls : cover ? [cover] : [];
+    const list = urls.length ? urls : cover ? [cover] : [];
+    // Photos first, video last — shoppers see the product before the clip plays.
+    return [...list].sort((a, b) => Number(isVideoUrl(a)) - Number(isVideoUrl(b)));
   }, [listing]);
 
 
@@ -166,6 +170,14 @@ export default function StoreProductPage() {
         <p className="min-w-0 flex-1 truncate text-sm font-bold">{listing.title}</p>
         <button
           type="button"
+          onClick={() => setShareOpen(true)}
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+          aria-label="Share"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
           onClick={() => nav("/marketplace/cart")}
           className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
           aria-label="Cart"
@@ -177,6 +189,7 @@ export default function StoreProductPage() {
             </span>
           )}
         </button>
+
       </header>
 
       <div className="px-4 pt-4">
@@ -426,6 +439,13 @@ export default function StoreProductPage() {
           </button>
         </div>
       </div>
+      {shareOpen && (
+        <ShareListingSheet
+          listing={listing}
+          storeName={store?.store_name || listing.seller?.store_name || null}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
     </div>
     </MarketplaceLocationGate>
   );

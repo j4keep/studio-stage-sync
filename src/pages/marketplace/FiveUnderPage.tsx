@@ -137,6 +137,13 @@ export default function FiveUnderPage() {
           </button>
           <button
             type="button"
+            onClick={() => nav("/marketplace/purchases")}
+            className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground"
+          >
+            My purchases
+          </button>
+          <button
+            type="button"
             onClick={() => nav("/marketplace/store-dashboard")}
             className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground"
           >
