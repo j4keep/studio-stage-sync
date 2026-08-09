@@ -30,7 +30,7 @@ export default function MarketplaceOrdersPage() {
     void load();
   }, [load]);
 
-  const act = async (cart: MarketplaceCart, status: "ready" | "completed" | "cancelled") => {
+  const act = async (cart: MarketplaceCart, status: "approved" | "ready" | "completed" | "cancelled") => {
     setBusy(cart.id);
     try {
       const parsed = Number(fee[cart.id]);
@@ -132,11 +132,11 @@ export default function MarketplaceOrdersPage() {
                       <button
                         type="button"
                         disabled={busy === cart.id}
-                        onClick={() => void act(cart, "ready")}
+                        onClick={() => void act(cart, "approved")}
                         className="flex h-11 flex-1 items-center justify-center gap-2 rounded-full bg-primary text-xs font-black text-primary-foreground disabled:opacity-60"
                       >
                         {busy === cart.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        Mark ready
+                        Approve order
                       </button>
                     )}
                     <button

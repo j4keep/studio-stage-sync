@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Heart, Package, Settings, Tag } from "lucide-react";
+import { ArrowLeft, ChevronRight, Heart, Package, Settings, Store, Tag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
@@ -28,6 +28,7 @@ export default function MarketplaceAccountPage() {
   }, [load]);
 
   const links = [
+    { label: "$1–$5 Store dashboard", icon: Store, to: "/marketplace/store-dashboard" },
     { label: "Saved items", icon: Heart, to: "/marketplace/saved" },
     { label: "Offers", icon: Package, to: "/marketplace/offers" },
     { label: "Sales", icon: Tag, to: "/marketplace/sales" },
