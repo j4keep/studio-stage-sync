@@ -1,7 +1,14 @@
 import { useState } from "react";
 import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { geocodeAddress, getBrowserPosition, reverseGeocode } from "@/lib/marketplace-delivery";
+import {
+  geocodeAddress,
+  getBrowserPosition,
+  resolveSuggestion,
+  reverseGeocode,
+  type AddressSuggestion,
+} from "@/lib/marketplace-delivery";
+
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 import AddressAutocomplete from "@/components/marketplace/AddressAutocomplete";
 
