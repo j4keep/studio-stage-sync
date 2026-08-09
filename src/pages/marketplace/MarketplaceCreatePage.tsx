@@ -90,20 +90,30 @@ export default function MarketplaceCreatePage() {
   const [listingType, setListingType] = useState<ListingType | string>(startsAsFiveUnder ? "five_under" : "item");
   const [media, setMedia] = useState<DraftMedia[]>([]);
   const [storeHasAddress, setStoreHasAddress] = useState(true);
+  const [prefilled, setPrefilled] = useState(false);
 
   // Sellers need a pickup address for automatic per-mile delivery pricing.
+  // We also reuse that saved address so nobody retypes their location per listing.
   useEffect(() => {
-    if (!user) return;
+    if (!user || editId) return;
     let alive = true;
     void getMarketplaceProfile(user.id)
       .then((p) => {
-        if (alive) setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
+        if (!alive) return;
+        setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
+        const saved = p?.store_address || p?.buyer_address || "";
+        const match = saved.match(/([A-Za-z .'-]+),\s*([A-Za-z]{2})\s*(\d{5})?/);
+        const nextCity = p?.city || match?.[1]?.trim() || "";
+        if (nextCity) setCity((c) => c || nextCity);
+        if (match?.[2]) setState((s) => s || match[2].toUpperCase());
+        if (match?.[3]) setZip((z) => z || match[3]);
+        if (nextCity || match?.[2]) setPrefilled(true);
       })
       .catch(() => alive && setStoreHasAddress(true));
     return () => {
       alive = false;
     };
-  }, [user]);
+  }, [user, editId]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("for-sale");
