@@ -6,6 +6,7 @@ import ThemePickerSheet from "@/components/ThemePickerSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useAuth } from "@/contexts/AuthContext";
+import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -116,6 +117,15 @@ const SettingsPage = () => {
           </div>
         </div>
       </Section>
+
+      {/* Marketplace location */}
+      {user && (
+        <Section title="Marketplace location">
+          <div className="px-1 pb-1">
+            <MarketplaceLocationCard userId={user.id} title="Location for Marketplace" />
+          </div>
+        </Section>
+      )}
 
       {/* Privacy & Visibility */}
       <Section title="Privacy & Visibility">

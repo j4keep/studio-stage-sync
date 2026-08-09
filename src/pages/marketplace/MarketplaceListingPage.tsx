@@ -34,6 +34,8 @@ import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import UserRatingStars from "@/components/UserRatingStars";
 import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import { blockUser } from "@/lib/blocks";
+import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
+import { useSellerDistance } from "@/hooks/use-seller-distance";
 
 export default function MarketplaceListingPage() {
   const { id = "" } = useParams();
@@ -114,6 +116,7 @@ export default function MarketplaceListingPage() {
   }, [listing, more, nearby]);
 
   const isOwner = user?.id === listing?.seller_id;
+  const { away } = useSellerDistance(listing?.seller_id);
   const cat = getCategory(listing?.category);
   const place = listing
     ? approxLocation(listing.city, listing.state, listing.location_approx)
@@ -258,6 +261,7 @@ export default function MarketplaceListingPage() {
   const sellerName = listing.seller?.display_name || "Seller";
 
   return (
+    <MarketplaceLocationGate>
     <div className="min-h-screen bg-background pb-28 text-foreground">
       {/* Photo */}
       <div className="relative">
@@ -343,6 +347,12 @@ export default function MarketplaceListingPage() {
           <div className="min-w-0">
             <h1 className="text-xl font-bold leading-snug">{listing.title}</h1>
             <p className="mt-1 text-lg font-bold">{formatPrice(listing.price, listing.listing_type)}</p>
+            {away && (
+              <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                <MapPin className="h-3.5 w-3.5" />
+                Nearby · {away}
+              </p>
+            )}
           </div>
           {!isOwner && (
             <button
@@ -669,5 +679,6 @@ export default function MarketplaceListingPage() {
         </>
       )}
     </div>
+    </MarketplaceLocationGate>
   );
 }

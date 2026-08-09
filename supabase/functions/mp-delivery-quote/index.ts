@@ -52,6 +52,24 @@ Deno.serve(async (req) => {
       return json({ lat: point.lat, lng: point.lng, label: point.label });
     }
 
+    /** Type-ahead address suggestions (like Google's dropdown). */
+    if (action === "suggest") {
+      if (clean.length < 3) return json({ results: [] });
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&addressdetails=0&limit=6&q=${encodeURIComponent(clean)}`,
+        { headers: { "User-Agent": "YAJ-Marketplace/1.0 (address suggestions)" } },
+      );
+      if (!res.ok) {
+        console.error(`Suggest failed [${res.status}]: ${await res.text()}`);
+        return json({ results: [] });
+      }
+      const rows = (await res.json()) as Array<{ lat: string; lon: string; display_name: string }>;
+      return json({
+        results: (rows || []).map((r) => ({ lat: Number(r.lat), lng: Number(r.lon), label: r.display_name })),
+      });
+    }
+
+
     /** Turn coordinates back into a readable place name (used by "use my current location"). */
     if (action === "reverse") {
       if (!hasCoords) return json({ error: "Coordinates are required" }, 400);

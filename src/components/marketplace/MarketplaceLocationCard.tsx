@@ -3,6 +3,7 @@ import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import { geocodeAddress, getBrowserPosition, reverseGeocode } from "@/lib/marketplace-delivery";
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import AddressAutocomplete from "@/components/marketplace/AddressAutocomplete";
 
 type Props = {
   userId: string;
@@ -13,12 +14,19 @@ type Props = {
 
 /**
  * One small card that handles "my location" for the marketplace: a toggle plus
- * either the phone's GPS or a typed address. Delivery prices come out automatically.
+ * either the phone's GPS or a picked address. Delivery prices come out automatically.
  */
 export default function MarketplaceLocationCard({ userId, title = "Your location", onChanged }: Props) {
   const { location, loading, save, setSharing } = useMyMarketplaceLocation(userId);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const commit = async (point: { lat: number; lng: number; label: string }) => {
+    await save({ address: point.label, lat: point.lat, lng: point.lng, sharing: true });
+    setDraft("");
+    toast.success("Location saved");
+    onChanged?.();
+  };
 
   const useGps = async () => {
     setBusy(true);
@@ -29,12 +37,20 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
         lng: pos.lng,
         label: "My current location",
       }));
-      await save({ address: point.label, lat: point.lat, lng: point.lng, sharing: true });
-      setDraft("");
-      toast.success("Location saved");
-      onChanged?.();
+      await commit(point);
     } catch (e: any) {
       toast.error(e?.message || "Could not get your location");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pick = async (s: { lat: number; lng: number; label: string }) => {
+    setBusy(true);
+    try {
+      await commit(s);
+    } catch (e: any) {
+      toast.error(e?.message || "Could not save that address");
     } finally {
       setBusy(false);
     }
@@ -46,10 +62,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
     setBusy(true);
     try {
       const point = await geocodeAddress(address);
-      await save({ address: point.label || address, lat: point.lat, lng: point.lng, sharing: true });
-      setDraft("");
-      toast.success("Location saved");
-      onChanged?.();
+      await commit({ ...point, label: point.label || address });
     } catch (e: any) {
       toast.error(e?.message || "We could not find that address");
     } finally {
@@ -68,7 +81,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
             {title}
           </p>
           <p className="mt-0.5 line-clamp-2 text-[11.5px] text-muted-foreground">
-            {loading ? "Loading…" : hasPoint ? location.address : "Set it once — delivery prices fill in for you."}
+            {loading ? "Loading…" : hasPoint ? location.address : "Set it once — distance and delivery prices fill in for you."}
           </p>
         </div>
         <button
@@ -89,11 +102,11 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
       </div>
 
       <div className="mt-2.5 flex gap-2">
-        <input
+        <AddressAutocomplete
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder={hasPoint ? "Change address" : "Street, city, state"}
-          className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-muted px-3 text-sm"
+          onChange={setDraft}
+          onPick={(s) => void pick(s)}
+          placeholder={hasPoint ? "Change address" : "Start typing your address"}
         />
         <button
           type="button"
@@ -115,7 +128,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
       </div>
       <p className="mt-1.5 text-[11px] text-muted-foreground">
         {location.sharing && hasPoint
-          ? "Location on — you'll see the distance and delivery price on every item."
+          ? "Location on — you'll see how far away each item is, plus the delivery price."
           : "Turn this on to see distance and delivery prices automatically."}
       </p>
     </section>

@@ -15,6 +15,7 @@ import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/market
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/marketplace-delivery";
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
+import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
 
@@ -151,6 +152,7 @@ export default function StoreProductPage() {
   }
 
   return (
+    <MarketplaceLocationGate>
     <div className="min-h-screen bg-background pb-40 text-foreground">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur">
         <button
@@ -205,6 +207,13 @@ export default function StoreProductPage() {
           <span className="text-3xl font-black">{formatPrice(listing.price, listing.listing_type)}</span>
           <span className="text-[12px] text-muted-foreground">each</span>
         </div>
+        {away && (
+          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            Nearby · {away}
+          </p>
+        )}
+
 
         {photos.length > 0 && (
           <div className="mt-3">
@@ -416,5 +425,6 @@ export default function StoreProductPage() {
         </div>
       </div>
     </div>
+    </MarketplaceLocationGate>
   );
 }
