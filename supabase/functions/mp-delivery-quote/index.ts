@@ -155,7 +155,12 @@ Deno.serve(async (req) => {
       .maybeSingle();
     if (error) return json({ error: error.message }, 500);
 
-    const rate = Number(store?.delivery_per_mile || 0);
+    // Platform fallback so buyers always see a delivery estimate, even before a seller sets a rate.
+    const DEFAULT_PER_MILE = 1;
+    const DEFAULT_MIN_FEE = 2;
+    const sellerRate = Number(store?.delivery_per_mile || 0);
+    const estimated = sellerRate <= 0;
+    const rate = estimated ? DEFAULT_PER_MILE : sellerRate;
 
     let origin: Point | null =
       store?.store_lat != null && store?.store_lng != null
@@ -172,16 +177,12 @@ Deno.serve(async (req) => {
 
     const distance = miles(origin, dest);
     const maxMiles = Number(store?.delivery_max_miles || 0);
-    const minFee = Number(store?.delivery_min_fee || 0);
+    const minFee = estimated ? DEFAULT_MIN_FEE : Number(store?.delivery_min_fee || 0);
     const fee = Math.max(Math.round(rate * distance * 100) / 100, minFee);
-
-    // Distance is always useful ("3.2 mi away"), even before a seller sets a rate.
-    if (rate <= 0) {
-      return json({ configured: false, miles: distance, maxMiles, label: dest.label });
-    }
 
     return json({
       configured: true,
+      estimated,
       miles: distance,
       fee,
       perMile: rate,
