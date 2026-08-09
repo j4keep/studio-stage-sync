@@ -86,6 +86,10 @@ import MarketplaceSettingsPage from "./pages/marketplace/MarketplaceSettingsPage
 import MarketplaceOffersPage from "./pages/marketplace/MarketplaceOffersPage";
 import MarketplacePurchasesPage from "./pages/marketplace/MarketplacePurchasesPage";
 import MarketplaceSalesPage from "./pages/marketplace/MarketplaceSalesPage";
+import FiveUnderPage from "./pages/marketplace/FiveUnderPage";
+import MarketplaceCartPage from "./pages/marketplace/MarketplaceCartPage";
+import MarketplaceOrdersPage from "./pages/marketplace/MarketplaceOrdersPage";
+
 import WellnessHomePage from "./pages/wellness/WellnessHomePage";
 import WellnessSleepPage from "./pages/wellness/WellnessSleepPage";
 import WellnessMovePage from "./pages/wellness/WellnessMovePage";
