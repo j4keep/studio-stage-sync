@@ -184,7 +184,10 @@ export default function MarketplaceCartPage() {
                         className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
                       />
                       <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Truck className="h-3.5 w-3.5" /> The seller sets the delivery fee when they confirm.
+                        <Truck className="h-3.5 w-3.5" />
+                        {cart.delivery_fee_estimate > 0
+                          ? `Seller's delivery fee: ${formatPrice(cart.delivery_fee_estimate)}`
+                          : "This seller delivers free — they can confirm any fee in Messages."}
                       </p>
                     </>
                   )}
@@ -194,9 +197,23 @@ export default function MarketplaceCartPage() {
                     placeholder="Note for the seller (optional)"
                     className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
                   />
-                  <div className="flex items-center justify-between text-sm font-black">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(cart.subtotal)}</span>
+                  <div className="space-y-1 border-t border-border pt-2 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-bold">{formatPrice(cart.subtotal)}</span>
+                    </div>
+                    {mode === "delivery" && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground">Delivery fee</span>
+                        <span className="font-bold">{formatPrice(cart.delivery_fee_estimate)}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between text-base font-black">
+                      <span>Total</span>
+                      <span>
+                        {formatPrice(cart.subtotal + (mode === "delivery" ? cart.delivery_fee_estimate : 0))}
+                      </span>
+                    </div>
                   </div>
                   <button
                     type="button"
