@@ -124,6 +124,8 @@ export type MarketplaceListing = {
   firm_price: boolean;
   open_to_offers: boolean;
   delivery: boolean;
+  /** Seller-set fee charged when they drop the item off */
+  delivery_fee: number;
   shipping: boolean;
   local_pickup: boolean;
   city: string | null;
