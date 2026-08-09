@@ -150,19 +150,31 @@ Deno.serve(async (req) => {
     );
     const { data: store, error } = await supabase
       .from("marketplace_profiles")
-      .select("store_lat, store_lng, store_address, delivery_per_mile, delivery_min_fee, delivery_max_miles")
+      .select(
+        "store_lat, store_lng, store_address, city, buyer_lat, buyer_lng, buyer_address, delivery_per_mile, delivery_min_fee, delivery_max_miles",
+      )
       .eq("user_id", sellerId)
       .maybeSingle();
     if (error) return json({ error: error.message }, 500);
 
-    const rate = Number(store?.delivery_per_mile || 0);
+    // Platform fallback so buyers always see a delivery estimate, even before a seller sets a rate.
+    const DEFAULT_PER_MILE = 1;
+    const DEFAULT_MIN_FEE = 2;
+    const sellerRate = Number(store?.delivery_per_mile || 0);
+    const estimated = sellerRate <= 0;
+    const rate = estimated ? DEFAULT_PER_MILE : sellerRate;
 
+    /** Best available origin: store pin, store address, then the seller's own saved location. */
     let origin: Point | null =
       store?.store_lat != null && store?.store_lng != null
         ? { lat: Number(store.store_lat), lng: Number(store.store_lng), label: store.store_address || "Store" }
-        : store?.store_address
-          ? await geocode(store.store_address)
+        : store?.buyer_lat != null && store?.buyer_lng != null
+          ? { lat: Number(store.buyer_lat), lng: Number(store.buyer_lng), label: store.buyer_address || "Store" }
           : null;
+    for (const candidate of [store?.store_address, store?.buyer_address, store?.city]) {
+      if (origin) break;
+      if (candidate) origin = await geocode(String(candidate));
+    }
     if (!origin) return json({ configured: false });
 
     const dest: Point | null = hasCoords
@@ -172,16 +184,12 @@ Deno.serve(async (req) => {
 
     const distance = miles(origin, dest);
     const maxMiles = Number(store?.delivery_max_miles || 0);
-    const minFee = Number(store?.delivery_min_fee || 0);
+    const minFee = estimated ? DEFAULT_MIN_FEE : Number(store?.delivery_min_fee || 0);
     const fee = Math.max(Math.round(rate * distance * 100) / 100, minFee);
-
-    // Distance is always useful ("3.2 mi away"), even before a seller sets a rate.
-    if (rate <= 0) {
-      return json({ configured: false, miles: distance, maxMiles, label: dest.label });
-    }
 
     return json({
       configured: true,
+      estimated,
       miles: distance,
       fee,
       perMile: rate,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
@@ -318,12 +318,6 @@ export default function StoreProductPage() {
         )}
 
         <div className="mt-4 space-y-2 rounded-2xl border border-border bg-card p-3 text-[13px]">
-          {away && (
-            <p className="flex items-center gap-1.5 font-black">
-              <MapPin className="h-4 w-4 text-primary" />
-              {away}
-            </p>
-          )}
           {listing.local_pickup && <p className="font-semibold">Pickup available</p>}
 
           {listing.delivery && (
@@ -332,9 +326,11 @@ export default function StoreProductPage() {
                 <p className="flex items-center gap-1.5 font-semibold">
                   <Truck className="h-4 w-4 text-primary" />
                   Delivery
-                  {perMile > 0 && (
+                  {quote?.perMile ? (
+                    <span className="text-muted-foreground">· {formatPrice(quote.perMile)}/mile</span>
+                  ) : perMile > 0 ? (
                     <span className="text-muted-foreground">· {formatPrice(perMile)}/mile</span>
-                  )}
+                  ) : null}
                 </p>
                 <button
                   type="button"
@@ -364,13 +360,19 @@ export default function StoreProductPage() {
                         Too far — this seller delivers up to {quote.maxMiles} mi. Pick pickup instead.
                       </p>
                     ) : (
-                      <p className="font-black text-emerald-600">
-                        Delivery {formatPrice(quote.fee)} · {quote.miles} mi
-                      </p>
+                      <>
+                        <p className="font-black text-emerald-600">
+                          Delivery {formatPrice(quote.fee)} · {quote.miles} mi
+                        </p>
+                        <p className="text-[11.5px] text-muted-foreground">
+                          Total with delivery: {formatPrice(Number(listing.price || 0) * qty + quote.fee)}
+                          {quote.estimated ? " · estimated at $1/mile" : ""}
+                        </p>
+                      </>
                     )
                   ) : locationReady ? (
-                    <p className="text-muted-foreground">
-                      No per-mile rate set — the seller confirms the fee when they approve.
+                    <p className="flex items-center gap-1.5 text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Pricing your delivery…
                     </p>
                   ) : (
                     <p className="text-muted-foreground">Turn on your location to see the price.</p>

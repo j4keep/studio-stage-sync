@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ImagePlus, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, Loader2, Pencil, Plus, Receipt, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { FIVE_UNDER_MAX, FIVE_UNDER_MIN, formatPrice } from "@/lib/marketplace";
@@ -18,8 +18,9 @@ import {
 } from "@/lib/marketplace-api";
 import { geocodeAddress } from "@/lib/marketplace-delivery";
 import { CART_STATUS_LABEL, listCartsForUser, setCartStatus, type MarketplaceCart } from "@/lib/marketplace-cart";
+import { sendReceipt, type MarketplaceReceipt } from "@/lib/marketplace-receipts";
 
-type Tab = "orders" | "products" | "storefront";
+type Tab = "orders" | "receipts" | "products" | "storefront";
 
 /** Seller dashboard for the $1–$5 store: approve orders, manage products, brand the store. */
 export default function StoreDashboardPage() {
@@ -85,6 +86,33 @@ export default function StoreDashboardPage() {
   }, [load]);
 
   const pendingCount = useMemo(() => orders.filter((o) => o.status === "submitted").length, [orders]);
+
+  /** Confirmed orders are filed as receipts the seller can re-send any time. */
+  const receipts = useMemo<MarketplaceReceipt[]>(
+    () =>
+      orders
+        .filter((o) => ["approved", "ready", "completed"].includes(o.status))
+        .map((o) => ({
+          ...o,
+          receipt_no: `YAJ-${new Date(o.created_at).toISOString().slice(0, 10).replace(/-/g, "")}-${o.id
+            .slice(0, 6)
+            .toUpperCase()}`,
+        })),
+    [orders],
+  );
+
+  const share = async (r: MarketplaceReceipt) => {
+    if (!user) return;
+    setBusy(r.id);
+    try {
+      await sendReceipt(r, user.id, profile?.store_name || profile?.display_name);
+      toast.success("Receipt sent to the buyer");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not send the receipt");
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const act = async (cart: MarketplaceCart, status: "approved" | "ready" | "completed" | "cancelled") => {
     setBusy(cart.id);
@@ -252,6 +280,7 @@ export default function StoreDashboardPage() {
           {(
             [
               { id: "orders" as Tab, label: pendingCount > 0 ? `Orders · ${pendingCount}` : "Orders" },
+              { id: "receipts" as Tab, label: `Receipts · ${receipts.length}` },
               { id: "products" as Tab, label: `Products · ${products.length}` },
               { id: "storefront" as Tab, label: "Storefront" },
             ]
@@ -386,6 +415,62 @@ export default function StoreDashboardPage() {
                     className="h-10 w-full rounded-full border border-border text-xs font-bold"
                   >
                     Message buyer
+                  </button>
+                </div>
+              </section>
+            ))
+          )}
+        </div>
+      ) : tab === "receipts" ? (
+        <div className="space-y-3 px-3 pt-3">
+          {receipts.length === 0 ? (
+            <p className="py-16 text-center text-sm text-muted-foreground">
+              <Receipt className="mx-auto mb-2 h-6 w-6" />
+              Receipts show up here once you approve an order.
+            </p>
+          ) : (
+            receipts.map((r) => (
+              <section key={r.id} className="overflow-hidden rounded-2xl border border-border bg-card">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-[12px] font-black">{r.receipt_no}</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {new Date(r.created_at).toLocaleDateString()} · {r.buyer?.display_name || "Buyer"}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold capitalize">
+                    {r.fulfillment}
+                  </span>
+                </div>
+                <div className="space-y-1 px-4 py-3 text-[13px]">
+                  {r.items.map((i) => (
+                    <div key={i.id} className="flex items-center justify-between gap-3">
+                      <span className="min-w-0 truncate">
+                        {i.qty} × {i.title}
+                      </span>
+                      <span className="font-semibold">{formatPrice(i.qty * i.unit_price)}</span>
+                    </div>
+                  ))}
+                  {r.fulfillment === "delivery" && (
+                    <div className="flex items-center justify-between text-muted-foreground">
+                      <span>Delivery</span>
+                      <span className="font-semibold text-foreground">{formatPrice(r.delivery_fee)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between border-t border-border pt-2 text-base font-black">
+                    <span>Total</span>
+                    <span>{formatPrice(r.total)}</span>
+                  </div>
+                </div>
+                <div className="px-4 pb-3">
+                  <button
+                    type="button"
+                    disabled={busy === r.id}
+                    onClick={() => void share(r)}
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-[13px] font-black text-primary-foreground disabled:opacity-60"
+                  >
+                    {busy === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Send receipt to buyer
                   </button>
                 </div>
               </section>
