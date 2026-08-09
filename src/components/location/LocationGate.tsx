@@ -30,9 +30,11 @@ export const isLocationGatedPath = (pathname: string) =>
 export default function LocationGate() {
   const { pathname } = useLocation();
   const { user } = useAuth();
-  const { ready, loading } = useMyMarketplaceLocation(user?.id);
+  const { ready, loading, refresh } = useMyMarketplaceLocation(user?.id);
+  const [done, setDone] = useState(false);
 
-  if (!user || loading || ready || !isLocationGatedPath(pathname)) return null;
+  if (!user || loading || ready || done || !isLocationGatedPath(pathname)) return null;
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end bg-background/95 backdrop-blur-sm sm:items-center sm:justify-center">
