@@ -34,6 +34,7 @@ import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import UserRatingStars from "@/components/UserRatingStars";
 import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import { blockUser } from "@/lib/blocks";
+import ShareListingSheet from "@/components/marketplace/ShareListingSheet";
 import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
 import { useSellerDistance } from "@/hooks/use-seller-distance";
 
@@ -42,6 +43,7 @@ export default function MarketplaceListingPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
   const [more, setMore] = useState<MarketplaceListing[]>([]);
   const [nearby, setNearby] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,10 +282,7 @@ export default function MarketplaceListingPage() {
             </button>
             <button
               type="button"
-              onClick={() => {
-                void navigator.clipboard?.writeText(window.location.href);
-                toast.success("Link copied");
-              }}
+              onClick={() => setShareOpen(true)}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-background/95 shadow-sm"
               aria-label="Share"
             >
@@ -677,6 +676,9 @@ export default function MarketplaceListingPage() {
             loading={blockBusy}
           />
         </>
+      )}
+      {shareOpen && listing && (
+        <ShareListingSheet listing={listing} storeName={sellerName} onClose={() => setShareOpen(false)} />
       )}
     </div>
     </MarketplaceLocationGate>

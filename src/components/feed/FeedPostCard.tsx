@@ -26,6 +26,7 @@ import CreatePostSheet from "./CreatePostSheet";
 import PostOverlayRenderer from "./create/PostOverlayRenderer";
 import useFloatingEmojis, { FloatingEmojiLayer } from "./FloatingEmojis";
 import { VideoPoster } from "@/components/VideoPoster";
+import { captionWithoutSourceLink, detectPostSourceLink } from "@/lib/post-links";
 import { parsePostCaption, hasVisualOverlayLayers } from "@/lib/post-editor";
 import { getEffectFilter } from "@/lib/create-modes";
 import { playUploadedAudio, getMusicDisplayName } from "@/lib/feed-music";
@@ -134,6 +135,9 @@ const FeedPostCard = ({
   isScrubbingRef.current = isScrubbing;
 
   const { caption: displayCaption, meta: postMeta } = parsePostCaption(post.caption);
+  /** Posts shared out of Deals/Events/Marketplace etc. get a tap-through CTA instead of a raw URL. */
+  const sourceLink = useMemo(() => detectPostSourceLink(displayCaption), [displayCaption]);
+  const captionText = sourceLink ? captionWithoutSourceLink(displayCaption) : displayCaption;
   const postTitle = postMeta?.title?.trim();
   const playbackMeta = useMemo<FeedPlaybackMeta>(
     () => ({
@@ -1405,17 +1409,30 @@ const FeedPostCard = ({
             )}
           </div>
 
-          {(postTitle || displayCaption) && (
+          {(postTitle || captionText) && (
             <div className="pr-1">
               {postTitle && (
                 <p className="text-[13px] font-bold leading-snug text-white drop-shadow-md line-clamp-2">{postTitle}</p>
               )}
-              {displayCaption && (
+              {captionText && (
                 <p className={`text-[12px] leading-snug text-white/90 drop-shadow-md line-clamp-2 ${postTitle ? "mt-0.5" : ""}`}>
-                  {displayCaption}
+                  {captionText}
                 </p>
               )}
             </div>
+          )}
+          {sourceLink && (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(sourceLink.path);
+              }}
+              className="z-50 mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur"
+            >
+              {sourceLink.label}
+              <span aria-hidden>→</span>
+            </button>
           )}
           {postMeta?.location && (
             <span className="mt-0.5 block text-[10px] text-white/55">{postMeta.location}</span>
