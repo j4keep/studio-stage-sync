@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, GripVertical, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -72,6 +72,7 @@ const EMPTY_HOME: HomeDetails = {
 
 export default function MarketplaceCreatePage() {
   const { id: editId } = useParams();
+  const [searchParams] = useSearchParams();
   const isEdit = Boolean(editId);
   const nav = useNavigate();
   const { user } = useAuth();
@@ -82,7 +83,9 @@ export default function MarketplaceCreatePage() {
   /** Field keys highlighted red when Continue is pressed without required values */
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
-  const [listingType, setListingType] = useState<ListingType | string>("item");
+  const requestedType = searchParams.get("type");
+  const startsAsFiveUnder = !editId && requestedType === "five_under";
+  const [listingType, setListingType] = useState<ListingType | string>(startsAsFiveUnder ? "five_under" : "item");
   const [media, setMedia] = useState<DraftMedia[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -105,6 +108,13 @@ export default function MarketplaceCreatePage() {
 
   const [vehicleKind, setVehicleKind] = useState<string>(VEHICLE_KINDS[0]);
   const [home, setHome] = useState<HomeDetails>(EMPTY_HOME);
+
+  useEffect(() => {
+    if (!startsAsFiveUnder) return;
+    setListingType("five_under");
+    setCategory("for-sale");
+    setStep(2);
+  }, [startsAsFiveUnder]);
 
   const [veh, setVeh] = useState<VehicleDetails>({
     year: null,
@@ -219,7 +229,7 @@ export default function MarketplaceCreatePage() {
     brand: isHome || isVehicle ? null : brand || null,
     model: isHome || isVehicle ? null : model || null,
     color: isHome || isVehicle ? null : color || null,
-    quantity: isFiveUnder ? Math.max(1, Number(quantity) || 1) : 1,
+    quantity: isFiveUnder ? Number(quantity) : 1,
     price: listingType === "free" ? 0 : price ? Number(price) : null,
     firm_price: firmPrice,
     open_to_offers: isFiveUnder ? false : openOffers,
@@ -284,7 +294,7 @@ export default function MarketplaceCreatePage() {
     const missing: string[] = [];
     if (!title.trim()) missing.push("title");
     if (priceProblem()) missing.push("price");
-    if (isFiveUnder && (!quantity || Number(quantity) < 1)) missing.push("quantity");
+    if (isFiveUnder && (!quantity || !Number.isInteger(Number(quantity)) || Number(quantity) < 1)) missing.push("quantity");
     if (isVehicle) {
       if (!veh.year) missing.push("veh_year");
       if (!(veh.make || "").trim()) missing.push("veh_make");
@@ -639,6 +649,8 @@ export default function MarketplaceCreatePage() {
                   setQuantity(v.replace(/[^0-9]/g, ""));
                 }}
                 type="number"
+                min={1}
+                step={1}
                 error={fieldErrors.quantity}
                 placeholder="e.g. 20"
               />
@@ -838,16 +850,29 @@ export default function MarketplaceCreatePage() {
             )}
 
             {listingType !== "free" && (
-              <Field
-                label={isHome ? (isRent ? "Rent per month ($)" : "Asking price ($)") : "Price ($)"}
-                value={price}
-                onChange={(v) => {
-                  clearFieldError("price");
-                  setPrice(v);
-                }}
-                type="number"
-                error={fieldErrors.price}
-              />
+              <div>
+                <Field
+                  label={isHome ? (isRent ? "Rent per month ($)" : "Asking price ($)") : "Price ($)"}
+                  value={price}
+                  onChange={(v) => {
+                    setPrice(v);
+                    const n = Number(v);
+                    if (isFiveUnder && v && (n < FIVE_UNDER_MIN || n > FIVE_UNDER_MAX)) {
+                      setFieldErrors((prev) => ({ ...prev, price: true }));
+                    } else clearFieldError("price");
+                  }}
+                  type="number"
+                  min={isFiveUnder ? FIVE_UNDER_MIN : 0}
+                  max={isFiveUnder ? FIVE_UNDER_MAX : undefined}
+                  step="0.01"
+                  error={fieldErrors.price}
+                />
+                {isFiveUnder && price && (Number(price) < FIVE_UNDER_MIN || Number(price) > FIVE_UNDER_MAX) && (
+                  <p role="alert" className="mt-1.5 text-xs font-bold text-red-500">
+                    Price must be $1 to $5. Items over $5 cannot be published here.
+                  </p>
+                )}
+              </div>
             )}
             {!isFiveUnder && <Toggle label="Firm price" value={firmPrice} onChange={setFirmPrice} />}
             {!isFiveUnder && <Toggle label="Open to offers" value={openOffers} onChange={setOpenOffers} />}
@@ -965,6 +990,9 @@ function Field({
   onChange,
   placeholder,
   type = "text",
+  min,
+  max,
+  step,
   optional,
   error,
 }: {
@@ -973,6 +1001,9 @@ function Field({
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  min?: number;
+  max?: number;
+  step?: number | string;
   optional?: boolean;
   error?: boolean;
 }) {
@@ -985,6 +1016,9 @@ function Field({
       </label>
       <input
         type={type}
+        min={min}
+        max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

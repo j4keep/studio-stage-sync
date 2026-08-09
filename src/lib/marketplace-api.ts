@@ -1,11 +1,25 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import {
+  FIVE_UNDER_MAX,
+  FIVE_UNDER_MIN,
   type ListingStatus,
   type ListingType,
   sanitizeDescription,
   VEHICLE_LISTING_TYPES,
 } from "@/lib/marketplace";
+
+function validateFiveUnderInput(input: Pick<ListingInput, "listing_type" | "price" | "quantity">) {
+  if (input.listing_type !== "five_under") return;
+  const price = Number(input.price);
+  const quantity = Number(input.quantity);
+  if (!Number.isFinite(price) || price < FIVE_UNDER_MIN || price > FIVE_UNDER_MAX) {
+    throw new Error("$1–$5 Finds must be priced between $1 and $5");
+  }
+  if (!Number.isInteger(quantity) || quantity < 1) {
+    throw new Error("Enter how many items you have in inventory");
+  }
+}
 
 /** Make stored marketplace image URLs actually load in the browser. */
 export function resolveMarketplaceMediaUrl(url: string | null | undefined): string | null {
@@ -430,6 +444,7 @@ export async function getMarketplaceListing(
 }
 
 export async function createMarketplaceListing(sellerId: string, input: ListingInput): Promise<MarketplaceListing> {
+  validateFiveUnderInput(input);
   try {
     await ensureMarketplaceProfile(sellerId);
   } catch {
@@ -495,6 +510,7 @@ export async function updateMarketplaceListing(
   sellerId: string,
   input: Partial<ListingInput> & { status?: string; sold_to?: string | null },
 ): Promise<MarketplaceListing> {
+  if (input.listing_type === "five_under") validateFiveUnderInput(input as ListingInput);
   const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
   const keys = [
     "listing_type",

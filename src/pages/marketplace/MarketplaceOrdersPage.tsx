@@ -68,7 +68,7 @@ export default function MarketplaceOrdersPage() {
         </button>
         <div>
           <h1 className="text-lg font-black leading-tight">Cart orders</h1>
-          <p className="text-[11px] text-muted-foreground">What buyers put in their cart from you</p>
+          <p className="text-[11px] text-muted-foreground">Live carts and submitted orders from buyers</p>
         </div>
       </header>
 
@@ -78,7 +78,7 @@ export default function MarketplaceOrdersPage() {
         ) : orders.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border px-4 py-14 text-center">
             <p className="font-bold">No orders yet</p>
-            <p className="mt-1 text-sm text-muted-foreground">Orders show up here once a buyer sends their cart.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Items appear here when a buyer adds them to a cart.</p>
           </div>
         ) : (
           orders.map((cart) => (
@@ -126,7 +126,7 @@ export default function MarketplaceOrdersPage() {
                   <span>Total</span>
                   <span>{formatPrice(cart.total)}</span>
                 </div>
-                {cart.status !== "completed" && cart.status !== "cancelled" && (
+                {cart.status !== "open" && cart.status !== "completed" && cart.status !== "cancelled" && (
                   <div className="flex gap-2">
                     {cart.status === "submitted" && (
                       <button

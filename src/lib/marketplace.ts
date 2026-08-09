@@ -86,7 +86,7 @@ export const FIVE_UNDER_MAX = 5;
 
 export function isFiveUnderListing(l: { listing_type?: string | null; price?: number | null }) {
   const price = Number(l.price ?? 0);
-  return String(l.listing_type) === "five_under" || (price > 0 && price <= FIVE_UNDER_MAX);
+  return String(l.listing_type) === "five_under" && price >= FIVE_UNDER_MIN && price <= FIVE_UNDER_MAX;
 }
 
 export type ListingType = (typeof LISTING_TYPES)[number]["id"];

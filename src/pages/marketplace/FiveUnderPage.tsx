@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Minus, Plus, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FIVE_UNDER_MAX, formatPrice, isFiveUnderListing } from "@/lib/marketplace";
+import { FIVE_UNDER_MAX, FIVE_UNDER_MIN, formatPrice } from "@/lib/marketplace";
 import { listMarketplaceListings, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 
@@ -18,8 +18,14 @@ export default function FiveUnderPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const listings = await listMarketplaceListings({ viewerId: user?.id, limit: 60, maxPrice: FIVE_UNDER_MAX });
-      setRows(listings.filter(isFiveUnderListing));
+      const listings = await listMarketplaceListings({
+        viewerId: user?.id,
+        limit: 60,
+        listingType: "five_under",
+        minPrice: FIVE_UNDER_MIN,
+        maxPrice: FIVE_UNDER_MAX,
+      });
+      setRows(listings);
       if (user) setCarts(await listMyOpenCarts(user.id));
     } catch (e: any) {
       toast.error(e?.message || "Could not load $1–$5 Finds");
@@ -92,6 +98,13 @@ export default function FiveUnderPage() {
       </header>
 
       <div className="px-3 pt-4">
+        <button
+          type="button"
+          onClick={() => nav("/marketplace/create?type=five_under")}
+          className="mb-4 h-11 w-full rounded-full border border-primary bg-primary/10 text-sm font-black text-primary"
+        >
+          Sell a $1–$5 item
+        </button>
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -104,7 +117,7 @@ export default function FiveUnderPage() {
             <p className="mt-1 text-sm text-muted-foreground">Post something for five dollars or less.</p>
             <button
               type="button"
-              onClick={() => nav("/marketplace/create")}
+              onClick={() => nav("/marketplace/create?type=five_under")}
               className="mt-3 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
             >
               Post a $1–$5 Find
