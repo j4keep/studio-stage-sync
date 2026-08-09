@@ -29,7 +29,7 @@ export default function MarketplaceSearchPage() {
     }
     setLoading(true);
     try {
-      setListings(await listMarketplaceListings({ q: t || undefined, viewerId: user?.id, limit: 60 }));
+      setListings(await listMarketplaceListings({ q: t || undefined, viewerId: user?.id, limit: 60, excludeFiveUnder: true }));
     } catch (e: any) {
       toast.error(e?.message || "Search failed");
     } finally {

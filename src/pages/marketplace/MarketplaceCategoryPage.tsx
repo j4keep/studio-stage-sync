@@ -18,7 +18,7 @@ export default function MarketplaceCategoryPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await listMarketplaceListings({ category: slug, viewerId: user?.id, limit: 60 });
+      const rows = await listMarketplaceListings({ category: slug, viewerId: user?.id, limit: 60, excludeFiveUnder: true });
       setListings(rows);
     } catch (e: any) {
       toast.error(e?.message || "Failed to load");
