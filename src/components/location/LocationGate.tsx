@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,9 +31,11 @@ export const isLocationGatedPath = (pathname: string) =>
 export default function LocationGate() {
   const { pathname } = useLocation();
   const { user } = useAuth();
-  const { ready, loading } = useMyMarketplaceLocation(user?.id);
+  const { ready, loading, refresh } = useMyMarketplaceLocation(user?.id);
+  const [done, setDone] = useState(false);
 
-  if (!user || loading || ready || !isLocationGatedPath(pathname)) return null;
+  if (!user || loading || ready || done || !isLocationGatedPath(pathname)) return null;
+
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end bg-background/95 backdrop-blur-sm sm:items-center sm:justify-center">
@@ -46,7 +49,14 @@ export default function LocationGate() {
           to show how far people, jobs, deals and items are from you. You only do this once, and you can turn it off any
           time in Settings.
         </p>
-        <MarketplaceLocationCard userId={user.id} title="Your location" />
+        <MarketplaceLocationCard
+          userId={user.id}
+          title="Your location"
+          onChanged={() => {
+            setDone(true);
+            void refresh();
+          }}
+        />
       </div>
     </div>
   );
