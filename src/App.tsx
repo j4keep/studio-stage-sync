@@ -57,6 +57,7 @@ import AdminDealsVerificationPage from "./pages/AdminDealsVerificationPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import CommunityTimeoutPage from "./pages/CommunityTimeoutPage";
 import CommunityTimeoutScreen from "./components/CommunityTimeoutScreen";
+import LocationGate from "@/components/location/LocationGate";
 import ModerationBanner from "./components/ModerationBanner";
 import { useModerationStatus } from "./hooks/use-moderation-status";
 import AskYajPage from "./pages/AskYajPage";
