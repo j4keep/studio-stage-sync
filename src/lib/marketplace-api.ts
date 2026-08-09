@@ -166,6 +166,7 @@ export type ListingInput = {
   firm_price?: boolean;
   open_to_offers?: boolean;
   delivery?: boolean;
+  delivery_fee?: number;
   shipping?: boolean;
   local_pickup?: boolean;
   city?: string | null;
