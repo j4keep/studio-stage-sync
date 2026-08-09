@@ -471,6 +471,7 @@ export async function createMarketplaceListing(sellerId: string, input: ListingI
     firm_price: Boolean(input.firm_price),
     open_to_offers: input.open_to_offers !== false,
     delivery: Boolean(input.delivery),
+    delivery_fee: input.delivery ? Math.max(0, Number(input.delivery_fee || 0)) : 0,
     shipping: Boolean(input.shipping),
     local_pickup: input.local_pickup !== false,
     city: input.city || null,
