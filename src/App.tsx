@@ -347,7 +347,11 @@ const ProtectedRoutes = () => {
         <Route path="/marketplace" element={<MarketplaceHomePage />} />
         <Route path="/marketplace/search" element={<MarketplaceSearchPage />} />
         <Route path="/marketplace/category/:slug" element={<MarketplaceCategoryPage />} />
+        <Route path="/marketplace/five-under" element={<FiveUnderPage />} />
+        <Route path="/marketplace/cart" element={<MarketplaceCartPage />} />
+        <Route path="/marketplace/orders" element={<MarketplaceOrdersPage />} />
         <Route path="/marketplace/listing/:id" element={<MarketplaceListingPage />} />
+
         <Route path="/marketplace/create" element={<MarketplaceCreatePage />} />
         <Route path="/marketplace/edit/:id" element={<MarketplaceCreatePage />} />
         <Route path="/marketplace/profile/:userId" element={<MarketplaceProfilePage />} />
