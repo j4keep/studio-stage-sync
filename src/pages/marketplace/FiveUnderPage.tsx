@@ -53,7 +53,30 @@ export default function FiveUnderPage() {
   );
   const cartTotal = useMemo(() => carts.reduce((s, c) => s + c.subtotal, 0), [carts]);
 
-  const visible = useMemo(() => {
+  const stores = useMemo(() => {
+    const map = new Map<
+      string,
+      { sellerId: string; name: string; tagline: string | null; banner: string | null; items: MarketplaceListing[] }
+    >();
+    for (const l of visible) {
+      const key = l.seller_id;
+      if (!map.has(key)) {
+        map.set(key, {
+          sellerId: key,
+          name: l.seller?.store_name || l.seller?.display_name || "Store",
+          tagline: l.seller?.store_tagline || null,
+          banner: l.seller?.store_banner_url || null,
+          items: [],
+        });
+      }
+      map.get(key)!.items.push(l);
+    }
+    return [...map.values()];
+  }, [visible]);
+
+  const visibleMemoPlaceholder = null;
+
+  const _visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     let out = rows;
     if (q) out = out.filter((l) => `${l.title} ${l.description}`.toLowerCase().includes(q));
