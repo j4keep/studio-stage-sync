@@ -26,6 +26,7 @@ import {
   compressImage,
   createMarketplaceListing,
   getMarketplaceListing,
+  getMarketplaceProfile,
   updateMarketplaceListing,
   uploadListingImage,
   type ListingInput,
