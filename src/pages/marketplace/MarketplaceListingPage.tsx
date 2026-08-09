@@ -116,6 +116,7 @@ export default function MarketplaceListingPage() {
   }, [listing, more, nearby]);
 
   const isOwner = user?.id === listing?.seller_id;
+  const { away } = useSellerDistance(listing?.seller_id);
   const cat = getCategory(listing?.category);
   const place = listing
     ? approxLocation(listing.city, listing.state, listing.location_approx)
@@ -260,6 +261,7 @@ export default function MarketplaceListingPage() {
   const sellerName = listing.seller?.display_name || "Seller";
 
   return (
+    <MarketplaceLocationGate>
     <div className="min-h-screen bg-background pb-28 text-foreground">
       {/* Photo */}
       <div className="relative">
@@ -677,5 +679,6 @@ export default function MarketplaceListingPage() {
         </>
       )}
     </div>
+    </MarketplaceLocationGate>
   );
 }
