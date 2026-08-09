@@ -90,6 +90,7 @@ import FiveUnderPage from "./pages/marketplace/FiveUnderPage";
 import StoreProductPage from "./pages/marketplace/StoreProductPage";
 import MarketplaceCartPage from "./pages/marketplace/MarketplaceCartPage";
 import MarketplaceOrdersPage from "./pages/marketplace/MarketplaceOrdersPage";
+import StoreDashboardPage from "./pages/marketplace/StoreDashboardPage";
 
 import WellnessHomePage from "./pages/wellness/WellnessHomePage";
 import WellnessSleepPage from "./pages/wellness/WellnessSleepPage";
@@ -352,6 +353,7 @@ const ProtectedRoutes = () => {
         <Route path="/marketplace/product/:id" element={<StoreProductPage />} />
         <Route path="/marketplace/cart" element={<MarketplaceCartPage />} />
         <Route path="/marketplace/orders" element={<MarketplaceOrdersPage />} />
+        <Route path="/marketplace/store-dashboard" element={<StoreDashboardPage />} />
         <Route path="/marketplace/listing/:id" element={<MarketplaceListingPage />} />
 
         <Route path="/marketplace/create" element={<MarketplaceCreatePage />} />

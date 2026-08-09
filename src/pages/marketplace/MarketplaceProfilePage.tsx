@@ -66,12 +66,14 @@ export default function MarketplaceProfilePage() {
           status: ["active", "pending"],
           viewerId: user?.id,
           limit: 40,
+          excludeFiveUnder: true,
         }),
         listMarketplaceListings({
           sellerId: userId,
           status: "sold",
           viewerId: user?.id,
           limit: 40,
+          excludeFiveUnder: true,
         }),
       ]);
       setActive(a);

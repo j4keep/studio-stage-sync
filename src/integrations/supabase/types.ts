@@ -2292,6 +2292,9 @@ export type Database = {
           is_business: boolean
           response_time_minutes: number | null
           service_area: string | null
+          store_banner_url: string | null
+          store_name: string | null
+          store_tagline: string | null
           updated_at: string
           user_id: string
         }
@@ -2304,6 +2307,9 @@ export type Database = {
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          store_banner_url?: string | null
+          store_name?: string | null
+          store_tagline?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2316,6 +2322,9 @@ export type Database = {
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          store_banner_url?: string | null
+          store_name?: string | null
+          store_tagline?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -4904,6 +4913,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      mp_find_or_create_conversation: {
+        Args: { _a: string; _b: string }
+        Returns: string
       }
       mp_set_cart_item: {
         Args: { p_listing_id: string; p_qty: number }

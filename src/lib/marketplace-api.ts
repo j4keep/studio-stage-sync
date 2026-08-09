@@ -65,6 +65,10 @@ export type MarketplaceProfile = {
   response_time_minutes: number | null;
   created_at: string;
   member_since?: string;
+  /** $1–$5 store branding */
+  store_name?: string | null;
+  store_banner_url?: string | null;
+  store_tagline?: string | null;
 };
 
 export type VehicleDetails = {
@@ -282,6 +286,9 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       response_time_minutes: data?.response_time_minutes ?? null,
       created_at: data?.created_at || yaj?.created_at || new Date().toISOString(),
       member_since: data?.created_at || yaj?.created_at,
+      store_name: data?.store_name ?? null,
+      store_banner_url: resolveMarketplaceMediaUrl(data?.store_banner_url),
+      store_tagline: data?.store_tagline ?? null,
     };
   }
   return null;
@@ -289,7 +296,20 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
 
 export async function updateMarketplaceProfile(
   userId: string,
-  patch: Partial<Pick<MarketplaceProfile, "display_name" | "bio" | "avatar_url" | "city" | "service_area" | "is_business">>,
+  patch: Partial<
+    Pick<
+      MarketplaceProfile,
+      | "display_name"
+      | "bio"
+      | "avatar_url"
+      | "city"
+      | "service_area"
+      | "is_business"
+      | "store_name"
+      | "store_banner_url"
+      | "store_tagline"
+    >
+  >,
 ) {
   await ensureMarketplaceProfile(userId);
   const { data, error } = await (supabase as any)
@@ -314,7 +334,8 @@ export type ListListingsOpts = {
   minPrice?: number;
   maxPrice?: number;
   listingType?: string;
-
+  /** Keep $1–$5 store products out of the regular Marketplace surfaces */
+  excludeFiveUnder?: boolean;
 };
 
 export async function listMarketplaceListings(opts: ListListingsOpts = {}): Promise<MarketplaceListing[]> {
@@ -340,6 +361,7 @@ export async function listMarketplaceListings(opts: ListListingsOpts = {}): Prom
 
   if (opts.category) q = q.eq("category", opts.category);
   if (opts.listingType) q = q.eq("listing_type", opts.listingType);
+  if (opts.excludeFiveUnder) q = q.neq("listing_type", "five_under");
   if (opts.minPrice != null) q = q.gte("price", opts.minPrice);
   if (opts.maxPrice != null) q = q.lte("price", opts.maxPrice);
 

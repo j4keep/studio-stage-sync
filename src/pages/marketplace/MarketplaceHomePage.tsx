@@ -49,6 +49,7 @@ export default function MarketplaceHomePage() {
       const opts: Parameters<typeof listMarketplaceListings>[0] = {
         viewerId: user?.id,
         limit: 48,
+        excludeFiveUnder: true,
         sort: filter === "relevant" ? "newest" : "newest",
       };
       if (filter === "mine" && user) opts.sellerId = user.id;

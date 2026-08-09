@@ -62,6 +62,27 @@ export default function FiveUnderPage() {
     return out;
   }, [rows, query, sort]);
 
+  const stores = useMemo(() => {
+    const map = new Map<
+      string,
+      { sellerId: string; name: string; tagline: string | null; banner: string | null; items: MarketplaceListing[] }
+    >();
+    for (const l of visible) {
+      const key = l.seller_id;
+      if (!map.has(key)) {
+        map.set(key, {
+          sellerId: key,
+          name: l.seller?.store_name || l.seller?.display_name || "Store",
+          tagline: l.seller?.store_tagline || null,
+          banner: l.seller?.store_banner_url || null,
+          items: [],
+        });
+      }
+      map.get(key)!.items.push(l);
+    }
+    return [...map.values()];
+  }, [visible]);
+
   const addOne = async (listing: MarketplaceListing) => {
     if (!user) return nav("/auth");
     if (listing.seller_id === user.id) return toast.error("This is your own listing");
@@ -134,6 +155,13 @@ export default function FiveUnderPage() {
           >
             Sell an item
           </button>
+          <button
+            type="button"
+            onClick={() => nav("/marketplace/store-dashboard")}
+            className="shrink-0 rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground"
+          >
+            My store
+          </button>
         </div>
       </header>
 
@@ -157,48 +185,84 @@ export default function FiveUnderPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5">
-            {visible.map((l) => {
-              const stock = Number(l.quantity ?? 0);
-              const cover = listingCoverUrl(l);
-              return (
-                <article key={l.id} className="flex flex-col rounded-xl border border-border bg-card p-2.5">
-                  <button
-                    type="button"
-                    onClick={() => nav(`/marketplace/product/${l.id}`)}
-                    className="text-left"
-                  >
-                    <h2 className="line-clamp-2 min-h-[2.4rem] text-[12.5px] font-semibold leading-snug">
-                      {l.title}
-                    </h2>
-                    <div className="mt-1.5 flex h-28 items-center justify-center overflow-hidden rounded-lg bg-background">
-                      {cover ? (
-                        <img src={cover} alt={l.title} className="h-full w-full object-contain" loading="lazy" />
-                      ) : (
-                        <span className="text-2xl opacity-30">·</span>
-                      )}
-                    </div>
-                    <p className="mt-1.5 text-[15px] font-black">{formatPrice(l.price, l.listing_type)}</p>
-                    <p className={`text-[11px] ${stock > 0 ? "text-emerald-600" : "text-red-500"}`}>
-                      {stock > 0 ? `${stock} in stock` : "Out of stock"}
-                    </p>
-                    {l.delivery && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {Number(l.delivery_fee) > 0 ? `+ ${formatPrice(l.delivery_fee)} delivery` : "Free delivery"}
-                      </p>
+          <div className="space-y-5">
+            {stores.map((store) => (
+              <section key={store.sellerId}>
+                <div className="overflow-hidden rounded-2xl border border-border bg-card">
+                  <div className="h-28 w-full bg-muted">
+                    {store.banner ? (
+                      <img
+                        src={store.banner}
+                        alt={`${store.name} store header`}
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-gradient-to-r from-primary/20 to-primary/5">
+                        <span className="text-base font-black tracking-tight">{store.name}</span>
+                      </div>
                     )}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={pending === l.id || stock === 0}
-                    onClick={() => void addOne(l)}
-                    className="mt-2 h-8 w-full rounded-full bg-primary text-[12px] font-black text-primary-foreground disabled:opacity-50"
-                  >
-                    Add to cart
-                  </button>
-                </article>
-              );
-            })}
+                  </div>
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="truncate text-sm font-black">{store.name}</h2>
+                      <p className="truncate text-[11px] text-muted-foreground">
+                        {store.tagline || `${store.items.length} product${store.items.length === 1 ? "" : "s"} · $1–$5`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => nav(`/marketplace/profile/${store.sellerId}`)}
+                      className="shrink-0 rounded-full border border-border px-3 py-1.5 text-[11px] font-bold"
+                    >
+                      Visit store
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-2.5 grid grid-cols-2 gap-2.5">
+                  {store.items.map((l) => {
+                    const stock = Number(l.quantity ?? 0);
+                    const cover = listingCoverUrl(l);
+                    return (
+                      <article key={l.id} className="flex flex-col rounded-xl border border-border bg-card p-2.5">
+                        <button type="button" onClick={() => nav(`/marketplace/product/${l.id}`)} className="text-left">
+                          <h3 className="line-clamp-2 min-h-[2.4rem] text-[12.5px] font-semibold leading-snug">
+                            {l.title}
+                          </h3>
+                          <div className="mt-1.5 flex h-28 items-center justify-center overflow-hidden rounded-lg bg-background">
+                            {cover ? (
+                              <img src={cover} alt={l.title} className="h-full w-full object-contain" loading="lazy" />
+                            ) : (
+                              <span className="text-2xl opacity-30">·</span>
+                            )}
+                          </div>
+                          <p className="mt-1.5 text-[15px] font-black">{formatPrice(l.price, l.listing_type)}</p>
+                          <p className={`text-[11px] ${stock > 0 ? "text-emerald-600" : "text-red-500"}`}>
+                            {stock > 0 ? `${stock} in stock` : "Out of stock"}
+                          </p>
+                          {l.delivery && (
+                            <p className="text-[11px] text-muted-foreground">
+                              {Number(l.delivery_fee) > 0
+                                ? `+ ${formatPrice(l.delivery_fee)} delivery`
+                                : "Free delivery"}
+                            </p>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending === l.id || stock === 0}
+                          onClick={() => void addOne(l)}
+                          className="mt-2 h-8 w-full rounded-full bg-primary text-[12px] font-black text-primary-foreground disabled:opacity-50"
+                        >
+                          Add to cart
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
           </div>
         )}
       </div>
