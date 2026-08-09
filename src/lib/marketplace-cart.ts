@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { resolveMarketplaceMediaUrl } from "@/lib/marketplace-api";
 
-export type CartStatus = "open" | "submitted" | "ready" | "completed" | "cancelled";
+export type CartStatus = "open" | "submitted" | "approved" | "ready" | "completed" | "cancelled";
 
 export type CartLine = {
   id: string;
@@ -150,7 +150,11 @@ export async function submitCart(
   if (error) throw new Error(cleanError(error.message));
 }
 
-export async function setCartStatus(cartId: string, status: "ready" | "completed" | "cancelled", deliveryFee?: number) {
+export async function setCartStatus(
+  cartId: string,
+  status: "approved" | "ready" | "completed" | "cancelled",
+  deliveryFee?: number,
+) {
   const { error } = await (supabase as any).rpc("mp_set_cart_status", {
     p_cart_id: cartId,
     p_status: status,
@@ -166,7 +170,8 @@ function cleanError(msg?: string) {
 
 export const CART_STATUS_LABEL: Record<CartStatus, string> = {
   open: "In cart",
-  submitted: "Sent to seller",
+  submitted: "Awaiting approval",
+  approved: "Approved",
   ready: "Ready",
   completed: "Completed",
   cancelled: "Cancelled",
