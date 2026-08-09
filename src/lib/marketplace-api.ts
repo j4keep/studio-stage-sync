@@ -239,8 +239,16 @@ function mapListing(row: any, extras?: Partial<MarketplaceListing>): Marketplace
 }
 
 export async function ensureMarketplaceProfile(userId: string): Promise<MarketplaceProfile> {
-  const existing = await getMarketplaceProfile(userId);
-  if (existing) return existing;
+  // Check the marketplace_profiles row itself — getMarketplaceProfile also
+  // resolves from the YAJ `profiles` table, so it can return a value even when
+  // no marketplace row exists yet (which made later UPDATEs match 0 rows).
+  const { data: own } = await (supabase as any)
+    .from("marketplace_profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (own) return (await getMarketplaceProfile(userId)) as MarketplaceProfile;
+
 
   const { data: yaj } = await supabase
     .from("profiles")
@@ -314,12 +322,12 @@ export async function updateMarketplaceProfile(
   await ensureMarketplaceProfile(userId);
   const { data, error } = await (supabase as any)
     .from("marketplace_profiles")
-    .update({ ...patch, updated_at: new Date().toISOString() })
-    .eq("user_id", userId)
+    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     .select("*")
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data as MarketplaceProfile;
+
 }
 
 export type ListListingsOpts = {
