@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, GripVertical, ImagePlus, Loader2, Trash2, X } from "lucide-react";
+import { ArrowLeft, Camera, GripVertical, ImagePlus, Loader2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
