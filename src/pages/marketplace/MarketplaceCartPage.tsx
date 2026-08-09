@@ -117,6 +117,8 @@ export default function MarketplaceCartPage() {
         ) : (
           open.map((cart) => {
             const mode = fulfillment[cart.id] || "pickup";
+            const q = quote[cart.id];
+            const deliveryFee = q?.configured && q.fee != null ? q.fee : cart.delivery_fee_estimate;
             return (
               <section key={cart.id} className="overflow-hidden rounded-2xl border border-border bg-card">
                 <div className="border-b border-border px-4 py-3">
@@ -177,18 +179,52 @@ export default function MarketplaceCartPage() {
                   </div>
                   {mode === "delivery" && (
                     <>
-                      <input
-                        value={address[cart.id] || ""}
-                        onChange={(e) => setAddress((a) => ({ ...a, [cart.id]: e.target.value }))}
-                        placeholder="Delivery address"
-                        className="h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
-                      />
-                      <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                        <Truck className="h-3.5 w-3.5" />
-                        {cart.delivery_fee_estimate > 0
-                          ? `Seller's delivery fee: ${formatPrice(cart.delivery_fee_estimate)}`
-                          : "This seller delivers free — they can confirm any fee in Messages."}
-                      </p>
+                      <div className="flex gap-2">
+                        <input
+                          value={address[cart.id] || ""}
+                          onChange={(e) => {
+                            setAddress((a) => ({ ...a, [cart.id]: e.target.value }));
+                            setQuote((q) => ({ ...q, [cart.id]: null }));
+                          }}
+                          placeholder="Delivery address (local only)"
+                          className="h-11 min-w-0 flex-1 rounded-xl border border-border bg-muted px-3 text-sm"
+                        />
+                        <button
+                          type="button"
+                          disabled={quoting === cart.id}
+                          onClick={() => void checkAddress(cart)}
+                          className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-foreground px-3.5 text-[12px] font-black text-background disabled:opacity-60"
+                        >
+                          {quoting === cart.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <MapPin className="h-3.5 w-3.5" />
+                          )}
+                          Get price
+                        </button>
+                      </div>
+                      {q?.configured && q.miles != null ? (
+                        <p
+                          className={`flex items-center gap-1.5 text-[11.5px] font-semibold ${
+                            q.tooFar ? "text-red-500" : "text-foreground"
+                          }`}
+                        >
+                          <Truck className="h-3.5 w-3.5 text-primary" />
+                          {q.tooFar
+                            ? `${q.miles} mi away — this seller only delivers up to ${q.maxMiles} mi. Choose pickup or message them about shipping.`
+                            : `${q.miles} mi · ${formatPrice(q.fee || 0)} delivery (${formatPrice(q.perMile || 0)}/mile)`}
+                        </p>
+                      ) : q && !q.configured ? (
+                        <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+                          <Truck className="h-3.5 w-3.5" />
+                          This seller hasn't set a per-mile rate — they'll confirm the delivery fee after they approve.
+                        </p>
+                      ) : (
+                        <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <Truck className="h-3.5 w-3.5" />
+                          Enter your address and tap “Get price” to see the mileage delivery fee.
+                        </p>
+                      )}
                     </>
                   )}
                   <input
@@ -205,16 +241,15 @@ export default function MarketplaceCartPage() {
                     {mode === "delivery" && (
                       <div className="flex items-center justify-between">
                         <span className="text-muted-foreground">Delivery fee</span>
-                        <span className="font-bold">{formatPrice(cart.delivery_fee_estimate)}</span>
+                        <span className="font-bold">{formatPrice(deliveryFee)}</span>
                       </div>
                     )}
                     <div className="flex items-center justify-between text-base font-black">
                       <span>Total</span>
-                      <span>
-                        {formatPrice(cart.subtotal + (mode === "delivery" ? cart.delivery_fee_estimate : 0))}
-                      </span>
+                      <span>{formatPrice(cart.subtotal + (mode === "delivery" ? deliveryFee : 0))}</span>
                     </div>
                   </div>
+
                   <button
                     type="button"
                     disabled={busy === cart.id || cart.items.length === 0}

@@ -16,6 +16,7 @@ import {
   type MarketplaceListing,
   type MarketplaceProfile,
 } from "@/lib/marketplace-api";
+import { geocodeAddress } from "@/lib/marketplace-delivery";
 import { CART_STATUS_LABEL, listCartsForUser, setCartStatus, type MarketplaceCart } from "@/lib/marketplace-cart";
 
 type Tab = "orders" | "products" | "storefront";
@@ -35,6 +36,10 @@ export default function StoreDashboardPage() {
   const [storeName, setStoreName] = useState("");
   const [storeTagline, setStoreTagline] = useState("");
   const [banner, setBanner] = useState<string | null>(null);
+  const [storeAddress, setStoreAddress] = useState("");
+  const [perMile, setPerMile] = useState("");
+  const [minFee, setMinFee] = useState("");
+  const [maxMiles, setMaxMiles] = useState("");
   const [savingStore, setSavingStore] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -59,6 +64,10 @@ export default function StoreDashboardPage() {
       setStoreName(prof?.store_name || "");
       setStoreTagline(prof?.store_tagline || "");
       setBanner(prof?.store_banner_url || null);
+      setStoreAddress(prof?.store_address || "");
+      setPerMile(prof?.delivery_per_mile ? String(prof.delivery_per_mile) : "");
+      setMinFee(prof?.delivery_min_fee ? String(prof.delivery_min_fee) : "");
+      setMaxMiles(prof?.delivery_max_miles ? String(prof.delivery_max_miles) : "");
       setDraft(
         Object.fromEntries(
           listingRows.map((l) => [l.id, { price: String(l.price ?? ""), quantity: String(l.quantity ?? 0) }]),
@@ -156,11 +165,39 @@ export default function StoreDashboardPage() {
 
   const saveStore = async () => {
     if (!user) return;
+    const rate = perMile.trim() ? Number(perMile) : 0;
+    const floor = minFee.trim() ? Number(minFee) : 0;
+    const radius = maxMiles.trim() ? Number(maxMiles) : 0;
+    if (!Number.isFinite(rate) || rate < 0) return toast.error("Delivery rate per mile must be a number");
+    if (!Number.isFinite(floor) || floor < 0) return toast.error("Minimum delivery fee must be a number");
+    if (!Number.isFinite(radius) || radius < 0) return toast.error("Delivery radius must be a number");
+    const address = storeAddress.trim();
+    if (rate > 0 && !address) return toast.error("Add your pickup address so we can calculate mileage");
+
     setSavingStore(true);
     try {
+      let lat: number | null = profile?.store_lat ?? null;
+      let lng: number | null = profile?.store_lng ?? null;
+      if (address && address !== (profile?.store_address || "")) {
+        try {
+          const point = await geocodeAddress(address);
+          lat = point.lat;
+          lng = point.lng;
+        } catch {
+          lat = null;
+          lng = null;
+          toast.error("We could not pin that address — mileage may be less accurate");
+        }
+      }
       await updateMarketplaceProfile(user.id, {
         store_name: storeName.trim() || null,
         store_tagline: storeTagline.trim() || null,
+        store_address: address || null,
+        store_lat: lat,
+        store_lng: lng,
+        delivery_per_mile: rate,
+        delivery_min_fee: floor,
+        delivery_max_miles: radius,
       });
       toast.success("Storefront saved");
       await load();
@@ -170,6 +207,7 @@ export default function StoreDashboardPage() {
       setSavingStore(false);
     }
   };
+
 
   if (!user) {
     return (
@@ -464,14 +502,70 @@ export default function StoreDashboardPage() {
                 />
               </label>
               <label className="block text-[11px] font-bold text-muted-foreground">
-                Tagline
-                <input
+                Store description
+                <textarea
                   value={storeTagline}
                   onChange={(e) => setStoreTagline(e.target.value)}
-                  placeholder="Everyday essentials for $1–$5"
-                  className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm font-semibold text-foreground"
+                  rows={4}
+                  placeholder="Everyday essentials for $1–$5. Tell buyers what you carry, your hours, and pickup details."
+                  className="mt-1 w-full resize-y rounded-xl border border-border bg-muted px-3 py-2.5 text-sm font-medium leading-relaxed text-foreground"
                 />
+                <span className="mt-1 block text-[10.5px] font-medium normal-case">
+                  Shows in full on your storefront — line breaks are kept.
+                </span>
               </label>
+
+              <div className="space-y-2.5 rounded-xl border border-border bg-muted/40 p-3">
+                <p className="text-[12px] font-black">Local delivery pricing</p>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Buyers enter their address at checkout and we calculate the miles from your pickup address, then
+                  charge your rate. Local only — shipping stays between you and the buyer in messages.
+                </p>
+                <label className="block text-[11px] font-bold text-muted-foreground">
+                  Pickup address
+                  <input
+                    value={storeAddress}
+                    onChange={(e) => setStoreAddress(e.target.value)}
+                    placeholder="123 Main St, City, State"
+                    className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                  />
+                </label>
+                <div className="flex gap-2">
+                  <label className="flex-1 text-[11px] font-bold text-muted-foreground">
+                    $ per mile
+                    <input
+                      value={perMile}
+                      onChange={(e) => setPerMile(e.target.value)}
+                      type="number"
+                      step="0.25"
+                      placeholder="1.00"
+                      className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                    />
+                  </label>
+                  <label className="flex-1 text-[11px] font-bold text-muted-foreground">
+                    Minimum fee
+                    <input
+                      value={minFee}
+                      onChange={(e) => setMinFee(e.target.value)}
+                      type="number"
+                      step="0.5"
+                      placeholder="3.00"
+                      className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                    />
+                  </label>
+                  <label className="flex-1 text-[11px] font-bold text-muted-foreground">
+                    Max miles
+                    <input
+                      value={maxMiles}
+                      onChange={(e) => setMaxMiles(e.target.value)}
+                      type="number"
+                      placeholder="15"
+                      className="mt-1 h-11 w-full rounded-xl border border-border bg-background px-3 text-sm font-semibold text-foreground"
+                    />
+                  </label>
+                </div>
+              </div>
+
               <button
                 type="button"
                 disabled={savingStore}
@@ -482,11 +576,12 @@ export default function StoreDashboardPage() {
               </button>
               <button
                 type="button"
-                onClick={() => nav("/marketplace/five-under")}
+                onClick={() => nav(`/marketplace/store/${user.id}`)}
                 className="h-10 w-full rounded-full border border-border text-xs font-bold"
               >
-                View my store in the $1–$5 section
+                View my store
               </button>
+
             </div>
           </section>
         </div>
