@@ -311,7 +311,9 @@ const ProtectedRoutes = () => {
     <SessionProvider>
     <AppLayout>
       <ModerationBanner />
+      <LocationGate />
       <Routes>
+
         <Route path="/" element={<HomePage />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/projects" element={<Navigate to="/my-projects" replace />} />
