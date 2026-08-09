@@ -446,7 +446,7 @@ const ProfilePage = () => {
         </div>
       )}
 
-      {user && <UserReviewsSection userId={user.id} title="Reviews & comments" />}
+      
 
 
       <EditProfileSheet
