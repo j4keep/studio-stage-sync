@@ -15,6 +15,7 @@ import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/market
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/marketplace-delivery";
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
+import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
 
@@ -151,6 +152,7 @@ export default function StoreProductPage() {
   }
 
   return (
+    <MarketplaceLocationGate>
     <div className="min-h-screen bg-background pb-40 text-foreground">
       <header className="sticky top-0 z-20 flex items-center gap-2 border-b border-border bg-background/95 px-3 py-2.5 backdrop-blur">
         <button
@@ -423,5 +425,6 @@ export default function StoreProductPage() {
         </div>
       </div>
     </div>
+    </MarketplaceLocationGate>
   );
 }
