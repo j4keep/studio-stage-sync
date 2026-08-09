@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";

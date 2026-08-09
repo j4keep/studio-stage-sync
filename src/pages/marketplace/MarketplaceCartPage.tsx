@@ -249,13 +249,15 @@ export default function MarketplaceCartPage() {
                           <Truck className="h-3.5 w-3.5 text-primary" />
                           {q.tooFar
                             ? `${q.miles} mi away — this seller only delivers up to ${q.maxMiles} mi. Choose pickup instead.`
-                            : `${milesAwayLabel(q.miles)} · ${formatPrice(q.fee || 0)} delivery`}
+                            : `${milesAwayLabel(q.miles)} · ${formatPrice(q.fee || 0)} delivery${
+                                q.estimated ? " (estimated at $1/mile)" : ""
+                              }`}
                         </p>
                       ) : q && !q.configured ? (
                         <p className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                           <Truck className="h-3.5 w-3.5" />
                           {q.miles != null ? `${milesAwayLabel(q.miles)} · ` : ""}
-                          No per-mile rate set — the seller confirms the fee.
+                          This seller hasn't set a pickup address yet — they'll confirm the fee.
                         </p>
                       ) : locationReady ? (
                         <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
