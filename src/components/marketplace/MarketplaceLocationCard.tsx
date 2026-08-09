@@ -27,6 +27,8 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
   const { location, loading, save, setSharing } = useMyMarketplaceLocation(userId);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  /** Address the person tapped in the dropdown — held until they press Save. */
+  const [picked, setPicked] = useState<AddressSuggestion | null>(null);
 
   const commit = async (point: { lat: number; lng: number; label: string }) => {
     await save({ address: point.label, lat: point.lat, lng: point.lng, sharing: true });
