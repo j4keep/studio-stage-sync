@@ -532,6 +532,7 @@ export async function updateMarketplaceListing(
     "firm_price",
     "open_to_offers",
     "delivery",
+    "delivery_fee",
     "shipping",
     "local_pickup",
     "city",
