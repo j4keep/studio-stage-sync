@@ -45,16 +45,17 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
     }
   };
 
-  const pick = async (s: { lat: number; lng: number; label: string }) => {
+  const pick = async (s: AddressSuggestion) => {
     setBusy(true);
     try {
-      await commit(s);
+      await commit(await resolveSuggestion(s));
     } catch (e: any) {
       toast.error(e?.message || "Could not save that address");
     } finally {
       setBusy(false);
     }
   };
+
 
   const saveTyped = async () => {
     const address = draft.trim();
