@@ -217,7 +217,7 @@ export default function MarketplaceCreatePage() {
   const onPickVideo = async (files: FileList | null) => {
     const file = files?.[0];
     if (!file || !user) return;
-    if (media.some((m) => isVideoUrl(m.url))) {
+    if (media.some((m) => m.video || isVideoUrl(m.url))) {
       toast.error("You can add one video per item");
       return;
     }
@@ -230,11 +230,11 @@ export default function MarketplaceCreatePage() {
       return;
     }
     const localUrl = URL.createObjectURL(file);
-    setMedia((m) => [...m, { url: localUrl, local: true }]);
+    setMedia((m) => [...m, { url: localUrl, local: true, video: true }]);
     try {
       setUploadPct(0);
       const url = await uploadListingImage(user.id, file, (p) => setUploadPct(Math.round(p)));
-      setMedia((m) => m.map((item) => (item.url === localUrl ? { url } : item)));
+      setMedia((m) => m.map((item) => (item.url === localUrl ? { url, video: true } : item)));
       URL.revokeObjectURL(localUrl);
     } catch (e: any) {
       setMedia((m) => m.filter((item) => item.url !== localUrl));
