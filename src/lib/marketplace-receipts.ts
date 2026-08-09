@@ -49,6 +49,6 @@ export async function sendReceipt(r: MarketplaceReceipt, myUserId: string, store
   if (error) throw new Error(error.message);
   await (supabase as any)
     .from("conversations")
-    .update({ last_message_at: new Date().toISOString() })
+    .update({ updated_at: new Date().toISOString() })
     .eq("id", conversationId);
 }
