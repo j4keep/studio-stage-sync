@@ -321,6 +321,10 @@ export async function listMarketplaceListings(opts: ListListingsOpts = {}): Prom
   }
 
   if (opts.category) q = q.eq("category", opts.category);
+  if (opts.listingType) q = q.eq("listing_type", opts.listingType);
+  if (opts.minPrice != null) q = q.gte("price", opts.minPrice);
+  if (opts.maxPrice != null) q = q.lte("price", opts.maxPrice);
+
   if (opts.offset) q = q.range(opts.offset, opts.offset + (opts.limit ?? 40) - 1);
 
   if (opts.sort === "price_asc") q = q.order("price", { ascending: true, nullsFirst: false });
