@@ -99,6 +99,7 @@ export default function MarketplaceCreatePage() {
   const [firmPrice, setFirmPrice] = useState(false);
   const [openOffers, setOpenOffers] = useState(true);
   const [delivery, setDelivery] = useState(false);
+  const [deliveryFee, setDeliveryFee] = useState("");
   const [shipping, setShipping] = useState(false);
   const [pickup, setPickup] = useState(true);
   const [city, setCity] = useState("");
@@ -156,6 +157,7 @@ export default function MarketplaceCreatePage() {
         setFirmPrice(row.firm_price);
         setOpenOffers(row.open_to_offers);
         setDelivery(row.delivery);
+        setDeliveryFee(row.delivery_fee ? String(row.delivery_fee) : "");
         setShipping(row.shipping);
         setPickup(row.local_pickup);
         setCity(row.city || "");
@@ -234,6 +236,7 @@ export default function MarketplaceCreatePage() {
     firm_price: firmPrice,
     open_to_offers: isFiveUnder ? false : openOffers,
     delivery,
+    delivery_fee: delivery ? Number(deliveryFee || 0) : 0,
     shipping: isHome ? false : shipping,
     local_pickup: isHome ? false : pickup,
     city: city || null,
@@ -878,6 +881,23 @@ export default function MarketplaceCreatePage() {
             {!isFiveUnder && <Toggle label="Open to offers" value={openOffers} onChange={setOpenOffers} />}
             {!isHome && <Toggle label="Local pickup" value={pickup} onChange={setPickup} />}
             <Toggle label={isHome ? "Tours available" : "Delivery available"} value={delivery} onChange={setDelivery} />
+            {delivery && !isHome && (
+              <>
+                <Field
+                  label="Delivery fee you charge ($)"
+                  value={deliveryFee}
+                  onChange={(v) => setDeliveryFee(v.replace(/[^0-9.]/g, ""))}
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  optional
+                  placeholder="e.g. 3 — leave blank for free delivery"
+                />
+                <p className="-mt-1 text-[11px] text-muted-foreground">
+                  Buyers see this fee when they pick delivery at checkout.
+                </p>
+              </>
+            )}
             {!isHome && <Toggle label="Shipping available" value={shipping} onChange={setShipping} />}
             <Field label="Tags (comma-separated)" value={tags} onChange={setTags} optional />
             <button
