@@ -582,6 +582,21 @@ export default function MarketplaceCreatePage() {
                   }}
                 />
               </label>
+              <label className="col-span-2 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-4">
+                <Video className="h-6 w-6 text-primary" />
+                <span className="text-[13px] font-bold">Add a video</span>
+                <span className="text-[10.5px] text-muted-foreground">One per item · under 60MB</span>
+                <input
+                  type="file"
+                  accept="video/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    clearFieldError("photos");
+                    void onPickVideo(e.target.files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
             </div>
             {fieldErrors.photos && <p className="text-[12px] font-bold text-red-500">Add at least one photo</p>}
 
@@ -593,7 +608,16 @@ export default function MarketplaceCreatePage() {
             <div className="grid grid-cols-3 gap-2">
               {media.map((m, i) => (
                 <div key={m.url + i} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
-                  <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  {m.video || isVideoUrl(m.url) ? (
+                    <video src={m.url} muted playsInline className="h-full w-full object-cover" />
+                  ) : (
+                    <img src={m.url} alt="" className="h-full w-full object-cover" />
+                  )}
+                  {(m.video || isVideoUrl(m.url)) && (
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                      Video
+                    </span>
+                  )}
                   {i === 0 && (
                     <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
                       Cover
