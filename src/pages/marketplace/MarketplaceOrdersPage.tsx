@@ -126,7 +126,7 @@ export default function MarketplaceOrdersPage() {
                   <span>Total</span>
                   <span>{formatPrice(cart.total)}</span>
                 </div>
-                {cart.status !== "completed" && cart.status !== "cancelled" && (
+                {cart.status !== "open" && cart.status !== "completed" && cart.status !== "cancelled" && (
                   <div className="flex gap-2">
                     {cart.status === "submitted" && (
                       <button
