@@ -28,7 +28,9 @@ export default function MarketplaceLocationGate({ children }: { children: React.
           Marketplace, and you can turn it off any time in Settings.
         </p>
         <MarketplaceLocationCard userId={user.id} title="Your location" />
+        </div>
       </div>
-    </div>
+    </>
   );
+
 }
