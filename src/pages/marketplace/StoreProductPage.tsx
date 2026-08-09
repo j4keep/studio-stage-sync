@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
 import { getMarketplaceListing, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
-import { startConversationWith } from "@/lib/messaging";
+import { getOrCreateConversation } from "@/lib/messaging";
 
 /** Amazon-style product detail for the $1–$5 store. */
 export default function StoreProductPage() {
@@ -79,7 +79,7 @@ export default function StoreProductPage() {
     if (!listing) return;
     if (!user) return nav("/auth");
     try {
-      const convoId = await startConversationWith(listing.seller_id);
+      const convoId = await getOrCreateConversation(user.id, listing.seller_id, { context: "marketplace" });
       nav(`/messages/${convoId}`);
     } catch {
       nav("/messages");
