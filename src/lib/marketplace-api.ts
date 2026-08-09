@@ -65,6 +65,10 @@ export type MarketplaceProfile = {
   response_time_minutes: number | null;
   created_at: string;
   member_since?: string;
+  /** $1–$5 store branding */
+  store_name?: string | null;
+  store_banner_url?: string | null;
+  store_tagline?: string | null;
 };
 
 export type VehicleDetails = {
