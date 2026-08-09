@@ -1,10 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronDown, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { getMarketplaceListing, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
+import {
+  getMarketplaceListing,
+  getMarketplaceProfile,
+  listingCoverUrl,
+  type MarketplaceListing,
+  type MarketplaceProfile,
+} from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 
 /** Amazon-style product detail for the $1–$5 store. */
@@ -13,11 +19,13 @@ export default function StoreProductPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [listing, setListing] = useState<MarketplaceListing | null>(null);
+  const [store, setStore] = useState<MarketplaceProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [qty, setQty] = useState(1);
   const [photo, setPhoto] = useState(0);
   const [busy, setBusy] = useState(false);
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
+  const stripRef = useRef<HTMLDivElement | null>(null);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -25,6 +33,7 @@ export default function StoreProductPage() {
     try {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
+      if (row?.seller_id) setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
       if (user) setCarts(await listMyOpenCarts(user.id));
     } catch (e: any) {
       toast.error(e?.message || "Could not load this item");
@@ -32,6 +41,7 @@ export default function StoreProductPage() {
       setLoading(false);
     }
   }, [id, user]);
+
 
   useEffect(() => {
     void load();
@@ -47,6 +57,9 @@ export default function StoreProductPage() {
   );
 
   const stock = Number(listing?.quantity ?? 0);
+  const perMile = Number(store?.delivery_per_mile || 0);
+  const minFee = Number(store?.delivery_min_fee || 0);
+  const maxMiles = Number(store?.delivery_max_miles || 0);
   const photos = useMemo(() => {
     if (!listing) return [] as string[];
     const urls = (listing.media || []).map((m) => m.url).filter(Boolean) as string[];
@@ -166,27 +179,59 @@ export default function StoreProductPage() {
 
         {photos.length > 0 && (
           <div className="mt-3">
-            <div className="overflow-hidden rounded-2xl bg-muted">
-              <img src={photos[photo]} alt={listing.title} className="h-72 w-full object-contain" />
+            <div
+              ref={stripRef}
+              onScroll={(e) => {
+                const el = e.currentTarget;
+                setPhoto(Math.round(el.scrollLeft / Math.max(1, el.clientWidth)));
+              }}
+              className="flex snap-x snap-mandatory gap-0 overflow-x-auto rounded-2xl bg-muted [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {photos.map((u, i) => (
+                <img
+                  key={u + i}
+                  src={u}
+                  alt={`${listing.title} photo ${i + 1}`}
+                  className="h-72 w-full shrink-0 snap-center object-contain"
+                  loading={i === 0 ? "eager" : "lazy"}
+                />
+              ))}
             </div>
             {photos.length > 1 && (
-              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-                {photos.map((u, i) => (
-                  <button
-                    key={u + i}
-                    type="button"
-                    onClick={() => setPhoto(i)}
-                    className={`h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2 ${
-                      i === photo ? "border-primary" : "border-border"
-                    }`}
-                  >
-                    <img src={u} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ))}
-              </div>
+              <>
+                <div className="mt-2 flex items-center justify-center gap-1.5">
+                  {photos.map((u, i) => (
+                    <span
+                      key={`dot-${u}-${i}`}
+                      className={`h-1.5 rounded-full transition-all ${
+                        i === photo ? "w-5 bg-primary" : "w-1.5 bg-border"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {photos.map((u, i) => (
+                    <button
+                      key={u + i}
+                      type="button"
+                      onClick={() => {
+                        const el = stripRef.current;
+                        if (el) el.scrollTo({ left: i * el.clientWidth, behavior: "smooth" });
+                        setPhoto(i);
+                      }}
+                      className={`h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2 ${
+                        i === photo ? "border-primary" : "border-border"
+                      }`}
+                    >
+                      <img src={u} alt="" className="h-full w-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         )}
+
 
         <p className={`mt-4 text-sm font-black ${stock > 0 ? "text-emerald-600" : "text-red-500"}`}>
           {stock > 0 ? `In stock · ${stock} available` : "Out of stock"}
@@ -220,16 +265,35 @@ export default function StoreProductPage() {
         <div className="mt-4 space-y-1.5 rounded-2xl border border-border bg-card p-3 text-[13px]">
           {listing.local_pickup && <p className="font-semibold">Pickup available</p>}
           {listing.delivery && (
-            <p className="flex items-center gap-1.5 font-semibold">
-              <Truck className="h-4 w-4 text-primary" />
-              Seller delivery ·{" "}
-              {Number(listing.delivery_fee) > 0 ? `${formatPrice(listing.delivery_fee)} fee` : "Free"}
-            </p>
+            <>
+              <p className="flex items-center gap-1.5 font-semibold">
+                <Truck className="h-4 w-4 text-primary" />
+                {perMile > 0
+                  ? `Local delivery · ${formatPrice(perMile)} per mile`
+                  : Number(listing.delivery_fee) > 0
+                    ? `Local delivery · ${formatPrice(listing.delivery_fee)} flat fee`
+                    : "Local delivery · Free"}
+              </p>
+              {perMile > 0 ? (
+                <p className="text-muted-foreground">
+                  This seller charges {formatPrice(perMile)} for every mile between their pickup address and yours
+                  {minFee > 0 ? `, with a ${formatPrice(minFee)} minimum` : ""}
+                  {maxMiles > 0 ? `, up to ${maxMiles} miles` : ""}. Add your address at checkout to see the exact
+                  mileage fee before you send the order.
+                </p>
+              ) : (
+                <p className="text-muted-foreground">
+                  This seller hasn't set a per-mile rate yet — they'll confirm the delivery fee when they approve your
+                  order.
+                </p>
+              )}
+            </>
           )}
           <p className="text-muted-foreground">
             Buy here, then arrange pickup, delivery or shipping with the seller in Messages.
           </p>
         </div>
+
 
         {listing.description && (
           <div className="mt-4">

@@ -185,9 +185,7 @@ export default function FiveUnderPage() {
                       {stock > 0 ? `${stock} in stock` : "Out of stock"}
                     </p>
                     {l.delivery && (
-                      <p className="text-[11px] text-muted-foreground">
-                        {Number(l.delivery_fee) > 0 ? `+ ${formatPrice(l.delivery_fee)} delivery` : "Free delivery"}
-                      </p>
+                      <p className="text-[11px] text-muted-foreground">Delivery · fee per mile</p>
                     )}
                   </button>
                   <button
