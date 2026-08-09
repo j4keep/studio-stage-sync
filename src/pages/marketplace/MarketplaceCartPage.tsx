@@ -23,6 +23,23 @@ export default function MarketplaceCartPage() {
   const [fulfillment, setFulfillment] = useState<Record<string, "pickup" | "delivery">>({});
   const [address, setAddress] = useState<Record<string, string>>({});
   const [note, setNote] = useState<Record<string, string>>({});
+  const [quote, setQuote] = useState<Record<string, DeliveryQuote | null>>({});
+  const [quoting, setQuoting] = useState<string | null>(null);
+
+  const checkAddress = async (cart: MarketplaceCart) => {
+    const addr = (address[cart.id] || "").trim();
+    if (!addr) return toast.error("Enter your delivery address first");
+    setQuoting(cart.id);
+    try {
+      const result = await getDeliveryQuote(cart.seller_id, addr);
+      setQuote((q) => ({ ...q, [cart.id]: result }));
+      if (!result.configured) toast.info("This seller hasn't set a per-mile delivery rate yet");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not check that address");
+    } finally {
+      setQuoting(null);
+    }
+  };
 
   const load = useCallback(async () => {
     if (!user) return;
