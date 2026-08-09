@@ -985,9 +985,18 @@ export default function MarketplaceCreatePage() {
                 />
                 <p className="-mt-1 text-[11px] text-muted-foreground">
                   {isFiveUnder
-                    ? "This is a per-mile rate, not a flat fee. Buyers enter their address at checkout and we multiply the miles from your pickup address by this rate. Set it in My store → delivery settings to keep every listing in sync."
+                    ? "This is a per-mile rate, not a flat fee. We use your store address and the buyer's saved location to price delivery automatically."
                     : "Buyers see this fee when they pick delivery at checkout."}
                 </p>
+                {isFiveUnder && !storeHasAddress && (
+                  <button
+                    type="button"
+                    onClick={() => nav("/marketplace/store-dashboard")}
+                    className="-mt-1 w-full rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-left text-[11.5px] font-semibold text-amber-700"
+                  >
+                    Add your store pickup address in My store so delivery prices calculate automatically. Tap to set it.
+                  </button>
+                )}
               </>
 
             )}
