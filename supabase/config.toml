@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.clear-feed-videos]
 verify_jwt = false
+
+[functions.mp-delivery-quote]
+verify_jwt = true

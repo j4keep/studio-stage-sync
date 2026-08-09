@@ -2059,6 +2059,7 @@ export type Database = {
           created_at: string
           delivery_address: string | null
           delivery_fee: number
+          delivery_miles: number | null
           fulfillment: string
           id: string
           note: string | null
@@ -2071,6 +2072,7 @@ export type Database = {
           created_at?: string
           delivery_address?: string | null
           delivery_fee?: number
+          delivery_miles?: number | null
           fulfillment?: string
           id?: string
           note?: string | null
@@ -2083,6 +2085,7 @@ export type Database = {
           created_at?: string
           delivery_address?: string | null
           delivery_fee?: number
+          delivery_miles?: number | null
           fulfillment?: string
           id?: string
           note?: string | null
@@ -2288,11 +2291,17 @@ export type Database = {
           bio: string | null
           city: string | null
           created_at: string
+          delivery_max_miles: number
+          delivery_min_fee: number
+          delivery_per_mile: number
           display_name: string | null
           is_business: boolean
           response_time_minutes: number | null
           service_area: string | null
+          store_address: string | null
           store_banner_url: string | null
+          store_lat: number | null
+          store_lng: number | null
           store_name: string | null
           store_tagline: string | null
           updated_at: string
@@ -2303,11 +2312,17 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          delivery_max_miles?: number
+          delivery_min_fee?: number
+          delivery_per_mile?: number
           display_name?: string | null
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          store_address?: string | null
           store_banner_url?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
           store_name?: string | null
           store_tagline?: string | null
           updated_at?: string
@@ -2318,11 +2333,17 @@ export type Database = {
           bio?: string | null
           city?: string | null
           created_at?: string
+          delivery_max_miles?: number
+          delivery_min_fee?: number
+          delivery_per_mile?: number
           display_name?: string | null
           is_business?: boolean
           response_time_minutes?: number | null
           service_area?: string | null
+          store_address?: string | null
           store_banner_url?: string | null
+          store_lat?: number | null
+          store_lng?: number | null
           store_name?: string | null
           store_tagline?: string | null
           updated_at?: string
@@ -4926,15 +4947,26 @@ export type Database = {
         Args: { p_cart_id: string; p_delivery_fee?: number; p_status: string }
         Returns: undefined
       }
-      mp_submit_cart: {
-        Args: {
-          p_address?: string
-          p_cart_id: string
-          p_fulfillment?: string
-          p_note?: string
-        }
-        Returns: undefined
-      }
+      mp_submit_cart:
+        | {
+            Args: {
+              p_address?: string
+              p_cart_id: string
+              p_fulfillment?: string
+              p_note?: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_address?: string
+              p_cart_id: string
+              p_fulfillment?: string
+              p_miles?: number
+              p_note?: string
+            }
+            Returns: undefined
+          }
       refresh_moderation_status: {
         Args: { p_user_id?: string }
         Returns: {

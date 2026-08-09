@@ -88,6 +88,8 @@ import MarketplacePurchasesPage from "./pages/marketplace/MarketplacePurchasesPa
 import MarketplaceSalesPage from "./pages/marketplace/MarketplaceSalesPage";
 import FiveUnderPage from "./pages/marketplace/FiveUnderPage";
 import StoreProductPage from "./pages/marketplace/StoreProductPage";
+import SellerStorePage from "./pages/marketplace/StorePage";
+
 import MarketplaceCartPage from "./pages/marketplace/MarketplaceCartPage";
 import MarketplaceOrdersPage from "./pages/marketplace/MarketplaceOrdersPage";
 import StoreDashboardPage from "./pages/marketplace/StoreDashboardPage";
@@ -351,6 +353,8 @@ const ProtectedRoutes = () => {
         <Route path="/marketplace/category/:slug" element={<MarketplaceCategoryPage />} />
         <Route path="/marketplace/five-under" element={<FiveUnderPage />} />
         <Route path="/marketplace/product/:id" element={<StoreProductPage />} />
+        <Route path="/marketplace/store/:sellerId" element={<SellerStorePage />} />
+
         <Route path="/marketplace/cart" element={<MarketplaceCartPage />} />
         <Route path="/marketplace/orders" element={<MarketplaceOrdersPage />} />
         <Route path="/marketplace/store-dashboard" element={<StoreDashboardPage />} />

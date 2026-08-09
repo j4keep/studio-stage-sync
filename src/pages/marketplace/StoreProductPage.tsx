@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, MessageCircle, ShoppingCart, Star, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, MessageCircle, ShoppingCart, Star, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
@@ -140,11 +140,16 @@ export default function StoreProductPage() {
         <h1 className="mt-1 text-[19px] font-black leading-snug">{listing.title}</h1>
         <button
           type="button"
-          onClick={() => nav(`/marketplace/profile/${listing.seller_id}`)}
-          className="mt-1 text-[13px] font-semibold text-primary"
+          onClick={() => nav(`/marketplace/store/${listing.seller_id}`)}
+          className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-full border border-border px-3.5 text-[12.5px] font-black"
         >
-          Visit the {listing.seller?.display_name || "seller"}'s store
+          <Store className="h-3.5 w-3.5 text-primary" />
+          View store
+          <span className="font-semibold text-muted-foreground">
+            · {listing.seller?.store_name || listing.seller?.display_name || "Seller"}
+          </span>
         </button>
+
         <div className="mt-1 flex items-center gap-1 text-amber-500">
           {Array.from({ length: 5 }).map((_, i) => (
             <Star key={i} className="h-3.5 w-3.5 fill-current" />

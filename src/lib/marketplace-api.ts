@@ -69,6 +69,13 @@ export type MarketplaceProfile = {
   store_name?: string | null;
   store_banner_url?: string | null;
   store_tagline?: string | null;
+  /** Local delivery pricing (per-mile, local only) */
+  store_address?: string | null;
+  store_lat?: number | null;
+  store_lng?: number | null;
+  delivery_per_mile?: number;
+  delivery_min_fee?: number;
+  delivery_max_miles?: number;
 };
 
 export type VehicleDetails = {
@@ -297,6 +304,12 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       store_name: data?.store_name ?? null,
       store_banner_url: resolveMarketplaceMediaUrl(data?.store_banner_url),
       store_tagline: data?.store_tagline ?? null,
+      store_address: data?.store_address ?? null,
+      store_lat: data?.store_lat ?? null,
+      store_lng: data?.store_lng ?? null,
+      delivery_per_mile: Number(data?.delivery_per_mile ?? 0),
+      delivery_min_fee: Number(data?.delivery_min_fee ?? 0),
+      delivery_max_miles: Number(data?.delivery_max_miles ?? 0),
     };
   }
   return null;
@@ -316,6 +329,12 @@ export async function updateMarketplaceProfile(
       | "store_name"
       | "store_banner_url"
       | "store_tagline"
+      | "store_address"
+      | "store_lat"
+      | "store_lng"
+      | "delivery_per_mile"
+      | "delivery_min_fee"
+      | "delivery_max_miles"
     >
   >,
 ) {

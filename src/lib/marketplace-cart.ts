@@ -140,15 +140,18 @@ export async function submitCart(
   fulfillment: "pickup" | "delivery",
   address?: string | null,
   note?: string | null,
+  miles?: number | null,
 ) {
   const { error } = await (supabase as any).rpc("mp_submit_cart", {
     p_cart_id: cartId,
     p_fulfillment: fulfillment,
     p_address: address || null,
     p_note: note || null,
+    p_miles: miles ?? null,
   });
   if (error) throw new Error(cleanError(error.message));
 }
+
 
 export async function setCartStatus(
   cartId: string,
