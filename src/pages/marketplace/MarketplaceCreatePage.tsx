@@ -1045,6 +1045,11 @@ export default function MarketplaceCreatePage() {
                 ? "Only the approximate area shows publicly. Share the exact address in chat."
                 : "Private sellers show an approximate area only. Exact meetup details stay in chat."}
             </p>
+            {prefilled && (
+              <p className="rounded-xl bg-primary/10 px-3 py-2 text-[12px] font-semibold text-primary">
+                Filled in from your saved location — change it only if this item is somewhere else.
+              </p>
+            )}
             <Field
               label="City"
               value={city}
