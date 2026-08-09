@@ -205,6 +205,13 @@ export default function StoreProductPage() {
           <span className="text-3xl font-black">{formatPrice(listing.price, listing.listing_type)}</span>
           <span className="text-[12px] text-muted-foreground">each</span>
         </div>
+        {away && (
+          <p className="mt-1 flex items-center gap-1.5 text-[13px] text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            Nearby · {away}
+          </p>
+        )}
+
 
         {photos.length > 0 && (
           <div className="mt-3">
