@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
-import BattleCard from "@/components/BattleCard";
-import ProfilePostCard from "@/components/ProfilePostCard";
+import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import { fetchFeedItems } from "@/lib/feed-items";
 
 interface Props {
@@ -9,8 +10,14 @@ interface Props {
   isOwner: boolean;
 }
 
+/**
+ * Profile feed = only what this user posted (posts + their battles).
+ * Tapping a tile opens the same fullscreen swipe viewer as the home feed,
+ * so every action icon and auto-advance behaviour matches exactly.
+ */
 const ProfileFeedSection = ({ userId }: Props) => {
   const { user } = useAuth();
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["profile-posts", userId],
@@ -30,15 +37,27 @@ const ProfileFeedSection = ({ userId }: Props) => {
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {items.map((item: any) =>
-        item.itemType === "battle" ? (
-          <BattleCard key={`battle-${item.id}`} battle={item} />
-        ) : (
-          <ProfilePostCard key={`post-${item.id}`} post={item} />
-        )
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((item: any, index: number) => (
+          <FeedThumbCard
+            key={`${item.itemType}-${item.id}`}
+            post={item}
+            compact
+            onOpen={() => setOpenIndex(index)}
+          />
+        ))}
+      </div>
+
+      {openIndex !== null && (
+        <FeedFullscreenViewer
+          items={items}
+          startIndex={openIndex}
+          currentUserId={user?.id}
+          onClose={() => setOpenIndex(null)}
+        />
       )}
-    </div>
+    </>
   );
 };
 
