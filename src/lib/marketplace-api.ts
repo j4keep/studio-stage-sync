@@ -124,6 +124,8 @@ export type MarketplaceListing = {
   firm_price: boolean;
   open_to_offers: boolean;
   delivery: boolean;
+  /** Seller-set fee charged when they drop the item off */
+  delivery_fee: number;
   shipping: boolean;
   local_pickup: boolean;
   city: string | null;
@@ -164,6 +166,7 @@ export type ListingInput = {
   firm_price?: boolean;
   open_to_offers?: boolean;
   delivery?: boolean;
+  delivery_fee?: number;
   shipping?: boolean;
   local_pickup?: boolean;
   city?: string | null;
@@ -206,6 +209,7 @@ function mapListing(row: any, extras?: Partial<MarketplaceListing>): Marketplace
     firm_price: Boolean(row.firm_price),
     open_to_offers: row.open_to_offers !== false,
     delivery: Boolean(row.delivery),
+    delivery_fee: Number(row.delivery_fee || 0),
     shipping: Boolean(row.shipping),
     local_pickup: row.local_pickup !== false,
     city: row.city,
@@ -467,6 +471,7 @@ export async function createMarketplaceListing(sellerId: string, input: ListingI
     firm_price: Boolean(input.firm_price),
     open_to_offers: input.open_to_offers !== false,
     delivery: Boolean(input.delivery),
+    delivery_fee: input.delivery ? Math.max(0, Number(input.delivery_fee || 0)) : 0,
     shipping: Boolean(input.shipping),
     local_pickup: input.local_pickup !== false,
     city: input.city || null,
@@ -527,6 +532,7 @@ export async function updateMarketplaceListing(
     "firm_price",
     "open_to_offers",
     "delivery",
+    "delivery_fee",
     "shipping",
     "local_pickup",
     "city",

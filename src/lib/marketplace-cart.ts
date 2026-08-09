@@ -12,6 +12,9 @@ export type CartLine = {
   cover_url: string | null;
   /** Seller's current inventory for this listing */
   stock: number;
+  /** Seller-set delivery fee for this listing */
+  delivery_fee: number;
+  delivery: boolean;
 };
 
 export type MarketplaceCart = {
@@ -21,6 +24,9 @@ export type MarketplaceCart = {
   status: CartStatus;
   fulfillment: "pickup" | "delivery";
   delivery_fee: number;
+  /** Highest seller delivery fee among the items (used before the order is sent) */
+  delivery_fee_estimate: number;
+  delivery_available: boolean;
   delivery_address: string | null;
   note: string | null
   created_at: string;
@@ -48,7 +54,7 @@ async function hydrate(rows: any[]): Promise<MarketplaceCart[]> {
     listingIds.length
       ? (supabase as any)
           .from("marketplace_listings")
-          .select("id, title, price, cover_url, quantity, status")
+          .select("id, title, price, cover_url, quantity, status, delivery, delivery_fee")
           .in("id", listingIds)
       : Promise.resolve({ data: [] }),
     peopleIds.length
@@ -72,16 +78,22 @@ async function hydrate(rows: any[]): Promise<MarketplaceCart[]> {
           title: l.title || "Item",
           cover_url: resolveMarketplaceMediaUrl(l.cover_url),
           stock: Number(l.quantity ?? 0),
+          delivery_fee: Number(l.delivery_fee || 0),
+          delivery: Boolean(l.delivery),
         };
       });
     const subtotal = items.reduce((s, i) => s + i.qty * i.unit_price, 0);
     const fee = Number(r.delivery_fee || 0);
+    const estimate = items.reduce((m, i) => Math.max(m, i.delivery_fee), 0);
+    const deliveryAvailable = items.length > 0 && items.some((i) => i.delivery);
     return {
       ...r,
       delivery_fee: fee,
+      delivery_fee_estimate: estimate,
+      delivery_available: deliveryAvailable,
       items,
       subtotal,
-      total: subtotal + (r.fulfillment === "delivery" ? fee : 0),
+      total: subtotal + (r.fulfillment === "delivery" ? fee || estimate : 0),
       buyer: profileMap.get(r.buyer_id) || null,
       seller: profileMap.get(r.seller_id) || null,
     } as MarketplaceCart;
