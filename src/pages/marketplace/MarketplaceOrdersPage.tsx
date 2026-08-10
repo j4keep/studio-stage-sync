@@ -51,6 +51,23 @@ export default function MarketplaceOrdersPage() {
     }
   };
 
+  /** Seller's own confirmation — closes the sale and lets the buyer rate them. */
+  const complete = async (cart: MarketplaceCart) => {
+    setBusy(cart.id);
+    try {
+      const parsed = Number(fee[cart.id]);
+      if (Number.isFinite(parsed) && fee[cart.id]) await setCartStatus(cart.id, "approved", parsed);
+      await completeCart(cart.id);
+      toast.success("Sale completed — the buyer can now rate you");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not complete this sale");
+    } finally {
+      setBusy(null);
+    }
+  };
+
+
   if (!user) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-6">
