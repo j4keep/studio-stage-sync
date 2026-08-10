@@ -13,6 +13,11 @@ import {
 } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 import { useSellerDistance } from "@/hooks/use-seller-distance";
+import StoreRatingStars from "@/components/marketplace/StoreRatingStars";
+import StoreReviewsSection from "@/components/marketplace/StoreReviewsSection";
+import { fetchStoreRating } from "@/lib/store-reviews";
+import { resolveDisplayRating, type DisplayRating } from "@/lib/ratings";
+
 
 /** One seller's $1–$5 storefront: header, tagline, delivery terms and all of their products. */
 export default function StorePage() {
