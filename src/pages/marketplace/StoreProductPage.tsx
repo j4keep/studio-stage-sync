@@ -49,7 +49,11 @@ export default function StoreProductPage() {
     try {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
-      if (row?.seller_id) setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
+      if (row?.seller_id) {
+        setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
+        setStoreRating(await fetchStoreRating(row.seller_id).catch(() => resolveDisplayRating(null, 0)));
+      }
+
       if (user) setCarts(await listMyOpenCarts(user.id));
     } catch (e: any) {
       toast.error(e?.message || "Could not load this item");
