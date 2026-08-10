@@ -200,7 +200,31 @@ export default function MarketplacePurchasesPage() {
                 </p>
               </div>
 
-              <div className="mt-2.5 flex gap-2">
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {!o.buyer_completed_at && o.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    disabled={busy === o.id}
+                    onClick={() => void confirm(o)}
+                    className="rounded-full bg-primary px-3 py-1.5 text-[12px] font-black text-primary-foreground disabled:opacity-50"
+                  >
+                    Complete order
+                  </button>
+                )}
+                {o.seller_completed_at && !reviewed.has(o.id) && (
+                  <button
+                    type="button"
+                    onClick={() => setRating(o)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1.5 text-[12px] font-black text-amber-600"
+                  >
+                    <Star className="h-3.5 w-3.5" /> Rate seller
+                  </button>
+                )}
+                {o.seller_completed_at && reviewed.has(o.id) && (
+                  <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground">
+                    Rated
+                  </span>
+                )}
                 <button
                   type="button"
                   disabled={busy === o.id}
@@ -218,6 +242,12 @@ export default function MarketplacePurchasesPage() {
                   Message seller
                 </button>
               </div>
+              {!o.seller_completed_at && o.status !== "cancelled" && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  You can rate this seller once they mark the sale complete.
+                </p>
+              )}
+
             </div>
           ))}
         </div>
