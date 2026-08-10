@@ -4,8 +4,16 @@ import { ArrowLeft, Loader2, Receipt, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { CART_STATUS_LABEL, listCartsForUser, type MarketplaceCart } from "@/lib/marketplace-cart";
+import {
+  CART_STATUS_LABEL,
+  completeCart,
+  listCartsForUser,
+  type MarketplaceCart,
+} from "@/lib/marketplace-cart";
 import { listReceipts, sendReceipt } from "@/lib/marketplace-receipts";
+import { listMyReviewedCartIds } from "@/lib/store-reviews";
+import RateStoreSellerSheet from "@/components/marketplace/RateStoreSellerSheet";
+
 
 /** Everything the buyer has bought — marketplace and $1–$5 store orders. */
 export default function MarketplacePurchasesPage() {
