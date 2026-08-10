@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, Share2, ShoppingCart, Star, Store, Truck } from "lucide-react";
+import { ArrowLeft, ChevronDown, Loader2, MapPin, MessageCircle, Share2, ShoppingCart, Store, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
@@ -17,6 +17,11 @@ import { getDeliveryQuoteAt, milesAwayLabel, type DeliveryQuote } from "@/lib/ma
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
 import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
 import ShareListingSheet from "@/components/marketplace/ShareListingSheet";
+import StoreRatingStars from "@/components/marketplace/StoreRatingStars";
+import StoreReviewsSection from "@/components/marketplace/StoreReviewsSection";
+import { fetchStoreRating } from "@/lib/store-reviews";
+import { resolveDisplayRating, type DisplayRating } from "@/lib/ratings";
+
 
 const isVideoUrl = (u: string) => /\.(mp4|mov|webm|m4v)(\?|$)/i.test(u);
 
@@ -34,7 +39,9 @@ export default function StoreProductPage() {
   const [busy, setBusy] = useState(false);
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
+  const [storeRating, setStoreRating] = useState<DisplayRating>(resolveDisplayRating(null, 0));
   const stripRef = useRef<HTMLDivElement | null>(null);
+
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -42,7 +49,11 @@ export default function StoreProductPage() {
     try {
       const row = await getMarketplaceListing(id, user?.id);
       setListing(row);
-      if (row?.seller_id) setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
+      if (row?.seller_id) {
+        setStore(await getMarketplaceProfile(row.seller_id).catch(() => null));
+        setStoreRating(await fetchStoreRating(row.seller_id).catch(() => resolveDisplayRating(null, 0)));
+      }
+
       if (user) setCarts(await listMyOpenCarts(user.id));
     } catch (e: any) {
       toast.error(e?.message || "Could not load this item");
@@ -207,14 +218,11 @@ export default function StoreProductPage() {
           </span>
         </button>
 
-        <div className="mt-1 flex items-center gap-1 text-amber-500">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="h-3.5 w-3.5 fill-current" />
-          ))}
-          <span className="ml-1 text-[12px] font-semibold text-muted-foreground">
-            {listing.views_count} views
-          </span>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <StoreRatingStars rating={storeRating} />
+          <span className="text-[12px] text-muted-foreground">· {listing.views_count} views</span>
         </div>
+
 
         <div className="mt-3 flex items-baseline gap-2">
           <span className="text-3xl font-black">{formatPrice(listing.price, listing.listing_type)}</span>
@@ -409,7 +417,10 @@ export default function StoreProductPage() {
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{listing.description}</p>
           </div>
         )}
+
+        <StoreReviewsSection sellerId={listing.seller_id} listingId={listing.id} />
       </div>
+
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur">
         <div className="mx-auto flex max-w-lg gap-2">

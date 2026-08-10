@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, Receipt, Store } from "lucide-react";
+import { ArrowLeft, Loader2, Receipt, Star, Store } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { CART_STATUS_LABEL, listCartsForUser, type MarketplaceCart } from "@/lib/marketplace-cart";
+import {
+  CART_STATUS_LABEL,
+  completeCart,
+  listCartsForUser,
+  type MarketplaceCart,
+} from "@/lib/marketplace-cart";
 import { listReceipts, sendReceipt } from "@/lib/marketplace-receipts";
+import { listMyReviewedCartIds } from "@/lib/store-reviews";
+import RateStoreSellerSheet from "@/components/marketplace/RateStoreSellerSheet";
+
 
 /** Everything the buyer has bought — marketplace and $1–$5 store orders. */
 export default function MarketplacePurchasesPage() {
@@ -15,6 +23,8 @@ export default function MarketplacePurchasesPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "pending" | "completed">("all");
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
+  const [rating, setRating] = useState<MarketplaceCart | null>(null);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -25,12 +35,28 @@ export default function MarketplacePurchasesPage() {
     try {
       const rows = await listCartsForUser(user.id, "buyer");
       setOrders(rows.filter((o) => o.status !== "open"));
+      setReviewed(await listMyReviewedCartIds(user.id).catch(() => new Set<string>()));
     } catch (e: any) {
       toast.error(e?.message || "Could not load your purchases");
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  /** Buyer confirms they received the order. */
+  const confirm = async (order: MarketplaceCart) => {
+    setBusy(order.id);
+    try {
+      await completeCart(order.id);
+      toast.success("Thanks — order confirmed");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not confirm this order");
+    } finally {
+      setBusy(null);
+    }
+  };
+
 
   useEffect(() => {
     void load();
@@ -174,7 +200,31 @@ export default function MarketplacePurchasesPage() {
                 </p>
               </div>
 
-              <div className="mt-2.5 flex gap-2">
+              <div className="mt-2.5 flex flex-wrap gap-2">
+                {!o.buyer_completed_at && o.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    disabled={busy === o.id}
+                    onClick={() => void confirm(o)}
+                    className="rounded-full bg-primary px-3 py-1.5 text-[12px] font-black text-primary-foreground disabled:opacity-50"
+                  >
+                    Complete order
+                  </button>
+                )}
+                {o.seller_completed_at && !reviewed.has(o.id) && (
+                  <button
+                    type="button"
+                    onClick={() => setRating(o)}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-3 py-1.5 text-[12px] font-black text-amber-600"
+                  >
+                    <Star className="h-3.5 w-3.5" /> Rate seller
+                  </button>
+                )}
+                {o.seller_completed_at && reviewed.has(o.id) && (
+                  <span className="rounded-full bg-muted px-3 py-1.5 text-[12px] font-bold text-muted-foreground">
+                    Rated
+                  </span>
+                )}
                 <button
                   type="button"
                   disabled={busy === o.id}
@@ -192,10 +242,28 @@ export default function MarketplacePurchasesPage() {
                   Message seller
                 </button>
               </div>
+              {!o.seller_completed_at && o.status !== "cancelled" && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  You can rate this seller once they mark the sale complete.
+                </p>
+              )}
+
             </div>
           ))}
         </div>
       )}
+
+      {rating && user && (
+        <RateStoreSellerSheet
+          cartId={rating.id}
+          sellerId={rating.seller_id}
+          buyerId={user.id}
+          sellerName={rating.seller?.display_name || "this seller"}
+          onClose={() => setRating(null)}
+          onRated={() => void load()}
+        />
+      )}
     </div>
+
   );
 }

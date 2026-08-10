@@ -4,7 +4,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { CART_STATUS_LABEL, listCartsForUser, setCartStatus, type MarketplaceCart } from "@/lib/marketplace-cart";
+import {
+  CART_STATUS_LABEL,
+  completeCart,
+  listCartsForUser,
+  setCartStatus,
+  type MarketplaceCart,
+} from "@/lib/marketplace-cart";
+
 
 export default function MarketplaceOrdersPage() {
   const nav = useNavigate();
@@ -43,6 +50,23 @@ export default function MarketplaceOrdersPage() {
       setBusy(null);
     }
   };
+
+  /** Seller's own confirmation — closes the sale and lets the buyer rate them. */
+  const complete = async (cart: MarketplaceCart) => {
+    setBusy(cart.id);
+    try {
+      const parsed = Number(fee[cart.id]);
+      if (Number.isFinite(parsed) && fee[cart.id]) await setCartStatus(cart.id, "approved", parsed);
+      await completeCart(cart.id);
+      toast.success("Sale completed — the buyer can now rate you");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not complete this sale");
+    } finally {
+      setBusy(null);
+    }
+  };
+
 
   if (!user) {
     return (
@@ -142,10 +166,10 @@ export default function MarketplaceOrdersPage() {
                     <button
                       type="button"
                       disabled={busy === cart.id}
-                      onClick={() => void act(cart, "completed")}
+                      onClick={() => void complete(cart)}
                       className="h-11 flex-1 rounded-full bg-muted text-xs font-black disabled:opacity-60"
                     >
-                      Completed
+                      Complete sale
                     </button>
                     <button
                       type="button"
@@ -157,6 +181,13 @@ export default function MarketplaceOrdersPage() {
                     </button>
                   </div>
                 )}
+                {cart.status !== "open" && cart.status !== "cancelled" && (
+                  <p className="text-[11.5px] text-muted-foreground">
+                    {cart.seller_completed_at ? "You completed this sale" : "You haven't completed this sale yet"} ·{" "}
+                    {cart.buyer_completed_at ? "buyer confirmed" : "waiting on buyer confirmation"}
+                  </p>
+                )}
+
                 <button
                   type="button"
                   onClick={() => nav(`/messages?user=${cart.buyer_id}`)}

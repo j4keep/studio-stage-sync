@@ -13,6 +13,11 @@ import {
 } from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 import { useSellerDistance } from "@/hooks/use-seller-distance";
+import StoreRatingStars from "@/components/marketplace/StoreRatingStars";
+import StoreReviewsSection from "@/components/marketplace/StoreReviewsSection";
+import { fetchStoreRating } from "@/lib/store-reviews";
+import { resolveDisplayRating, type DisplayRating } from "@/lib/ratings";
+
 
 /** One seller's $1–$5 storefront: header, tagline, delivery terms and all of their products. */
 export default function StorePage() {
@@ -24,6 +29,8 @@ export default function StorePage() {
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  const [rating, setRating] = useState<DisplayRating>(resolveDisplayRating(null, 0));
+
 
   const load = useCallback(async () => {
     if (!sellerId) return;
@@ -42,7 +49,9 @@ export default function StorePage() {
       ]);
       setStore(prof);
       setRows(listings);
+      setRating(await fetchStoreRating(sellerId).catch(() => resolveDisplayRating(null, 0)));
       if (user) setCarts(await listMyOpenCarts(user.id));
+
     } catch (e: any) {
       toast.error(e?.message || "Could not load this store");
     } finally {
@@ -131,7 +140,9 @@ export default function StorePage() {
             </div>
             <div className="space-y-2 px-4 py-3">
               <h1 className="text-lg font-black leading-tight">{storeName}</h1>
+              <StoreRatingStars rating={rating} size="md" />
               {store?.store_tagline && (
+
                 <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
                   {store.store_tagline}
                 </p>
@@ -225,7 +236,9 @@ export default function StorePage() {
                 })}
               </div>
             )}
+            {sellerId && <StoreReviewsSection sellerId={sellerId} />}
           </div>
+
         </>
       )}
     </div>

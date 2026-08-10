@@ -2055,6 +2055,7 @@ export type Database = {
       }
       marketplace_carts: {
         Row: {
+          buyer_completed_at: string | null
           buyer_id: string
           created_at: string
           delivery_address: string | null
@@ -2062,12 +2063,15 @@ export type Database = {
           delivery_miles: number | null
           fulfillment: string
           id: string
+          last_complete_reminder_at: string | null
           note: string | null
+          seller_completed_at: string | null
           seller_id: string
           status: string
           updated_at: string
         }
         Insert: {
+          buyer_completed_at?: string | null
           buyer_id: string
           created_at?: string
           delivery_address?: string | null
@@ -2075,12 +2079,15 @@ export type Database = {
           delivery_miles?: number | null
           fulfillment?: string
           id?: string
+          last_complete_reminder_at?: string | null
           note?: string | null
+          seller_completed_at?: string | null
           seller_id: string
           status?: string
           updated_at?: string
         }
         Update: {
+          buyer_completed_at?: string | null
           buyer_id?: string
           created_at?: string
           delivery_address?: string | null
@@ -2088,7 +2095,9 @@ export type Database = {
           delivery_miles?: number | null
           fulfillment?: string
           id?: string
+          last_complete_reminder_at?: string | null
           note?: string | null
+          seller_completed_at?: string | null
           seller_id?: string
           status?: string
           updated_at?: string
@@ -4094,6 +4103,56 @@ export type Database = {
         }
         Relationships: []
       }
+      store_seller_reviews: {
+        Row: {
+          buyer_id: string
+          cart_id: string
+          comment: string | null
+          created_at: string
+          id: string
+          listing_id: string | null
+          score: number
+          seller_id: string
+          seller_replied_at: string | null
+          seller_reply: string | null
+          updated_at: string
+        }
+        Insert: {
+          buyer_id: string
+          cart_id: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          score: number
+          seller_id: string
+          seller_replied_at?: string | null
+          seller_reply?: string | null
+          updated_at?: string
+        }
+        Update: {
+          buyer_id?: string
+          cart_id?: string
+          comment?: string | null
+          created_at?: string
+          id?: string
+          listing_id?: string | null
+          score?: number
+          seller_id?: string
+          seller_replied_at?: string | null
+          seller_reply?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_seller_reviews_cart_id_fkey"
+            columns: ["cart_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_carts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_availability: {
         Row: {
           created_at: string
@@ -4947,6 +5006,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      mp_complete_cart: { Args: { p_cart_id: string }; Returns: undefined }
       mp_find_or_create_conversation: {
         Args: { _a: string; _b: string }
         Returns: string
@@ -4959,6 +5019,7 @@ export type Database = {
         Args: { p_cart_id: string; p_delivery_fee?: number; p_status: string }
         Returns: undefined
       }
+      mp_store_completion_reminders: { Args: never; Returns: number }
       mp_submit_cart:
         | {
             Args: {
