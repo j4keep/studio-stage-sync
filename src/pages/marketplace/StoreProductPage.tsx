@@ -417,7 +417,10 @@ export default function StoreProductPage() {
             <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{listing.description}</p>
           </div>
         )}
+
+        <StoreReviewsSection sellerId={listing.seller_id} listingId={listing.id} />
       </div>
+
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur">
         <div className="mx-auto flex max-w-lg gap-2">
