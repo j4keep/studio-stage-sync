@@ -236,7 +236,9 @@ export default function StorePage() {
                 })}
               </div>
             )}
+            {sellerId && <StoreReviewsSection sellerId={sellerId} />}
           </div>
+
         </>
       )}
     </div>
