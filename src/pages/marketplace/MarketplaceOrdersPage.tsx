@@ -166,10 +166,10 @@ export default function MarketplaceOrdersPage() {
                     <button
                       type="button"
                       disabled={busy === cart.id}
-                      onClick={() => void act(cart, "completed")}
+                      onClick={() => void complete(cart)}
                       className="h-11 flex-1 rounded-full bg-muted text-xs font-black disabled:opacity-60"
                     >
-                      Completed
+                      Complete sale
                     </button>
                     <button
                       type="button"
@@ -181,6 +181,13 @@ export default function MarketplaceOrdersPage() {
                     </button>
                   </div>
                 )}
+                {cart.status !== "open" && cart.status !== "cancelled" && (
+                  <p className="text-[11.5px] text-muted-foreground">
+                    {cart.seller_completed_at ? "You completed this sale" : "You haven't completed this sale yet"} ·{" "}
+                    {cart.buyer_completed_at ? "buyer confirmed" : "waiting on buyer confirmation"}
+                  </p>
+                )}
+
                 <button
                   type="button"
                   onClick={() => nav(`/messages?user=${cart.buyer_id}`)}
