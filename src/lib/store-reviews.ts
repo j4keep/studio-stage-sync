@@ -124,3 +124,12 @@ function cleanError(msg?: string) {
   if (/row-level security/i.test(m)) return "You can only rate a seller after they complete your order";
   return m || "Something went wrong";
 }
+
+/** Cart ids the buyer has already rated, for hiding the rate button. */
+export async function listMyReviewedCartIds(buyerId: string): Promise<Set<string>> {
+  const { data } = await (supabase as any)
+    .from("store_seller_reviews")
+    .select("cart_id")
+    .eq("buyer_id", buyerId);
+  return new Set(((data || []) as { cart_id: string }[]).map((r) => r.cart_id));
+}
