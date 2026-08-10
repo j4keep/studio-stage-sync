@@ -252,6 +252,18 @@ export default function MarketplacePurchasesPage() {
           ))}
         </div>
       )}
+
+      {rating && user && (
+        <RateStoreSellerSheet
+          cartId={rating.id}
+          sellerId={rating.seller_id}
+          buyerId={user.id}
+          sellerName={rating.seller?.display_name || "this seller"}
+          onClose={() => setRating(null)}
+          onRated={() => void load()}
+        />
+      )}
     </div>
+
   );
 }
