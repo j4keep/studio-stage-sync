@@ -218,14 +218,11 @@ export default function StoreProductPage() {
           </span>
         </button>
 
-        <div className="mt-1 flex items-center gap-1 text-amber-500">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <Star key={i} className="h-3.5 w-3.5 fill-current" />
-          ))}
-          <span className="ml-1 text-[12px] font-semibold text-muted-foreground">
-            {listing.views_count} views
-          </span>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+          <StoreRatingStars rating={storeRating} />
+          <span className="text-[12px] text-muted-foreground">· {listing.views_count} views</span>
         </div>
+
 
         <div className="mt-3 flex items-baseline gap-2">
           <span className="text-3xl font-black">{formatPrice(listing.price, listing.listing_type)}</span>
