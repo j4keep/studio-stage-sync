@@ -23,6 +23,8 @@ export default function MarketplacePurchasesPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [tab, setTab] = useState<"all" | "pending" | "completed">("all");
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
+  const [rating, setRating] = useState<MarketplaceCart | null>(null);
 
   const load = useCallback(async () => {
     if (!user) {
@@ -33,12 +35,28 @@ export default function MarketplacePurchasesPage() {
     try {
       const rows = await listCartsForUser(user.id, "buyer");
       setOrders(rows.filter((o) => o.status !== "open"));
+      setReviewed(await listMyReviewedCartIds(user.id).catch(() => new Set<string>()));
     } catch (e: any) {
       toast.error(e?.message || "Could not load your purchases");
     } finally {
       setLoading(false);
     }
   }, [user]);
+
+  /** Buyer confirms they received the order. */
+  const confirm = async (order: MarketplaceCart) => {
+    setBusy(order.id);
+    try {
+      await completeCart(order.id);
+      toast.success("Thanks — order confirmed");
+      await load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not confirm this order");
+    } finally {
+      setBusy(null);
+    }
+  };
+
 
   useEffect(() => {
     void load();
