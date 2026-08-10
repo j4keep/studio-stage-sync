@@ -108,8 +108,11 @@ export default function MarketplaceReceiptsPage() {
                   <p className="truncate text-[12px] font-black">{r.receipt_no}</p>
                   <p className="text-[11px] text-muted-foreground">
                     {new Date(r.created_at).toLocaleDateString()} ·{" "}
-                    {role === "seller" ? r.buyer?.display_name || "Buyer" : r.seller?.display_name || "Seller"}
+                    {role === "seller"
+                      ? r.buyer?.display_name || "Buyer"
+                      : r.store_name || r.seller?.display_name || "Seller"}
                   </p>
+
                 </div>
                 <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-bold capitalize">
                   {r.fulfillment}

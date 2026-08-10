@@ -114,18 +114,23 @@ export async function fetchHappeningItems(opts: {
   // Battles stay on the Posts rail only (same as a regular video post).
 
   for (const listing of marketResult || []) {
+    // $1–$5 finds live in the store product page; everything else in the listing page.
+    const isDollarStore = String((listing as any).listing_type) === "five_under";
     items.push({
       id: `marketplace-${listing.id}`,
       kind: "marketplace",
       title: safeTitle(listing.title, "Marketplace listing"),
-      subtitle: "Marketplace",
+      subtitle: isDollarStore ? "$1–$5 Store" : "Marketplace",
       coverUrl: listingCoverUrl(listing),
       mediaType: "image",
       createdAt: listing.created_at,
-      route: `/marketplace/listing/${listing.id}`,
+      route: isDollarStore
+        ? `/marketplace/product/${listing.id}`
+        : `/marketplace/listing/${listing.id}`,
       sourceId: listing.id,
     });
   }
+
 
   for (const job of jobsResult.data || []) {
     const media = Array.isArray(job.media) ? job.media : [];
