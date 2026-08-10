@@ -39,7 +39,9 @@ export default function StoreProductPage() {
   const [busy, setBusy] = useState(false);
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
   const [shareOpen, setShareOpen] = useState(false);
+  const [storeRating, setStoreRating] = useState<DisplayRating>(resolveDisplayRating(null, 0));
   const stripRef = useRef<HTMLDivElement | null>(null);
+
 
   const load = useCallback(async () => {
     if (!id) return;
