@@ -40,9 +40,12 @@ export async function listReceipts(userId: string, role: "seller" | "buyer"): Pr
 
 /** Plain-text receipt body — readable in chat and easy to screenshot. */
 export function receiptText(r: MarketplaceReceipt, storeName?: string | null) {
+  // The store name always wins over a profile/user name.
+  const store = (r.store_name || storeName || "").trim();
   const lines = [
     `RECEIPT ${r.receipt_no}`,
-    storeName ? `Store: ${storeName}` : null,
+    store ? `Store: ${store}` : null,
+
     `Date: ${new Date(r.created_at).toLocaleDateString()}`,
     "",
     ...r.items.map((i) => `${i.qty} x ${i.title} — ${formatPrice(i.qty * i.unit_price)}`),
