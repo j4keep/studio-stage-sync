@@ -171,6 +171,17 @@ export async function setCartStatus(
   if (error) throw new Error(cleanError(error.message));
 }
 
+/**
+ * Both sides confirm a sale. The seller's Complete closes the order (and unlocks
+ * rating for the buyer); the buyer's Complete confirms they received it.
+ */
+export async function completeCart(cartId: string) {
+  const { error } = await (supabase as any).rpc("mp_complete_cart", { p_cart_id: cartId });
+  if (error) throw new Error(cleanError(error.message));
+}
+
+
+
 function cleanError(msg?: string) {
   const m = (msg || "Something went wrong").replace(/^.*?:\s*/, "");
   return m || "Something went wrong";
