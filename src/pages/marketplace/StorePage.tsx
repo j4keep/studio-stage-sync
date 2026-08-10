@@ -29,6 +29,8 @@ export default function StorePage() {
   const [carts, setCarts] = useState<MarketplaceCart[]>([]);
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState<string | null>(null);
+  const [rating, setRating] = useState<DisplayRating>(resolveDisplayRating(null, 0));
+
 
   const load = useCallback(async () => {
     if (!sellerId) return;
@@ -47,7 +49,9 @@ export default function StorePage() {
       ]);
       setStore(prof);
       setRows(listings);
+      setRating(await fetchStoreRating(sellerId).catch(() => resolveDisplayRating(null, 0)));
       if (user) setCarts(await listMyOpenCarts(user.id));
+
     } catch (e: any) {
       toast.error(e?.message || "Could not load this store");
     } finally {
