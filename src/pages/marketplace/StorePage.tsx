@@ -140,7 +140,9 @@ export default function StorePage() {
             </div>
             <div className="space-y-2 px-4 py-3">
               <h1 className="text-lg font-black leading-tight">{storeName}</h1>
+              <StoreRatingStars rating={rating} size="md" />
               {store?.store_tagline && (
+
                 <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-muted-foreground">
                   {store.store_tagline}
                 </p>
