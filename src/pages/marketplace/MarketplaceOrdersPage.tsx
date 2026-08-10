@@ -4,7 +4,14 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatPrice } from "@/lib/marketplace";
-import { CART_STATUS_LABEL, listCartsForUser, setCartStatus, type MarketplaceCart } from "@/lib/marketplace-cart";
+import {
+  CART_STATUS_LABEL,
+  completeCart,
+  listCartsForUser,
+  setCartStatus,
+  type MarketplaceCart,
+} from "@/lib/marketplace-cart";
+
 
 export default function MarketplaceOrdersPage() {
   const nav = useNavigate();
