@@ -31,6 +31,11 @@ export type MarketplaceCart = {
   note: string | null
   created_at: string;
   updated_at: string;
+  /** Set when the seller pressed Complete */
+  seller_completed_at: string | null;
+  /** Set when the buyer confirmed they received the order */
+  buyer_completed_at: string | null;
+
   items: CartLine[];
   subtotal: number;
   total: number;
