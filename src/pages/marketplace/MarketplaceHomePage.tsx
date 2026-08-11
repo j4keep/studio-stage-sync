@@ -9,6 +9,7 @@ import {
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
+import fiveUnderBanner from "@/assets/five-under-banner.png.asset.json";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
 import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
