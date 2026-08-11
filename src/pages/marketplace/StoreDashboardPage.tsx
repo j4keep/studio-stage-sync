@@ -560,6 +560,15 @@ export default function StoreDashboardPage() {
         </div>
       ) : (
         <div className="space-y-3 px-3 pt-3">
+          {!hasFiveUnderStorefront(profile) && (
+            <div className="rounded-2xl border border-primary/40 bg-primary/5 px-4 py-3">
+              <p className="text-sm font-black">Register your storefront</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                A store name, header image, description and delivery rate are required before you can post any $1–$5
+                product. Everything for this store is managed here.
+              </p>
+            </div>
+          )}
           <section className="overflow-hidden rounded-2xl border border-border bg-card">
             <div className="relative h-36 w-full bg-muted">
               {banner ? (
