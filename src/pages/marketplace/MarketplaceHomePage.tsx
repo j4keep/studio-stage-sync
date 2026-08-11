@@ -9,7 +9,7 @@ import {
   type MarketplaceListing,
 } from "@/lib/marketplace-api";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
-import fiveUnderBanner from "@/assets/five-under-banner-v2.png.asset.json";
+import fiveUnderBanner from "@/assets/five-under-banner-v3.png.asset.json";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
 import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
@@ -210,9 +210,9 @@ export default function MarketplaceHomePage() {
           <img
             src={fiveUnderBanner.url}
             alt="$1–$5 Finds — everything five dollars or less, near you. Local finds, pick up or delivery."
-            width={1536}
-            height={960}
-            className="block h-auto max-h-40 w-full object-cover object-center"
+            width={1888}
+            height={720}
+            className="block h-auto w-full"
             loading="lazy"
           />
         </button>
