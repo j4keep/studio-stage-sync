@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BottomNav from "./BottomNav";
 import GlobalRadioPlayer from "./GlobalRadioPlayer";
@@ -15,6 +15,7 @@ import DesktopTopBar from "./desktop/DesktopTopBar";
 import DesktopLeftNav from "./desktop/DesktopLeftNav";
 import DesktopHomeIconRail from "./desktop/DesktopHomeIconRail";
 import IncognitoHeaderButton from "./IncognitoHeaderButton";
+import { workoutMusic } from "@/lib/workout-music";
 
 function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/jobs/interview")) return false;
@@ -64,6 +65,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
   const isWellness = location.pathname === "/wellness" || location.pathname.startsWith("/wellness/");
+
+  // Workout music belongs only to the Move screen. This route-level guard
+  // also covers exits through bottom navigation, browser history, and links.
+  useEffect(() => {
+    if (location.pathname !== "/wellness/move") workoutMusic.stop();
+  }, [location.pathname]);
   // Marketplace / Wellness use their own headers (back → Explore); keep YAJ BottomNav for integration.
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) &&

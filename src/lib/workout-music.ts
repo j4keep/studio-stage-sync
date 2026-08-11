@@ -252,11 +252,19 @@ class WorkoutMusicEngine {
   }
 
   stop() {
+    // Clear the queue before detaching the source. Setting src to an empty
+    // value can fire the audio element's error event; if tracks remain queued,
+    // that handler calls next() and starts the workout music again.
+    this.queue = [];
+    this.index = 0;
+    this.duckDepth = 0;
+    if (this.ramp) window.clearInterval(this.ramp);
+    this.ramp = null;
     if (this.audio) {
       this.audio.pause();
-      this.audio.src = "";
+      this.audio.removeAttribute("src");
+      this.audio.load();
     }
-    this.duckDepth = 0;
     this.emit();
   }
 
