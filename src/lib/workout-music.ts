@@ -88,6 +88,8 @@ class WorkoutMusicEngine {
   private duckDepth = 0;
   private listeners = new Set<(s: WorkoutMusicState) => void>();
   private ramp: number | null = null;
+  private ctx: AudioContext | null = null;
+  private gain: GainNode | null = null;
 
   private ensureAudio(): HTMLAudioElement {
     if (!this.audio) {
@@ -99,8 +101,38 @@ class WorkoutMusicEngine {
       a.addEventListener("error", () => void this.next());
       this.audio = a;
     }
+    this.ensureGraph();
     return this.audio;
   }
+
+  /**
+   * iOS Safari ignores HTMLAudioElement.volume, so route playback through a
+   * Web Audio gain node — that is the only reliable way to duck on mobile.
+   */
+  private ensureGraph() {
+    if (this.gain || !this.audio) return;
+    try {
+      const Ctor: typeof AudioContext =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!Ctor) return;
+      const ctx = this.ctx ?? new Ctor();
+      this.ctx = ctx;
+      const src = ctx.createMediaElementSource(this.audio);
+      const gain = ctx.createGain();
+      gain.gain.value = getWorkoutVolume();
+      src.connect(gain);
+      gain.connect(ctx.destination);
+      this.gain = gain;
+    } catch {
+      /* fall back to element volume */
+    }
+  }
+
+  private resumeCtx() {
+    if (this.ctx && this.ctx.state === "suspended") void this.ctx.resume();
+  }
+
 
   get state(): WorkoutMusicState {
     return {
