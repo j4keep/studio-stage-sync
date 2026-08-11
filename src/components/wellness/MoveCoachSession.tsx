@@ -19,7 +19,9 @@ import {
 } from "lucide-react";
 
 import MoveFinishScreen from "@/components/wellness/MoveFinishScreen";
+import WorkoutPlaylistSheet from "@/components/wellness/WorkoutPlaylistSheet";
 import MoveInstructionCard from "@/components/wellness/MoveInstructionCard";
+
 import {
   bumpMoveStreak,
   COACH_VOICE_SPEEDS,
