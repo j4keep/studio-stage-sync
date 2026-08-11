@@ -239,7 +239,9 @@ class WorkoutMusicEngine {
     const audio = this.ensureAudio();
     const track = this.queue[this.index];
     audio.src = track?.audioUrl || "";
-    audio.volume = 0;
+    if (!this.gain) audio.volume = 0;
+    this.resumeCtx();
+
     try {
       await audio.play();
     } catch {
