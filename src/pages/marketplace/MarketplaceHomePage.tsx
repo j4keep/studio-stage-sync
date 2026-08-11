@@ -210,9 +210,9 @@ export default function MarketplaceHomePage() {
           <img
             src={fiveUnderBanner.url}
             alt="$1–$5 Finds — everything five dollars or less, near you. Local finds, pick up or delivery."
-            width={1536}
-            height={960}
-            className="block h-auto max-h-40 w-full object-cover object-center"
+            width={1888}
+            height={720}
+            className="block h-auto w-full"
             loading="lazy"
           />
         </button>
