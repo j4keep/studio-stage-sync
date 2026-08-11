@@ -3,8 +3,19 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Search, ShoppingCart } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FIVE_UNDER_MAX, FIVE_UNDER_MIN, formatPrice } from "@/lib/marketplace";
-import { listMarketplaceListings, listingCoverUrl, type MarketplaceListing } from "@/lib/marketplace-api";
+import {
+  FIVE_UNDER_MAX,
+  FIVE_UNDER_MIN,
+  FIVE_UNDER_STOREFRONT_ROUTE,
+  formatPrice,
+  hasFiveUnderStorefront,
+} from "@/lib/marketplace";
+import {
+  getMarketplaceProfile,
+  listMarketplaceListings,
+  listingCoverUrl,
+  type MarketplaceListing,
+} from "@/lib/marketplace-api";
 import { listMyOpenCarts, setCartItem, type MarketplaceCart } from "@/lib/marketplace-cart";
 
 const SORTS = [
@@ -62,6 +73,21 @@ export default function FiveUnderPage() {
     return out;
   }, [rows, query, sort]);
 
+
+  /** Selling here requires a registered storefront on the Professional Dashboard. */
+  const startSelling = async () => {
+    if (!user) return nav("/auth");
+    try {
+      const prof = await getMarketplaceProfile(user.id);
+      if (!hasFiveUnderStorefront(prof)) {
+        toast.info("Set up your $1–$5 storefront first");
+        return nav(FIVE_UNDER_STOREFRONT_ROUTE);
+      }
+    } catch {
+      return nav(FIVE_UNDER_STOREFRONT_ROUTE);
+    }
+    nav("/marketplace/create?type=five_under");
+  };
 
   const addOne = async (listing: MarketplaceListing) => {
     if (!user) return nav("/auth");
@@ -130,7 +156,7 @@ export default function FiveUnderPage() {
           ))}
           <button
             type="button"
-            onClick={() => nav("/marketplace/create?type=five_under")}
+            onClick={() => void startSelling()}
             className="ml-auto shrink-0 rounded-full border border-primary px-3 py-1.5 text-[12px] font-black text-primary"
           >
             Sell an item
@@ -165,7 +191,7 @@ export default function FiveUnderPage() {
             <p className="mt-1 text-sm text-muted-foreground">Post something for five dollars or less.</p>
             <button
               type="button"
-              onClick={() => nav("/marketplace/create?type=five_under")}
+              onClick={() => void startSelling()}
               className="mt-3 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
             >
               Post a $1–$5 Find

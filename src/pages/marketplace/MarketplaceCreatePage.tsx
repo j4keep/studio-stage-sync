@@ -8,6 +8,8 @@ import {
   CONDITIONS,
   FIVE_UNDER_MAX,
   FIVE_UNDER_MIN,
+  FIVE_UNDER_STOREFRONT_ROUTE,
+  hasFiveUnderStorefront,
   HEATING_TYPES,
   HOME_AMENITIES,
   HOME_DEAL_TYPES,
@@ -100,6 +102,12 @@ export default function MarketplaceCreatePage() {
     void getMarketplaceProfile(user.id)
       .then((p) => {
         if (!alive) return;
+        // $1–$5 products require a registered storefront on the Professional Dashboard.
+        if (startsAsFiveUnder && !hasFiveUnderStorefront(p)) {
+          toast.info("Set up your $1–$5 storefront first");
+          nav(FIVE_UNDER_STOREFRONT_ROUTE, { replace: true });
+          return;
+        }
         setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
         const saved = p?.store_address || p?.buyer_address || "";
         const match = saved.match(/([A-Za-z .'-]+),\s*([A-Za-z]{2})\s*(\d{5})?/);
@@ -113,7 +121,7 @@ export default function MarketplaceCreatePage() {
     return () => {
       alive = false;
     };
-  }, [user, editId]);
+  }, [user, editId, startsAsFiveUnder, nav]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("for-sale");
@@ -569,11 +577,24 @@ export default function MarketplaceCreatePage() {
                 key={t.id}
                 type="button"
                 onClick={() => {
+                  if (t.id === "five_under" && !editId) {
+                    void (async () => {
+                      const prof = user ? await getMarketplaceProfile(user.id).catch(() => null) : null;
+                      if (!hasFiveUnderStorefront(prof)) {
+                        toast.info("Set up your $1–$5 storefront first");
+                        nav(FIVE_UNDER_STOREFRONT_ROUTE);
+                        return;
+                      }
+                      setListingType("five_under");
+                      setCategory("for-sale");
+                      setStep(2);
+                    })();
+                    return;
+                  }
                   setListingType(t.id);
                   if (t.id === "free") setCategory("free");
                   if (t.id === "home") setCategory("rentals");
                   if (t.id === "automotive") setCategory("vehicles");
-                  if (t.id === "five_under") setCategory("for-sale");
                   setStep(2);
                 }}
                 className={`flex w-full items-center gap-3 rounded-[1.35rem] border p-4 text-left transition active:scale-[0.99] ${

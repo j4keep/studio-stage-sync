@@ -158,3 +158,16 @@ export function removeRecentSearch(term: string) {
     /* ignore */
   }
 }
+
+/**
+ * $1–$5 Store rule: sellers must register a storefront (name + banner) on the
+ * Professional Dashboard before they can post any $1–$5 product.
+ */
+export function hasFiveUnderStorefront(profile?: {
+  store_name?: string | null;
+  store_banner_url?: string | null;
+} | null) {
+  return Boolean(profile?.store_name?.trim() && profile?.store_banner_url);
+}
+
+export const FIVE_UNDER_STOREFRONT_ROUTE = "/marketplace/store-dashboard?tab=storefront&setup=1";
