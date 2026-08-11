@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, ImagePlus, Loader2, Pencil, Plus, Receipt, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
-import { FIVE_UNDER_MAX, FIVE_UNDER_MIN, formatPrice } from "@/lib/marketplace";
+import { FIVE_UNDER_MAX, FIVE_UNDER_MIN, formatPrice, hasFiveUnderStorefront } from "@/lib/marketplace";
 import {
   compressImage,
   getMarketplaceProfile,
@@ -26,7 +26,9 @@ type Tab = "orders" | "receipts" | "products" | "storefront";
 export default function StoreDashboardPage() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const [tab, setTab] = useState<Tab>("orders");
+  const [params] = useSearchParams();
+  const needsSetup = params.get("setup") === "1";
+  const [tab, setTab] = useState<Tab>((params.get("tab") as Tab) || (needsSetup ? "storefront" : "orders"));
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<MarketplaceCart[]>([]);
   const [products, setProducts] = useState<MarketplaceListing[]>([]);
@@ -270,7 +272,14 @@ export default function StoreDashboardPage() {
           </div>
           <button
             type="button"
-            onClick={() => nav("/marketplace/create?type=five_under")}
+            onClick={() => {
+              if (!hasFiveUnderStorefront(profile)) {
+                toast.info("Register your storefront first — name, banner and delivery.");
+                setTab("storefront");
+                return;
+              }
+              nav("/marketplace/create?type=five_under");
+            }}
             className="flex h-9 items-center gap-1 rounded-full bg-primary px-3 text-[12px] font-black text-primary-foreground"
           >
             <Plus className="h-3.5 w-3.5" /> Product
