@@ -44,6 +44,22 @@ export default function WellnessMovePage() {
     if (start && COACH_ROUTINES.some((r) => r.id === start)) setActiveId(start);
   }, [params]);
 
+  // Leaving the Move page (or backgrounding the app) must kill workout music.
+  useEffect(() => {
+    const stop = () => workoutMusic.stop();
+    const onHide = () => {
+      if (document.visibilityState === "hidden") stop();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", stop);
+      stop();
+    };
+  }, []);
+
+
   const startRoutine = (id: string) => {
     setActiveId(id);
     setSessionNonce((n) => n + 1);
