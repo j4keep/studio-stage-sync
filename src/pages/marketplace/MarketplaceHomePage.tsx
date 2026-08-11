@@ -203,20 +203,18 @@ export default function MarketplaceHomePage() {
         <button
           type="button"
           onClick={() => nav("/marketplace/five-under")}
-          className="flex w-full items-center gap-3 overflow-hidden rounded-[1.35rem] border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-transparent px-4 py-3.5 text-left active:scale-[0.99]"
+          className="block w-full overflow-hidden rounded-[1.35rem] border border-border shadow-sm active:scale-[0.99]"
+          aria-label="Shop $1–$5 Finds — everything five dollars or less"
         >
-          <span className="text-2xl">🖐</span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[15px] font-black leading-tight">$1–$5 Finds</span>
-            <span className="block text-[11px] text-muted-foreground">
-              Everything five dollars or less · build a cart, pick up or get it delivered
-            </span>
-          </span>
-          <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-[11px] font-black text-primary-foreground">
-            Shop
-          </span>
+          <img
+            src={fiveUnderBanner.url}
+            alt="$1–$5 Finds — great deals, big value. Everything five dollars or less, near you."
+            className="block w-full"
+            loading="lazy"
+          />
         </button>
       </div>
+
 
 
 
