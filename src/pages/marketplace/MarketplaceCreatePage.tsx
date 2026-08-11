@@ -100,6 +100,12 @@ export default function MarketplaceCreatePage() {
     void getMarketplaceProfile(user.id)
       .then((p) => {
         if (!alive) return;
+        // $1–$5 products require a registered storefront on the Professional Dashboard.
+        if (startsAsFiveUnder && !hasFiveUnderStorefront(p)) {
+          toast.info("Set up your $1–$5 storefront first");
+          nav(FIVE_UNDER_STOREFRONT_ROUTE, { replace: true });
+          return;
+        }
         setStoreHasAddress(Boolean(p?.store_address || (p?.store_lat != null && p?.store_lng != null)));
         const saved = p?.store_address || p?.buyer_address || "";
         const match = saved.match(/([A-Za-z .'-]+),\s*([A-Za-z]{2})\s*(\d{5})?/);
@@ -113,7 +119,7 @@ export default function MarketplaceCreatePage() {
     return () => {
       alive = false;
     };
-  }, [user, editId]);
+  }, [user, editId, startsAsFiveUnder, nav]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("for-sale");
