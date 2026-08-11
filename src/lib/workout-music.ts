@@ -62,7 +62,8 @@ export function setWorkoutVolume(v: number) {
 }
 
 /** Volume multiplier applied while the coach voice is speaking (gentle dim, never silence). */
-const DUCK_FACTOR = 0.55;
+const DUCK_FACTOR = 0.3;
+
 
 export type WorkoutMusicState = {
   playing: boolean;
