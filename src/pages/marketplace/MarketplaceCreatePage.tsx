@@ -577,11 +577,24 @@ export default function MarketplaceCreatePage() {
                 key={t.id}
                 type="button"
                 onClick={() => {
+                  if (t.id === "five_under" && !editId) {
+                    void (async () => {
+                      const prof = user ? await getMarketplaceProfile(user.id).catch(() => null) : null;
+                      if (!hasFiveUnderStorefront(prof)) {
+                        toast.info("Set up your $1–$5 storefront first");
+                        nav(FIVE_UNDER_STOREFRONT_ROUTE);
+                        return;
+                      }
+                      setListingType("five_under");
+                      setCategory("for-sale");
+                      setStep(2);
+                    })();
+                    return;
+                  }
                   setListingType(t.id);
                   if (t.id === "free") setCategory("free");
                   if (t.id === "home") setCategory("rentals");
                   if (t.id === "automotive") setCategory("vehicles");
-                  if (t.id === "five_under") setCategory("for-sale");
                   setStep(2);
                 }}
                 className={`flex w-full items-center gap-3 rounded-[1.35rem] border p-4 text-left transition active:scale-[0.99] ${
