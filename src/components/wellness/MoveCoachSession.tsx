@@ -4,7 +4,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Dumbbell,
+  ListMusic,
   Music2,
+  Square,
+
   Pause,
   Play,
   Repeat2,
@@ -16,7 +19,9 @@ import {
 } from "lucide-react";
 
 import MoveFinishScreen from "@/components/wellness/MoveFinishScreen";
+import WorkoutPlaylistSheet from "@/components/wellness/WorkoutPlaylistSheet";
 import MoveInstructionCard from "@/components/wellness/MoveInstructionCard";
+
 import {
   bumpMoveStreak,
   COACH_VOICE_SPEEDS,
@@ -157,9 +162,11 @@ export default function MoveCoachSession({
   const navigate = useNavigate();
   const { playlists, loadPlaylists } = usePlaylists();
   const [music, setMusic] = useState<WorkoutMusicState>(() => workoutMusic.state);
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const [workoutPlaylistId, setWorkoutPlaylistId] = useState<string | null>(() =>
     getWorkoutPlaylistId(),
   );
+
 
   useEffect(() => {
     const off = workoutMusic.subscribe(setMusic);
@@ -733,12 +740,20 @@ export default function MoveCoachSession({
             <p className="truncate text-[11px] font-semibold text-stone-500">
               {workoutPlaylist
                 ? "No playable songs in this playlist yet"
-                : "Set a workout playlist in Radio"}
+                : "Tap “Pick songs” to build your workout playlist"}
             </p>
           )}
         </div>
         {workoutPlaylist && music.queueLength > 0 ? (
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMusicPickerOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Edit workout playlist songs"
+            >
+              <ListMusic className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={toggleWorkoutMusic}
@@ -755,17 +770,36 @@ export default function MoveCoachSession({
             >
               <SkipForward className="h-4 w-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => workoutMusic.stop()}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Stop workout music"
+            >
+              <Square className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : (
           <button
             type="button"
-            onClick={() => navigate("/radio")}
-            className="rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white"
+            onClick={() => setMusicPickerOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white"
           >
-            Pick songs
+            <ListMusic className="h-3.5 w-3.5" /> Pick songs
           </button>
         )}
+
       </div>
+
+      <WorkoutPlaylistSheet
+        open={musicPickerOpen}
+        onClose={() => {
+          setMusicPickerOpen(false);
+          setWorkoutPlaylistId(getWorkoutPlaylistId());
+        }}
+        playlistId={workoutPlaylistId}
+      />
+
 
       {/* Controls */}
       <div className="border-t border-stone-200/80 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2.5">
