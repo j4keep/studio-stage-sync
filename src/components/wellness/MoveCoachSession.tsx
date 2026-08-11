@@ -789,6 +789,16 @@ export default function MoveCoachSession({
 
       </div>
 
+      <WorkoutPlaylistSheet
+        open={musicPickerOpen}
+        onClose={() => {
+          setMusicPickerOpen(false);
+          setWorkoutPlaylistId(getWorkoutPlaylistId());
+        }}
+        playlistId={workoutPlaylistId}
+      />
+
+
       {/* Controls */}
       <div className="border-t border-stone-200/80 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2.5">
 
