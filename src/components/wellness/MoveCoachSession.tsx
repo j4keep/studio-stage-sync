@@ -3,15 +3,18 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Dumbbell,
   Music2,
   Pause,
   Play,
   Repeat2,
   Settings2,
+  SkipForward,
   Volume2,
   VolumeX,
   X,
 } from "lucide-react";
+
 import MoveFinishScreen from "@/components/wellness/MoveFinishScreen";
 import MoveInstructionCard from "@/components/wellness/MoveInstructionCard";
 import {
@@ -47,6 +50,15 @@ import {
   unlockYajAudio,
   YAJ_TTS_VOICES,
 } from "@/lib/yaj-media";
+import { useNavigate } from "react-router-dom";
+import { usePlaylists } from "@/contexts/PlaylistContext";
+import {
+  getWorkoutPlaylistId,
+  workoutMusic,
+  WORKOUT_PLAYLIST_EVENT,
+  type WorkoutMusicState,
+} from "@/lib/workout-music";
+
 
 type Props = {
   routine: CoachRoutine;
@@ -141,6 +153,70 @@ export default function MoveCoachSession({
     return () => window.removeEventListener(WELLNESS_UPDATED_EVENT, refreshProfile);
   }, []);
 
+  /* ---------------- Workout music (playlist from Radio) ---------------- */
+  const navigate = useNavigate();
+  const { playlists, loadPlaylists } = usePlaylists();
+  const [music, setMusic] = useState<WorkoutMusicState>(() => workoutMusic.state);
+  const [workoutPlaylistId, setWorkoutPlaylistId] = useState<string | null>(() =>
+    getWorkoutPlaylistId(),
+  );
+
+  useEffect(() => {
+    const off = workoutMusic.subscribe(setMusic);
+    return () => {
+      off();
+    };
+  }, []);
+
+
+  useEffect(() => {
+    void loadPlaylists();
+  }, [loadPlaylists]);
+
+  useEffect(() => {
+    const sync = () => setWorkoutPlaylistId(getWorkoutPlaylistId());
+    window.addEventListener(WORKOUT_PLAYLIST_EVENT, sync);
+    return () => window.removeEventListener(WORKOUT_PLAYLIST_EVENT, sync);
+  }, []);
+
+  const workoutPlaylist = playlists.find((p) => p.id === workoutPlaylistId) || null;
+
+  /** Keep the shuffled queue in sync with the chosen playlist. */
+  useEffect(() => {
+    if (!workoutPlaylist) return;
+    workoutMusic.setQueue(
+      workoutPlaylist.items.map((i) => ({
+        id: i.id,
+        title: i.title,
+        artist: i.artist,
+        image: i.image,
+        audioUrl: i.audioUrl,
+      })),
+    );
+  }, [workoutPlaylist?.id, workoutPlaylist?.items.length]);
+
+  useEffect(() => () => workoutMusic.stop(), []);
+
+  /** Session pause also pauses the music; resuming brings it back. */
+  const musicWasPlaying = useRef(false);
+  useEffect(() => {
+    if (paused) {
+      musicWasPlaying.current = workoutMusic.state.playing;
+      if (musicWasPlaying.current) workoutMusic.pause();
+    } else if (musicWasPlaying.current) {
+      musicWasPlaying.current = false;
+      void workoutMusic.play();
+    }
+  }, [paused]);
+
+  const toggleWorkoutMusic = () => {
+    unlockYajAudio();
+    void workoutMusic.toggle();
+  };
+
+
+
+
   const rate = COACH_VOICE_SPEEDS.find((s) => s.id === prefs.speed)?.rate ?? 1;
 
   const waitWhilePaused = useCallback(async (signal: AbortSignal) => {
@@ -182,10 +258,14 @@ export default function MoveCoachSession({
         else resumeYajAudio();
       }, 200);
       try {
+        // Duck the workout playlist so the coach voice stays on top.
+        workoutMusic.duck();
         await playYajAudioAsync(src, { playbackRate: rate, signal });
       } finally {
+        workoutMusic.unduck();
         window.clearInterval(pauseWatcher);
       }
+
       if (signal.aborted) return;
       await sleep(LINE_PAUSE_MS, signal);
     },
@@ -225,8 +305,12 @@ export default function MoveCoachSession({
               audioCache.current.set(key, src);
             }
             if (!signal.aborted && !pausedRef.current) {
-              void playYajAudioAsync(src, { playbackRate: rate, signal });
+              workoutMusic.duck();
+              void playYajAudioAsync(src, { playbackRate: rate, signal }).finally(() =>
+                workoutMusic.unduck(),
+              );
             }
+
           } catch {
             /* visual countdown still runs */
           }
@@ -259,7 +343,9 @@ export default function MoveCoachSession({
     loggedRef.current = true;
     stopYajAudio();
     void wellnessAmbient.stop();
+    workoutMusic.stop();
     setBgSound(false);
+
     const elapsedMin = Math.max(1, Math.round((Date.now() - startedAt.current) / 60000));
     const minutes = Math.min(routine.minutes, Math.max(1, elapsedMin));
     onProgress(minutes);
@@ -476,6 +562,8 @@ export default function MoveCoachSession({
             abortRef.current?.abort();
             stopYajAudio();
             void wellnessAmbient.stop();
+            workoutMusic.stop();
+
             if (!loggedRef.current) {
               const elapsedMin = Math.round((Date.now() - startedAt.current) / 60000);
               if (elapsedMin >= 1) onProgress(Math.min(routine.minutes, elapsedMin));
@@ -624,8 +712,64 @@ export default function MoveCoachSession({
         </div>
       </div>
 
+      {/* Workout music strip — playlist built in Radio, auto-ducked when coach talks */}
+      <div className="mx-3 mb-2 flex items-center gap-2.5 rounded-2xl border border-teal-900/10 bg-white/90 px-3 py-2 shadow-sm">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-teal-50 text-teal-700">
+          {music.track?.image ? (
+            <img src={music.track.image} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <Dumbbell className="h-4 w-4" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-stone-400">
+            Workout music{music.ducked && music.playing ? " · lowered" : ""}
+          </p>
+          {workoutPlaylist && music.queueLength > 0 ? (
+            <p className="truncate text-xs font-black text-stone-900">
+              {music.track ? `${music.track.title} · ${music.track.artist}` : workoutPlaylist.name}
+            </p>
+          ) : (
+            <p className="truncate text-[11px] font-semibold text-stone-500">
+              {workoutPlaylist
+                ? "No playable songs in this playlist yet"
+                : "Set a workout playlist in Radio"}
+            </p>
+          )}
+        </div>
+        {workoutPlaylist && music.queueLength > 0 ? (
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleWorkoutMusic}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-600 text-white"
+              aria-label={music.playing ? "Pause workout music" : "Play workout music"}
+            >
+              {music.playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => void workoutMusic.next()}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Next song"
+            >
+              <SkipForward className="h-4 w-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => navigate("/radio")}
+            className="rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white"
+          >
+            Pick songs
+          </button>
+        )}
+      </div>
+
       {/* Controls */}
       <div className="border-t border-stone-200/80 bg-white/95 px-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] pt-2.5">
+
         <div className="mx-auto flex max-w-md items-center justify-between gap-1.5">
           <button
             type="button"
