@@ -42,23 +42,21 @@ export default function WorkoutMusicCard() {
   const playable = playlist?.items.filter((i) => i.audioUrl) ?? [];
 
   const start = () => {
-    if (!playlist) return nav("/radio");
+    if (!playlist) return setPickerOpen(true);
     if (music.playing) {
       workoutMusic.pause();
       return;
     }
-    if (queuedFor.current !== playlist.id || music.queueLength === 0) {
-      workoutMusic.setQueue(
-        playlist.items.map((i) => ({
-          id: i.id,
-          title: i.title,
-          artist: i.artist,
-          image: i.image,
-          audioUrl: i.audioUrl,
-        })),
-      );
-      queuedFor.current = playlist.id;
-    }
+    workoutMusic.setQueue(
+      playlist.items.map((i) => ({
+        id: i.id,
+        title: i.title,
+        artist: i.artist,
+        image: i.image,
+        audioUrl: i.audioUrl,
+      })),
+    );
+    queuedFor.current = playlist.id;
     void workoutMusic.play();
   };
 
@@ -94,13 +92,21 @@ export default function WorkoutMusicCard() {
             <>
               <p className="text-sm font-black text-stone-900">No workout playlist yet</p>
               <p className="text-[11px] text-stone-500">
-                Build one in Radio, then tap the dumbbell on it.
+                Tap “Pick songs” to add radio songs to your workout playlist.
               </p>
             </>
           )}
         </div>
         {playlist && playable.length > 0 ? (
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Edit workout playlist songs"
+            >
+              <ListMusic className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={start}
@@ -121,13 +127,23 @@ export default function WorkoutMusicCard() {
         ) : (
           <button
             type="button"
-            onClick={() => nav("/radio")}
+            onClick={() => setPickerOpen(true)}
             className="flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-2 text-[11px] font-bold text-white"
           >
-            <Music2 className="h-3.5 w-3.5" /> Pick songs
+            <ListMusic className="h-3.5 w-3.5" /> Pick songs
           </button>
         )}
       </div>
+
+      <WorkoutPlaylistSheet
+        open={pickerOpen}
+        onClose={() => {
+          setPickerOpen(false);
+          setPlaylistId(getWorkoutPlaylistId());
+        }}
+        playlistId={playlistId}
+      />
     </section>
   );
 }
+
