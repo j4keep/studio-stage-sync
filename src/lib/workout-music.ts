@@ -163,19 +163,35 @@ class WorkoutMusicEngine {
   }
 
   applyVolume() {
-    if (!this.audio) return;
+    if (!this.audio && !this.gain) return;
     const base = getWorkoutVolume();
     this.rampTo(this.duckDepth > 0 ? base * DUCK_FACTOR : base);
   }
 
   private rampTo(target: number) {
+    const clamped = Math.min(1, Math.max(0, target));
+    if (this.ramp) window.clearInterval(this.ramp);
+    this.ramp = null;
+    // Web Audio path: smooth, and actually works on iOS.
+    if (this.gain && this.ctx) {
+      const now = this.ctx.currentTime;
+      const g = this.gain.gain;
+      try {
+        g.cancelScheduledValues(now);
+        g.setValueAtTime(g.value, now);
+        g.linearRampToValueAtTime(clamped, now + 0.25);
+      } catch {
+        g.value = clamped;
+      }
+      if (this.audio) this.audio.volume = 1;
+      return;
+    }
     const audio = this.audio;
     if (!audio) return;
-    if (this.ramp) window.clearInterval(this.ramp);
     const step = () => {
-      const diff = target - audio.volume;
+      const diff = clamped - audio.volume;
       if (Math.abs(diff) < 0.02) {
-        audio.volume = Math.min(1, Math.max(0, target));
+        audio.volume = clamped;
         if (this.ramp) window.clearInterval(this.ramp);
         this.ramp = null;
         return;
@@ -193,8 +209,9 @@ class WorkoutMusicEngine {
     if (!track?.audioUrl) return;
     if (audio.src !== track.audioUrl) {
       audio.src = track.audioUrl;
-      audio.volume = 0;
+      if (!this.gain) audio.volume = 0;
     }
+    this.resumeCtx();
     try {
       await audio.play();
     } catch {
@@ -203,6 +220,7 @@ class WorkoutMusicEngine {
     this.applyVolume();
     this.emit();
   }
+
 
   pause() {
     this.audio?.pause();
