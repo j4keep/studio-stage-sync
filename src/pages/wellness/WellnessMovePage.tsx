@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import MoveCoachSession from "@/components/wellness/MoveCoachSession";
 import MoveWorkoutCard from "@/components/wellness/MoveWorkoutCard";
 import WorkoutMusicCard from "@/components/wellness/WorkoutMusicCard";
+import { workoutMusic } from "@/lib/workout-music";
+
 import {
   COACH_ROUTINES,
   getCoachRoutine,
@@ -43,6 +45,22 @@ export default function WellnessMovePage() {
     const start = params.get("start");
     if (start && COACH_ROUTINES.some((r) => r.id === start)) setActiveId(start);
   }, [params]);
+
+  // Leaving the Move page (or backgrounding the app) must kill workout music.
+  useEffect(() => {
+    const stop = () => workoutMusic.stop();
+    const onHide = () => {
+      if (document.visibilityState === "hidden") stop();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", stop);
+      stop();
+    };
+  }, []);
+
 
   const startRoutine = (id: string) => {
     setActiveId(id);
