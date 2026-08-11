@@ -738,12 +738,20 @@ export default function MoveCoachSession({
             <p className="truncate text-[11px] font-semibold text-stone-500">
               {workoutPlaylist
                 ? "No playable songs in this playlist yet"
-                : "Set a workout playlist in Radio"}
+                : "Tap “Pick songs” to build your workout playlist"}
             </p>
           )}
         </div>
         {workoutPlaylist && music.queueLength > 0 ? (
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setMusicPickerOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Edit workout playlist songs"
+            >
+              <ListMusic className="h-4 w-4" />
+            </button>
             <button
               type="button"
               onClick={toggleWorkoutMusic}
@@ -760,16 +768,25 @@ export default function MoveCoachSession({
             >
               <SkipForward className="h-4 w-4" />
             </button>
+            <button
+              type="button"
+              onClick={() => workoutMusic.stop()}
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-stone-200 bg-stone-50"
+              aria-label="Stop workout music"
+            >
+              <Square className="h-3.5 w-3.5" />
+            </button>
           </div>
         ) : (
           <button
             type="button"
-            onClick={() => navigate("/radio")}
-            className="rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white"
+            onClick={() => setMusicPickerOpen(true)}
+            className="flex items-center gap-1.5 rounded-full bg-teal-600 px-3 py-1.5 text-[11px] font-bold text-white"
           >
-            Pick songs
+            <ListMusic className="h-3.5 w-3.5" /> Pick songs
           </button>
         )}
+
       </div>
 
       {/* Controls */}
