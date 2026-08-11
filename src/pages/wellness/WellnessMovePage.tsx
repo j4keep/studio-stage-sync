@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import MoveCoachSession from "@/components/wellness/MoveCoachSession";
 import MoveWorkoutCard from "@/components/wellness/MoveWorkoutCard";
 import WorkoutMusicCard from "@/components/wellness/WorkoutMusicCard";
+import { workoutMusic } from "@/lib/workout-music";
+
 import {
   COACH_ROUTINES,
   getCoachRoutine,
