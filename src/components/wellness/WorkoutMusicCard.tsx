@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Dumbbell, Music2, Pause, Play, SkipForward } from "lucide-react";
+import { Dumbbell, ListMusic, Pause, Play, SkipForward } from "lucide-react";
 import { usePlaylists } from "@/contexts/PlaylistContext";
 import {
   getWorkoutPlaylistId,
@@ -8,17 +7,19 @@ import {
   WORKOUT_PLAYLIST_EVENT,
   type WorkoutMusicState,
 } from "@/lib/workout-music";
+import WorkoutPlaylistSheet from "./WorkoutPlaylistSheet";
 
 /**
  * Workout playlist control for the Move page.
- * The playlist itself is built in Radio; music auto-lowers when the coach talks.
+ * Songs are picked from YAJ Radio right here; music auto-lowers when the coach talks.
  */
 export default function WorkoutMusicCard() {
-  const nav = useNavigate();
   const { playlists, loadPlaylists } = usePlaylists();
   const [playlistId, setPlaylistId] = useState<string | null>(() => getWorkoutPlaylistId());
   const [music, setMusic] = useState<WorkoutMusicState>(() => workoutMusic.state);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const queuedFor = useRef<string | null>(null);
+
 
   useEffect(() => {
     void loadPlaylists();
