@@ -4,7 +4,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Dumbbell,
+  ListMusic,
   Music2,
+  Square,
+
   Pause,
   Play,
   Repeat2,
@@ -157,9 +160,11 @@ export default function MoveCoachSession({
   const navigate = useNavigate();
   const { playlists, loadPlaylists } = usePlaylists();
   const [music, setMusic] = useState<WorkoutMusicState>(() => workoutMusic.state);
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
   const [workoutPlaylistId, setWorkoutPlaylistId] = useState<string | null>(() =>
     getWorkoutPlaylistId(),
   );
+
 
   useEffect(() => {
     const off = workoutMusic.subscribe(setMusic);
