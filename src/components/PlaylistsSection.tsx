@@ -2,9 +2,14 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Plus, Music, Video, Mic2, Play, Trash2, Edit3, X,
-  ListMusic, ChevronRight, ChevronDown, Search
+  ListMusic, ChevronRight, ChevronDown, Search, Dumbbell
 } from "lucide-react";
 import { usePlaylists, PlaylistItem } from "@/contexts/PlaylistContext";
+import {
+  getWorkoutPlaylistId,
+  setWorkoutPlaylistId,
+  WORKOUT_PLAYLIST_EVENT,
+} from "@/lib/workout-music";
 
 const typeIcon = (type: PlaylistItem["type"]) => {
   switch (type) {
@@ -25,6 +30,20 @@ const PlaylistsSection = () => {
   const [editName, setEditName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
+  const [workoutId, setWorkoutId] = useState<string | null>(() => getWorkoutPlaylistId());
+
+  useEffect(() => {
+    const sync = () => setWorkoutId(getWorkoutPlaylistId());
+    window.addEventListener(WORKOUT_PLAYLIST_EVENT, sync);
+    return () => window.removeEventListener(WORKOUT_PLAYLIST_EVENT, sync);
+  }, []);
+
+  /** Mark / unmark a playlist as the Wellness → Move workout playlist. */
+  const toggleWorkout = (id: string) => {
+    const next = workoutId === id ? null : id;
+    setWorkoutPlaylistId(next);
+    setWorkoutId(next);
+  };
 
   useEffect(() => {
     void loadPlaylists();
@@ -60,7 +79,7 @@ const PlaylistsSection = () => {
       <div className="mb-3 flex items-center justify-between">
         <div>
           <h3 className="text-sm font-black text-foreground">Your playlists</h3>
-          <p className="text-[11px] text-muted-foreground">Save tracks from Radio and add them here</p>
+          <p className="text-[11px] text-muted-foreground">Save tracks from Radio · tap the dumbbell to use one as your workout playlist</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -135,11 +154,25 @@ const PlaylistsSection = () => {
                   ) : (
                     <>
                       <p className="text-sm font-medium text-foreground truncate">{playlist.name}</p>
-                      <p className="text-[10px] text-muted-foreground">{playlist.items.length} {playlist.items.length === 1 ? "item" : "items"}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {playlist.items.length} {playlist.items.length === 1 ? "item" : "items"}
+                        {workoutId === playlist.id ? " · Workout playlist" : ""}
+                      </p>
                     </>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                  <button
+                    onClick={() => toggleWorkout(playlist.id)}
+                    title={workoutId === playlist.id ? "This is your workout playlist" : "Use as workout playlist"}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      workoutId === playlist.id
+                        ? "bg-primary/15 text-primary"
+                        : "text-muted-foreground hover:bg-primary/10"
+                    }`}
+                  >
+                    <Dumbbell className="w-3 h-3" />
+                  </button>
                   <button onClick={() => { setEditingId(playlist.id); setEditName(playlist.name); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground transition-colors"><Edit3 className="w-3 h-3" /></button>
                   <button onClick={() => deletePlaylist(playlist.id)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3 h-3" /></button>
                 </div>

@@ -4,6 +4,7 @@ import { ArrowLeft, Flame, Footprints, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import MoveCoachSession from "@/components/wellness/MoveCoachSession";
 import MoveWorkoutCard from "@/components/wellness/MoveWorkoutCard";
+import WorkoutMusicCard from "@/components/wellness/WorkoutMusicCard";
 import {
   COACH_ROUTINES,
   getCoachRoutine,
@@ -90,6 +91,8 @@ export default function WellnessMovePage() {
             <Stat icon={Flame} label="Streak" value={`${streak} day${streak === 1 ? "" : "s"}`} />
           </div>
         </section>
+
+        <WorkoutMusicCard />
 
         {/* Search */}
         <label className="relative block">
