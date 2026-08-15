@@ -25,8 +25,8 @@ export default function PlayerStrip({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-2xl border p-3 transition-colors",
-        active ? "border-primary/60 bg-primary/10" : "border-border/60 bg-card/60",
+        "flex items-center gap-3 rounded-2xl border p-3 text-primary-foreground transition-colors",
+        active ? "border-primary/60 bg-primary/10" : "border-white/10 bg-black/30",
       )}
     >
       <div
@@ -41,7 +41,7 @@ export default function PlayerStrip({
         ) : isComputer ? (
           <Bot className="h-6 w-6 text-primary" />
         ) : (
-          <span className="text-sm font-black">{name.slice(0, 1).toUpperCase()}</span>
+          <span className="text-sm font-black text-primary-foreground">{name.slice(0, 1).toUpperCase()}</span>
         )}
       </div>
 
@@ -64,7 +64,7 @@ export default function PlayerStrip({
 
       <div className="text-right">
         <p className="text-xl font-black leading-none text-primary">{count}</p>
-        <p className="text-[10px] text-muted-foreground">{countLabel}</p>
+        <p className="text-[10px] text-primary-foreground/60">{countLabel}</p>
       </div>
     </div>
   );

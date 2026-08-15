@@ -122,7 +122,6 @@ import TicTacToePage from "./pages/games/TicTacToePage";
 import ConnectFourPage from "./pages/games/ConnectFourPage";
 import CheckersPage from "./pages/games/CheckersPage";
 import DominoesPage from "./pages/games/DominoesPage";
-import DomProbe from "./pages/games/__DomProbe";
 import TriviaPage from "./pages/games/TriviaPage";
 import YajDashPage from "./pages/games/YajDashPage";
 import EventDetailPage from "./pages/EventDetailPage";
@@ -542,7 +541,6 @@ const ScrollLockGuard = () => {
 
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
-                        <Route path="/__domprobe" element={<DomProbe />} />
                         
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
