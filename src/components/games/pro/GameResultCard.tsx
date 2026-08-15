@@ -21,12 +21,33 @@ export default function GameResultCard({
 }: Props) {
   if (!open) return null;
 
+  const confetti = outcome === "win"
+    ? Array.from({ length: 26 }).map((_, i) => ({
+        left: `${(i * 3.8 + (i % 5) * 4) % 100}%`,
+        delay: `${(i % 8) * 0.12}s`,
+        drift: `${((i % 7) - 3) * 18}px`,
+        color: i % 3 === 0 ? "hsl(var(--primary))" : i % 3 === 1 ? "#f0d78c" : "#7de0a6",
+      }))
+    : [];
+
   return (
     <div className="fixed inset-0 z-40 flex items-end justify-center bg-background/80 px-4 pb-8 backdrop-blur-sm animate-fade-in">
+      {confetti.length ? (
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-full overflow-hidden">
+          {confetti.map((c, i) => (
+            <span
+              key={i}
+              className="yaj-confetti-piece"
+              style={{ left: c.left, animationDelay: c.delay, background: c.color, ["--drift" as any]: c.drift }}
+            />
+          ))}
+        </div>
+      ) : null}
       <div
         className="w-full max-w-[420px] rounded-3xl border border-primary/30 bg-card p-6 text-center animate-scale-in"
         style={{ boxShadow: "0 0 40px hsl(var(--primary) / 0.25)" }}
       >
+
         <div
           className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/15"
           style={{ boxShadow: "0 0 24px hsl(var(--primary) / 0.4)" }}
