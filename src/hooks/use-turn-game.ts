@@ -8,6 +8,7 @@ export function useTurnGame(id: string | undefined, userId: string | undefined) 
   const [players, setPlayers] = useState<GamePlayerRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [opponentName, setOpponentName] = useState("Opponent");
+  const [opponentAvatar, setOpponentAvatar] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!id) return;
