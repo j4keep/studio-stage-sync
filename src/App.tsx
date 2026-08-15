@@ -122,6 +122,7 @@ import TicTacToePage from "./pages/games/TicTacToePage";
 import ConnectFourPage from "./pages/games/ConnectFourPage";
 import CheckersPage from "./pages/games/CheckersPage";
 import DominoesPage from "./pages/games/DominoesPage";
+import DomProbe from "./pages/games/__DomProbe";
 import TriviaPage from "./pages/games/TriviaPage";
 import YajDashPage from "./pages/games/YajDashPage";
 import EventDetailPage from "./pages/EventDetailPage";
@@ -408,6 +409,7 @@ const ProtectedRoutes = () => {
         <Route path="/games/tic-tac-toe/:id" element={<TicTacToePage />} />
         <Route path="/games/connect-four/:id" element={<ConnectFourPage />} />
         <Route path="/games/checkers/:id" element={<CheckersPage />} />
+        <Route path="/__domprobe" element={<DomProbe />} />
         <Route path="/games/dominoes/:id" element={<DominoesPage />} />
         <Route path="/games/trivia/:id" element={<TriviaPage />} />
         <Route path="/games/dash" element={<YajDashPage />} />
