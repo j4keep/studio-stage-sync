@@ -264,8 +264,9 @@ export default function DominoesPage() {
         <div
           className="relative overflow-hidden rounded-[28px] px-2 py-3"
           style={{
-            background:
-              "radial-gradient(75% 60% at 50% 40%, #2f7d52 0%, #1f5d3c 55%, #14402a 100%)",
+            backgroundImage:
+              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0), radial-gradient(circle at 3px 4px, rgba(0,0,0,0.06) 1px, transparent 0), radial-gradient(78% 62% at 50% 38%, #2f8354 0%, #1f5d3c 55%, #123a26 100%)",
+            backgroundSize: "6px 6px, 6px 6px, auto",
             boxShadow: "inset 0 0 34px rgba(0,0,0,0.55), inset 0 2px 4px rgba(0,0,0,0.6)",
           }}
         >
@@ -285,27 +286,21 @@ export default function DominoesPage() {
             </div>
           </div>
 
-          {/* Chain */}
-          <div
-            ref={boardRef}
-            className="mt-3 flex min-h-[150px] items-center gap-1 overflow-x-auto px-2"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {dom.layout.length ? (
-              dom.layout.map((t, i) => (
-                <DominoTile
-                  key={`${t[0]}-${t[1]}-${i}`}
-                  tile={t}
-                  size="md"
-                  orientation={t[0] === t[1] ? "vertical" : "horizontal"}
-                  className="animate-scale-in"
-                />
-              ))
-            ) : (
-              <p className="w-full text-center text-xs font-bold text-white/60">
-                Empty table — play your first tile
-              </p>
-            )}
+          {/* Chain — wraps into serpentine rows so long games never clip */}
+          <div ref={boardRef} className="mt-3">
+            <DominoChain
+              layout={dom.layout}
+              ends={e}
+              activeEnds={
+                selected !== null && e
+                  ? {
+                      left: myHand[selected]?.includes(e[0]) ?? false,
+                      right: myHand[selected]?.includes(e[1]) ?? false,
+                    }
+                  : undefined
+              }
+              onPickEnd={(side) => selected !== null && void play(selected, side)}
+            />
           </div>
 
           {/* Boneyard medallion + you pod */}
@@ -327,12 +322,13 @@ export default function DominoesPage() {
             <PlayerPod name={myName} avatarUrl={myAvatar} count={myHand.length} active={!!myTurn} />
           </div>
 
-          {/* Player hand on the felt */}
+          {/* Player hand anchored on the felt, horizontally scrollable at full size */}
           <div
             className="mt-2 flex gap-1.5 overflow-x-auto rounded-2xl px-2 py-2"
             style={{
               background: "linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.12))",
               scrollbarWidth: "none",
+              WebkitOverflowScrolling: "touch",
             }}
           >
             {myHand.map((t, i) => {
@@ -345,12 +341,14 @@ export default function DominoesPage() {
                   glow={ok}
                   dim={!ok}
                   selected={selected === i}
+                  className={selected === i ? "domino-lift" : undefined}
                   onClick={ok ? () => tapTile(i) : undefined}
                 />
               );
             })}
           </div>
         </div>
+
       </div>
 
       {selected !== null && e ? (
