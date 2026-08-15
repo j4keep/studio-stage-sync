@@ -11,19 +11,38 @@ type Props = {
   onPickEnd?: (side: "left" | "right") => void;
 };
 
-const TILE_W = 84; // horizontal md tile + gap
-const DOUBLE_W = 48; // vertical md tile (double) + gap
+/** Rendered footprint of a md tile including its 2px frame. */
+const V_W = 44; // vertical tile width
+const V_H = 84; // vertical tile height
+const H_W = 84; // horizontal tile width
+const H_H = 44; // horizontal tile height
+const ROW_H = V_H + 6; // row pitch (tallest tile + breathing room)
+const SLOT_W = 40;
 
-function EndSlot({ value, onClick }: { value: number; onClick?: () => void }) {
+type Placed = { tile: Tile; index: number; x: number; y: number; vertical: boolean };
+
+function EndSlot({
+  value,
+  x,
+  y,
+  onClick,
+}: {
+  value: number;
+  x: number;
+  y: number;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={`Play on open end ${value}`}
-      className="shrink-0 rounded-lg border-2 border-dashed border-primary/70 text-[11px] font-black text-primary animate-pulse"
+      className="absolute rounded-lg border-2 border-dashed border-primary/70 text-[11px] font-black text-primary animate-pulse"
       style={{
-        width: 44,
-        height: 84,
+        left: x,
+        top: y,
+        width: SLOT_W,
+        height: V_H,
         background: "hsl(var(--primary) / 0.16)",
         boxShadow: "0 0 16px hsl(var(--primary) / 0.55)",
       }}
@@ -33,7 +52,53 @@ function EndSlot({ value, onClick }: { value: number; onClick?: () => void }) {
   );
 }
 
-/** Serpentine domino chain: wraps into rows that alternate direction like a real table. */
+/**
+ * Lays the played tiles out as ONE continuous connected path: tiles touch
+ * end-to-end, and the chain turns 90° (via a rotated tile at the edge) then
+ * snakes back in the opposite direction when it runs out of table width.
+ */
+function buildPath(layout: Tile[], boardW: number) {
+  const placed: Placed[] = [];
+  let dir: 1 | -1 = 1;
+  let row = 0;
+  let cursor = 2; // leading edge of the chain
+  let firstX = 2;
+
+  layout.forEach((tile, index) => {
+    const isDouble = tile[0] === tile[1];
+    let vertical = isDouble;
+    let w = vertical ? V_W : H_W;
+
+    const fits = dir > 0 ? cursor + w <= boardW : cursor - w >= 0;
+
+    if (!fits) {
+      // Turn the chain: stand this tile up at the edge, then continue on the row below.
+      const turnFits = dir > 0 ? cursor + V_W <= boardW : cursor - V_W >= 0;
+      if (turnFits) {
+        const px = dir > 0 ? cursor : cursor - V_W;
+        placed.push({ tile, index, x: px, y: row * ROW_H, vertical: true });
+        row += 1;
+        dir = dir > 0 ? -1 : 1;
+        cursor = dir > 0 ? px : px + V_W;
+        return;
+      }
+      row += 1;
+      dir = dir > 0 ? -1 : 1;
+      cursor = dir > 0 ? 2 : boardW - 2;
+      vertical = isDouble;
+      w = vertical ? V_W : H_W;
+    }
+
+    const px = dir > 0 ? cursor : cursor - w;
+    const h = vertical ? V_H : H_H;
+    placed.push({ tile, index, x: px, y: row * ROW_H + (ROW_H - h) / 2, vertical });
+    if (index === 0) firstX = px;
+    cursor = dir > 0 ? cursor + w : cursor - w;
+  });
+
+  return { placed, dir, row, cursor, firstX, rows: row + 1 };
+}
+
 export default function DominoChain({ layout, ends, activeEnds, onPickEnd }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -60,64 +125,53 @@ export default function DominoChain({ layout, ends, activeEnds, onPickEnd }: Pro
     prevLen.current = layout.length;
   }, [layout.length]);
 
-  const avail = Math.max(width - 8, 200);
-  const rows: { tiles: Tile[]; startIndex: number }[] = [];
-  let current: Tile[] = [];
-  let used = 0;
-  let start = 0;
+  const boardW = Math.max(width, 240);
+  const path = buildPath(layout, boardW);
+  const height = Math.max(path.rows * ROW_H, 150);
 
-  layout.forEach((t, i) => {
-    const w = t[0] === t[1] ? DOUBLE_W : TILE_W;
-    if (used + w > avail && current.length) {
-      rows.push({ tiles: current, startIndex: start });
-      current = [];
-      used = 0;
-      start = i;
-    }
-    current.push(t);
-    used += w;
-  });
-  if (current.length) rows.push({ tiles: current, startIndex: start });
+  const showLeft = Boolean(ends && activeEnds?.left);
+  const showRight = Boolean(ends && activeEnds?.right);
 
-  const lastRow = rows.length - 1;
+  // Left slot sits just before the first tile; right slot just after the leading edge.
+  const leftSlotX = Math.max(0, Math.min(boardW - SLOT_W, path.firstX - SLOT_W - 2));
+  const rightSlotX = Math.max(
+    0,
+    Math.min(boardW - SLOT_W, path.dir > 0 ? path.cursor + 2 : path.cursor - SLOT_W - 2),
+  );
 
   return (
     <div ref={wrapRef} className="w-full overflow-hidden px-1">
       {!layout.length ? (
-        <div className="flex min-h-[150px] items-center justify-center gap-3">
-          {activeEnds && onPickEnd ? null : null}
+        <div className="flex min-h-[150px] items-center justify-center">
           <p className="text-center text-xs font-bold text-white/60">Empty table — play your first tile</p>
         </div>
       ) : (
-        <div className="flex min-h-[150px] flex-col justify-center gap-1.5 py-1">
-          {rows.map((row, ri) => {
-            const reversed = ri % 2 === 1;
-            return (
-              <div
-                key={ri}
-                className={`flex items-center gap-1 ${reversed ? "flex-row-reverse" : "flex-row"}`}
-              >
-                {ri === 0 && ends && activeEnds?.left ? (
-                  <EndSlot value={ends[0]} onClick={() => onPickEnd?.("left")} />
-                ) : null}
-                {row.tiles.map((t, ti) => {
-                  const idx = row.startIndex + ti;
-                  return (
-                    <DominoTile
-                      key={`${t[0]}-${t[1]}-${idx}`}
-                      tile={t}
-                      size="md"
-                      orientation={t[0] === t[1] ? "vertical" : "horizontal"}
-                      className={justPlaced === idx ? "domino-place" : undefined}
-                    />
-                  );
-                })}
-                {ri === lastRow && ends && activeEnds?.right ? (
-                  <EndSlot value={ends[1]} onClick={() => onPickEnd?.("right")} />
-                ) : null}
-              </div>
-            );
-          })}
+        <div className="relative w-full" style={{ height }}>
+          {path.placed.map((p) => (
+            <div
+              key={`${p.tile[0]}-${p.tile[1]}-${p.index}`}
+              className="absolute"
+              style={{ left: p.x, top: p.y }}
+            >
+              <DominoTile
+                tile={p.tile}
+                size="md"
+                orientation={p.vertical ? "vertical" : "horizontal"}
+                className={justPlaced === p.index ? "domino-place" : undefined}
+              />
+            </div>
+          ))}
+          {showLeft && ends ? (
+            <EndSlot value={ends[0]} x={leftSlotX} y={0} onClick={() => onPickEnd?.("left")} />
+          ) : null}
+          {showRight && ends ? (
+            <EndSlot
+              value={ends[1]}
+              x={rightSlotX}
+              y={path.row * ROW_H}
+              onClick={() => onPickEnd?.("right")}
+            />
+          ) : null}
         </div>
       )}
     </div>
