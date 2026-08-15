@@ -712,3 +712,37 @@
   0%, 100% { transform: rotate(-1.1deg); }
   50% { transform: rotate(1.1deg); }
 }
+
+/* ---- Dominoes table polish ---- */
+@keyframes domino-place {
+  0% { transform: translateY(-14px) rotate(-7deg) scale(1.06); opacity: 0; }
+  60% { transform: translateY(2px) rotate(1.5deg) scale(1.01); opacity: 1; }
+  100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+}
+.domino-place {
+  animation: domino-place 0.36s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+
+@keyframes domino-lift {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-10px); }
+}
+.domino-lift { animation: domino-lift 0.18s ease-out both; }
+
+@keyframes yaj-confetti-fall {
+  0% { transform: translate3d(0, -20px, 0) rotate(0deg); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate3d(var(--drift, 0px), 320px, 0) rotate(540deg); opacity: 0; }
+}
+.yaj-confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  animation: yaj-confetti-fall 2.2s linear forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .domino-place, .domino-lift, .yaj-confetti-piece { animation: none !important; }
+}
