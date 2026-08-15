@@ -409,7 +409,6 @@ const ProtectedRoutes = () => {
         <Route path="/games/tic-tac-toe/:id" element={<TicTacToePage />} />
         <Route path="/games/connect-four/:id" element={<ConnectFourPage />} />
         <Route path="/games/checkers/:id" element={<CheckersPage />} />
-        <Route path="/__domprobe" element={<DomProbe />} />
         <Route path="/games/dominoes/:id" element={<DominoesPage />} />
         <Route path="/games/trivia/:id" element={<TriviaPage />} />
         <Route path="/games/dash" element={<YajDashPage />} />
@@ -543,6 +542,7 @@ const ScrollLockGuard = () => {
 
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
+                        <Route path="/__domprobe" element={<DomProbe />} />
                         
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
