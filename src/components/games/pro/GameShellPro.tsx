@@ -36,9 +36,10 @@ export default function GameShellPro({
       className="min-h-[100dvh] pb-24 text-foreground"
       style={{
         background:
-          "radial-gradient(120% 70% at 50% -10%, hsl(266 60% 22%) 0%, hsl(240 45% 10%) 45%, hsl(240 50% 6%) 100%)",
+          "radial-gradient(120% 70% at 50% -10%, hsl(150 30% 24%) 0%, hsl(150 32% 13%) 45%, hsl(152 35% 8%) 100%)",
       }}
     >
+
       <header className="sticky top-0 z-20 border-b border-white/5 bg-black/30 px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <button

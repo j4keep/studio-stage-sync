@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import GameShellPro from "@/components/games/pro/GameShellPro";
 import DominoTile from "@/components/games/pro/DominoTile";
-import PlayerStrip from "@/components/games/pro/PlayerStrip";
+import PlayerPod from "@/components/games/pro/PlayerPod";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import {
@@ -251,82 +251,106 @@ export default function DominoesPage() {
       onPickerChange={setPicker}
       onChallenge={challenge}
     >
-      <PlayerStrip
-        name={game.mode === "solo" ? "Computer" : opponentName}
-        avatarUrl={game.mode === "solo" ? null : opponentAvatar}
-        isComputer={game.mode === "solo"}
-        badge={game.mode === "solo" ? "Easy" : undefined}
-        count={dom.hands[oppSeat]?.length ?? 0}
-        countLabel="Tiles left"
-        active={!myTurn && !finished && game.status === "active"}
-        activeLabel="Thinking"
-      />
-
-      <div className="mx-auto -mt-2 flex w-fit max-w-full gap-1 overflow-hidden rounded-b-2xl border border-t-0 border-white/10 bg-black/40 px-2 pb-2 pt-3">
-        {Array.from({ length: Math.min(dom.hands[oppSeat]?.length ?? 0, 9) }).map((_, i) => (
-          <DominoTile key={i} faceDown size="sm" />
-        ))}
-      </div>
-
+      {/* Wooden-rim oval table */}
       <div
-        className="mt-3 rounded-3xl border border-primary/25 p-2"
+        className="rounded-[36px] p-3"
         style={{
-          background: "linear-gradient(180deg, hsl(240 50% 12%), hsl(240 55% 8%))",
-          boxShadow: "0 0 30px hsl(var(--primary) / 0.18), inset 0 1px 0 rgba(255,255,255,0.06)",
+          background:
+            "linear-gradient(160deg, #8a5a2b 0%, #5d3a19 40%, #7a4d24 70%, #4a2d13 100%)",
+          boxShadow:
+            "0 0 30px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -3px 6px rgba(0,0,0,0.5)",
         }}
       >
         <div
-          ref={boardRef}
-          className="flex min-h-[260px] items-center gap-1.5 overflow-x-auto rounded-2xl px-3 py-6"
+          className="relative overflow-hidden rounded-[28px] px-2 py-3"
           style={{
             background:
-              "radial-gradient(80% 60% at 50% 40%, hsl(232 55% 20%), hsl(235 60% 12%))",
-            boxShadow: "inset 0 4px 16px rgba(0,0,0,0.55)",
-            scrollbarWidth: "none",
+              "radial-gradient(75% 60% at 50% 40%, #2f7d52 0%, #1f5d3c 55%, #14402a 100%)",
+            boxShadow: "inset 0 0 34px rgba(0,0,0,0.55), inset 0 2px 4px rgba(0,0,0,0.6)",
           }}
         >
-          {dom.layout.length ? (
-            dom.layout.map((t, i) => (
-              <DominoTile
-                key={`${t[0]}-${t[1]}-${i}`}
-                tile={t}
-                size="md"
-                orientation={t[0] === t[1] ? "vertical" : "horizontal"}
-                className="animate-scale-in"
-              />
-            ))
-          ) : (
-            <p className="w-full text-center text-xs text-white/50">Empty table — play your first tile</p>
-          )}
-        </div>
-      </div>
-
-      <div className="mt-3">
-        <PlayerStrip
-          name={myName}
-          avatarUrl={myAvatar}
-          count={myHand.length}
-          countLabel="Tiles in hand"
-          active={!!myTurn}
-          activeLabel="Your turn"
-        />
-      </div>
-
-      <div className="mt-2 flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-black/30 p-3" style={{ scrollbarWidth: "none" }}>
-        {myHand.map((t, i) => {
-          const ok = myTurn && playable.includes(i);
-          return (
-            <DominoTile
-              key={`${t[0]}-${t[1]}-${i}`}
-              tile={t}
-              size="lg"
-              glow={ok}
-              dim={!ok}
-              selected={selected === i}
-              onClick={ok ? () => tapTile(i) : undefined}
+          {/* Opponent pod + face-down rack */}
+          <div className="flex items-center justify-between gap-2 px-1">
+            <PlayerPod
+              name={game.mode === "solo" ? "Computer" : opponentName}
+              avatarUrl={game.mode === "solo" ? null : opponentAvatar}
+              isComputer={game.mode === "solo"}
+              count={dom.hands[oppSeat]?.length ?? 0}
+              active={!myTurn && !finished && game.status === "active"}
             />
-          );
-        })}
+            <div className="flex gap-0.5 overflow-hidden">
+              {Array.from({ length: Math.min(dom.hands[oppSeat]?.length ?? 0, 7) }).map((_, i) => (
+                <DominoTile key={i} faceDown size="sm" orientation="vertical" />
+              ))}
+            </div>
+          </div>
+
+          {/* Chain */}
+          <div
+            ref={boardRef}
+            className="mt-3 flex min-h-[150px] items-center gap-1 overflow-x-auto px-2"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {dom.layout.length ? (
+              dom.layout.map((t, i) => (
+                <DominoTile
+                  key={`${t[0]}-${t[1]}-${i}`}
+                  tile={t}
+                  size="md"
+                  orientation={t[0] === t[1] ? "vertical" : "horizontal"}
+                  className="animate-scale-in"
+                />
+              ))
+            ) : (
+              <p className="w-full text-center text-xs font-bold text-white/60">
+                Empty table — play your first tile
+              </p>
+            )}
+          </div>
+
+          {/* Boneyard medallion + you pod */}
+          <div className="mt-3 flex items-end justify-between gap-2 px-1">
+            <div
+              className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
+              style={{
+                background: "linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3))",
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
+              }}
+            >
+              <Layers className="h-4 w-4 text-[#f0d78c]" />
+              <div className="text-left leading-tight">
+                <p className="text-[9px] font-bold uppercase tracking-wide text-white/60">Boneyard</p>
+                <p className="text-xs font-black text-white">{dom.pile.length}</p>
+              </div>
+            </div>
+
+            <PlayerPod name={myName} avatarUrl={myAvatar} count={myHand.length} active={!!myTurn} />
+          </div>
+
+          {/* Player hand on the felt */}
+          <div
+            className="mt-2 flex gap-1.5 overflow-x-auto rounded-2xl px-2 py-2"
+            style={{
+              background: "linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.12))",
+              scrollbarWidth: "none",
+            }}
+          >
+            {myHand.map((t, i) => {
+              const ok = myTurn && playable.includes(i);
+              return (
+                <DominoTile
+                  key={`${t[0]}-${t[1]}-${i}`}
+                  tile={t}
+                  size="lg"
+                  glow={ok}
+                  dim={!ok}
+                  selected={selected === i}
+                  onClick={ok ? () => tapTile(i) : undefined}
+                />
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {selected !== null && e ? (
@@ -347,29 +371,23 @@ export default function DominoesPage() {
           </button>
         </div>
       ) : (
-        <p className="mt-2 text-center text-[11px] text-white/50">
+        <p className="mt-2 text-center text-[11px] text-white/60">
           {myTurn ? "Tap a glowing tile to play it on an open end" : "Waiting for the next move"}
         </p>
       )}
 
-      <div className="mt-4 flex items-center justify-center gap-3">
-        <div className="relative flex items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-2.5">
-          <Layers className="h-5 w-5 text-primary" />
-          <div className="text-left">
-            <p className="text-[10px] uppercase tracking-wide text-white/50">Boneyard</p>
-            <p className="text-sm font-black text-white">{dom.pile.length} tiles</p>
-          </div>
-        </div>
-        {myTurn && !playable.length && (
+      {myTurn && !playable.length && (
+        <div className="mt-3 flex justify-center">
           <button
             type="button"
             onClick={draw}
-            className="rounded-2xl bg-primary px-5 py-3 text-sm font-black text-primary-foreground active:scale-[0.98]"
+            className="rounded-2xl bg-primary px-6 py-3 text-sm font-black text-primary-foreground active:scale-[0.98]"
           >
             {dom.pile.length ? "Draw a tile" : "Pass"}
           </button>
-        )}
-      </div>
+        </div>
+      )}
+
 
       <GameResultCard
         open={finished}
