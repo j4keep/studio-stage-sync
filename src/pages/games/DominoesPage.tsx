@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import GameShellPro from "@/components/games/pro/GameShellPro";
 import DominoTile from "@/components/games/pro/DominoTile";
-import PlayerStrip from "@/components/games/pro/PlayerStrip";
+import PlayerPod from "@/components/games/pro/PlayerPod";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import {
