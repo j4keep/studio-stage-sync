@@ -43,15 +43,19 @@ export function useTurnGame(id: string | undefined, userId: string | undefined) 
   useEffect(() => {
     if (!opponent?.user_id) {
       setOpponentName(opponent?.is_computer ? "Computer" : "Opponent");
+      setOpponentAvatar(null);
       return;
     }
     void (supabase as any)
       .from("profiles")
-      .select("display_name")
+      .select("display_name, avatar_url")
       .eq("user_id", opponent.user_id)
       .maybeSingle()
-      .then(({ data }: any) => setOpponentName(data?.display_name || "Opponent"));
+      .then(({ data }: any) => {
+        setOpponentName(data?.display_name || "Opponent");
+        setOpponentAvatar(data?.avatar_url || null);
+      });
   }, [opponent?.user_id, opponent?.is_computer]);
 
-  return { game, setGame, players, loading, refresh, me, opponent, opponentName };
+  return { game, setGame, players, loading, refresh, me, opponent, opponentName, opponentAvatar };
 }
