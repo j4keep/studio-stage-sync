@@ -81,6 +81,44 @@ export default function PoolPage() {
       });
   }, [user?.id]);
 
+  // Pool record + recent matchups shown behind the intro's "Track Your Best Break" action.
+  useEffect(() => {
+    if (!user?.id) return;
+    void (async () => {
+      try {
+        const [rows, games] = await Promise.all([getMyStats(user.id), listMyGames(user.id)]);
+        const s = rows.find((r) => r.game_type === "pool");
+        setPoolStats({
+          played: s?.games_played ?? 0,
+          wins: s?.wins ?? 0,
+          losses: s?.losses ?? 0,
+          bestStreak: s?.best_streak ?? 0,
+          highScore: s?.high_score ?? 0,
+        });
+        setMatchups(
+          games
+            .filter((g: any) => g.game_type === "pool")
+            .slice(0, 10)
+            .map((g: any) => ({
+              id: g.id,
+              label: g.mode === "solo" ? "Solo vs Computer" : "Head-to-head match",
+              detail: new Date(g.updated_at || g.created_at).toLocaleDateString(),
+              outcome:
+                g.status !== "completed"
+                  ? ("open" as const)
+                  : g.winner_user_id === user.id
+                    ? ("win" as const)
+                    : ("loss" as const),
+            })),
+        );
+      } catch {
+        /* stats are non-critical */
+      }
+    })();
+  }, [user?.id, game?.status]);
+
+
+
   const pool: PoolState = (game?.game_state?.pool as PoolState) || initialPool();
   poolRef.current = pool;
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
