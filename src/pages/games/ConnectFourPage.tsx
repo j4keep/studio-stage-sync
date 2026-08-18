@@ -38,6 +38,17 @@ export default function ConnectFourPage() {
   const finished = Boolean(w) || draw;
   const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !finished;
 
+  // Indices added since the last render get the drop animation.
+  const fresh = useMemo(() => {
+    const before = prevBoard.current;
+    const changed = new Set<number>();
+    if (before) board.forEach((c, i) => { if (c && before[i] !== c) changed.add(i); });
+    prevBoard.current = board;
+    return changed;
+  }, [board]);
+
+
+
   useEffect(() => {
     if (!game || !user || !finished || written.current === game.id) return;
     written.current = game.id;
