@@ -67,7 +67,13 @@ export default function ConnectFourPage() {
   }, [finished, game?.id, game?.status]);
 
   const play = async (col: number) => {
-    if (!game || !user || !myTurn || !canDrop(board, col)) return;
+    if (!game || !user || !myTurn) return;
+    if (!canDrop(board, col)) {
+      setInvalidCol(col);
+      window.setTimeout(() => setInvalidCol(null), 340);
+      toast({ title: "That column is full" });
+      return;
+    }
     let next = drop(board, col, myMark) as C4Board;
     let n = moveNumber + 1;
     let nextTurn = opponent?.user_id ?? null;
