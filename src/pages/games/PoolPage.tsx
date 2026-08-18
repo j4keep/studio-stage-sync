@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PoolTable from "@/components/games/pool/PoolTable";
-import PoolIntro from "@/components/games/pool/PoolIntro";
+import PoolIntro, { PoolMatchup, PoolStats } from "@/components/games/pool/PoolIntro";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
