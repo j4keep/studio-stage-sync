@@ -6,8 +6,8 @@ type Props = {
   children: ReactNode;
   title?: string;
   onExit?: () => void;
-  /** Skip the "Play widescreen" prompt — auto-rotate into landscape immediately,
-   *  with no portrait option and no exit button covering the game's own UI. */
+  /** No "Play widescreen" tab and no portrait fallback — just ask the user to physically
+   *  rotate their phone, then render fullscreen the instant the device is landscape. */
   auto?: boolean;
 };
 
@@ -16,9 +16,11 @@ type Props = {
  * - Device already landscape: renders full-screen as-is.
  * - Portrait (default): shows a "Play widescreen" tab. Tapping it requests fullscreen +
  *   an orientation lock, and — on browsers that ignore the lock (iOS Safari) —
- *   rotates the stage 90° so the table still fills the long side of the screen.
- * - Portrait with `auto`: skips the tab entirely and rotates immediately — this game
- *   only exists in widescreen.
+ *   rotates the stage 90° so the table still fills the long side of the screen. (That CSS
+ *   rotation only reads correctly once the user also physically turns the phone to match —
+ *   it's a deliberate "turn to align" affordance behind an explicit tap.)
+ * - Portrait with `auto`: no tap, no CSS-rotation trick — just a "rotate your phone"
+ *   prompt, since faking landscape before the user turns the device just renders sideways.
  */
 export default function LandscapeStage({ children, title = "Widescreen table", onExit, auto = false }: Props) {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
@@ -65,10 +67,29 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
     }
   };
 
-  // Auto mode: rotate immediately, no prompt to accept/decline.
-  useEffect(() => {
-    if (auto && portrait && !rotated) void goWide();
-  }, [auto, portrait, rotated]);
+  if (auto && portrait) {
+    // Best-effort: try for real fullscreen + lock in the background (silently a no-op
+    // without a user gesture on most browsers), but never fall back to CSS-rotating
+    // content the user hasn't physically turned to match yet.
+    void (async () => {
+      try {
+        const el = document.documentElement as any;
+        if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+        await (screen as any).orientation?.lock?.("landscape");
+      } catch {
+        /* ignore — the resize/orientationchange listener above handles the real rotation */
+      }
+    })();
+    return (
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 overflow-hidden bg-black px-8 text-center">
+        <RotateCw className="h-10 w-10 animate-spin text-primary" style={{ animationDuration: "2.2s" }} />
+        <div>
+          <p className="text-sm font-black text-white">Turn your phone sideways</p>
+          <p className="mt-1 text-xs text-white/55">8-Ball Pool plays in widescreen only.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (portrait && !rotated && !auto) {
     return (
@@ -87,11 +108,6 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
     );
   }
 
-  if (portrait && !rotated && auto) {
-    // Waiting on the fullscreen/orientation-lock request from the effect above to resolve.
-    return <div className="fixed inset-0 z-[100] overflow-hidden bg-black" />;
-  }
-
   if (portrait && rotated) {
     return (
       <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
@@ -104,16 +120,14 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
           }}
         >
           {children}
-          {!auto && (
-            <button
-              type="button"
-              onClick={exitWide}
-              aria-label="Exit widescreen"
-              className="absolute right-2 top-2 z-[60] rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
-            >
-              Exit widescreen
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={exitWide}
+            aria-label="Exit widescreen"
+            className="absolute right-2 top-2 z-[60] rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
+          >
+            Exit widescreen
+          </button>
         </div>
       </div>
     );

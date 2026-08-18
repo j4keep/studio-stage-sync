@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bot, Loader2, Trophy, Users } from "lucide-react";
+import { ArrowLeft, Bot, Loader2, Plus, Trophy, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import {
@@ -16,6 +16,7 @@ import {
   listMyGames,
   listMyInvites,
   respondToInvite,
+  updateGameState,
 } from "@/lib/games";
 import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import { toast } from "@/hooks/use-toast";
@@ -226,6 +227,26 @@ export default function GamesHubPage() {
     setPickerFor(type);
   };
 
+  /** Abandon a stale in-progress game and start a clean one of the same type. */
+  const startFresh = async (card: CardDef, stale: GameRow) => {
+    if (!user) return navigate("/auth");
+    setBusy(true);
+    try {
+      await updateGameState(stale.id, { status: "cancelled" });
+      await refresh();
+      if (card.solo) {
+        const game = await createSoloGame(card.type, user.id, initialStateFor(card.type));
+        navigate(gameRoute(card.type, game.id));
+      } else {
+        setPickerFor(card.type);
+      }
+    } catch (e: any) {
+      toast({ title: "Could not start a new game", description: e.message, variant: "destructive" });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const invitePlayer = async (opponentId: string, name: string) => {
     if (!user || !pickerFor) return;
     setBusy(true);
@@ -285,13 +306,23 @@ export default function GamesHubPage() {
 
           <div className="mt-4 flex gap-2">
             {inProgress ? (
-              <button
-                type="button"
-                onClick={() => navigate(gameRoute(inProgress.game_type, inProgress.id))}
-                className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
-              >
-                Continue
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => navigate(gameRoute(inProgress.game_type, inProgress.id))}
+                  className="flex-1 rounded-full bg-background px-3 py-2 text-sm font-black text-foreground active:scale-[0.98]"
+                >
+                  Continue
+                </button>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => startFresh(card, inProgress)}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-white/60 px-3 py-2 text-sm font-black text-white active:scale-[0.98] disabled:opacity-60"
+                >
+                  <Plus className="h-4 w-4" /> New Game
+                </button>
+              </>
             ) : (
               <>
                 {card.solo && (

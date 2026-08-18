@@ -1,9 +1,13 @@
 /**
  * Procedural billiard sound effects (WebAudio, no audio files) — a cue strike,
  * ball-on-ball clacks, cushion thuds, and a ball dropping into a pocket.
- * Tuned to sound like real phenolic-resin balls (a bright, ringing "crack"
- * with body) rather than a thin, hollow "ping-pong" click. No ambient loop:
- * real tables don't have background music.
+ *
+ * A real ball impact is dominated by a very short, loud, broadband noise
+ * transient (a "crack") with almost no tonal ringing — pure sine/triangle
+ * oscillators read as a synthetic "ping" (the ping-pong problem). So the
+ * character here comes from tightly bandpass-filtered noise bursts, not
+ * musical tones; any oscillator is just quiet low-end body underneath it.
+ * No ambient loop: real tables don't have background music.
  */
 
 const KEY = "yaj.games.pool.sfx.muted";
@@ -39,96 +43,76 @@ class PoolSfx {
     }
   }
 
-  private noiseBurst(t: number, len: number, hpFreq: number, gainPeak: number, decay: number, lpFreq?: number) {
-    const ctx = this.ctx!;
+  private noiseBuffer(ctx: AudioContext, len: number) {
     const buf = ctx.createBuffer(1, Math.max(1, Math.ceil(ctx.sampleRate * len)), ctx.sampleRate);
     const data = buf.getChannelData(0);
-    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  /** The core "crack" — noise punched through a resonant bandpass, very short decay. */
+  private crack(t: number, len: number, centerFreq: number, q: number, gainPeak: number, decay: number) {
+    const ctx = this.ctx!;
     const src = ctx.createBufferSource();
-    src.buffer = buf;
-    const hp = ctx.createBiquadFilter();
-    hp.type = "highpass";
-    hp.frequency.value = hpFreq;
+    src.buffer = this.noiseBuffer(ctx, len);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = centerFreq;
+    bp.Q.value = q;
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(gainPeak, t);
     gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
-    let node: AudioNode = src.connect(hp);
-    if (lpFreq) {
-      const lp = ctx.createBiquadFilter();
-      lp.type = "lowpass";
-      lp.frequency.value = lpFreq;
-      node = hp.connect(lp);
-    }
-    node.connect(gain).connect(ctx.destination);
+    src.connect(bp).connect(gain).connect(ctx.destination);
     src.start(t);
   }
 
-  /** A short resonant "ring" — two detuned tones with a fast decay, like struck resin. */
-  private ring(t: number, freq: number, gainPeak: number, decay: number) {
+  /** Soft, low-passed noise body — the felt-muffled "thud" underneath a crack. */
+  private thud(t: number, len: number, lpFreq: number, gainPeak: number, decay: number) {
     const ctx = this.ctx!;
-    for (const detune of [1, 1.014]) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.setValueAtTime(freq * detune, t);
-      osc.frequency.exponentialRampToValueAtTime(freq * detune * 0.72, t + decay);
-      gain.gain.setValueAtTime(gainPeak * 0.5, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + decay + 0.02);
-    }
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx, len);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = lpFreq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(gainPeak, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+    src.connect(lp).connect(gain).connect(ctx.destination);
+    src.start(t);
   }
 
-  /** Cue tip striking the cue ball — a hard crack with low-mid body behind it. */
+  /** Cue tip striking the cue ball — a hard, loud crack with body behind it. */
   strike(intensity = 1) {
     if (this.muted) return;
     const ctx = this.ensure();
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
-    const amt = 0.35 + Math.min(1, Math.max(0, intensity)) * 0.55;
-    this.noiseBurst(t, 0.028, 2200, amt * 1.1, 0.045);
-    this.ring(t + 0.002, 2100, amt * 0.9, 0.09);
-    // Low-mid body — the "thock" of a firm strike.
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(210, t);
-    osc.frequency.exponentialRampToValueAtTime(90, t + 0.07);
-    gain.gain.setValueAtTime(amt * 0.55, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.1);
+    const amt = 0.4 + Math.min(1, Math.max(0, intensity)) * 0.6;
+    this.crack(t, 0.02, 2600, 1.8, amt * 1.3, 0.02);
+    this.crack(t, 0.016, 4200, 2.2, amt * 0.7, 0.012);
+    this.thud(t, 0.05, 320, amt * 0.45, 0.05);
   }
 
-  /** Two balls clacking together — bright, ringing, with real body. */
+  /** Two balls clacking together — sharp and percussive, no musical ring. */
   click(intensity = 1) {
     if (this.muted) return;
     const ctx = this.ensure();
     const t = ctx.currentTime;
-    const amt = 0.22 + Math.min(1, Math.max(0, intensity)) * 0.4;
-    this.noiseBurst(t, 0.014, 2800, amt * 0.7, 0.02);
-    this.ring(t, 2300 - Math.random() * 200, amt, 0.075 + Math.random() * 0.02);
+    const amt = 0.28 + Math.min(1, Math.max(0, intensity)) * 0.45;
+    const wobble = 1 + (Math.random() - 0.5) * 0.15;
+    this.crack(t, 0.016, 2900 * wobble, 2, amt * 1.2, 0.016);
+    this.crack(t, 0.012, 4600 * wobble, 2.4, amt * 0.55, 0.009);
+    this.thud(t, 0.03, 260, amt * 0.22, 0.03);
   }
 
-  /** Ball bouncing off a cushion — a rubbery thock, softer than a ball-ball hit. */
+  /** Ball bouncing off a cushion — a rubbery, low-pitched thock, softer than a ball-ball hit. */
   rail(intensity = 1) {
     if (this.muted) return;
     const ctx = this.ensure();
     const t = ctx.currentTime;
-    const amt = 0.08 + Math.min(1, Math.max(0, intensity)) * 0.16;
-    this.noiseBurst(t, 0.02, 900, amt * 0.5, 0.04, 2600);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(260, t);
-    osc.frequency.exponentialRampToValueAtTime(130, t + 0.06);
-    gain.gain.setValueAtTime(amt, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.09);
+    const amt = 0.1 + Math.min(1, Math.max(0, intensity)) * 0.18;
+    this.crack(t, 0.02, 1400, 1.4, amt * 0.5, 0.03);
+    this.thud(t, 0.06, 260, amt, 0.07);
   }
 
   /** Ball dropping into a pocket — a couple of soft rattles into the liner, then a settling thud. */
@@ -136,20 +120,9 @@ class PoolSfx {
     if (this.muted) return;
     const ctx = this.ensure();
     const t = ctx.currentTime;
-    this.noiseBurst(t, 0.012, 3000, 0.16, 0.02);
-    this.noiseBurst(t + 0.05, 0.014, 2200, 0.12, 0.025);
-    this.noiseBurst(t + 0.1, 0.02, 500, 0.2, 0.11);
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(180, t + 0.1);
-    osc.frequency.exponentialRampToValueAtTime(65, t + 0.26);
-    gain.gain.setValueAtTime(0, t + 0.1);
-    gain.gain.linearRampToValueAtTime(0.3, t + 0.115);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t + 0.1);
-    osc.stop(t + 0.32);
+    this.crack(t, 0.014, 2400, 1.6, 0.22, 0.018);
+    this.thud(t + 0.045, 0.02, 500, 0.16, 0.03);
+    this.thud(t + 0.1, 0.09, 220, 0.32, 0.16);
   }
 }
 

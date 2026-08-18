@@ -125,6 +125,7 @@ function PoolPod({
   balls,
   active,
   align = "left",
+  size = "md",
 }: {
   name: string;
   avatarUrl?: string | null;
@@ -133,12 +134,14 @@ function PoolPod({
   balls: Ball[];
   active: boolean;
   align?: "left" | "right";
+  size?: "sm" | "md";
 }) {
+  const avatarDim = size === "sm" ? "h-7 w-7" : "h-10 w-10";
   return (
-    <div className={`flex items-center gap-2 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
+    <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
       <div className="relative shrink-0">
         <div
-          className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full p-[2px]"
+          className={`flex items-center justify-center overflow-hidden rounded-full p-[2px] ${avatarDim}`}
           style={{
             background: active ? "hsl(var(--primary))" : "rgba(255,255,255,0.14)",
             boxShadow: active ? "0 0 14px hsl(var(--primary) / 0.6)" : undefined,
@@ -148,16 +151,16 @@ function PoolPod({
             {avatarUrl ? (
               <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
             ) : isComputer ? (
-              <Bot className="h-4 w-4 text-primary" />
+              <Bot className="h-3.5 w-3.5 text-primary" />
             ) : (
-              <span className="text-xs font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
+              <span className="text-[10px] font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
             )}
           </div>
         </div>
-        {active && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0c1a12] bg-primary" />}
+        {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#0c1a12] bg-primary" />}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-[11px] font-black leading-tight text-white">{name}</p>
+        <p className="truncate text-[10px] font-black leading-tight text-white">{name}</p>
         <BallTrackerRow group={group} balls={balls} align={align} />
       </div>
     </div>
@@ -214,24 +217,47 @@ function PowerSlider({
   };
 
   return (
-    <div
-      ref={trackRef}
-      onPointerDown={handleDown}
-      className="relative w-7 flex-1 touch-none rounded-full border border-white/15 bg-black/40"
-      style={{ touchAction: "none", opacity: disabled ? 0.4 : 1 }}
-    >
+    <div className="flex h-full flex-col items-center gap-1">
+      <span className="text-[7px] font-black uppercase tracking-wide text-white/45">Power</span>
+      <span
+        className="h-2.5 w-2.5 shrink-0 rounded-full border border-white/40"
+        style={{ background: "hsl(204 100% 60%)", boxShadow: "0 0 6px hsl(204 100% 60% / 0.7)" }}
+        aria-hidden="true"
+      />
       <div
-        className="absolute inset-x-[3px] bottom-[3px] rounded-full transition-[height] duration-75"
+        ref={trackRef}
+        onPointerDown={handleDown}
+        className="relative w-8 flex-1 touch-none overflow-hidden rounded-full border border-black/40"
         style={{
-          height: `calc(${fill * 100}% - 3px)`,
-          background: "linear-gradient(0deg, hsl(204 100% 55%), #ffb020 65%, #ff4d4d)",
-          boxShadow: fill > 0.05 ? "0 0 10px hsl(204 100% 55% / 0.6)" : undefined,
+          touchAction: "none",
+          opacity: disabled ? 0.45 : 1,
+          background: "linear-gradient(180deg, #e8c78a 0%, #c99a5e 35%, #8a5a2b 70%, #5a3a1e 100%)",
+          boxShadow: "inset 0 0 6px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.4)",
         }}
-      />
-      <div
-        className="absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-[#0c1a12] bg-white shadow"
-        style={{ bottom: `${fill * 100}%` }}
-      />
+      >
+        {/* Wood grain ticks so the track unmistakably reads as a cue. */}
+        <div className="pointer-events-none absolute inset-0 flex flex-col justify-between px-1.5 py-3 opacity-40">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div key={i} className="h-px w-full bg-black/40" />
+          ))}
+        </div>
+        <div
+          className="absolute inset-x-0 bottom-0 transition-[height] duration-75"
+          style={{
+            height: `${fill * 100}%`,
+            background: "linear-gradient(0deg, hsl(204 100% 55%) 0%, #4dd0ff 55%, #ffb020 82%, #ff4d4d 100%)",
+            opacity: 0.88,
+            boxShadow: fill > 0.05 ? "0 0 14px hsl(204 100% 55% / 0.8)" : undefined,
+          }}
+        />
+        <div
+          className="absolute inset-x-0 flex h-5 -translate-y-1/2 items-center justify-center"
+          style={{ bottom: `${fill * 100}%` }}
+        >
+          <div className="h-1.5 w-[85%] rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]" />
+        </div>
+      </div>
+      <span className="text-[7px] font-black uppercase tracking-wide text-white/40">{Math.round(fill * 100)}</span>
     </div>
   );
 }
@@ -381,22 +407,59 @@ export default function PoolTable({
       ctx.setTransform(px, 0, 0, px, 0, 0);
       ctx.clearRect(0, 0, WORLD_W, WORLD_H);
 
-      // Wood rail.
-      const railGrad = ctx.createLinearGradient(0, 0, 0, WORLD_H);
-      railGrad.addColorStop(0, "#3a2416");
-      railGrad.addColorStop(0.5, "#20130b");
-      railGrad.addColorStop(1, "#150c07");
-      ctx.fillStyle = railGrad;
-      roundRect(ctx, 0, 0, WORLD_W, WORLD_H, 22);
+      // Outer shadow (lifts the table off the background).
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,0,0.6)";
+      ctx.shadowBlur = 28;
+      ctx.shadowOffsetY = 10;
+      ctx.fillStyle = "#000";
+      roundRect(ctx, 0, 0, WORLD_W, WORLD_H, 26);
       ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
-      ctx.lineWidth = 2;
-      roundRect(ctx, 2, 2, WORLD_W - 4, WORLD_H - 4, 20);
+      ctx.restore();
+
+      // Wood rail — layered gradient for a bevelled, 3D edge.
+      const railGrad = ctx.createLinearGradient(0, 0, WORLD_W, WORLD_H);
+      railGrad.addColorStop(0, "#6b4526");
+      railGrad.addColorStop(0.15, "#4a2c16");
+      railGrad.addColorStop(0.5, "#2a180c");
+      railGrad.addColorStop(0.85, "#3a2214");
+      railGrad.addColorStop(1, "#5a3a1e");
+      ctx.fillStyle = railGrad;
+      roundRect(ctx, 0, 0, WORLD_W, WORLD_H, 26);
+      ctx.fill();
+      // Inner bevel highlight/shadow ring.
+      ctx.save();
+      roundRect(ctx, 3, 3, WORLD_W - 6, WORLD_H - 6, 23);
+      ctx.clip();
+      const bevel = ctx.createLinearGradient(0, 0, WORLD_W * 0.5, WORLD_H * 0.5);
+      bevel.addColorStop(0, "rgba(255,255,255,0.22)");
+      bevel.addColorStop(0.4, "rgba(255,255,255,0)");
+      ctx.strokeStyle = bevel;
+      ctx.lineWidth = 6;
+      roundRect(ctx, 4, 4, WORLD_W - 8, WORLD_H - 8, 22);
+      ctx.stroke();
+      ctx.restore();
+
+      // Cushion nose — the distinct trim band between the wood rail and the felt.
+      const cushionInset = 14;
+      ctx.save();
+      roundRect(ctx, RAIL - cushionInset, RAIL - cushionInset, TABLE_W + cushionInset * 2, TABLE_H + cushionInset * 2, 12);
+      ctx.clip();
+      const cushionGrad = ctx.createLinearGradient(0, RAIL - cushionInset, 0, RAIL + TABLE_H + cushionInset);
+      cushionGrad.addColorStop(0, "#0a4864");
+      cushionGrad.addColorStop(0.5, "#083a52");
+      cushionGrad.addColorStop(1, "#062c3e");
+      ctx.fillStyle = cushionGrad;
+      ctx.fillRect(RAIL - cushionInset, RAIL - cushionInset, TABLE_W + cushionInset * 2, TABLE_H + cushionInset * 2);
+      ctx.restore();
+      ctx.strokeStyle = "hsl(204 90% 62% / 0.5)";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, RAIL - cushionInset + 1.5, RAIL - cushionInset + 1.5, TABLE_W + cushionInset * 2 - 3, TABLE_H + cushionInset * 2 - 3, 11);
       ctx.stroke();
 
       // Felt.
       ctx.save();
-      roundRect(ctx, RAIL, RAIL, TABLE_W, TABLE_H, 8);
+      roundRect(ctx, RAIL, RAIL, TABLE_W, TABLE_H, 6);
       ctx.clip();
       const feltGrad = ctx.createRadialGradient(
         RAIL + TABLE_W / 2,
@@ -406,9 +469,9 @@ export default function PoolTable({
         RAIL + TABLE_H / 2,
         TABLE_W * 0.75,
       );
-      feltGrad.addColorStop(0, "#0f5a7a");
+      feltGrad.addColorStop(0, "#12648a");
       feltGrad.addColorStop(0.55, "#0b4a68");
-      feltGrad.addColorStop(1, "#062f45");
+      feltGrad.addColorStop(1, "#052738");
       ctx.fillStyle = feltGrad;
       ctx.fillRect(RAIL, RAIL, TABLE_W, TABLE_H);
 
@@ -419,47 +482,54 @@ export default function PoolTable({
         ctx.arc(RAIL + d.x, RAIL + d.y, 1.1, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.strokeStyle = "rgba(255,255,255,0.06)";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(RAIL + 3, RAIL + 3, TABLE_W - 6, TABLE_H - 6);
+      // Bright trim line where the felt meets the cushion.
+      ctx.strokeStyle = "hsl(204 100% 70% / 0.5)";
+      ctx.lineWidth = 1.5;
+      roundRect(ctx, RAIL + 3, RAIL + 3, TABLE_W - 6, TABLE_H - 6, 4);
+      ctx.stroke();
+      // Inner shadow for depth.
+      ctx.strokeStyle = "rgba(0,0,0,0.35)";
+      ctx.lineWidth = 10;
+      roundRect(ctx, RAIL + 5, RAIL + 5, TABLE_W - 10, TABLE_H - 10, 4);
+      ctx.stroke();
 
       // Rail diamonds.
-      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
       for (let i = 1; i < 8; i++) {
         const x = RAIL + (TABLE_W / 8) * i;
         if (Math.abs(x - (RAIL + TABLE_W / 2)) < 2) continue;
         ctx.beginPath();
-        ctx.arc(x, RAIL - RAIL / 2, 2.4, 0, Math.PI * 2);
+        ctx.arc(x, RAIL - cushionInset - 10, 2.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(x, RAIL + TABLE_H + RAIL / 2, 2.4, 0, Math.PI * 2);
+        ctx.arc(x, RAIL + TABLE_H + cushionInset + 10, 2.6, 0, Math.PI * 2);
         ctx.fill();
       }
       for (let i = 1; i < 4; i++) {
         const y = RAIL + (TABLE_H / 4) * i;
         ctx.beginPath();
-        ctx.arc(RAIL / 2, y, 2.4, 0, Math.PI * 2);
+        ctx.arc(RAIL - cushionInset - 10, y, 2.6, 0, Math.PI * 2);
         ctx.fill();
         ctx.beginPath();
-        ctx.arc(RAIL + TABLE_W + RAIL / 2, y, 2.4, 0, Math.PI * 2);
+        ctx.arc(RAIL + TABLE_W + cushionInset + 10, y, 2.6, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Pockets.
+      // Pockets — a leather lip ring around a deep black cup.
       for (const p of POCKETS) {
         const cx = RAIL + p.x;
         const cy = RAIL + p.y;
-        const g = ctx.createRadialGradient(cx, cy, p.r * 0.2, cx, cy, p.r);
+        ctx.beginPath();
+        ctx.arc(cx, cy, p.r * 1.05, 0, Math.PI * 2);
+        ctx.fillStyle = "#1c1108";
+        ctx.fill();
+        const g = ctx.createRadialGradient(cx, cy, p.r * 0.15, cx, cy, p.r * 0.85);
         g.addColorStop(0, "#000000");
-        g.addColorStop(0.7, "#0a0a0a");
-        g.addColorStop(1, "rgba(0,0,0,0)");
+        g.addColorStop(0.75, "#080808");
+        g.addColorStop(1, "#2a1a0e");
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(cx, cy, p.r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#050505";
-        ctx.beginPath();
-        ctx.arc(cx, cy, p.r * 0.62, 0, Math.PI * 2);
+        ctx.arc(cx, cy, p.r * 0.85, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.restore();
@@ -649,49 +719,49 @@ export default function PoolTable({
 
   return (
     <div
-      className="relative flex h-full w-full flex-col overflow-hidden"
+      className="relative h-full w-full overflow-hidden"
       style={{
         background: "radial-gradient(90% 80% at 50% 0%, hsl(210 45% 16%) 0%, hsl(220 45% 9%) 45%, hsl(226 45% 5%) 100%)",
       }}
     >
-      <div className="flex shrink-0 items-center gap-2 px-3 py-1.5">
-        <button type="button" onClick={onBack} aria-label="Back" className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
-          <ArrowLeft className="h-4 w-4" />
+      {/* Full-height play surface — chrome below is overlaid, not laid out in flow,
+          so the table gets every pixel of vertical space this landscape screen has. */}
+      <div className="flex h-full w-full items-center justify-center gap-1 px-0.5">
+        <div ref={wrapRef} className="flex h-full flex-1 items-center justify-center">
+          <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
+        </div>
+        <div className="flex h-[94%] shrink-0 flex-col items-center">
+          <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-1.5 px-2 pt-1.5">
+        <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto rounded-full bg-black/55 p-1 text-white active:scale-95">
+          <ArrowLeft className="h-3.5 w-3.5" />
         </button>
         <span
-          className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
+          className="rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider"
           style={{
-            background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(255,255,255,0.08)",
-            color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.75)",
+            background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
+            color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
             boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
           }}
         >
           {turnLabel}
         </span>
-        {ballInHand && interactive && <span className="truncate text-[10px] font-bold text-primary">Place the cue ball</span>}
-        <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        {ballInHand && interactive && <span className="truncate text-[9px] font-bold text-primary">Place the cue ball</span>}
+        <div className="pointer-events-auto ml-auto flex items-center gap-1">
+          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
+            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
           </button>
-          <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
-            <HelpCircle className="h-4 w-4" />
+          <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1 text-white active:scale-95">
+            <HelpCircle className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      <div className="relative min-h-0 flex-1 px-2 pb-1">
-        <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2">
-          <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} />
-        </div>
-        <div className="flex h-full w-full items-center justify-center gap-2.5 pt-8">
-          <div ref={wrapRef} className="flex h-full flex-1 items-center justify-center">
-            <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
-          </div>
-          <div className="flex h-[78%] shrink-0 flex-col items-center gap-1">
-            <span className="text-[8px] font-black uppercase tracking-wide text-white/40">Power</span>
-            <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
-          </div>
-        </div>
+      <div className="pointer-events-none absolute left-1/2 top-1 z-20 -translate-x-1/2">
+        <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} size="sm" />
       </div>
 
       {help ? (
@@ -702,9 +772,9 @@ export default function PoolTable({
         </ul>
       ) : null}
 
-      <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-1">
-        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} />
-        <p className="max-w-[45%] text-right text-[10px] font-bold text-white/50">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-center justify-between px-2 pb-1">
+        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} size="sm" />
+        <p className="max-w-[40%] text-right text-[9px] font-bold text-white/50">
           {ballInHand && interactive
             ? "Tap the table to place the cue ball"
             : interactive
