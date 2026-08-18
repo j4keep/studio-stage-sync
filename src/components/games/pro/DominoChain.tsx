@@ -13,7 +13,10 @@ type Props = {
   size?: "sm" | "md";
   /** Highlight the whole surface as a drop zone (empty table). */
   emptyDropActive?: boolean;
+  /** Scale the chain down so it always fits its container (no clipping). */
+  fit?: boolean;
 };
+
 
 type Geo = { vW: number; vH: number; hW: number; hH: number; rowH: number; slotW: number };
 
