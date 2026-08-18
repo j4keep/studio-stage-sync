@@ -761,19 +761,41 @@ export default function PoolTable({
         paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
-      {/* Full-height play surface — chrome below is overlaid, not laid out in flow,
-          so the table gets every pixel of vertical space this landscape screen has. */}
-      <div className="flex h-full w-full items-center justify-center gap-1 px-0.5">
+      {/* Full-height play surface. The opponent HUD and the power slider used to be two
+          independently right-anchored elements that could overlap depending on content
+          height — they're now one column, stacked top-to-bottom, so that's impossible. */}
+      <div className="flex h-full w-full items-stretch justify-center gap-1.5 px-0.5">
         <div ref={wrapRef} className="flex h-full flex-1 items-center justify-center">
           <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
         </div>
-        <div className="flex h-[76%] shrink-0 flex-col items-center self-center">
-          <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
+        <div className="flex h-full shrink-0 flex-col items-end gap-1 py-1.5">
+          <div className="flex shrink-0 items-center gap-1">
+            <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
+              {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+            </button>
+            <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1 text-white active:scale-95">
+              <HelpCircle className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <PoolPod
+            name={oppName}
+            avatarUrl={oppAvatar}
+            isComputer={isComputer}
+            group={oppGroup}
+            balls={balls}
+            active={!myTurn && !finished}
+            align="right"
+            size="sm"
+            badge={!myTurn && !finished ? "Their turn" : undefined}
+          />
+          <div className="flex min-h-0 flex-1 flex-col items-center pb-1">
+            <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
+          </div>
         </div>
       </div>
 
-      {/* Versus-style HUD, both corners — the table itself stays completely clear. Whose
-          turn it is shows as a glow on that player's own pod, never as text on the felt. */}
+      {/* My HUD — top-left, the only corner without other chrome to collide with. Whose
+          turn it is shows as a glow on the active player's own pod, never text on the felt. */}
       <div className="pointer-events-none absolute left-0 top-0 z-30 flex items-start gap-1.5 px-2 pt-1.5">
         <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-1 text-white active:scale-95">
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -787,28 +809,6 @@ export default function PoolTable({
           size="sm"
           badge={myTurn && !finished ? (ballInHand ? "Place cue ball" : "Your turn") : undefined}
         />
-      </div>
-
-      <div className="pointer-events-none absolute right-0 top-0 z-30 flex items-start gap-1.5 px-2 pt-1.5">
-        <PoolPod
-          name={oppName}
-          avatarUrl={oppAvatar}
-          isComputer={isComputer}
-          group={oppGroup}
-          balls={balls}
-          active={!myTurn && !finished}
-          align="right"
-          size="sm"
-          badge={!myTurn && !finished ? "Their turn" : undefined}
-        />
-        <div className="pointer-events-auto flex shrink-0 items-center gap-1">
-          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
-            {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-          </button>
-          <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1 text-white active:scale-95">
-            <HelpCircle className="h-3.5 w-3.5" />
-          </button>
-        </div>
       </div>
 
       {help ? (
