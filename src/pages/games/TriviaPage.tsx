@@ -13,7 +13,7 @@ export default function TriviaPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName } = useTurnGame(id, user?.id);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const [picked, setPicked] = useState<number | null>(null);
   const written = useRef<string | null>(null);
 
