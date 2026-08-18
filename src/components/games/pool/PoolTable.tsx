@@ -5,12 +5,15 @@ import {
   BALL_R,
   Ball,
   Group,
+  MAX_SHOT_SPEED,
   POCKETS,
+  ShotSimResult,
   TABLE_H,
   TABLE_W,
   canPlaceCueBall,
   isStripe,
 } from "@/lib/pool";
+import { poolSfx } from "@/lib/pool-sfx";
 
 const RAIL = 46;
 const WORLD_W = TABLE_W + RAIL * 2;
@@ -22,7 +25,7 @@ type Vec = { x: number; y: number };
 
 type Props = {
   balls: Ball[];
-  playback: Ball[][] | null;
+  playback: ShotSimResult | null;
   onPlaybackDone: () => void;
   interactive: boolean;
   ballInHand: boolean;
@@ -180,8 +183,9 @@ export default function PoolTable({
   // Mutable game-loop state, kept out of React state so the draw loop never re-renders.
   const stateRef = useRef({
     balls,
-    playback: null as Ball[][] | null,
+    playback: null as ShotSimResult | null,
     frameIdx: 0,
+    firedIdx: 0,
     aiming: false,
     aim: null as { angle: number; power: number } | null,
     placing: false,
@@ -209,10 +213,16 @@ export default function PoolTable({
   useEffect(() => {
     stateRef.current.playback = playback;
     stateRef.current.frameIdx = 0;
+    stateRef.current.firedIdx = 0;
     if (playback) {
       stateRef.current.aiming = false;
       stateRef.current.aim = null;
       stateRef.current.placing = false;
+      const cue0 = playback.frames[0]?.find((b) => b.id === 0);
+      if (cue0) {
+        const speed = Math.hypot(cue0.vx, cue0.vy);
+        poolSfx.strike(speed / MAX_SHOT_SPEED);
+      }
     }
   }, [playback]);
 
@@ -262,9 +272,19 @@ export default function PoolTable({
       // Advance playback.
       let displayBalls = st.balls;
       if (st.playback) {
-        st.frameIdx = Math.min(st.frameIdx + PLAYBACK_STEPS_PER_TICK, st.playback.length - 1);
-        displayBalls = st.playback[st.frameIdx];
-        if (st.frameIdx >= st.playback.length - 1) {
+        const pb = st.playback;
+        const lastIdx = pb.frames.length - 1;
+        const prevIdx = st.frameIdx;
+        st.frameIdx = Math.min(prevIdx + PLAYBACK_STEPS_PER_TICK, lastIdx);
+        displayBalls = pb.frames[st.frameIdx];
+
+        // Fire any sound events whose frame falls within the range we just advanced through.
+        for (const f of pb.hitFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.click(1);
+        for (const f of pb.railFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.rail(1);
+        for (const f of pb.pocketFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.pocket();
+        st.firedIdx = st.frameIdx;
+
+        if (st.frameIdx >= lastIdx) {
           st.playback = null;
           onPlaybackDoneRef.current();
         }

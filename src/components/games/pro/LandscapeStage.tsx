@@ -67,7 +67,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
         <button
           type="button"
           onClick={goWide}
-          className="fixed bottom-24 left-1/2 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/50 bg-primary px-5 py-3 text-xs font-black text-primary-foreground shadow-lg active:scale-95"
+          className="fixed bottom-24 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-2 rounded-full border border-primary/50 bg-primary px-5 py-3 text-xs font-black text-primary-foreground shadow-lg active:scale-95"
         >
           <RotateCw className="h-4 w-4" />
           Play widescreen
@@ -93,7 +93,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
             type="button"
             onClick={exitWide}
             aria-label="Exit widescreen"
-            className="absolute right-2 top-2 z-30 rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
+            className="absolute right-2 top-2 z-[60] rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
           >
             Exit widescreen
           </button>

@@ -11,10 +11,11 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { casinoMusic } from "@/lib/casino-music";
+import { poolSfx } from "@/lib/pool-sfx";
 import {
-  Ball,
   PoolState,
   Seat,
+  ShotSimResult,
   ballsRemaining,
   computerPlacement,
   computerShot,
@@ -44,10 +45,10 @@ export default function PoolPage() {
   const written = useRef<string | null>(null);
   const [picker, setPicker] = useState(false);
   const [seated, setSeated] = useState(false);
-  const [muted, setMuted] = useState(casinoMusic.muted);
+  const [muted, setMuted] = useState(poolSfx.muted);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [myName, setMyName] = useState("You");
-  const [playback, setPlayback] = useState<Ball[][] | null>(null);
+  const [playback, setPlayback] = useState<ShotSimResult | null>(null);
   const [committing, setCommitting] = useState(false);
 
   const poolRef = useRef<PoolState>(initialPool());
@@ -67,8 +68,6 @@ export default function PoolPage() {
         setMyName(data?.display_name || "You");
       });
   }, [user?.id]);
-
-  useEffect(() => () => casinoMusic.stop(), []);
 
   const pool: PoolState = (game?.game_state?.pool as PoolState) || initialPool();
   poolRef.current = pool;
@@ -94,8 +93,7 @@ export default function PoolPage() {
     if (pool.lastShot.moveNumber <= lastAnimatedMove.current) return;
     lastAnimatedMove.current = pool.lastShot.moveNumber;
     const sim = simulateShot(pool.preShotBalls, pool.lastShot.angle, pool.lastShot.power);
-    casinoMusic.clack();
-    setPlayback(sim.frames);
+    setPlayback(sim);
   }, [game?.game_state]);
 
   useEffect(() => {
@@ -134,8 +132,7 @@ export default function PoolPage() {
     const resolution = resolveShot(state, seat, angle, power, sim, n);
     pendingRef.current = { resolution, moveNumber: n, seat };
     lastAnimatedMove.current = n;
-    casinoMusic.clack();
-    setPlayback(sim.frames);
+    setPlayback(sim);
   };
 
   const handleShoot = (angle: number, power: number) => {
@@ -245,8 +242,7 @@ export default function PoolPage() {
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
-    casinoMusic.setMuted(next);
-    if (!next) void casinoMusic.start();
+    poolSfx.setMuted(next);
   };
 
   if (loading) {
@@ -330,7 +326,7 @@ export default function PoolPage() {
           onToggleMute={toggleMute}
           onStart={() => {
             setSeated(true);
-            if (!muted) void casinoMusic.start();
+            void poolSfx.prime();
           }}
           onBack={() => navigate("/games")}
         />

@@ -139,6 +139,11 @@ export type ShotSimResult = {
   potted: BallId[];
   firstContact: BallId | null;
   railContactAfterContact: boolean;
+  /** Frame indices where sound-worthy physics events happened, for animation playback. */
+  strikeFrame: number;
+  hitFrames: number[];
+  railFrames: number[];
+  pocketFrames: number[];
 };
 
 function cloneBalls(balls: Ball[]): Ball[] {
@@ -159,6 +164,9 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
   let firstContact: BallId | null = null;
   let contactMade = false;
   let railContactAfterContact = false;
+  const hitFrames: number[] = [];
+  const railFrames: number[] = [];
+  const pocketFrames: number[] = [];
 
   for (let step = 0; step < MAX_STEPS; step++) {
     for (const b of balls) {
@@ -167,6 +175,7 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
       b.y += b.vy;
     }
 
+    let pocketedThisStep = false;
     for (const b of balls) {
       if (b.potted) continue;
       for (const p of POCKETS) {
@@ -176,11 +185,13 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
           b.potted = true;
           b.vx = 0;
           b.vy = 0;
+          pocketedThisStep = true;
           break;
         }
       }
     }
 
+    let railHitThisStep = false;
     for (const b of balls) {
       if (b.potted) continue;
       let bounced = false;
@@ -202,9 +213,13 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
         b.vy = -b.vy * RESTITUTION;
         bounced = true;
       }
-      if (bounced && contactMade) railContactAfterContact = true;
+      if (bounced) {
+        railHitThisStep = true;
+        if (contactMade) railContactAfterContact = true;
+      }
     }
 
+    let ballHitThisStep = false;
     for (let i = 0; i < balls.length; i++) {
       const a = balls[i];
       if (a.potted) continue;
@@ -236,6 +251,7 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
             if (a.id === 0 && firstContact === null) firstContact = b.id;
             if (b.id === 0 && firstContact === null) firstContact = a.id;
             contactMade = true;
+            ballHitThisStep = true;
           }
         }
       }
@@ -252,13 +268,27 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
     }
 
     frames.push(cloneBalls(balls));
+    const idx = frames.length - 1;
+    if (ballHitThisStep) hitFrames.push(idx);
+    if (railHitThisStep) railFrames.push(idx);
+    if (pocketedThisStep) pocketFrames.push(idx);
 
     if (balls.every((b) => b.potted || (b.vx === 0 && b.vy === 0))) break;
   }
 
   const potted = balls.filter((b) => b.potted && !wasPotted.has(b.id)).map((b) => b.id);
 
-  return { frames, finalBalls: balls, potted, firstContact, railContactAfterContact };
+  return {
+    frames,
+    finalBalls: balls,
+    potted,
+    firstContact,
+    railContactAfterContact,
+    strikeFrame: 0,
+    hitFrames,
+    railFrames,
+    pocketFrames,
+  };
 }
 
 // ---- Rules engine ----
