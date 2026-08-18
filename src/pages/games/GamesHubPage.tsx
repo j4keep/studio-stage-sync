@@ -26,6 +26,7 @@ import connectFourArt from "@/assets/games/connect-four.jpg";
 import checkersArt from "@/assets/games/checkers.jpg";
 import triviaArt from "@/assets/games/trivia.jpg";
 import dashArt from "@/assets/games/yaj-dash.jpg";
+import poolArt from "@/assets/games/pool.svg";
 
 type CardDef = {
   type: GameType;
@@ -60,6 +61,18 @@ const CARDS: CardDef[] = [
     difficulty: "Easy",
     players: "2 players",
     image: tttArt,
+    live: true,
+    solo: true,
+    multi: true,
+    featured: true,
+  },
+  {
+    type: "pool",
+    title: "8-Ball Pool",
+    desc: "Real table physics. Call your shot, run the table.",
+    difficulty: "Medium",
+    players: "2 players",
+    image: poolArt,
     live: true,
     solo: true,
     multi: true,

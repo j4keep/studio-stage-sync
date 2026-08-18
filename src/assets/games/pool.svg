@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768">
+  <defs>
+    <radialGradient id="felt" cx="50%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#12719c"/>
+      <stop offset="55%" stop-color="#0b4a68"/>
+      <stop offset="100%" stop-color="#062f45"/>
+    </radialGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3a2416"/>
+      <stop offset="55%" stop-color="#20130b"/>
+      <stop offset="100%" stop-color="#130b06"/>
+    </linearGradient>
+    <radialGradient id="pocket" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#000"/>
+      <stop offset="70%" stop-color="#0a0a0a"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+    </radialGradient>
+    <radialGradient id="gloss" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.85)"/>
+      <stop offset="30%" stop-color="rgba(255,255,255,0.12)"/>
+      <stop offset="100%" stop-color="rgba(0,0,0,0.25)"/>
+    </radialGradient>
+    <clipPath id="tableClip"><rect x="52" y="52" width="920" height="664" rx="16"/></clipPath>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#rail)"/>
+  <rect x="52" y="52" width="920" height="664" rx="16" fill="url(#felt)"/>
+  <g clip-path="url(#tableClip)" opacity="0.9">
+    <rect x="52" y="52" width="920" height="664" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+  </g>
+
+  <g>
+    <circle cx="52" cy="52" r="46" fill="url(#pocket)"/>
+    <circle cx="972" cy="52" r="46" fill="url(#pocket)"/>
+    <circle cx="52" cy="716" r="46" fill="url(#pocket)"/>
+    <circle cx="972" cy="716" r="46" fill="url(#pocket)"/>
+    <circle cx="512" cy="52" r="40" fill="url(#pocket)"/>
+    <circle cx="512" cy="716" r="40" fill="url(#pocket)"/>
+  </g>
+
+  <!-- Rack of balls -->
+  <g>
+    <!-- row 1 -->
+    <g transform="translate(690,384)"><circle r="30" fill="#e9c336"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">1</text></g>
+    <!-- row 2 -->
+    <g transform="translate(742,354)"><circle r="30" fill="#f5f2ea"/><rect x="-30" y="-13" width="60" height="26" fill="#e9c336"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">9</text></g>
+    <g transform="translate(742,414)"><circle r="30" fill="#1f5fd6"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">2</text></g>
+    <!-- row 3 -->
+    <g transform="translate(794,324)"><circle r="30" fill="#f5f2ea"/><rect x="-30" y="-13" width="60" height="26" fill="#1f5fd6"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">10</text></g>
+    <g transform="translate(794,384)"><circle r="30" fill="#161616"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#f5f2ea">8</text></g>
+    <g transform="translate(794,444)"><circle r="30" fill="#d92b2b"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">3</text></g>
+    <!-- row 4 -->
+    <g transform="translate(846,294)"><circle r="30" fill="#e8791c"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">5</text></g>
+    <g transform="translate(846,354)"><circle r="30" fill="#f5f2ea"/><rect x="-30" y="-13" width="60" height="26" fill="#7b3fbf"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">11</text></g>
+    <g transform="translate(846,414)"><circle r="30" fill="#7b3fbf"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">4</text></g>
+    <g transform="translate(846,474)"><circle r="30" fill="#f5f2ea"/><rect x="-30" y="-13" width="60" height="26" fill="#e8791c"/><circle r="30" fill="url(#gloss)"/><circle r="13" fill="#f5f2ea"/><text x="0" y="5" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="700" font-size="16" fill="#111">13</text></g>
+  </g>
+
+  <!-- Cue ball + stick -->
+  <g transform="translate(280,470)">
+    <circle r="30" fill="#f5f2ea"/>
+    <circle r="30" fill="url(#gloss)"/>
+  </g>
+  <g stroke-linecap="round">
+    <line x1="30" y1="620" x2="238" y2="490" stroke="#c99a5e" stroke-width="14"/>
+    <line x1="30" y1="620" x2="120" y2="562" stroke="#5a3a1e" stroke-width="14"/>
+    <line x1="230" y1="495" x2="255" y2="480" stroke="#2b8fd6" stroke-width="7"/>
+  </g>
+</svg>

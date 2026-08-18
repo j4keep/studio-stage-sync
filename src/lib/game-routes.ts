@@ -4,6 +4,7 @@ import { C4_EMPTY } from "@/lib/connect-four";
 import { initialCheckers } from "@/lib/checkers";
 import { initialDominoes } from "@/lib/dominoes";
 import { pickQuestions } from "@/lib/trivia";
+import { initialPool } from "@/lib/pool";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -12,6 +13,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   dominoes: "dominoes",
   trivia: "trivia",
   yaj_dash: "dash",
+  pool: "pool",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -31,6 +33,8 @@ export function initialStateFor(type: GameType): any {
       return { dom: initialDominoes(), moveNumber: 0 };
     case "trivia":
       return { questions: pickQuestions(), i: 0, scores: [0, 0], moveNumber: 0 };
+    case "pool":
+      return { pool: initialPool(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }

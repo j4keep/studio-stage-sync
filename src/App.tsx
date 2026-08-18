@@ -124,6 +124,7 @@ import CheckersPage from "./pages/games/CheckersPage";
 import DominoesPage from "./pages/games/DominoesPage";
 import TriviaPage from "./pages/games/TriviaPage";
 import YajDashPage from "./pages/games/YajDashPage";
+import PoolPage from "./pages/games/PoolPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import DealsHomePage from "./pages/deals/DealsHomePage";
 import DealDetailPage from "./pages/deals/DealDetailPage";
@@ -411,6 +412,7 @@ const ProtectedRoutes = () => {
         <Route path="/games/dominoes/:id" element={<DominoesPage />} />
         <Route path="/games/trivia/:id" element={<TriviaPage />} />
         <Route path="/games/dash" element={<YajDashPage />} />
+        <Route path="/games/pool/:id" element={<PoolPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
@@ -541,7 +543,7 @@ const ScrollLockGuard = () => {
 
                       <Routes>
                         <Route path="/auth" element={<AuthPage />} />
-                        
+
                         <Route path="/index" element={<Navigate to="/" replace />} />
                         <Route path="/*" element={<ProtectedRoutes />} />
                       </Routes>
