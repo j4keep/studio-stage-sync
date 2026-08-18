@@ -23,7 +23,9 @@ export default function ConnectFourPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName } = useTurnGame(id, user?.id);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
+  const [invalidCol, setInvalidCol] = useState<number | null>(null);
+  const prevBoard = useRef<C4Board | null>(null);
   const written = useRef<string | null>(null);
 
   const board: C4Board = (game?.game_state?.board as C4Board) || C4_EMPTY;
