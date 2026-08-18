@@ -20,6 +20,9 @@ const RAIL = 46;
 const WORLD_W = TABLE_W + RAIL * 2;
 const WORLD_H = TABLE_H + RAIL * 2;
 const PLAYBACK_STEPS_PER_TICK = 5;
+/** Balls render a bit larger than their true collision radius (BALL_R) purely for visibility —
+ *  positions and all physics/aiming math stay on the real radius, only the drawn circle grows. */
+const BALL_DRAW_R = BALL_R * 1.2;
 
 type Vec = { x: number; y: number };
 
@@ -87,7 +90,7 @@ function BallDot({ id, potted }: { id: number; potted: boolean }) {
   const stripe = isStripe(id);
   return (
     <span
-      className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[6.5px] font-black transition-opacity"
+      className="relative flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-black transition-opacity"
       style={{
         background: stripe
           ? `linear-gradient(90deg, ${BALL_COLORS[id]} 30%, #f5f2ea 30% 70%, ${BALL_COLORS[id]} 70%)`
@@ -131,6 +134,7 @@ function PoolPod({
   active,
   align = "left",
   size = "md",
+  badge,
 }: {
   name: string;
   avatarUrl?: string | null;
@@ -140,8 +144,10 @@ function PoolPod({
   active: boolean;
   align?: "left" | "right";
   size?: "sm" | "md";
+  /** Small glowing status pill shown under the pod instead of ever putting text on the table. */
+  badge?: string;
 }) {
-  const avatarDim = size === "sm" ? "h-7 w-7" : "h-10 w-10";
+  const avatarDim = size === "sm" ? "h-9 w-9" : "h-10 w-10";
   return (
     <div className={`flex flex-col gap-1 ${align === "right" ? "items-end text-right" : "items-start"}`}>
       <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
@@ -157,17 +163,25 @@ function PoolPod({
               {avatarUrl ? (
                 <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
               ) : isComputer ? (
-                <Bot className="h-3.5 w-3.5 text-primary" />
+                <Bot className="h-4 w-4 text-primary" />
               ) : (
-                <span className="text-[10px] font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
+                <span className="text-xs font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
               )}
             </div>
           </div>
           {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#0c1a12] bg-primary" />}
         </div>
-        <p className="max-w-[8ch] truncate text-[10px] font-black leading-tight text-white">{name}</p>
+        <p className="max-w-[9ch] truncate text-[11px] font-black leading-tight text-white">{name}</p>
       </div>
       <BallTrackerRow group={group} balls={balls} align={align} />
+      {badge && (
+        <span
+          className="rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-foreground"
+          style={{ background: "hsl(var(--primary))", boxShadow: "0 0 10px hsl(var(--primary) / 0.7)" }}
+        >
+          {badge}
+        </span>
+      )}
     </div>
   );
 }
@@ -232,7 +246,7 @@ function PowerSlider({
       <div
         ref={trackRef}
         onPointerDown={handleDown}
-        className="relative w-8 flex-1 touch-none overflow-hidden rounded-full border border-black/40"
+        className="relative w-5 flex-1 touch-none overflow-hidden rounded-full border border-black/40"
         style={{
           touchAction: "none",
           opacity: disabled ? 0.45 : 1,
@@ -339,6 +353,9 @@ export default function PoolTable({
         const speed = Math.hypot(cue0.vx, cue0.vy);
         poolSfx.strike(speed / MAX_SHOT_SPEED);
       }
+      poolSfx.startRoll();
+    } else {
+      poolSfx.stopRoll();
     }
   }, [playback]);
 
@@ -400,6 +417,11 @@ export default function PoolTable({
         for (const e of pb.railEvents) if (e.frame > st.firedIdx && e.frame <= st.frameIdx) poolSfx.rail(e.speed);
         for (const f of pb.pocketFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.pocket();
         st.firedIdx = st.frameIdx;
+
+        // Continuous rolling rumble, loudness/brightness tied to how fast the balls are moving.
+        let totalSpeed = 0;
+        for (const b of displayBalls) if (!b.potted) totalSpeed += Math.hypot(b.vx, b.vy);
+        poolSfx.updateRoll(totalSpeed / (MAX_SHOT_SPEED * 2.2));
 
         if (st.frameIdx >= lastIdx) {
           st.playback = null;
@@ -568,7 +590,7 @@ export default function PoolTable({
           ctx.strokeStyle = "rgba(255,255,255,0.85)";
           ctx.lineWidth = 1.4;
           ctx.beginPath();
-          ctx.arc(RAIL + ray.point.x, RAIL + ray.point.y, BALL_R, 0, Math.PI * 2);
+          ctx.arc(RAIL + ray.point.x, RAIL + ray.point.y, BALL_DRAW_R, 0, Math.PI * 2);
           ctx.stroke();
         }
 
@@ -615,7 +637,7 @@ export default function PoolTable({
         ctx.strokeStyle = ok ? "hsl(204 100% 55%)" : "#ff5050";
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(RAIL + st.placement.x, RAIL + st.placement.y, BALL_R + 4, 0, Math.PI * 2);
+        ctx.arc(RAIL + st.placement.x, RAIL + st.placement.y, BALL_DRAW_R + 4, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
       }
@@ -628,7 +650,10 @@ export default function PoolTable({
     };
 
     raf = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      poolSfx.stopRoll();
+    };
   }, [scale]);
 
   // Pointer interaction.
@@ -742,33 +767,40 @@ export default function PoolTable({
         <div ref={wrapRef} className="flex h-full flex-1 items-center justify-center">
           <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
         </div>
-        <div className="flex h-[94%] shrink-0 flex-col items-center">
+        <div className="flex h-[76%] shrink-0 flex-col items-center self-center">
           <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
         </div>
       </div>
 
-      {/* Versus-style HUD: me — status — opponent, one compact bar, nothing covering the table. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-1.5 px-2 pt-1.5">
+      {/* Versus-style HUD, both corners — the table itself stays completely clear. Whose
+          turn it is shows as a glow on that player's own pod, never as text on the felt. */}
+      <div className="pointer-events-none absolute left-0 top-0 z-30 flex items-start gap-1.5 px-2 pt-1.5">
         <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-1 text-white active:scale-95">
           <ArrowLeft className="h-3.5 w-3.5" />
         </button>
-        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} size="sm" />
+        <PoolPod
+          name={myName}
+          avatarUrl={myAvatar}
+          group={myGroup}
+          balls={balls}
+          active={myTurn && !finished}
+          size="sm"
+          badge={myTurn && !finished ? (ballInHand ? "Place cue ball" : "Your turn") : undefined}
+        />
+      </div>
 
-        <div className="flex flex-1 flex-col items-center gap-0.5 px-1">
-          <span
-            className="rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider"
-            style={{
-              background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
-              color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
-              boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
-            }}
-          >
-            {turnLabel}
-          </span>
-          {ballInHand && interactive && <span className="truncate text-[9px] font-bold text-primary">Place the cue ball</span>}
-        </div>
-
-        <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} align="right" size="sm" />
+      <div className="pointer-events-none absolute right-0 top-0 z-30 flex items-start gap-1.5 px-2 pt-1.5">
+        <PoolPod
+          name={oppName}
+          avatarUrl={oppAvatar}
+          isComputer={isComputer}
+          group={oppGroup}
+          balls={balls}
+          active={!myTurn && !finished}
+          align="right"
+          size="sm"
+          badge={!myTurn && !finished ? "Their turn" : undefined}
+        />
         <div className="pointer-events-auto flex shrink-0 items-center gap-1">
           <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
             {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
@@ -786,12 +818,6 @@ export default function PoolTable({
           ))}
         </ul>
       ) : null}
-
-      {!ballInHand && interactive && (
-        <p className="pointer-events-none absolute inset-x-0 bottom-1 z-20 text-center text-[9px] font-bold text-white/40">
-          Drag the table to aim, hold the slider to shoot
-        </p>
-      )}
     </div>
   );
 }
@@ -807,7 +833,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 }
 
 function drawBall(ctx: CanvasRenderingContext2D, cx: number, cy: number, id: number) {
-  const r = BALL_R;
+  const r = BALL_DRAW_R;
 
   // Soft contact shadow so balls read as sitting on the felt, not painted onto it.
   ctx.save();
