@@ -221,15 +221,14 @@ export default function DominoTable({
         </div>
       </div>
 
+      {help ? (
+        <ul className="absolute inset-x-6 top-10 z-30 space-y-1 rounded-xl bg-black/85 p-3 text-[10px] text-white/80 animate-fade-in">
+          {howToPlay.map((line) => (
+            <li key={line}>• {line}</li>
+          ))}
+        </ul>
+      ) : null}
 
-        {help ? (
-          <ul className="absolute inset-x-6 top-2 z-20 space-y-1 rounded-xl bg-black/85 p-3 text-[10px] text-white/80 animate-fade-in">
-            {howToPlay.map((line) => (
-              <li key={line}>• {line}</li>
-            ))}
-          </ul>
-        ) : null}
-      </div>
 
       {/* Your rail: pod + hand */}
       <div className="flex shrink-0 items-center gap-2 px-3 pb-2">
