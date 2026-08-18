@@ -13,7 +13,10 @@ type Props = {
   size?: "sm" | "md";
   /** Highlight the whole surface as a drop zone (empty table). */
   emptyDropActive?: boolean;
+  /** Scale the chain down so it always fits its container (no clipping). */
+  fit?: boolean;
 };
+
 
 type Geo = { vW: number; vH: number; hW: number; hH: number; rowH: number; slotW: number };
 
@@ -117,9 +120,10 @@ export default function DominoChain({
   onPickEnd,
   size = "md",
   emptyDropActive,
+  fit,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
+  const [box, setBox] = useState({ w: 0, h: 0 });
   const prevLen = useRef(layout.length);
   const [justPlaced, setJustPlaced] = useState<number | null>(null);
   const g = GEO[size];
@@ -127,7 +131,7 @@ export default function DominoChain({
   useLayoutEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
-    const measure = () => setWidth(el.clientWidth);
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
     measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
@@ -144,9 +148,22 @@ export default function DominoChain({
     prevLen.current = layout.length;
   }, [layout.length]);
 
-  const boardW = Math.max(width, 200);
-  const path = buildPath(layout, boardW, g);
-  const height = Math.max(path.rows * g.rowH, g.vH + 20);
+  const availW = Math.max(box.w, 200);
+  const availH = fit && box.h ? box.h : Infinity;
+
+  // First pass at natural size, then — when the snake is taller than the felt —
+  // shrink it and re-flow with the extra virtual width so it still fits.
+  let boardW = availW;
+  let path = buildPath(layout, boardW, g);
+  let height = Math.max(path.rows * g.rowH, g.vH + 8);
+  let scale = 1;
+  if (height > availH) {
+    scale = Math.max(0.42, availH / height);
+    boardW = availW / scale;
+    path = buildPath(layout, boardW, g);
+    height = Math.max(path.rows * g.rowH, g.vH + 8);
+    scale = Math.min(1, Math.max(0.42, availH / height));
+  }
 
   const showLeft = Boolean(ends && activeEnds?.left);
   const showRight = Boolean(ends && activeEnds?.right);
@@ -159,15 +176,15 @@ export default function DominoChain({
   );
 
   return (
-    <div ref={wrapRef} className="h-full w-full overflow-hidden px-1">
+    <div ref={wrapRef} className="flex h-full w-full items-center justify-center overflow-hidden">
       {!layout.length ? (
-        <div className="flex h-full min-h-[80px] items-center justify-center">
+        <div className="flex h-full w-full items-center justify-center">
           <div
             data-end="right"
             className={
               emptyDropActive
                 ? "rounded-2xl border-2 border-dashed border-primary/70 px-6 py-4 text-center text-[11px] font-black text-primary animate-pulse"
-                : "text-center text-xs font-bold text-white/60"
+                : "text-center text-xs font-bold text-white/55"
             }
             style={
               emptyDropActive
@@ -175,11 +192,19 @@ export default function DominoChain({
                 : undefined
             }
           >
-            {emptyDropActive ? "Drop your tile here" : "Empty table — drag your first tile in"}
+            {emptyDropActive ? "Drop your tile here" : "Table is open — drag your first tile in"}
           </div>
         </div>
       ) : (
-        <div className="relative w-full" style={{ height }}>
+        <div
+          className="relative"
+          style={{
+            width: boardW,
+            height,
+            transform: `scale(${scale})`,
+            transformOrigin: "center center",
+          }}
+        >
           {path.placed.map((p) => (
             <div
               key={`${p.tile[0]}-${p.tile[1]}-${p.index}`}
@@ -221,3 +246,4 @@ export default function DominoChain({
     </div>
   );
 }
+

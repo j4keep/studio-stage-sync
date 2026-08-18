@@ -153,75 +153,82 @@ export default function DominoTable({
         </div>
       </div>
 
-      {/* Oval felt table */}
-      <div className="relative min-h-0 flex-1 px-3 pb-1">
-        <div
-          className="relative h-full w-full"
-          style={{
-            borderRadius: "50% / 46%",
-            padding: 10,
-            background:
-              "linear-gradient(160deg, #8a5a2b 0%, #4e3116 40%, #7a4d24 70%, #3d240f 100%)",
-            boxShadow:
-              "0 14px 30px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2), inset 0 -4px 8px rgba(0,0,0,0.55)",
-          }}
-        >
-          <div
-            className="relative h-full w-full overflow-hidden"
-            style={{
-              borderRadius: "50% / 46%",
-              backgroundImage:
-                "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.04) 1px, transparent 0), radial-gradient(78% 62% at 50% 34%, #2f8354 0%, #1d5a39 58%, #10331f 100%)",
-              backgroundSize: "5px 5px, auto",
-              boxShadow: "inset 0 0 40px rgba(0,0,0,0.6)",
-            }}
-          >
-            {/* Opponent at the far side of the table */}
-            <div className="absolute left-1/2 top-1 z-10 flex -translate-x-1/2 items-center gap-2">
-              <PlayerPod
-                name={oppName}
-                avatarUrl={oppAvatar}
-                isComputer={isComputer}
-                count={oppCount}
-                active={!myTurn && !finished}
-              />
-              <div className="flex gap-0.5">
-                {Array.from({ length: Math.min(oppCount, 7) }).map((_, i) => (
-                  <DominoTile key={i} faceDown size="sm" orientation="vertical" />
-                ))}
-              </div>
-            </div>
-
-            {/* Boneyard stack */}
-            <div className="absolute bottom-2 left-4 z-10 flex items-center gap-2 rounded-xl bg-black/45 px-2.5 py-1.5">
-              <Layers className="h-4 w-4 text-[#f0d78c]" />
-              <div className="leading-tight">
-                <p className="text-[8px] font-bold uppercase tracking-wide text-white/60">Boneyard</p>
-                <p className="text-[11px] font-black text-white">{pileCount}</p>
-              </div>
-            </div>
-
-            {/* Chain */}
-            <div className="absolute inset-x-6 bottom-10 top-16 overflow-y-auto">
-              <DominoChain
-                layout={layout}
-                ends={ends}
-                size="sm"
-                emptyDropActive={!!drag}
-                activeEnds={drag ? { left: drag.left, right: drag.right } : undefined}
-              />
-            </div>
+      {/* Felt table with wooden rim */}
+      <div className="relative flex min-h-0 flex-1 items-stretch gap-2 px-2 pb-1">
+        {/* Boneyard sits off-table, like real domino apps */}
+        <div className="z-20 flex shrink-0 flex-col justify-center">
+          <div className="flex flex-col items-center gap-1 rounded-2xl bg-black/55 px-2 py-2 shadow-lg">
+            <Layers className="h-4 w-4 text-[#f0d78c]" />
+            <p className="text-[7px] font-bold uppercase tracking-wide text-white/55">Bones</p>
+            <p className="text-[13px] font-black leading-none text-white">{pileCount}</p>
           </div>
         </div>
 
-        {help ? (
-          <ul className="absolute inset-x-6 top-2 z-20 space-y-1 rounded-xl bg-black/85 p-3 text-[10px] text-white/80 animate-fade-in">
-            {howToPlay.map((line) => (
-              <li key={line}>• {line}</li>
-            ))}
-          </ul>
-        ) : null}
+        <div className="relative min-h-0 min-w-0 flex-1 pt-7">
+          {/* Opponent seat, overlapping the top rim */}
+          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 items-center gap-2">
+            <PlayerPod
+              name={oppName}
+              avatarUrl={oppAvatar}
+              isComputer={isComputer}
+              count={oppCount}
+              active={!myTurn && !finished}
+            />
+            <div className="flex gap-0.5">
+              {Array.from({ length: Math.min(oppCount, 7) }).map((_, i) => (
+                <DominoTile key={i} faceDown size="sm" orientation="vertical" />
+              ))}
+            </div>
+          </div>
+
+          {/* Wooden rim */}
+          <div
+            className="relative h-full w-full"
+            style={{
+              borderRadius: 999,
+              padding: 13,
+              background:
+                "linear-gradient(180deg, #b8813f 0%, #8a5a2b 22%, #5d3a19 55%, #7a4d24 78%, #3d240f 100%)",
+              boxShadow:
+                "0 18px 34px rgba(0,0,0,0.65), inset 0 2px 1px rgba(255,255,255,0.35), inset 0 -5px 10px rgba(0,0,0,0.6)",
+            }}
+          >
+            {/* Felt */}
+            <div
+              className="relative h-full w-full overflow-hidden"
+              style={{
+                borderRadius: 999,
+                backgroundImage:
+                  "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0), radial-gradient(80% 70% at 50% 30%, #2e8a56 0%, #1d5f3b 55%, #0e3620 100%)",
+                backgroundSize: "4px 4px, auto",
+                boxShadow:
+                  "inset 0 0 0 2px rgba(0,0,0,0.35), inset 0 10px 24px rgba(0,0,0,0.45), inset 0 -14px 30px rgba(0,0,0,0.5)",
+              }}
+            >
+              {/* Chain — auto-fits the felt so nothing is ever cut off */}
+              <div className="absolute inset-x-4 inset-y-3">
+                <DominoChain
+                  layout={layout}
+                  ends={ends}
+                  size="sm"
+                  fit
+                  emptyDropActive={!!drag}
+                  activeEnds={drag ? { left: drag.left, right: drag.right } : undefined}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {help ? (
+        <ul className="absolute inset-x-6 top-10 z-30 space-y-1 rounded-xl bg-black/85 p-3 text-[10px] text-white/80 animate-fade-in">
+          {howToPlay.map((line) => (
+            <li key={line}>• {line}</li>
+          ))}
+        </ul>
+      ) : null}
+
 
       {/* Your rail: pod + hand */}
       <div className="flex shrink-0 items-center gap-2 px-3 pb-2">
