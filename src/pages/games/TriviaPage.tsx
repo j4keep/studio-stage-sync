@@ -154,18 +154,38 @@ export default function TriviaPage() {
       shareText={`I scored ${mine}/${questions.length} in Trivia Battle on YAJ ❓`}
       onRematch={rematch}
       onChallenge={challenge}
+      me={{ name: "You", meta: `${mine} correct` }}
+      them={{
+        name: opponentName,
+        avatarUrl: opponentAvatar,
+        isComputer: opponent?.is_computer ?? game.mode === "solo",
+        meta: `${theirs} correct`,
+      }}
+      myTurn={myTurn}
+      outcome={finished ? (mine === theirs ? "draw" : mine > theirs ? "win" : "loss") : undefined}
+      resultTitle={mine === theirs ? "Dead heat" : mine > theirs ? "You win the round!" : `${opponentName} wins`}
+      resultDetail={`Final score ${mine} — ${theirs}`}
     >
       <div className="mx-auto max-w-[420px]">
-        <div className="flex items-center justify-between rounded-2xl border border-border bg-card p-3 text-sm font-black">
+        <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 text-sm font-black text-white">
           <span>You {mine}</span>
-          <span className="text-muted-foreground">vs</span>
-          <span>{theirs} {opponentName}</span>
+          <span className="text-white/45">vs</span>
+          <span>
+            {theirs} {opponentName}
+          </span>
         </div>
 
         {question ? (
-          <div className="mt-4 rounded-2xl border border-border bg-card p-4">
+          <div
+            key={i}
+            className="mt-4 animate-fade-in rounded-2xl border border-white/10 p-4"
+            style={{
+              background: "linear-gradient(160deg, hsl(232 40% 16%), hsl(234 45% 10%))",
+              boxShadow: "0 22px 44px -20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
             <p className="text-[11px] font-bold uppercase tracking-wide text-primary">{question.category}</p>
-            <p className="mt-1 text-base font-black leading-snug">{question.q}</p>
+            <p className="mt-1 text-base font-black leading-snug text-white">{question.q}</p>
             <div className="mt-3 space-y-2">
               {question.options.map((opt, oi) => {
                 const isPicked = picked === oi;
@@ -177,12 +197,12 @@ export default function TriviaPage() {
                     type="button"
                     disabled={!myTurn || picked !== null}
                     onClick={() => answer(oi)}
-                    className={`w-full rounded-xl border px-3 py-3 text-left text-sm font-bold transition ${
+                    className={`w-full rounded-xl border px-3 py-3 text-left text-sm font-bold text-white transition ${
                       reveal && correct
-                        ? "border-emerald-500 bg-emerald-500/15"
+                        ? "border-emerald-400 bg-emerald-500/25"
                         : reveal && isPicked
-                          ? "border-destructive bg-destructive/10"
-                          : "border-border bg-background active:scale-[0.99]"
+                          ? "border-destructive bg-destructive/25"
+                          : "border-white/12 bg-white/5 active:scale-[0.99] hover:border-primary/50"
                     } disabled:opacity-70`}
                   >
                     {opt}
@@ -192,7 +212,7 @@ export default function TriviaPage() {
             </div>
           </div>
         ) : (
-          <p className="mt-6 text-center text-sm text-muted-foreground">
+          <p className="mt-6 text-center text-sm text-white/55">
             {finished ? "Round complete." : "Waiting for the next question…"}
           </p>
         )}
@@ -200,3 +220,4 @@ export default function TriviaPage() {
     </GameShell>
   );
 }
+
