@@ -59,6 +59,9 @@ export default function PoolPage() {
   const [myName, setMyName] = useState("You");
   const [playback, setPlayback] = useState<ShotSimResult | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [poolStats, setPoolStats] = useState<PoolStats | null>(null);
+  const [matchups, setMatchups] = useState<PoolMatchup[]>([]);
+
 
   const poolRef = useRef<PoolState>(initialPool());
   const pendingRef = useRef<Pending | null>(null);
