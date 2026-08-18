@@ -62,7 +62,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
 
   if (portrait && !rotated) {
     return (
-      <div className="relative h-[100dvh] w-full overflow-hidden">
+      <div className="fixed inset-0 z-[100] w-full overflow-hidden bg-black">
         {children}
         <button
           type="button"
@@ -79,7 +79,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
 
   if (portrait && rotated) {
     return (
-      <div className="fixed inset-0 z-50 overflow-hidden bg-black">
+      <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
         <div
           className="absolute left-0 top-0 origin-top-left"
           style={{
@@ -103,7 +103,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-black" aria-label={title}>
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-black" aria-label={title}>
       {children}
       {onExit ? null : null}
     </div>
