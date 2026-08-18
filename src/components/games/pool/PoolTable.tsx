@@ -741,22 +741,29 @@ export default function PoolTable({
         </div>
       </div>
 
+      {/* Versus-style HUD: me — status — opponent, one compact bar, nothing covering the table. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center gap-1.5 px-2 pt-1.5">
-        <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto rounded-full bg-black/55 p-1 text-white active:scale-95">
+        <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-1 text-white active:scale-95">
           <ArrowLeft className="h-3.5 w-3.5" />
         </button>
-        <span
-          className="rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider"
-          style={{
-            background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
-            color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
-            boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
-          }}
-        >
-          {turnLabel}
-        </span>
-        {ballInHand && interactive && <span className="truncate text-[9px] font-bold text-primary">Place the cue ball</span>}
-        <div className="pointer-events-auto ml-auto flex items-center gap-1">
+        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} size="sm" />
+
+        <div className="flex flex-1 flex-col items-center gap-0.5 px-1">
+          <span
+            className="rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase tracking-wider"
+            style={{
+              background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
+              color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
+              boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
+            }}
+          >
+            {turnLabel}
+          </span>
+          {ballInHand && interactive && <span className="truncate text-[9px] font-bold text-primary">Place the cue ball</span>}
+        </div>
+
+        <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} align="right" size="sm" />
+        <div className="pointer-events-auto flex shrink-0 items-center gap-1">
           <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
             {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
           </button>
@@ -764,10 +771,6 @@ export default function PoolTable({
             <HelpCircle className="h-3.5 w-3.5" />
           </button>
         </div>
-      </div>
-
-      <div className="pointer-events-none absolute left-1/2 top-1 z-20 -translate-x-1/2">
-        <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} size="sm" />
       </div>
 
       {help ? (
@@ -778,16 +781,11 @@ export default function PoolTable({
         </ul>
       ) : null}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-center justify-between px-2 pb-1">
-        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} size="sm" />
-        <p className="max-w-[40%] text-right text-[9px] font-bold text-white/50">
-          {ballInHand && interactive
-            ? "Tap the table to place the cue ball"
-            : interactive
-              ? "Drag the table to aim, hold the slider to shoot"
-              : "Waiting…"}
+      {!ballInHand && interactive && (
+        <p className="pointer-events-none absolute inset-x-0 bottom-1 z-20 text-center text-[9px] font-bold text-white/40">
+          Drag the table to aim, hold the slider to shoot
         </p>
-      </div>
+      )}
     </div>
   );
 }
@@ -804,6 +802,16 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
 
 function drawBall(ctx: CanvasRenderingContext2D, cx: number, cy: number, id: number) {
   const r = BALL_R;
+
+  // Soft contact shadow so balls read as sitting on the felt, not painted onto it.
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(cx + r * 0.18, cy + r * 0.32, r * 0.92, r * 0.5, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.filter = "blur(1.5px)";
+  ctx.fill();
+  ctx.restore();
+
   ctx.save();
 
   if (id === 0) {
