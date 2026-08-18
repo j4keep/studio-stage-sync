@@ -11,15 +11,15 @@
   },
   "mcp": {
     "server": {
-      "name": "wheuat-mcp",
+      "name": "yaj-mcp",
       "version": "0.1.0",
-      "title": "WHEUAT"
+      "title": "YAJ"
     },
     "tools": [
       {
         "name": "get_featured_content",
-        "title": "Get featured WHEUAT content",
-        "description": "List recent public content on WHEUAT (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
+        "title": "Get featured YAJ content",
+        "description": "List recent public content on YAJ (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
