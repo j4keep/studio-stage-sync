@@ -62,7 +62,7 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
 
   if (portrait && !rotated) {
     return (
-      <div className="relative min-h-[100dvh]">
+      <div className="relative h-[100dvh] w-full overflow-hidden">
         {children}
         <button
           type="button"
