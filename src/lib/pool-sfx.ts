@@ -81,28 +81,28 @@ class PoolSfx {
     src.start(t);
   }
 
-  /** Cue tip striking the cue ball — a hard, loud crack with body behind it. */
+  /** Cue tip striking the cue ball — a hard, low, heavy crack with real weight behind it. */
   strike(intensity = 1) {
     if (this.muted) return;
     const ctx = this.ensure();
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
-    const amt = 0.4 + Math.min(1, Math.max(0, intensity)) * 0.6;
-    this.crack(t, 0.02, 2600, 1.8, amt * 1.3, 0.02);
-    this.crack(t, 0.016, 4200, 2.2, amt * 0.7, 0.012);
-    this.thud(t, 0.05, 320, amt * 0.45, 0.05);
+    const amt = 0.45 + Math.min(1, Math.max(0, intensity)) * 0.65;
+    this.crack(t, 0.024, 1500, 1.1, amt * 1.3, 0.028);
+    this.crack(t, 0.014, 2600, 1.3, amt * 0.35, 0.014);
+    this.thud(t, 0.07, 220, amt * 0.85, 0.075);
   }
 
-  /** Two balls clacking together — sharp and percussive, no musical ring. */
+  /** Two balls clacking together — heavy and dense, not a bright ping. */
   click(intensity = 1) {
     if (this.muted) return;
     const ctx = this.ensure();
     const t = ctx.currentTime;
-    const amt = 0.28 + Math.min(1, Math.max(0, intensity)) * 0.45;
-    const wobble = 1 + (Math.random() - 0.5) * 0.15;
-    this.crack(t, 0.016, 2900 * wobble, 2, amt * 1.2, 0.016);
-    this.crack(t, 0.012, 4600 * wobble, 2.4, amt * 0.55, 0.009);
-    this.thud(t, 0.03, 260, amt * 0.22, 0.03);
+    const amt = 0.3 + Math.min(1, Math.max(0, intensity)) * 0.5;
+    const wobble = 1 + (Math.random() - 0.5) * 0.1;
+    this.crack(t, 0.02, 1450 * wobble, 1.1, amt * 1.15, 0.022);
+    this.crack(t, 0.01, 2500 * wobble, 1.4, amt * 0.3, 0.01);
+    this.thud(t, 0.045, 230, amt * 0.55, 0.045);
   }
 
   /** Ball bouncing off a cushion — a rubbery, low-pitched thock, softer than a ball-ball hit. */
@@ -111,8 +111,8 @@ class PoolSfx {
     const ctx = this.ensure();
     const t = ctx.currentTime;
     const amt = 0.1 + Math.min(1, Math.max(0, intensity)) * 0.18;
-    this.crack(t, 0.02, 1400, 1.4, amt * 0.5, 0.03);
-    this.thud(t, 0.06, 260, amt, 0.07);
+    this.crack(t, 0.022, 1000, 1, amt * 0.4, 0.032);
+    this.thud(t, 0.07, 220, amt, 0.08);
   }
 
   /** Ball dropping into a pocket — a couple of soft rattles into the liner, then a settling thud. */
@@ -120,9 +120,9 @@ class PoolSfx {
     if (this.muted) return;
     const ctx = this.ensure();
     const t = ctx.currentTime;
-    this.crack(t, 0.014, 2400, 1.6, 0.22, 0.018);
-    this.thud(t + 0.045, 0.02, 500, 0.16, 0.03);
-    this.thud(t + 0.1, 0.09, 220, 0.32, 0.16);
+    this.crack(t, 0.016, 1300, 1.1, 0.2, 0.02);
+    this.thud(t + 0.045, 0.025, 450, 0.16, 0.032);
+    this.thud(t + 0.1, 0.1, 200, 0.34, 0.17);
   }
 }
 

@@ -139,12 +139,15 @@ export type ShotSimResult = {
   potted: BallId[];
   firstContact: BallId | null;
   railContactAfterContact: boolean;
-  /** Frame indices where sound-worthy physics events happened, for animation playback. */
+  /** Sound-worthy physics events, with impact speed for volume/intensity, for animation playback. */
   strikeFrame: number;
-  hitFrames: number[];
-  railFrames: number[];
+  hitEvents: { frame: number; speed: number }[];
+  railEvents: { frame: number; speed: number }[];
   pocketFrames: number[];
 };
+
+/** Impact speed above which a collision counts as "full strength" for sound intensity. */
+const MAX_IMPACT_SPEED = MAX_SHOT_SPEED * 0.7;
 
 function cloneBalls(balls: Ball[]): Ball[] {
   return balls.map((b) => ({ ...b }));
@@ -164,8 +167,8 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
   let firstContact: BallId | null = null;
   let contactMade = false;
   let railContactAfterContact = false;
-  const hitFrames: number[] = [];
-  const railFrames: number[] = [];
+  const hitEvents: { frame: number; speed: number }[] = [];
+  const railEvents: { frame: number; speed: number }[] = [];
   const pocketFrames: number[] = [];
 
   for (let step = 0; step < MAX_STEPS; step++) {
@@ -191,9 +194,10 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
       }
     }
 
-    let railHitThisStep = false;
+    let railHitMaxSpeed = 0;
     for (const b of balls) {
       if (b.potted) continue;
+      const preSpeed = Math.hypot(b.vx, b.vy);
       let bounced = false;
       if (b.x < BALL_R) {
         b.x = BALL_R;
@@ -214,12 +218,12 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
         bounced = true;
       }
       if (bounced) {
-        railHitThisStep = true;
+        railHitMaxSpeed = Math.max(railHitMaxSpeed, preSpeed);
         if (contactMade) railContactAfterContact = true;
       }
     }
 
-    let ballHitThisStep = false;
+    let ballHitMaxSpeed = 0;
     for (let i = 0; i < balls.length; i++) {
       const a = balls[i];
       if (a.potted) continue;
@@ -251,7 +255,7 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
             if (a.id === 0 && firstContact === null) firstContact = b.id;
             if (b.id === 0 && firstContact === null) firstContact = a.id;
             contactMade = true;
-            ballHitThisStep = true;
+            ballHitMaxSpeed = Math.max(ballHitMaxSpeed, Math.abs(velAlongNormal));
           }
         }
       }
@@ -269,8 +273,8 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
 
     frames.push(cloneBalls(balls));
     const idx = frames.length - 1;
-    if (ballHitThisStep) hitFrames.push(idx);
-    if (railHitThisStep) railFrames.push(idx);
+    if (ballHitMaxSpeed > 0) hitEvents.push({ frame: idx, speed: Math.min(1, ballHitMaxSpeed / MAX_IMPACT_SPEED) });
+    if (railHitMaxSpeed > 0) railEvents.push({ frame: idx, speed: Math.min(1, railHitMaxSpeed / MAX_IMPACT_SPEED) });
     if (pocketedThisStep) pocketFrames.push(idx);
 
     if (balls.every((b) => b.potted || (b.vx === 0 && b.vy === 0))) break;
@@ -285,8 +289,8 @@ export function simulateShot(inputBalls: Ball[], angle: number, power: number): 
     firstContact,
     railContactAfterContact,
     strikeFrame: 0,
-    hitFrames,
-    railFrames,
+    hitEvents,
+    railEvents,
     pocketFrames,
   };
 }

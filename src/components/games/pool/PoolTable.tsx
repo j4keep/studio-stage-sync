@@ -103,13 +103,18 @@ function BallDot({ id, potted }: { id: number; potted: boolean }) {
   );
 }
 
+/** Stacks the 7 tracked balls in a narrow 2-column grid that grows downward off the table's
+ *  edge, instead of a wide row that would otherwise bleed across the felt. */
 function BallTrackerRow({ group, balls, align }: { group: Group | null; balls: Ball[]; align: "left" | "right" }) {
   if (!group) {
-    return <span className="text-[9px] font-bold uppercase tracking-wide text-white/45">Open table</span>;
+    return <span className="text-[8px] font-bold uppercase tracking-wide text-white/45">Open table</span>;
   }
   const ids = groupBallIds(group);
   return (
-    <div className={`flex items-center gap-[3px] ${align === "right" ? "flex-row-reverse" : ""}`}>
+    <div
+      className="grid grid-cols-2 gap-[3px]"
+      style={{ justifyItems: align === "right" ? "end" : "start", justifyContent: align === "right" ? "end" : "start" }}
+    >
       {ids.map((id) => (
         <BallDot key={id} id={id} potted={Boolean(balls.find((b) => b.id === id)?.potted)} />
       ))}
@@ -138,31 +143,31 @@ function PoolPod({
 }) {
   const avatarDim = size === "sm" ? "h-7 w-7" : "h-10 w-10";
   return (
-    <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse text-right" : ""}`}>
-      <div className="relative shrink-0">
-        <div
-          className={`flex items-center justify-center overflow-hidden rounded-full p-[2px] ${avatarDim}`}
-          style={{
-            background: active ? "hsl(var(--primary))" : "rgba(255,255,255,0.14)",
-            boxShadow: active ? "0 0 14px hsl(var(--primary) / 0.6)" : undefined,
-          }}
-        >
-          <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#0c1a12]">
-            {avatarUrl ? (
-              <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
-            ) : isComputer ? (
-              <Bot className="h-3.5 w-3.5 text-primary" />
-            ) : (
-              <span className="text-[10px] font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
-            )}
+    <div className={`flex flex-col gap-1 ${align === "right" ? "items-end text-right" : "items-start"}`}>
+      <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
+        <div className="relative shrink-0">
+          <div
+            className={`flex items-center justify-center overflow-hidden rounded-full p-[2px] ${avatarDim}`}
+            style={{
+              background: active ? "hsl(var(--primary))" : "rgba(255,255,255,0.14)",
+              boxShadow: active ? "0 0 14px hsl(var(--primary) / 0.6)" : undefined,
+            }}
+          >
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#0c1a12]">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />
+              ) : isComputer ? (
+                <Bot className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <span className="text-[10px] font-black text-primary">{name.slice(0, 1).toUpperCase()}</span>
+              )}
+            </div>
           </div>
+          {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#0c1a12] bg-primary" />}
         </div>
-        {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#0c1a12] bg-primary" />}
+        <p className="max-w-[8ch] truncate text-[10px] font-black leading-tight text-white">{name}</p>
       </div>
-      <div className="min-w-0">
-        <p className="truncate text-[10px] font-black leading-tight text-white">{name}</p>
-        <BallTrackerRow group={group} balls={balls} align={align} />
-      </div>
+      <BallTrackerRow group={group} balls={balls} align={align} />
     </div>
   );
 }
@@ -389,9 +394,10 @@ export default function PoolTable({
         st.frameIdx = Math.min(prevIdx + PLAYBACK_STEPS_PER_TICK, lastIdx);
         displayBalls = pb.frames[st.frameIdx];
 
-        // Fire any sound events whose frame falls within the range we just advanced through.
-        for (const f of pb.hitFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.click(1);
-        for (const f of pb.railFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.rail(1);
+        // Fire any sound events whose frame falls within the range we just advanced through,
+        // scaled to how hard the balls actually collided.
+        for (const e of pb.hitEvents) if (e.frame > st.firedIdx && e.frame <= st.frameIdx) poolSfx.click(e.speed);
+        for (const e of pb.railEvents) if (e.frame > st.firedIdx && e.frame <= st.frameIdx) poolSfx.rail(e.speed);
         for (const f of pb.pocketFrames) if (f > st.firedIdx && f <= st.frameIdx) poolSfx.pocket();
         st.firedIdx = st.frameIdx;
 
