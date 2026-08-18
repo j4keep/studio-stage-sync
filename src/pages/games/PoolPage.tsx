@@ -28,7 +28,8 @@ import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGam
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
-  "Drag from the cue ball and release to shoot — drag farther for more power.",
+  "Drag anywhere on the table to aim the cue.",
+  "Hold and drag the side slider up to charge power, then release to shoot.",
   "Pot one of your group (solids or stripes) to keep shooting.",
   "Clear your group, then legally pocket the 8-ball to win.",
   "Fouls (scratch, wrong ball first, no rail) hand the other player ball in hand — tap anywhere to place the cue ball.",
@@ -291,7 +292,7 @@ export default function PoolPage() {
       : undefined;
 
   return (
-    <LandscapeStage>
+    <LandscapeStage auto>
       <div className="relative h-full w-full">
         <PoolTable
           balls={pool.balls}
@@ -306,11 +307,9 @@ export default function PoolPage() {
           myName={myName}
           myAvatar={myAvatar}
           myGroup={pool.groups[mySeat]}
-          myBallsLeft={ballsRemaining(pool.groups[mySeat], pool.balls)}
           oppName={oppLabel}
           oppAvatar={game.mode === "solo" ? null : opponentAvatar}
           oppGroup={pool.groups[oppSeat]}
-          oppBallsLeft={ballsRemaining(pool.groups[oppSeat], pool.balls)}
           isComputer={game.mode === "solo"}
           turnLabel={turnLabel}
           muted={muted}

@@ -6,16 +6,21 @@ type Props = {
   children: ReactNode;
   title?: string;
   onExit?: () => void;
+  /** Skip the "Play widescreen" prompt — auto-rotate into landscape immediately,
+   *  with no portrait option and no exit button covering the game's own UI. */
+  auto?: boolean;
 };
 
 /**
  * Presents its children in a landscape (widescreen) stage.
  * - Device already landscape: renders full-screen as-is.
- * - Portrait: shows a "Play widescreen" tab. Tapping it requests fullscreen +
+ * - Portrait (default): shows a "Play widescreen" tab. Tapping it requests fullscreen +
  *   an orientation lock, and — on browsers that ignore the lock (iOS Safari) —
  *   rotates the stage 90° so the table still fills the long side of the screen.
+ * - Portrait with `auto`: skips the tab entirely and rotates immediately — this game
+ *   only exists in widescreen.
  */
-export default function LandscapeStage({ children, title = "Widescreen table", onExit }: Props) {
+export default function LandscapeStage({ children, title = "Widescreen table", onExit, auto = false }: Props) {
   const [size, setSize] = useState({ w: window.innerWidth, h: window.innerHeight });
   const [rotated, setRotated] = useState(false);
 
@@ -60,7 +65,12 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
     }
   };
 
-  if (portrait && !rotated) {
+  // Auto mode: rotate immediately, no prompt to accept/decline.
+  useEffect(() => {
+    if (auto && portrait && !rotated) void goWide();
+  }, [auto, portrait, rotated]);
+
+  if (portrait && !rotated && !auto) {
     return (
       <div className="fixed inset-0 z-[100] w-full overflow-hidden bg-black">
         {children}
@@ -77,6 +87,11 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
     );
   }
 
+  if (portrait && !rotated && auto) {
+    // Waiting on the fullscreen/orientation-lock request from the effect above to resolve.
+    return <div className="fixed inset-0 z-[100] overflow-hidden bg-black" />;
+  }
+
   if (portrait && rotated) {
     return (
       <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
@@ -89,14 +104,16 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
           }}
         >
           {children}
-          <button
-            type="button"
-            onClick={exitWide}
-            aria-label="Exit widescreen"
-            className="absolute right-2 top-2 z-[60] rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
-          >
-            Exit widescreen
-          </button>
+          {!auto && (
+            <button
+              type="button"
+              onClick={exitWide}
+              aria-label="Exit widescreen"
+              className="absolute right-2 top-2 z-[60] rounded-full bg-black/60 px-3 py-1.5 text-[10px] font-black text-white/80"
+            >
+              Exit widescreen
+            </button>
+          )}
         </div>
       </div>
     );

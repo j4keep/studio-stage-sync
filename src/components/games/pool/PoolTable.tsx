@@ -11,6 +11,7 @@ import {
   TABLE_H,
   TABLE_W,
   canPlaceCueBall,
+  groupBallIds,
   isStripe,
 } from "@/lib/pool";
 import { poolSfx } from "@/lib/pool-sfx";
@@ -18,7 +19,6 @@ import { poolSfx } from "@/lib/pool-sfx";
 const RAIL = 46;
 const WORLD_W = TABLE_W + RAIL * 2;
 const WORLD_H = TABLE_H + RAIL * 2;
-const MAX_DRAG = 210;
 const PLAYBACK_STEPS_PER_TICK = 5;
 
 type Vec = { x: number; y: number };
@@ -36,11 +36,9 @@ type Props = {
   myName: string;
   myAvatar: string | null;
   myGroup: Group | null;
-  myBallsLeft: number;
   oppName: string;
   oppAvatar: string | null;
   oppGroup: Group | null;
-  oppBallsLeft: number;
   isComputer: boolean;
   turnLabel: string;
   muted: boolean;
@@ -85,18 +83,37 @@ function castAimRay(cue: Vec, angle: number, balls: Ball[]) {
   };
 }
 
-function GroupChip({ group }: { group: Group | null }) {
-  if (!group) return <span className="text-[9px] font-bold uppercase tracking-wide text-white/45">Open table</span>;
+function BallDot({ id, potted }: { id: number; potted: boolean }) {
+  const stripe = isStripe(id);
   return (
-    <span className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-wide text-white/65">
-      <span
-        className="h-2.5 w-2.5 rounded-full border border-white/40"
-        style={{
-          background: group === "solids" ? BALL_COLORS[3] : `linear-gradient(90deg, ${BALL_COLORS[2]} 35%, #f5f2ea 35% 65%, ${BALL_COLORS[2]} 65%)`,
-        }}
-      />
-      {group === "solids" ? "Solids" : "Stripes"}
+    <span
+      className="relative flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[6.5px] font-black transition-opacity"
+      style={{
+        background: stripe
+          ? `linear-gradient(90deg, ${BALL_COLORS[id]} 30%, #f5f2ea 30% 70%, ${BALL_COLORS[id]} 70%)`
+          : BALL_COLORS[id],
+        color: stripe || id <= 7 ? "#111" : "#f5f2ea",
+        opacity: potted ? 0.28 : 1,
+        boxShadow: potted ? "none" : "0 1px 2px rgba(0,0,0,0.5)",
+      }}
+    >
+      {id}
+      {potted && <span className="absolute inset-0 rounded-full bg-black/55" />}
     </span>
+  );
+}
+
+function BallTrackerRow({ group, balls, align }: { group: Group | null; balls: Ball[]; align: "left" | "right" }) {
+  if (!group) {
+    return <span className="text-[9px] font-bold uppercase tracking-wide text-white/45">Open table</span>;
+  }
+  const ids = groupBallIds(group);
+  return (
+    <div className={`flex items-center gap-[3px] ${align === "right" ? "flex-row-reverse" : ""}`}>
+      {ids.map((id) => (
+        <BallDot key={id} id={id} potted={Boolean(balls.find((b) => b.id === id)?.potted)} />
+      ))}
+    </div>
   );
 }
 
@@ -105,7 +122,7 @@ function PoolPod({
   avatarUrl,
   isComputer,
   group,
-  ballsLeft,
+  balls,
   active,
   align = "left",
 }: {
@@ -113,7 +130,7 @@ function PoolPod({
   avatarUrl?: string | null;
   isComputer?: boolean;
   group: Group | null;
-  ballsLeft: number;
+  balls: Ball[];
   active: boolean;
   align?: "left" | "right";
 }) {
@@ -141,11 +158,80 @@ function PoolPod({
       </div>
       <div className="min-w-0">
         <p className="truncate text-[11px] font-black leading-tight text-white">{name}</p>
-        <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
-          <GroupChip group={group} />
-          <span className="text-[9px] font-bold text-white/45">· {ballsLeft} left</span>
-        </div>
+        <BallTrackerRow group={group} balls={balls} align={align} />
       </div>
+    </div>
+  );
+}
+
+/** Vertical drag-to-charge power control, decoupled from the aim gesture on the table. */
+function PowerSlider({
+  disabled,
+  onChange,
+  onRelease,
+}: {
+  disabled: boolean;
+  onChange: (power: number) => void;
+  onRelease: (power: number) => void;
+}) {
+  const trackRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  const valueRef = useRef(0);
+  const [fill, setFill] = useState(0);
+
+  const update = (clientY: number) => {
+    const el = trackRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const t = 1 - Math.min(1, Math.max(0, (clientY - rect.top) / rect.height));
+    valueRef.current = t;
+    setFill(t);
+    onChange(t);
+  };
+
+  const handleDown = (e: React.PointerEvent) => {
+    if (disabled) return;
+    e.preventDefault();
+    draggingRef.current = true;
+    update(e.clientY);
+    const move = (ev: PointerEvent) => {
+      if (!draggingRef.current) return;
+      ev.preventDefault();
+      update(ev.clientY);
+    };
+    const up = () => {
+      draggingRef.current = false;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      onRelease(valueRef.current);
+      valueRef.current = 0;
+      setFill(0);
+    };
+    window.addEventListener("pointermove", move, { passive: false });
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  };
+
+  return (
+    <div
+      ref={trackRef}
+      onPointerDown={handleDown}
+      className="relative w-7 flex-1 touch-none rounded-full border border-white/15 bg-black/40"
+      style={{ touchAction: "none", opacity: disabled ? 0.4 : 1 }}
+    >
+      <div
+        className="absolute inset-x-[3px] bottom-[3px] rounded-full transition-[height] duration-75"
+        style={{
+          height: `calc(${fill * 100}% - 3px)`,
+          background: "linear-gradient(0deg, hsl(204 100% 55%), #ffb020 65%, #ff4d4d)",
+          boxShadow: fill > 0.05 ? "0 0 10px hsl(204 100% 55% / 0.6)" : undefined,
+        }}
+      />
+      <div
+        className="absolute left-1/2 h-3.5 w-3.5 -translate-x-1/2 translate-y-1/2 rounded-full border-2 border-[#0c1a12] bg-white shadow"
+        style={{ bottom: `${fill * 100}%` }}
+      />
     </div>
   );
 }
@@ -163,11 +249,9 @@ export default function PoolTable({
   myName,
   myAvatar,
   myGroup,
-  myBallsLeft,
   oppName,
   oppAvatar,
   oppGroup,
-  oppBallsLeft,
   isComputer,
   turnLabel,
   muted,
@@ -186,8 +270,9 @@ export default function PoolTable({
     playback: null as ShotSimResult | null,
     frameIdx: 0,
     firedIdx: 0,
-    aiming: false,
-    aim: null as { angle: number; power: number } | null,
+    aimingDrag: false,
+    aimAngle: 0,
+    power: 0,
     placing: false,
     placement: null as Vec | null,
     interactive,
@@ -215,8 +300,8 @@ export default function PoolTable({
     stateRef.current.frameIdx = 0;
     stateRef.current.firedIdx = 0;
     if (playback) {
-      stateRef.current.aiming = false;
-      stateRef.current.aim = null;
+      stateRef.current.aimingDrag = false;
+      stateRef.current.power = 0;
       stateRef.current.placing = false;
       const cue0 = playback.frames[0]?.find((b) => b.id === 0);
       if (cue0) {
@@ -389,10 +474,10 @@ export default function PoolTable({
 
       const cue = displayBalls.find((b) => b.id === 0);
 
-      // Aim guide + cue stick.
-      if (st.interactive && !st.playback && st.aiming && st.aim && cue && !cue.potted) {
+      // Aim guide + cue stick — persistent once it's your turn, not just mid-drag.
+      if (st.interactive && !st.playback && !st.ballInHand && cue && !cue.potted) {
         const cuePos = { x: RAIL + cue.x, y: RAIL + cue.y };
-        const ray = castAimRay(cue, st.aim.angle, displayBalls);
+        const ray = castAimRay(cue, st.aimAngle, displayBalls);
         ctx.save();
         ctx.setLineDash([6, 7]);
         ctx.strokeStyle = "rgba(255,255,255,0.75)";
@@ -411,11 +496,11 @@ export default function PoolTable({
           ctx.stroke();
         }
 
-        // Cue stick pulled back opposite the shot direction.
-        const pull = 18 + st.aim.power * 150;
+        // Cue stick pulled back opposite the shot direction, charge driven by the side slider.
+        const pull = 18 + st.power * 150;
         const tipGap = 10;
-        const dx = Math.cos(st.aim.angle);
-        const dy = Math.sin(st.aim.angle);
+        const dx = Math.cos(st.aimAngle);
+        const dy = Math.sin(st.aimAngle);
         const tipX = cuePos.x - dx * tipGap;
         const tipY = cuePos.y - dy * tipGap;
         const buttX = cuePos.x - dx * (tipGap + pull + 210);
@@ -440,21 +525,6 @@ export default function PoolTable({
         ctx.lineTo(tipX, tipY);
         ctx.stroke();
         ctx.restore();
-
-        // Power meter.
-        const meterX = RAIL + TABLE_W - 18;
-        const meterTop = RAIL + 14;
-        const meterH = TABLE_H - 28;
-        ctx.fillStyle = "rgba(0,0,0,0.35)";
-        roundRect(ctx, meterX - 6, meterTop, 12, meterH, 6);
-        ctx.fill();
-        const fillH = meterH * st.aim.power;
-        const meterGrad = ctx.createLinearGradient(0, meterTop + meterH - fillH, 0, meterTop + meterH);
-        meterGrad.addColorStop(0, "#ff5050");
-        meterGrad.addColorStop(1, "hsl(204 100% 55%)");
-        ctx.fillStyle = meterGrad;
-        roundRect(ctx, meterX - 6, meterTop + meterH - fillH, 12, fillH, 6);
-        ctx.fill();
       }
 
       // Ball-in-hand placement preview.
@@ -516,8 +586,8 @@ export default function PoolTable({
       } else {
         const cue = st.balls.find((b) => b.id === 0);
         if (!cue || cue.potted) return;
-        st.aiming = true;
-        st.aim = { angle: Math.atan2(cue.y - pt.y, cue.x - pt.x), power: 0 };
+        st.aimingDrag = true;
+        st.aimAngle = Math.atan2(pt.y - cue.y, pt.x - cue.x);
       }
       window.addEventListener("pointermove", handleMove, { passive: false });
       window.addEventListener("pointerup", handleUp);
@@ -531,11 +601,10 @@ export default function PoolTable({
       e.preventDefault();
       if (st.placing) {
         st.placement = clampTable(pt);
-      } else if (st.aiming) {
+      } else if (st.aimingDrag) {
         const cue = st.balls.find((b) => b.id === 0);
         if (!cue) return;
-        const dist = Math.hypot(pt.x - cue.x, pt.y - cue.y);
-        st.aim = { angle: Math.atan2(cue.y - pt.y, cue.x - pt.x), power: Math.min(1, dist / MAX_DRAG) };
+        st.aimAngle = Math.atan2(pt.y - cue.y, pt.x - cue.x);
       }
     };
 
@@ -553,12 +622,7 @@ export default function PoolTable({
         }
         return;
       }
-      if (st.aiming && st.aim) {
-        const aim = st.aim;
-        st.aiming = false;
-        st.aim = null;
-        if (aim.power > 0.045) onShootRef.current(aim.angle, aim.power);
-      }
+      st.aimingDrag = false;
     };
 
     canvas.addEventListener("pointerdown", handleDown);
@@ -569,6 +633,19 @@ export default function PoolTable({
       window.removeEventListener("pointercancel", handleUp);
     };
   }, []);
+
+  const handlePowerChange = (power: number) => {
+    stateRef.current.power = power;
+  };
+
+  const handlePowerRelease = (power: number) => {
+    stateRef.current.power = 0;
+    const st = stateRef.current;
+    if (!st.interactive || st.playback || st.finished || st.ballInHand) return;
+    if (power > 0.05) onShootRef.current(st.aimAngle, power);
+  };
+
+  const canShoot = interactive && !playback && !finished && !ballInHand;
 
   return (
     <div
@@ -593,7 +670,7 @@ export default function PoolTable({
         </span>
         {ballInHand && interactive && <span className="truncate text-[10px] font-bold text-primary">Place the cue ball</span>}
         <div className="ml-auto flex items-center gap-1.5">
-          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute music" : "Mute music"} className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
+          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
           <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
@@ -604,10 +681,16 @@ export default function PoolTable({
 
       <div className="relative min-h-0 flex-1 px-2 pb-1">
         <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2">
-          <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} ballsLeft={oppBallsLeft} active={!myTurn && !finished} />
+          <PoolPod name={oppName} avatarUrl={oppAvatar} isComputer={isComputer} group={oppGroup} balls={balls} active={!myTurn && !finished} />
         </div>
-        <div ref={wrapRef} className="flex h-full w-full items-center justify-center pt-8">
-          <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
+        <div className="flex h-full w-full items-center justify-center gap-2.5 pt-8">
+          <div ref={wrapRef} className="flex h-full flex-1 items-center justify-center">
+            <canvas ref={canvasRef} className="touch-none" style={{ touchAction: "none" }} />
+          </div>
+          <div className="flex h-[78%] shrink-0 flex-col items-center gap-1">
+            <span className="text-[8px] font-black uppercase tracking-wide text-white/40">Power</span>
+            <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
+          </div>
         </div>
       </div>
 
@@ -620,12 +703,12 @@ export default function PoolTable({
       ) : null}
 
       <div className="flex shrink-0 items-center justify-between px-4 pb-2 pt-1">
-        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} ballsLeft={myBallsLeft} active={myTurn && !finished} />
+        <PoolPod name={myName} avatarUrl={myAvatar} group={myGroup} balls={balls} active={myTurn && !finished} />
         <p className="max-w-[45%] text-right text-[10px] font-bold text-white/50">
           {ballInHand && interactive
             ? "Tap the table to place the cue ball"
             : interactive
-              ? "Drag from the cue ball to aim, release to shoot"
+              ? "Drag the table to aim, hold the slider to shoot"
               : "Waiting…"}
         </p>
       </div>
