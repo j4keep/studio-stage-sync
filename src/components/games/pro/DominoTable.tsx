@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowLeft, HelpCircle, Layers, Volume2, VolumeX } from "lucide-react";
 import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
@@ -60,6 +60,7 @@ export default function DominoTable({
   } | null>(null);
   const [hover, setHover] = useState<"left" | "right" | null>(null);
   const hoverRef = useRef<"left" | "right" | null>(null);
+  const dragRef = useRef<typeof drag>(null);
 
   const canDrag = myTurn && !finished;
 
@@ -70,33 +71,55 @@ export default function DominoTable({
 
   const startDrag = (i: number, e: React.PointerEvent) => {
     if (!canDrag || !playable.includes(i)) return;
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+    e.preventDefault();
     const v = validSides(myHand[i]);
-    setDrag({ i, x: e.clientX, y: e.clientY, ...v });
+    const nextDrag = { i, x: e.clientX, y: e.clientY, ...v };
+    dragRef.current = nextDrag;
+    setDrag(nextDrag);
     hoverRef.current = null;
     setHover(null);
   };
 
-  const moveDrag = (e: React.PointerEvent) => {
-    if (!drag) return;
+  const moveDrag = (e: PointerEvent) => {
+    const currentDrag = dragRef.current;
+    if (!currentDrag) return;
     e.preventDefault();
     const el = document.elementFromPoint(e.clientX, e.clientY);
     const zone = (el as HTMLElement | null)?.closest?.("[data-end]") as HTMLElement | null;
     const side = (zone?.dataset.end as "left" | "right" | undefined) ?? null;
-    const ok = side === "left" ? drag.left : side === "right" ? drag.right : false;
+    const ok = side === "left" ? currentDrag.left : side === "right" ? currentDrag.right : false;
     hoverRef.current = ok ? side : null;
     setHover(ok ? side : null);
-    setDrag((d) => (d ? { ...d, x: e.clientX, y: e.clientY } : d));
+    const nextDrag = { ...currentDrag, x: e.clientX, y: e.clientY };
+    dragRef.current = nextDrag;
+    setDrag(nextDrag);
   };
 
   const endDrag = () => {
-    const d = drag;
+    const d = dragRef.current;
     const side = hoverRef.current;
+    dragRef.current = null;
     setDrag(null);
     setHover(null);
     hoverRef.current = null;
     if (d && side) onPlay(d.i, side);
   };
+
+  // Track the gesture at window level. Mobile Safari can stop dispatching
+  // pointer events to a tile once the finger leaves its transformed bounds.
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (event: PointerEvent) => moveDrag(event);
+    const onEnd = () => endDrag();
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onEnd);
+    window.addEventListener("pointercancel", onEnd);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onEnd);
+      window.removeEventListener("pointercancel", onEnd);
+    };
+  }, [drag?.i]);
 
   const dragTile = drag ? myHand[drag.i] : null;
 
@@ -195,6 +218,7 @@ export default function DominoTable({
           >
             {/* Felt */}
             <div
+              data-end={!layout.length && drag ? "right" : undefined}
               className="relative h-full w-full overflow-hidden"
               style={{
                 borderRadius: 999,
@@ -249,9 +273,6 @@ export default function DominoTable({
                 className={drag?.i === i ? "opacity-30" : ok ? "cursor-grab" : undefined}
                 style={{ touchAction: ok ? "none" : "pan-x" }}
                 onPointerDown={ok ? (e) => startDrag(i, e) : undefined}
-                onPointerMove={drag?.i === i ? moveDrag : undefined}
-                onPointerUp={drag?.i === i ? endDrag : undefined}
-                onPointerCancel={drag?.i === i ? endDrag : undefined}
               />
             );
           })}
@@ -278,8 +299,8 @@ export default function DominoTable({
         <div
           className="pointer-events-none fixed z-[60]"
           style={{
-            left: drag!.x,
-            top: drag!.y,
+            left: drag?.x ?? 0,
+            top: drag?.y ?? 0,
             transform: "translate(-50%, -120%) scale(1.05)",
             filter: hover ? "drop-shadow(0 0 14px hsl(var(--primary)))" : "drop-shadow(0 8px 12px rgba(0,0,0,0.6))",
           }}
