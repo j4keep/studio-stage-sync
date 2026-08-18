@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, RotateCcw, Share2, Users } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
+import GameShell from "@/components/games/GameShell";
+import TicTacToeBoard from "@/components/games/TicTacToeBoard";
+import { useTurnGame } from "@/hooks/use-turn-game";
 import {
   Board,
   EMPTY_BOARD,
@@ -15,12 +16,9 @@ import {
   winningLine,
 } from "@/lib/tic-tac-toe";
 import {
-  GamePlayerRow,
-  GameRow,
   bumpStats,
   createMultiplayerGame,
   createSoloGame,
-  loadGame,
   recordMove,
   updateGameState,
 } from "@/lib/games";
@@ -29,53 +27,9 @@ export default function TicTacToePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [game, setGame] = useState<GameRow | null>(null);
-  const [players, setPlayers] = useState<GamePlayerRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [picker, setPicker] = useState(false);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const statsWritten = useRef<string | null>(null);
-  const [opponentName, setOpponentName] = useState("Opponent");
-
-  const refresh = useCallback(async () => {
-    if (!id) return;
-    const { game: g, players: p } = await loadGame(id);
-    setGame(g);
-    setPlayers(p);
-    setLoading(false);
-  }, [id]);
-
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    if (!id) return;
-    const channel = supabase
-      .channel(`ttt-${id}`)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}` }, () =>
-        void refresh(),
-      )
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [id, refresh]);
-
-  const me = players.find((p) => p.user_id === user?.id);
-  const opponent = players.find((p) => p.id !== me?.id);
-
-  useEffect(() => {
-    if (!opponent?.user_id) {
-      setOpponentName(opponent?.is_computer ? "Computer" : "Opponent");
-      return;
-    }
-    void (supabase as any)
-      .from("profiles")
-      .select("display_name")
-      .eq("user_id", opponent.user_id)
-      .maybeSingle()
-      .then(({ data }: any) => setOpponentName(data?.display_name || "Opponent"));
-  }, [opponent?.user_id, opponent?.is_computer]);
+  const [invalid, setInvalid] = useState<number | null>(null);
 
   const board: Board = (game?.game_state?.board as Board) || EMPTY_BOARD;
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
@@ -111,6 +65,8 @@ export default function TicTacToePage() {
   const applyMove = async (index: number) => {
     if (!game || !user || !myTurn) return;
     if (!isLegalMove(board, index)) {
+      setInvalid(index);
+      window.setTimeout(() => setInvalid(null), 340);
       toast({ title: "That square is taken" });
       return;
     }
@@ -146,14 +102,12 @@ export default function TicTacToePage() {
   const rematch = async () => {
     if (!user || !game) return;
     try {
+      const state = { board: EMPTY_BOARD, moveNumber: 0 };
       if (game.mode === "solo") {
-        const g = await createSoloGame("tic_tac_toe", user.id, { board: EMPTY_BOARD, moveNumber: 0 });
+        const g = await createSoloGame("tic_tac_toe", user.id, state);
         navigate(`/games/tic-tac-toe/${g.id}`, { replace: true });
       } else if (opponent?.user_id) {
-        const g = await createMultiplayerGame("tic_tac_toe", user.id, opponent.user_id, {
-          board: EMPTY_BOARD,
-          moveNumber: 0,
-        });
+        const g = await createMultiplayerGame("tic_tac_toe", user.id, opponent.user_id, state);
         toast({ title: `Rematch sent to ${opponentName}` });
         navigate(`/games/tic-tac-toe/${g.id}`, { replace: true });
       }
@@ -169,25 +123,10 @@ export default function TicTacToePage() {
         board: EMPTY_BOARD,
         moveNumber: 0,
       });
-      setPicker(false);
       toast({ title: `Challenge sent to ${name}` });
       navigate(`/games/tic-tac-toe/${g.id}`, { replace: true });
     } catch (e: any) {
       toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const shareResult = async () => {
-    const outcome = draw ? "tied" : w === mySymbol ? "won" : "lost";
-    const text = `I just ${outcome} a game of Tic-Tac-Toe on YAJ 🎮`;
-    try {
-      if (navigator.share) await navigator.share({ text });
-      else {
-        await navigator.clipboard.writeText(text);
-        toast({ title: "Result copied" });
-      }
-    } catch {
-      /* user cancelled */
     }
   };
 
@@ -210,7 +149,7 @@ export default function TicTacToePage() {
     );
   }
 
-  const statusLabel = (() => {
+  const status = (() => {
     if (game.status === "waiting") return `Waiting for ${opponentName} to accept`;
     if (game.status === "cancelled") return "Challenge declined";
     if (draw) return "Draw — nobody wins";
@@ -218,83 +157,33 @@ export default function TicTacToePage() {
     return myTurn ? "Your turn" : `${opponentName}'s turn`;
   })();
 
+  const outcome = finished ? (draw ? "draw" : w === mySymbol ? "win" : "loss") : undefined;
+
   return (
-    <div className="min-h-[100dvh] bg-background pb-28 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border/60 bg-background/95 px-4 py-3 backdrop-blur-xl">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => navigate("/games")} aria-label="Back" className="rounded-full p-1.5 hover:bg-muted">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-lg font-black tracking-tight">Tic-Tac-Toe</h1>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <main className="px-4 pt-4">
-        <div className="rounded-2xl border border-border bg-card p-3 text-center">
-          <p className="text-sm font-black">{statusLabel}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">You play {mySymbol}</p>
-        </div>
-
-        <div className="mx-auto mt-5 grid max-w-[360px] grid-cols-3 gap-2">
-          {board.map((cell, i) => {
-            const highlight = line?.includes(i);
-            return (
-              <button
-                key={i}
-                type="button"
-                disabled={!myTurn || cell !== null}
-                onClick={() => applyMove(i)}
-                aria-label={`Square ${i + 1}`}
-                className={`flex aspect-square items-center justify-center rounded-2xl border text-4xl font-black transition ${
-                  highlight
-                    ? "border-primary bg-primary/15 text-primary"
-                    : "border-border bg-card text-foreground active:scale-[0.97]"
-                } disabled:opacity-100`}
-              >
-                {cell}
-              </button>
-            );
-          })}
-        </div>
-
-        {finished && (
-          <div className="mx-auto mt-6 max-w-[360px] space-y-2">
-            <button
-              type="button"
-              onClick={rematch}
-              className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-black text-primary-foreground active:scale-[0.98]"
-            >
-              <RotateCcw className="h-4 w-4" /> Rematch
-            </button>
-            <button
-              type="button"
-              onClick={() => setPicker(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-black active:scale-[0.98]"
-            >
-              <Users className="h-4 w-4" /> Challenge Someone
-            </button>
-            <button
-              type="button"
-              onClick={shareResult}
-              className="flex w-full items-center justify-center gap-2 rounded-full border border-border px-4 py-3 text-sm font-black active:scale-[0.98]"
-            >
-              <Share2 className="h-4 w-4" /> Share Result
-            </button>
-          </div>
-        )}
-      </main>
-
-      <OpponentPickerSheet
-        open={picker}
-        onClose={() => setPicker(false)}
-        onPick={(p) => challengeOther(p.user_id, p.display_name || "your opponent")}
-        title="Challenge to Tic-Tac-Toe"
-      />
-    </div>
+    <GameShell
+      title="Tic-Tac-Toe"
+      subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
+      status={status}
+      finished={finished}
+      shareText={`I just ${draw ? "tied" : w === mySymbol ? "won" : "lost"} a game of Tic-Tac-Toe on YAJ 🎮`}
+      onRematch={rematch}
+      onChallenge={challengeOther}
+      me={{ name: "You", meta: `Plays ${mySymbol}` }}
+      them={{
+        name: opponentName,
+        avatarUrl: opponentAvatar,
+        isComputer: opponent?.is_computer ?? game.mode === "solo",
+        meta: `Plays ${mySymbol === "X" ? "O" : "X"}`,
+      }}
+      myTurn={myTurn}
+      outcome={outcome as any}
+      resultTitle={draw ? "It's a draw" : w === mySymbol ? "Victory!" : `${opponentName} wins`}
+      resultDetail={draw ? "Nobody claimed a line." : w === mySymbol ? "Three in a row — nicely played." : "Run it back for redemption."}
+    >
+      <TicTacToeBoard board={board} line={line} disabled={!myTurn} onPlay={applyMove} invalid={invalid} />
+      <p className="mt-3 text-center text-[11px] text-white/50">
+        {myTurn ? "Tap an empty square to place your mark." : "Waiting on the other player…"}
+      </p>
+    </GameShell>
   );
 }
