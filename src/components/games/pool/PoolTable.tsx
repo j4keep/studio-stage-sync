@@ -722,6 +722,12 @@ export default function PoolTable({
       className="relative h-full w-full overflow-hidden"
       style={{
         background: "radial-gradient(90% 80% at 50% 0%, hsl(210 45% 16%) 0%, hsl(220 45% 9%) 45%, hsl(226 45% 5%) 100%)",
+        // iPhones show this in landscape with the notch/home-indicator on a side edge —
+        // keep every control clear of it instead of letting the rounded corners eat it.
+        paddingLeft: "max(0.4rem, env(safe-area-inset-left))",
+        paddingRight: "max(0.4rem, env(safe-area-inset-right))",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
       }}
     >
       {/* Full-height play surface — chrome below is overlaid, not laid out in flow,
