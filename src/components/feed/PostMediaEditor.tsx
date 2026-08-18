@@ -423,7 +423,7 @@ const PostMediaEditor = ({
         <input
           value={hashtags}
           onChange={(e) => onHashtagsChange(e.target.value)}
-          placeholder="#music #wheuat"
+          placeholder="#music #yaj"
           className={`w-full text-sm rounded-xl px-3 py-2 ${immersive ? "bg-white/10 border border-white/15 text-white placeholder:text-white/40" : "bg-card border border-border"}`}
         />
       )}

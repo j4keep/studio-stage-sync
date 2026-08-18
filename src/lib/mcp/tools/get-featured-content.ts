@@ -4,9 +4,9 @@ import { z } from "zod";
 
 export default defineTool({
   name: "get_featured_content",
-  title: "Get featured WHEUAT content",
+  title: "Get featured YAJ content",
   description:
-    "List recent public content on WHEUAT (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
+    "List recent public content on YAJ (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
   inputSchema: {
     kind: z
       .enum(["podcasts", "videos", "songs", "battles", "posts"])

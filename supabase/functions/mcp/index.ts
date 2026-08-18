@@ -11,8 +11,8 @@ import { createClient } from "npm:@supabase/supabase-js@^2.95.3";
 import { z } from "npm:zod@^3.25.76";
 var get_featured_content_default = defineTool({
   name: "get_featured_content",
-  title: "Get featured WHEUAT content",
-  description: "List recent public content on WHEUAT (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
+  title: "Get featured YAJ content",
+  description: "List recent public content on YAJ (podcasts, videos, songs, battles, or feed posts). Use this to see what creators are publishing.",
   inputSchema: {
     kind: z.enum(["podcasts", "videos", "songs", "battles", "posts"]).describe("Which type of content to fetch."),
     limit: z.number().int().min(1).max(25).default(10).describe("How many items to return (max 25).")
@@ -101,10 +101,10 @@ var ask_yaj_default = defineTool2({
 // src/lib/mcp/index.ts
 var projectRef = "cdcdlqbjyptamtleitdp";
 var mcp_default = defineMcp({
-  name: "wheuat-mcp",
-  title: "WHEUAT",
+  name: "yaj-mcp",
+  title: "YAJ",
   version: "0.1.0",
-  instructions: "Tools for WHEUAT \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_yaj` to consult YAJ, the app's AI companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
+  instructions: "Tools for YAJ \u2014 a mobile-first platform for independent artists and creators. Use `get_featured_content` to browse recent podcasts, videos, songs, battles, or posts. Use `ask_yaj` to consult YAJ, the app's AI companion, for creative ideas, music, opportunities, Circles, collaboration, and platform guidance.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
