@@ -5,6 +5,7 @@ import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
 import DominoChain from "./DominoChain";
 import PlayerPod from "./PlayerPod";
+import { toast } from "@/hooks/use-toast";
 
 type Props = {
   layout: Tile[];
@@ -60,6 +61,7 @@ export default function DominoTable({
     right: boolean;
   } | null>(null);
   const [hover, setHover] = useState<"left" | "right" | null>(null);
+  const [bad, setBad] = useState<number | null>(null);
   const hoverRef = useRef<"left" | "right" | null>(null);
   const dragRef = useRef<typeof drag>(null);
 
