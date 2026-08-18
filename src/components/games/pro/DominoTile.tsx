@@ -1,3 +1,4 @@
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -10,6 +11,11 @@ type Props = {
   selected?: boolean;
   onClick?: () => void;
   className?: string;
+  style?: CSSProperties;
+  onPointerDown?: (e: ReactPointerEvent) => void;
+  onPointerMove?: (e: ReactPointerEvent) => void;
+  onPointerUp?: (e: ReactPointerEvent) => void;
+  onPointerCancel?: (e: ReactPointerEvent) => void;
 };
 
 const PIPS: Record<number, [number, number][]> = {
@@ -59,6 +65,11 @@ export default function DominoTile({
   selected,
   onClick,
   className,
+  style,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
 }: Props) {
   const d = DIMS[size];
   const vertical = orientation === "vertical";
@@ -109,6 +120,10 @@ export default function DominoTile({
   return (
     <Comp
       {...(onClick ? { type: "button" as const, onClick } : {})}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       className={cn(
         "shrink-0 rounded-lg p-[2px] transition-all duration-200",
         onClick && "active:scale-95",
@@ -125,6 +140,7 @@ export default function DominoTile({
         boxShadow: glow
           ? "0 0 14px hsl(var(--primary) / 0.55), 0 6px 12px rgba(0,0,0,0.45)"
           : "0 5px 10px rgba(0,0,0,0.45)",
+        ...style,
       }}
     >
       {body}

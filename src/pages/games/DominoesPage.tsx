@@ -1,16 +1,16 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Layers, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import GameShellPro from "@/components/games/pro/GameShellPro";
-import DominoTile from "@/components/games/pro/DominoTile";
-import DominoChain from "@/components/games/pro/DominoChain";
-
-import PlayerPod from "@/components/games/pro/PlayerPod";
+import DominoTable from "@/components/games/pro/DominoTable";
+import DominoIntro from "@/components/games/pro/DominoIntro";
+import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
+import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import { useTurnGame } from "@/hooks/use-turn-game";
+import { casinoMusic } from "@/lib/casino-music";
 import {
   DomState,
   dominoesComputerTurn,
@@ -26,8 +26,8 @@ import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGam
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
-  "Match one half of your tile to an open end of the chain.",
-  "Tap a glowing tile, then pick the left or right end when both fit.",
+  "Drag a glowing tile from your hand onto a glowing open end of the chain.",
+  "A tile only fits an end that matches one of its halves.",
   "No playable tile? Draw from the boneyard, or pass when it is empty.",
   "First player out of tiles wins. If the board blocks, the lowest pip total wins.",
 ];
@@ -41,9 +41,9 @@ export default function DominoesPage() {
     user?.id,
   );
   const written = useRef<string | null>(null);
-  const boardRef = useRef<HTMLDivElement>(null);
   const [picker, setPicker] = useState(false);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [seated, setSeated] = useState(false);
+  const [muted, setMuted] = useState(casinoMusic.muted);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [myName, setMyName] = useState("You");
 
@@ -60,6 +60,8 @@ export default function DominoesPage() {
       });
   }, [user?.id]);
 
+  useEffect(() => () => casinoMusic.stop(), []);
+
   const dom: DomState = (game?.game_state?.dom as DomState) || initialDominoes();
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
   const mySeat: 0 | 1 = ((me?.seat ?? 1) === 1 ? 0 : 1) as 0 | 1;
@@ -71,18 +73,10 @@ export default function DominoesPage() {
   const playable = playableTiles(dom, mySeat);
   const e = ends(dom);
 
-  useLayoutEffect(() => {
-    const el = boardRef.current;
-    if (el) el.scrollTo({ left: el.scrollWidth, behavior: "smooth" });
-  }, [dom.layout.length]);
-
-  useEffect(() => {
-    setSelected(null);
-  }, [dom.layout.length, myTurn]);
-
   useEffect(() => {
     if (!game || !user || !finished || written.current === game.id) return;
     written.current = game.id;
+    if (result === mySeat) casinoMusic.fanfare();
     if (game.status === "completed") return;
     const draw = result === "draw";
     const iWon = result === mySeat;
@@ -121,26 +115,10 @@ export default function DominoesPage() {
 
   const play = async (handIndex: number, side: "left" | "right") => {
     if (!game || !user || !myTurn) return;
-    setSelected(null);
+    casinoMusic.clack();
     const next = playTile(dom, mySeat, handIndex, side);
     await recordMove(game.id, user.id, moveNumber + 1, { tile: dom.hands[mySeat][handIndex], side });
     await advance(next, 1);
-  };
-
-  const tapTile = (i: number) => {
-    if (!myTurn || !playable.includes(i)) return;
-    const tile = myHand[i];
-    if (!e) {
-      void play(i, "right");
-      return;
-    }
-    const fitsLeft = tile.includes(e[0]);
-    const fitsRight = tile.includes(e[1]);
-    if (fitsLeft && fitsRight && e[0] !== e[1]) {
-      setSelected((prev) => (prev === i ? null : i));
-      return;
-    }
-    void play(i, fitsRight ? "right" : "left");
   };
 
   const draw = async () => {
@@ -160,7 +138,10 @@ export default function DominoesPage() {
           : opponent?.user_id
             ? await createMultiplayerGame("dominoes", user.id, opponent.user_id, state)
             : null;
-      if (g) navigate(gameRoute("dominoes", g.id), { replace: true });
+      if (g) {
+        written.current = null;
+        navigate(gameRoute("dominoes", g.id), { replace: true });
+      }
     } catch (err: any) {
       toast({ title: "Could not start a rematch", description: err.message, variant: "destructive" });
     }
@@ -193,6 +174,13 @@ export default function DominoesPage() {
     }
   };
 
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    casinoMusic.setMuted(next);
+    if (!next) void casinoMusic.start();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -215,6 +203,7 @@ export default function DominoesPage() {
     );
   }
 
+  const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
   const turnLabel =
     game.status === "waiting"
       ? "Waiting"
@@ -228,166 +217,53 @@ export default function DominoesPage() {
               : "You lost"
           : myTurn
             ? "Your turn"
-            : game.mode === "solo"
-              ? "Computer's turn"
-              : `${opponentName}'s turn`;
-
-  const boardInfo = e ? `Board · Open ends ${e[0]} and ${e[1]}` : "Board · Play any tile";
+            : `${oppLabel}'s turn`;
 
   const outcome: "win" | "loss" | "draw" = result === "draw" ? "draw" : result === mySeat ? "win" : "loss";
   const resultTitle =
-    outcome === "draw" ? "It's a draw" : outcome === "win" ? "You won!" : `${game.mode === "solo" ? "Computer" : opponentName} won`;
+    outcome === "draw" ? "It's a draw" : outcome === "win" ? "You won!" : `${oppLabel} won`;
   const resultDetail = finished
-    ? `Final pips — you ${pipTotal(dom.hands[mySeat] || [])} · ${game.mode === "solo" ? "Computer" : opponentName} ${pipTotal(dom.hands[oppSeat] || [])}`
+    ? `Final pips — you ${pipTotal(dom.hands[mySeat] || [])} · ${oppLabel} ${pipTotal(dom.hands[oppSeat] || [])}`
     : undefined;
 
   return (
-    <GameShellPro
-      title="Dominoes"
-      subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
-      turnLabel={turnLabel}
-      turnActive={!!myTurn}
-      boardInfo={boardInfo}
-      howToPlay={HOW_TO_PLAY}
-      pickerOpen={picker}
-      onPickerChange={setPicker}
-      onChallenge={challenge}
-    >
-      {/* Wooden-rim oval table */}
-      <div
-        className="rounded-[36px] p-3"
-        style={{
-          background:
-            "linear-gradient(160deg, #8a5a2b 0%, #5d3a19 40%, #7a4d24 70%, #4a2d13 100%)",
-          boxShadow:
-            "0 0 30px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.18), inset 0 -3px 6px rgba(0,0,0,0.5)",
-        }}
-      >
-        <div
-          className="relative overflow-hidden rounded-[28px] px-2 py-3"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.045) 1px, transparent 0), radial-gradient(circle at 3px 4px, rgba(0,0,0,0.06) 1px, transparent 0), radial-gradient(78% 62% at 50% 38%, #2f8354 0%, #1f5d3c 55%, #123a26 100%)",
-            backgroundSize: "6px 6px, 6px 6px, auto",
-            boxShadow: "inset 0 0 34px rgba(0,0,0,0.55), inset 0 2px 4px rgba(0,0,0,0.6)",
+    <LandscapeStage>
+      <div className="relative h-full w-full">
+        <DominoTable
+          layout={dom.layout}
+          ends={e}
+          pileCount={dom.pile.length}
+          myHand={myHand}
+          playable={playable}
+          myTurn={!!myTurn}
+          myName={myName}
+          myAvatar={myAvatar}
+          oppName={oppLabel}
+          oppAvatar={game.mode === "solo" ? null : opponentAvatar}
+          oppCount={dom.hands[oppSeat]?.length ?? 0}
+          isComputer={game.mode === "solo"}
+          turnLabel={turnLabel}
+          finished={finished}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onBack={() => navigate("/games")}
+          onPlay={(i, side) => void play(i, side)}
+          onDraw={() => void draw()}
+          howToPlay={HOW_TO_PLAY}
+        />
+
+        <DominoIntro
+          open={!seated && !finished}
+          subtitle={game.mode === "solo" ? "Solo table vs the house computer" : `You vs ${opponentName}`}
+          muted={muted}
+          onToggleMute={toggleMute}
+          onStart={() => {
+            setSeated(true);
+            if (!muted) void casinoMusic.start();
           }}
-        >
-          {/* Opponent pod + face-down rack */}
-          <div className="flex items-center justify-between gap-2 px-1">
-            <PlayerPod
-              name={game.mode === "solo" ? "Computer" : opponentName}
-              avatarUrl={game.mode === "solo" ? null : opponentAvatar}
-              isComputer={game.mode === "solo"}
-              count={dom.hands[oppSeat]?.length ?? 0}
-              active={!myTurn && !finished && game.status === "active"}
-            />
-            <div className="flex gap-0.5 overflow-hidden">
-              {Array.from({ length: Math.min(dom.hands[oppSeat]?.length ?? 0, 7) }).map((_, i) => (
-                <DominoTile key={i} faceDown size="sm" orientation="vertical" />
-              ))}
-            </div>
-          </div>
-
-          {/* Chain — wraps into serpentine rows so long games never clip */}
-          <div ref={boardRef} className="mt-3">
-            <DominoChain
-              layout={dom.layout}
-              ends={e}
-              activeEnds={
-                selected !== null && e
-                  ? {
-                      left: myHand[selected]?.includes(e[0]) ?? false,
-                      right: myHand[selected]?.includes(e[1]) ?? false,
-                    }
-                  : undefined
-              }
-              onPickEnd={(side) => selected !== null && void play(selected, side)}
-            />
-          </div>
-
-          {/* Boneyard medallion + you pod */}
-          <div className="mt-3 flex items-end justify-between gap-2 px-1">
-            <div
-              className="flex items-center gap-2 rounded-xl px-2.5 py-1.5"
-              style={{
-                background: "linear-gradient(180deg, rgba(0,0,0,0.5), rgba(0,0,0,0.3))",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.12)",
-              }}
-            >
-              <Layers className="h-4 w-4 text-[#f0d78c]" />
-              <div className="text-left leading-tight">
-                <p className="text-[9px] font-bold uppercase tracking-wide text-white/60">Boneyard</p>
-                <p className="text-xs font-black text-white">{dom.pile.length}</p>
-              </div>
-            </div>
-
-            <PlayerPod name={myName} avatarUrl={myAvatar} count={myHand.length} active={!!myTurn} />
-          </div>
-
-          {/* Player hand anchored on the felt, horizontally scrollable at full size */}
-          <div
-            className="mt-2 flex gap-1.5 overflow-x-auto rounded-2xl px-2 py-2"
-            style={{
-              background: "linear-gradient(180deg, rgba(0,0,0,0.28), rgba(0,0,0,0.12))",
-              scrollbarWidth: "none",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
-            {myHand.map((t, i) => {
-              const ok = myTurn && playable.includes(i);
-              return (
-                <DominoTile
-                  key={`${t[0]}-${t[1]}-${i}`}
-                  tile={t}
-                  size="lg"
-                  glow={ok}
-                  dim={!ok}
-                  selected={selected === i}
-                  className={selected === i ? "domino-lift" : undefined}
-                  onClick={ok ? () => tapTile(i) : undefined}
-                />
-              );
-            })}
-          </div>
-        </div>
-
+          onBack={() => navigate("/games")}
+        />
       </div>
-
-      {selected !== null && e ? (
-        <div className="mt-3 flex items-center gap-2 animate-fade-in">
-          <button
-            type="button"
-            onClick={() => play(selected, "left")}
-            className="flex-1 rounded-full border border-primary/50 bg-primary/15 px-4 py-3 text-sm font-black text-primary active:scale-[0.98]"
-          >
-            Play on left ({e[0]})
-          </button>
-          <button
-            type="button"
-            onClick={() => play(selected, "right")}
-            className="flex-1 rounded-full border border-primary/50 bg-primary/15 px-4 py-3 text-sm font-black text-primary active:scale-[0.98]"
-          >
-            Play on right ({e[1]})
-          </button>
-        </div>
-      ) : (
-        <p className="mt-2 text-center text-[11px] text-white/60">
-          {myTurn ? "Tap a glowing tile to play it on an open end" : "Waiting for the next move"}
-        </p>
-      )}
-
-      {myTurn && !playable.length && (
-        <div className="mt-3 flex justify-center">
-          <button
-            type="button"
-            onClick={draw}
-            className="rounded-2xl bg-primary px-6 py-3 text-sm font-black text-primary-foreground active:scale-[0.98]"
-          >
-            {dom.pile.length ? "Draw a tile" : "Pass"}
-          </button>
-        </div>
-      )}
-
 
       <GameResultCard
         open={finished}
@@ -398,6 +274,16 @@ export default function DominoesPage() {
         onChallenge={() => setPicker(true)}
         onShare={shareResult}
       />
-    </GameShellPro>
+
+      <OpponentPickerSheet
+        open={picker}
+        onClose={() => setPicker(false)}
+        onPick={(p) => {
+          setPicker(false);
+          void challenge(p.user_id, p.display_name || "your opponent");
+        }}
+        title="Challenge to Dominoes"
+      />
+    </LandscapeStage>
   );
 }
