@@ -24,7 +24,15 @@ import {
   resolveShot,
   simulateShot,
 } from "@/lib/pool";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import {
+  bumpStats,
+  createMultiplayerGame,
+  createSoloGame,
+  getMyStats,
+  listMyGames,
+  recordMove,
+  updateGameState,
+} from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
