@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import PoolTable from "@/components/games/pool/PoolTable";
-import PoolIntro from "@/components/games/pool/PoolIntro";
+import PoolIntro, { PoolMatchup, PoolStats } from "@/components/games/pool/PoolIntro";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
@@ -24,7 +24,15 @@ import {
   resolveShot,
   simulateShot,
 } from "@/lib/pool";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import {
+  bumpStats,
+  createMultiplayerGame,
+  createSoloGame,
+  getMyStats,
+  listMyGames,
+  recordMove,
+  updateGameState,
+} from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
@@ -51,6 +59,9 @@ export default function PoolPage() {
   const [myName, setMyName] = useState("You");
   const [playback, setPlayback] = useState<ShotSimResult | null>(null);
   const [committing, setCommitting] = useState(false);
+  const [poolStats, setPoolStats] = useState<PoolStats | null>(null);
+  const [matchups, setMatchups] = useState<PoolMatchup[]>([]);
+
 
   const poolRef = useRef<PoolState>(initialPool());
   const pendingRef = useRef<Pending | null>(null);
@@ -69,6 +80,44 @@ export default function PoolPage() {
         setMyName(data?.display_name || "You");
       });
   }, [user?.id]);
+
+  // Pool record + recent matchups shown behind the intro's "Track Your Best Break" action.
+  useEffect(() => {
+    if (!user?.id) return;
+    void (async () => {
+      try {
+        const [rows, games] = await Promise.all([getMyStats(user.id), listMyGames(user.id)]);
+        const s = rows.find((r) => r.game_type === "pool");
+        setPoolStats({
+          played: s?.games_played ?? 0,
+          wins: s?.wins ?? 0,
+          losses: s?.losses ?? 0,
+          bestStreak: s?.best_streak ?? 0,
+          highScore: s?.high_score ?? 0,
+        });
+        setMatchups(
+          games
+            .filter((g: any) => g.game_type === "pool")
+            .slice(0, 10)
+            .map((g: any) => ({
+              id: g.id,
+              label: g.mode === "solo" ? "Solo vs Computer" : "Head-to-head match",
+              detail: new Date(g.updated_at || g.created_at).toLocaleDateString(),
+              outcome:
+                g.status !== "completed"
+                  ? ("open" as const)
+                  : g.winner_user_id === user.id
+                    ? ("win" as const)
+                    : ("loss" as const),
+            })),
+        );
+      } catch {
+        /* stats are non-critical */
+      }
+    })();
+  }, [user?.id, game?.status]);
+
+
 
   const pool: PoolState = (game?.game_state?.pool as PoolState) || initialPool();
   poolRef.current = pool;
@@ -328,7 +377,28 @@ export default function PoolPage() {
             void poolSfx.prime();
           }}
           onBack={() => navigate("/games")}
+          stats={poolStats}
+          matchups={matchups}
+          onPlaySolo={() => {
+            if (game.mode === "solo" && game.status === "active") {
+              setSeated(true);
+              void poolSfx.prime();
+              return;
+            }
+            void (async () => {
+              if (!user) return;
+              try {
+                const g = await createSoloGame("pool", user.id, { pool: initialPool(), moveNumber: 0 });
+                written.current = null;
+                navigate(gameRoute("pool", g.id), { replace: true });
+              } catch (err: any) {
+                toast({ title: "Could not start a solo table", description: err.message, variant: "destructive" });
+              }
+            })();
+          }}
+          onQuickMatch={() => setPicker(true)}
         />
+
       </div>
 
       <GameResultCard
