@@ -283,12 +283,13 @@ export default function DominoTable({
                 size="md"
                 glow={ok}
                 dim={!ok}
-                className={drag?.i === i ? "opacity-30" : ok ? "cursor-grab" : undefined}
+                className={`${drag?.i === i ? "opacity-30" : ok ? "cursor-grab" : ""} ${bad === i ? "ttt-shake" : ""}`}
                 style={{ touchAction: ok ? "none" : "pan-x" }}
-                onPointerDown={ok ? (e) => startDrag(i, e) : undefined}
+                onPointerDown={canDrag ? (e) => startDrag(i, e) : undefined}
               />
             );
           })}
+
           {myTurn && !playable.length && !finished ? (
             <button
               type="button"
