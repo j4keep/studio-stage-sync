@@ -377,7 +377,28 @@ export default function PoolPage() {
             void poolSfx.prime();
           }}
           onBack={() => navigate("/games")}
+          stats={poolStats}
+          matchups={matchups}
+          onPlaySolo={() => {
+            if (game.mode === "solo" && game.status === "active") {
+              setSeated(true);
+              void poolSfx.prime();
+              return;
+            }
+            void (async () => {
+              if (!user) return;
+              try {
+                const g = await createSoloGame("pool", user.id, { pool: initialPool(), moveNumber: 0 });
+                written.current = null;
+                navigate(gameRoute("pool", g.id), { replace: true });
+              } catch (err: any) {
+                toast({ title: "Could not start a solo table", description: err.message, variant: "destructive" });
+              }
+            })();
+          }}
+          onQuickMatch={() => setPicker(true)}
         />
+
       </div>
 
       <GameResultCard
