@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowLeft, HelpCircle, Layers, Volume2, VolumeX } from "lucide-react";
 import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
@@ -295,19 +296,24 @@ export default function DominoTable({
       ) : null}
 
       {/* Ghost tile that follows the finger */}
-      {dragTile ? (
-        <div
-          className="pointer-events-none fixed z-[60]"
-          style={{
-            left: drag?.x ?? 0,
-            top: drag?.y ?? 0,
-            transform: "translate(-50%, -120%) scale(1.05)",
-            filter: hover ? "drop-shadow(0 0 14px hsl(var(--primary)))" : "drop-shadow(0 8px 12px rgba(0,0,0,0.6))",
-          }}
-        >
-          <DominoTile tile={dragTile} size="md" orientation="horizontal" glow />
-        </div>
-      ) : null}
+      {dragTile
+        ? createPortal(
+            <div
+              className="pointer-events-none fixed z-[200]"
+              style={{
+                left: drag?.x ?? 0,
+                top: drag?.y ?? 0,
+                transform: "translate(-50%, -120%) scale(1.05)",
+                filter: hover
+                  ? "drop-shadow(0 0 14px hsl(var(--primary)))"
+                  : "drop-shadow(0 8px 12px rgba(0,0,0,0.6))",
+              }}
+            >
+              <DominoTile tile={dragTile} size="md" orientation="horizontal" glow />
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
