@@ -23,7 +23,7 @@ export default function CheckersPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName } = useTurnGame(id, user?.id);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const [selected, setSelected] = useState<number | null>(null);
   const written = useRef<string | null>(null);
 
@@ -158,6 +158,10 @@ export default function CheckersPage() {
         ? w === mySide ? "Victory — you win!" : `${opponentName} wins`
         : myTurn ? "Your turn" : `${opponentName}'s turn`;
 
+  const myPieces = board.filter((p) => p && sideOf(p) === mySide).length;
+  const oppPieces = board.filter((p) => p && sideOf(p) === oppSide).length;
+  const outcome = finished ? (w === mySide ? "win" : "loss") : undefined;
+
   return (
     <GameShell
       title="Checkers"
@@ -167,41 +171,83 @@ export default function CheckersPage() {
       shareText={`I just ${w === mySide ? "won" : "lost"} a game of Checkers on YAJ ⛃`}
       onRematch={rematch}
       onChallenge={challenge}
+      me={{ name: "You", meta: `${myPieces} pieces • ${mySide === "r" ? "red" : "black"}` }}
+      them={{
+        name: opponentName,
+        avatarUrl: opponentAvatar,
+        isComputer: opponent?.is_computer ?? game.mode === "solo",
+        meta: `${oppPieces} pieces • ${oppSide === "r" ? "red" : "black"}`,
+      }}
+      myTurn={myTurn}
+      outcome={outcome as any}
+      resultTitle={w === mySide ? "Board cleared — you win!" : `${opponentName} wins`}
+      resultDetail={w === mySide ? "Every last piece captured." : "Line up a rematch."}
     >
-      <div className="mx-auto grid max-w-[380px] grid-cols-8 overflow-hidden rounded-2xl border-4 border-[hsl(20_60%_28%)]">
-        {board.map((piece, i) => {
-          const r = Math.floor(i / 8);
-          const c = i % 8;
-          const dark = (r + c) % 2 === 1;
-          const isTarget = targets.some((m) => m.to === i);
-          return (
-            <button
-              key={i}
-              type="button"
-              aria-label={`Square ${i + 1}`}
-              onClick={() => tap(i)}
-              className={`relative flex aspect-square items-center justify-center ${
-                dark ? "bg-[hsl(28_45%_38%)]" : "bg-[hsl(38_70%_82%)]"
-              } ${isTarget ? "ring-2 ring-inset ring-primary" : ""} ${selected === i ? "ring-2 ring-inset ring-white" : ""}`}
-            >
-              {piece && (
-                <span
-                  className={`flex h-[76%] w-[76%] items-center justify-center rounded-full text-[10px] font-black ${
-                    sideOf(piece) === "r"
-                      ? "bg-red-600 text-white shadow-inner"
-                      : "bg-neutral-900 text-white shadow-inner"
-                  }`}
-                >
-                  {piece === "R" || piece === "B" ? "♛" : ""}
-                </span>
-              )}
-            </button>
-          );
-        })}
+      <div
+        className="mx-auto max-w-[380px] rounded-[26px] p-3"
+        style={{
+          background: "linear-gradient(160deg, hsl(24 45% 30%), hsl(20 50% 16%))",
+          boxShadow: "0 26px 54px -22px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.14)",
+        }}
+      >
+        <div
+          className="grid grid-cols-8 overflow-hidden rounded-xl"
+          style={{ boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.45), inset 0 6px 16px rgba(0,0,0,0.5)" }}
+        >
+          {board.map((piece, i) => {
+            const r = Math.floor(i / 8);
+            const c = i % 8;
+            const dark = (r + c) % 2 === 1;
+            const isTarget = targets.some((m) => m.to === i);
+            const isSelected = selected === i;
+            const side = piece ? sideOf(piece) : null;
+            const isKing = piece === "R" || piece === "B";
+            return (
+              <button
+                key={i}
+                type="button"
+                aria-label={`Square ${i + 1}`}
+                onClick={() => tap(i)}
+                className="relative flex aspect-square items-center justify-center transition active:scale-95"
+                style={{
+                  background: dark
+                    ? "linear-gradient(150deg, hsl(26 42% 34%), hsl(24 44% 26%))"
+                    : "linear-gradient(150deg, hsl(38 58% 84%), hsl(36 48% 74%))",
+                }}
+              >
+                {isTarget && (
+                  <span
+                    className="absolute h-[34%] w-[34%] rounded-full bg-primary/70"
+                    style={{ boxShadow: "0 0 14px hsl(var(--primary) / 0.8)" }}
+                  />
+                )}
+                {isSelected && <span className="absolute inset-0 ring-2 ring-inset ring-primary" />}
+                {piece && (
+                  <span
+                    className={`relative flex h-[76%] w-[76%] items-center justify-center rounded-full game-piece-pop ${
+                      isSelected ? "scale-105" : ""
+                    }`}
+                    style={{
+                      background:
+                        side === "r"
+                          ? "radial-gradient(circle at 36% 28%, #ff8e8e, #a4121f 72%)"
+                          : "radial-gradient(circle at 36% 28%, #5a5f6d, #101318 72%)",
+                      boxShadow:
+                        "inset 0 -4px 7px rgba(0,0,0,0.5), inset 0 3px 5px rgba(255,255,255,0.28), 0 3px 6px rgba(0,0,0,0.5)",
+                    }}
+                  >
+                    {isKing && <span className="text-[11px] font-black text-[#f7e2a0]">♛</span>}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted-foreground">
+      <p className="mt-3 text-center text-[11px] text-white/50">
         You play {mySide === "r" ? "red (moving up)" : "black (moving down)"} — captures are forced.
       </p>
     </GameShell>
   );
 }
+

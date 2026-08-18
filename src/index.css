@@ -746,3 +746,44 @@
 @media (prefers-reduced-motion: reduce) {
   .domino-place, .domino-lift, .yaj-confetti-piece { animation: none !important; }
 }
+
+/* ---- Mini-game arena polish ---- */
+@keyframes ttt-draw {
+  to { stroke-dashoffset: 0; }
+}
+.ttt-stroke { animation: ttt-draw 0.3s ease-out forwards; }
+
+@keyframes ttt-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+.ttt-shake { animation: ttt-shake 0.32s ease-in-out; }
+
+@keyframes c4-drop {
+  0% { transform: translateY(-320%) scale(0.9); }
+  75% { transform: translateY(0) scale(1); }
+  88% { transform: translateY(-9%) scale(0.98); }
+  100% { transform: translateY(0) scale(1); }
+}
+.c4-drop { animation: c4-drop 0.42s cubic-bezier(0.35, 0.9, 0.3, 1) both; }
+
+@keyframes game-piece-pop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.game-piece-pop { animation: game-piece-pop 0.24s ease-out both; }
+
+@keyframes win-glow {
+  0%, 100% { box-shadow: 0 0 12px rgba(247,226,160,0.35); }
+  50% { box-shadow: 0 0 26px rgba(247,226,160,0.85); }
+}
+.win-glow { animation: win-glow 1.1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ttt-stroke, .ttt-shake, .c4-drop, .game-piece-pop, .win-glow { animation: none !important; }
+  .ttt-stroke { stroke-dashoffset: 0 !important; }
+}

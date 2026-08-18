@@ -5,6 +5,7 @@ import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
 import DominoChain from "./DominoChain";
 import PlayerPod from "./PlayerPod";
+import { toast } from "@/hooks/use-toast";
 
 type Props = {
   layout: Tile[];
@@ -60,6 +61,7 @@ export default function DominoTable({
     right: boolean;
   } | null>(null);
   const [hover, setHover] = useState<"left" | "right" | null>(null);
+  const [bad, setBad] = useState<number | null>(null);
   const hoverRef = useRef<"left" | "right" | null>(null);
   const dragRef = useRef<typeof drag>(null);
 
@@ -70,8 +72,18 @@ export default function DominoTable({
     return { left: tile.includes(ends[0]), right: tile.includes(ends[1]) };
   };
 
+  const rejectTile = (i: number, message: string) => {
+    setBad(i);
+    window.setTimeout(() => setBad((cur) => (cur === i ? null : cur)), 340);
+    toast({ title: message });
+  };
+
   const startDrag = (i: number, e: React.PointerEvent) => {
-    if (!canDrag || !playable.includes(i)) return;
+    if (!canDrag) return;
+    if (!playable.includes(i)) {
+      rejectTile(i, ends ? "That tile doesn't match an open end" : "Wait for your turn");
+      return;
+    }
     e.preventDefault();
     const v = validSides(myHand[i]);
     const nextDrag = { i, x: e.clientX, y: e.clientY, ...v };
@@ -104,7 +116,9 @@ export default function DominoTable({
     setHover(null);
     hoverRef.current = null;
     if (d && side) onPlay(d.i, side);
+    else if (d) rejectTile(d.i, "Drop the tile on a glowing open end");
   };
+
 
   // Track the gesture at window level. Mobile Safari can stop dispatching
   // pointer events to a tile once the finger leaves its transformed bounds.
@@ -271,12 +285,13 @@ export default function DominoTable({
                 size="md"
                 glow={ok}
                 dim={!ok}
-                className={drag?.i === i ? "opacity-30" : ok ? "cursor-grab" : undefined}
+                className={`${drag?.i === i ? "opacity-30" : ok ? "cursor-grab" : ""} ${bad === i ? "ttt-shake" : ""}`}
                 style={{ touchAction: ok ? "none" : "pan-x" }}
-                onPointerDown={ok ? (e) => startDrag(i, e) : undefined}
+                onPointerDown={canDrag ? (e) => startDrag(i, e) : undefined}
               />
             );
           })}
+
           {myTurn && !playable.length && !finished ? (
             <button
               type="button"

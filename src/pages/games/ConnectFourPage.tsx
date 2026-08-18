@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +23,9 @@ export default function ConnectFourPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName } = useTurnGame(id, user?.id);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
+  const [invalidCol, setInvalidCol] = useState<number | null>(null);
+  const prevBoard = useRef<C4Board | null>(null);
   const written = useRef<string | null>(null);
 
   const board: C4Board = (game?.game_state?.board as C4Board) || C4_EMPTY;
@@ -35,6 +37,17 @@ export default function ConnectFourPage() {
   const draw = c4IsDraw(board);
   const finished = Boolean(w) || draw;
   const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !finished;
+
+  // Indices added since the last render get the drop animation.
+  const fresh = useMemo(() => {
+    const before = prevBoard.current;
+    const changed = new Set<number>();
+    if (before) board.forEach((c, i) => { if (c && before[i] !== c) changed.add(i); });
+    prevBoard.current = board;
+    return changed;
+  }, [board]);
+
+
 
   useEffect(() => {
     if (!game || !user || !finished || written.current === game.id) return;
@@ -54,7 +67,13 @@ export default function ConnectFourPage() {
   }, [finished, game?.id, game?.status]);
 
   const play = async (col: number) => {
-    if (!game || !user || !myTurn || !canDrop(board, col)) return;
+    if (!game || !user || !myTurn) return;
+    if (!canDrop(board, col)) {
+      setInvalidCol(col);
+      window.setTimeout(() => setInvalidCol(null), 340);
+      toast({ title: "That column is full" });
+      return;
+    }
     let next = drop(board, col, myMark) as C4Board;
     let n = moveNumber + 1;
     let nextTurn = opponent?.user_id ?? null;
@@ -130,6 +149,8 @@ export default function ConnectFourPage() {
           ? w === myMark ? "Victory — you win!" : `${opponentName} wins`
           : myTurn ? "Your turn" : `${opponentName}'s turn`;
 
+  const outcome = finished ? (draw ? "draw" : w === myMark ? "win" : "loss") : undefined;
+
   return (
     <GameShell
       title="Connect Four"
@@ -139,12 +160,30 @@ export default function ConnectFourPage() {
       shareText={`I just ${draw ? "tied" : w === myMark ? "won" : "lost"} a game of Connect Four on YAJ 🔴🔵`}
       onRematch={rematch}
       onChallenge={challenge}
+      me={{ name: "You", meta: myMark === "R" ? "Red discs" : "Yellow discs" }}
+      them={{
+        name: opponentName,
+        avatarUrl: opponentAvatar,
+        isComputer: opponent?.is_computer ?? game.mode === "solo",
+        meta: myMark === "R" ? "Yellow discs" : "Red discs",
+      }}
+      myTurn={myTurn}
+      outcome={outcome as any}
+      resultTitle={draw ? "It's a draw" : w === myMark ? "Four in a row!" : `${opponentName} wins`}
+      resultDetail={draw ? "The board filled up." : w === myMark ? "You connected four — clean work." : "Rematch and take it back."}
     >
-      <div className="mx-auto max-w-[380px] rounded-3xl bg-[hsl(200_70%_28%)] p-2">
+      <div
+        className="mx-auto max-w-[380px] rounded-[28px] p-3"
+        style={{
+          background: "linear-gradient(165deg, hsl(214 80% 34%), hsl(222 78% 20%))",
+          boxShadow: "0 26px 54px -22px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.16), inset 0 -6px 14px rgba(0,0,0,0.4)",
+        }}
+      >
         <div className="grid grid-cols-7 gap-1.5">
           {board.map((cell, i) => {
             const col = i % C4_COLS;
             const highlight = line?.includes(i);
+            const dropping = fresh.has(i);
             return (
               <button
                 key={i}
@@ -152,21 +191,37 @@ export default function ConnectFourPage() {
                 aria-label={`Column ${col + 1}`}
                 disabled={!myTurn}
                 onClick={() => play(col)}
-                className={`aspect-square rounded-full border-2 transition ${
-                  cell === "R"
-                    ? "border-red-300 bg-red-500"
-                    : cell === "Y"
-                      ? "border-yellow-200 bg-yellow-400"
-                      : "border-white/20 bg-background/25"
-                } ${highlight ? "ring-2 ring-white" : ""}`}
-              />
+                className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-full transition ${
+                  invalidCol === col ? "ttt-shake" : ""
+                } ${myTurn && !cell ? "active:scale-95" : ""}`}
+                style={{
+                  background: "radial-gradient(circle at 50% 35%, rgba(0,0,0,0.55), rgba(0,0,0,0.28))",
+                  boxShadow: "inset 0 3px 6px rgba(0,0,0,0.65), inset 0 -2px 0 rgba(255,255,255,0.08)",
+                }}
+              >
+                {cell && (
+                  <span
+                    className={`block h-[86%] w-[86%] rounded-full ${dropping ? "c4-drop" : ""} ${highlight ? "win-glow" : ""}`}
+                    style={{
+                      background:
+                        cell === "R"
+                          ? "radial-gradient(circle at 35% 28%, #ff8b8b, #c31f2e 70%)"
+                          : "radial-gradient(circle at 35% 28%, #ffeda1, #e0a410 70%)",
+                      boxShadow: highlight
+                        ? "inset 0 -3px 6px rgba(0,0,0,0.35), 0 0 0 2px rgba(247,226,160,0.9)"
+                        : "inset 0 -3px 6px rgba(0,0,0,0.35), 0 2px 4px rgba(0,0,0,0.45)",
+                    }}
+                  />
+                )}
+              </button>
             );
           })}
         </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-muted-foreground">
+      <p className="mt-3 text-center text-[11px] text-white/50">
         You are {myMark === "R" ? "red" : "yellow"} — tap a column to drop.
       </p>
     </GameShell>
   );
 }
+
