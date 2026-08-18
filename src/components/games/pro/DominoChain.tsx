@@ -9,15 +9,19 @@ type Props = {
   /** Show glowing drop targets on these ends. */
   activeEnds?: { left: boolean; right: boolean };
   onPickEnd?: (side: "left" | "right") => void;
+  /** Tile scale used on the table. */
+  size?: "sm" | "md";
+  /** Highlight the whole surface as a drop zone (empty table). */
+  emptyDropActive?: boolean;
 };
 
-/** Rendered footprint of a md tile including its 2px frame. */
-const V_W = 44; // vertical tile width
-const V_H = 84; // vertical tile height
-const H_W = 84; // horizontal tile width
-const H_H = 44; // horizontal tile height
-const ROW_H = V_H + 6; // row pitch (tallest tile + breathing room)
-const SLOT_W = 40;
+type Geo = { vW: number; vH: number; hW: number; hH: number; rowH: number; slotW: number };
+
+const GEO: Record<"sm" | "md", Geo> = {
+  // footprints include the 2px tile frame on each side
+  sm: { vW: 30, vH: 56, hW: 56, hH: 30, rowH: 62, slotW: 28 },
+  md: { vW: 44, vH: 84, hW: 84, hH: 44, rowH: 90, slotW: 40 },
+};
 
 type Placed = { tile: Tile; index: number; x: number; y: number; vertical: boolean };
 
@@ -25,24 +29,31 @@ function EndSlot({
   value,
   x,
   y,
+  side,
+  w,
+  h,
   onClick,
 }: {
   value: number;
   x: number;
   y: number;
+  side: "left" | "right";
+  w: number;
+  h: number;
   onClick?: () => void;
 }) {
   return (
     <button
       type="button"
+      data-end={side}
       onClick={onClick}
       aria-label={`Play on open end ${value}`}
-      className="absolute rounded-lg border-2 border-dashed border-primary/70 text-[11px] font-black text-primary animate-pulse"
+      className="absolute flex items-center justify-center rounded-lg border-2 border-dashed border-primary/70 text-[11px] font-black text-primary animate-pulse"
       style={{
         left: x,
         top: y,
-        width: SLOT_W,
-        height: V_H,
+        width: w,
+        height: h,
         background: "hsl(var(--primary) / 0.16)",
         boxShadow: "0 0 16px hsl(var(--primary) / 0.55)",
       }}
@@ -57,7 +68,7 @@ function EndSlot({
  * end-to-end, and the chain turns 90° (via a rotated tile at the edge) then
  * snakes back in the opposite direction when it runs out of table width.
  */
-function buildPath(layout: Tile[], boardW: number) {
+function buildPath(layout: Tile[], boardW: number, g: Geo) {
   const placed: Placed[] = [];
   let dir: 1 | -1 = 1;
   let row = 0;
@@ -67,31 +78,31 @@ function buildPath(layout: Tile[], boardW: number) {
   layout.forEach((tile, index) => {
     const isDouble = tile[0] === tile[1];
     let vertical = isDouble;
-    let w = vertical ? V_W : H_W;
+    let w = vertical ? g.vW : g.hW;
 
     const fits = dir > 0 ? cursor + w <= boardW : cursor - w >= 0;
 
     if (!fits) {
       // Turn the chain: stand this tile up at the edge, then continue on the row below.
-      const turnFits = dir > 0 ? cursor + V_W <= boardW : cursor - V_W >= 0;
+      const turnFits = dir > 0 ? cursor + g.vW <= boardW : cursor - g.vW >= 0;
       if (turnFits) {
-        const px = dir > 0 ? cursor : cursor - V_W;
-        placed.push({ tile, index, x: px, y: row * ROW_H, vertical: true });
+        const px = dir > 0 ? cursor : cursor - g.vW;
+        placed.push({ tile, index, x: px, y: row * g.rowH, vertical: true });
         row += 1;
         dir = dir > 0 ? -1 : 1;
-        cursor = dir > 0 ? px : px + V_W;
+        cursor = dir > 0 ? px : px + g.vW;
         return;
       }
       row += 1;
       dir = dir > 0 ? -1 : 1;
       cursor = dir > 0 ? 2 : boardW - 2;
       vertical = isDouble;
-      w = vertical ? V_W : H_W;
+      w = vertical ? g.vW : g.hW;
     }
 
     const px = dir > 0 ? cursor : cursor - w;
-    const h = vertical ? V_H : H_H;
-    placed.push({ tile, index, x: px, y: row * ROW_H + (ROW_H - h) / 2, vertical });
+    const h = vertical ? g.vH : g.hH;
+    placed.push({ tile, index, x: px, y: row * g.rowH + (g.rowH - h) / 2, vertical });
     if (index === 0) firstX = px;
     cursor = dir > 0 ? cursor + w : cursor - w;
   });
@@ -99,11 +110,19 @@ function buildPath(layout: Tile[], boardW: number) {
   return { placed, dir, row, cursor, firstX, rows: row + 1 };
 }
 
-export default function DominoChain({ layout, ends, activeEnds, onPickEnd }: Props) {
+export default function DominoChain({
+  layout,
+  ends,
+  activeEnds,
+  onPickEnd,
+  size = "md",
+  emptyDropActive,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const prevLen = useRef(layout.length);
   const [justPlaced, setJustPlaced] = useState<number | null>(null);
+  const g = GEO[size];
 
   useLayoutEffect(() => {
     const el = wrapRef.current;
@@ -125,25 +144,39 @@ export default function DominoChain({ layout, ends, activeEnds, onPickEnd }: Pro
     prevLen.current = layout.length;
   }, [layout.length]);
 
-  const boardW = Math.max(width, 240);
-  const path = buildPath(layout, boardW);
-  const height = Math.max(path.rows * ROW_H, 150);
+  const boardW = Math.max(width, 200);
+  const path = buildPath(layout, boardW, g);
+  const height = Math.max(path.rows * g.rowH, g.vH + 20);
 
   const showLeft = Boolean(ends && activeEnds?.left);
   const showRight = Boolean(ends && activeEnds?.right);
 
   // Left slot sits just before the first tile; right slot just after the leading edge.
-  const leftSlotX = Math.max(0, Math.min(boardW - SLOT_W, path.firstX - SLOT_W - 2));
+  const leftSlotX = Math.max(0, Math.min(boardW - g.slotW, path.firstX - g.slotW - 2));
   const rightSlotX = Math.max(
     0,
-    Math.min(boardW - SLOT_W, path.dir > 0 ? path.cursor + 2 : path.cursor - SLOT_W - 2),
+    Math.min(boardW - g.slotW, path.dir > 0 ? path.cursor + 2 : path.cursor - g.slotW - 2),
   );
 
   return (
-    <div ref={wrapRef} className="w-full overflow-hidden px-1">
+    <div ref={wrapRef} className="h-full w-full overflow-hidden px-1">
       {!layout.length ? (
-        <div className="flex min-h-[150px] items-center justify-center">
-          <p className="text-center text-xs font-bold text-white/60">Empty table — play your first tile</p>
+        <div className="flex h-full min-h-[80px] items-center justify-center">
+          <div
+            data-end="right"
+            className={
+              emptyDropActive
+                ? "rounded-2xl border-2 border-dashed border-primary/70 px-6 py-4 text-center text-[11px] font-black text-primary animate-pulse"
+                : "text-center text-xs font-bold text-white/60"
+            }
+            style={
+              emptyDropActive
+                ? { background: "hsl(var(--primary) / 0.16)", boxShadow: "0 0 18px hsl(var(--primary) / 0.5)" }
+                : undefined
+            }
+          >
+            {emptyDropActive ? "Drop your tile here" : "Empty table — drag your first tile in"}
+          </div>
         </div>
       ) : (
         <div className="relative w-full" style={{ height }}>
@@ -155,20 +188,31 @@ export default function DominoChain({ layout, ends, activeEnds, onPickEnd }: Pro
             >
               <DominoTile
                 tile={p.tile}
-                size="md"
+                size={size}
                 orientation={p.vertical ? "vertical" : "horizontal"}
                 className={justPlaced === p.index ? "domino-place" : undefined}
               />
             </div>
           ))}
           {showLeft && ends ? (
-            <EndSlot value={ends[0]} x={leftSlotX} y={0} onClick={() => onPickEnd?.("left")} />
+            <EndSlot
+              value={ends[0]}
+              side="left"
+              x={leftSlotX}
+              y={0}
+              w={g.slotW}
+              h={g.vH}
+              onClick={() => onPickEnd?.("left")}
+            />
           ) : null}
           {showRight && ends ? (
             <EndSlot
               value={ends[1]}
+              side="right"
               x={rightSlotX}
-              y={path.row * ROW_H}
+              y={path.row * g.rowH}
+              w={g.slotW}
+              h={g.vH}
               onClick={() => onPickEnd?.("right")}
             />
           ) : null}
