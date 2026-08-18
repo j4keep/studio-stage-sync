@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { GamePlayerRow, GameRow, loadGame } from "@/lib/games";
 
@@ -9,6 +9,8 @@ export function useTurnGame(id: string | undefined, userId: string | undefined) 
   const [loading, setLoading] = useState(true);
   const [opponentName, setOpponentName] = useState("Opponent");
   const [opponentAvatar, setOpponentAvatar] = useState<string | null>(null);
+  const statusRef = useRef<string | null>(null);
+  statusRef.current = game?.status ?? null;
 
   const refresh = useCallback(async () => {
     if (!id) return;
@@ -22,8 +24,13 @@ export function useTurnGame(id: string | undefined, userId: string | undefined) 
     void refresh();
   }, [refresh]);
 
+  // Realtime subscription, with a catch-up refresh whenever it (re)connects — mobile
+  // browsers suspend WebSockets when a tab is backgrounded or the phone locks, and a
+  // reconnect after that gap can silently miss the update it was suspended through, so a
+  // fresh subscribe is exactly the moment to also re-fetch, not just from then on.
   useEffect(() => {
     if (!id) return;
+    let cancelled = false;
     const channel = supabase
       .channel(`game-${id}`)
       .on(
@@ -31,9 +38,37 @@ export function useTurnGame(id: string | undefined, userId: string | undefined) 
         { event: "UPDATE", schema: "public", table: "games", filter: `id=eq.${id}` },
         () => void refresh(),
       )
-      .subscribe();
+      .subscribe((status) => {
+        if (cancelled) return;
+        if (status === "SUBSCRIBED") void refresh();
+      });
     return () => {
+      cancelled = true;
       void supabase.removeChannel(channel);
+    };
+  }, [id, refresh]);
+
+  // Belt-and-suspenders catch-up: re-fetch whenever the tab regains focus/visibility or
+  // the network comes back, and poll gently in the background while a match is live, so a
+  // dropped realtime event never leaves either player stuck looking at a stale board.
+  useEffect(() => {
+    if (!id) return;
+    const onWake = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", onWake);
+    window.addEventListener("focus", onWake);
+    window.addEventListener("online", onWake);
+    const poll = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (statusRef.current === "completed" || statusRef.current === "cancelled") return;
+      void refresh();
+    }, 8000);
+    return () => {
+      document.removeEventListener("visibilitychange", onWake);
+      window.removeEventListener("focus", onWake);
+      window.removeEventListener("online", onWake);
+      window.clearInterval(poll);
     };
   }, [id, refresh]);
 
