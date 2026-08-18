@@ -70,8 +70,18 @@ export default function DominoTable({
     return { left: tile.includes(ends[0]), right: tile.includes(ends[1]) };
   };
 
+  const rejectTile = (i: number, message: string) => {
+    setBad(i);
+    window.setTimeout(() => setBad((cur) => (cur === i ? null : cur)), 340);
+    toast({ title: message });
+  };
+
   const startDrag = (i: number, e: React.PointerEvent) => {
-    if (!canDrag || !playable.includes(i)) return;
+    if (!canDrag) return;
+    if (!playable.includes(i)) {
+      rejectTile(i, ends ? "That tile doesn't match an open end" : "Wait for your turn");
+      return;
+    }
     e.preventDefault();
     const v = validSides(myHand[i]);
     const nextDrag = { i, x: e.clientX, y: e.clientY, ...v };
@@ -104,7 +114,9 @@ export default function DominoTable({
     setHover(null);
     hoverRef.current = null;
     if (d && side) onPlay(d.i, side);
+    else if (d) rejectTile(d.i, "Drop the tile on a glowing open end");
   };
+
 
   // Track the gesture at window level. Mobile Safari can stop dispatching
   // pointer events to a tile once the finger leaves its transformed bounds.
