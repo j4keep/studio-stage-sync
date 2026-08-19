@@ -22,6 +22,8 @@ import {
   recordMove,
   updateGameState,
 } from "@/lib/games";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 export default function TicTacToePage() {
   const { id } = useParams<{ id: string }>();
@@ -161,6 +163,7 @@ export default function TicTacToePage() {
 
   return (
     <GameShell
+      gameType="tic_tac_toe"
       title="Tic-Tac-Toe"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
@@ -184,6 +187,22 @@ export default function TicTacToePage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         {myTurn ? "Tap an empty square to place your mark." : "Waiting on the other player…"}
       </p>
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </GameShell>
   );
 }

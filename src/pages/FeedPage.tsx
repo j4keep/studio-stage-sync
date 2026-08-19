@@ -14,6 +14,7 @@ import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
 import BattleCard from "@/components/BattleCard";
+import LiveGamesRail from "@/components/games/live/LiveGamesRail";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
@@ -224,6 +225,7 @@ const FeedPage = () => {
 
   const postsColumn = () => (
     <>
+      <LiveGamesRail />
       {posts.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
           <p className="text-xs text-muted-foreground">No posts yet</p>

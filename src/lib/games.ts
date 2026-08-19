@@ -14,6 +14,10 @@ export type GameRow = {
   game_state: any;
   winner_user_id: string | null;
   is_draw: boolean;
+  is_live?: boolean;
+  live_started_at?: string | null;
+  live_ended_at?: string | null;
+  live_title?: string | null;
   created_at: string;
   updated_at: string;
   finished_at: string | null;

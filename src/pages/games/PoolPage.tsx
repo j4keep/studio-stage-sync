@@ -34,6 +34,8 @@ import {
   updateGameState,
 } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 const HOW_TO_PLAY = [
   "Drag anywhere on the table to aim the cue.",
@@ -365,7 +367,28 @@ export default function PoolPage() {
           onToggleMute={toggleMute}
           onBack={() => navigate("/games")}
           howToPlay={HOW_TO_PLAY}
+          sideDock={
+            <GameLiveDock
+              gameId={game.id}
+              userId={user?.id}
+              isPlayer={!!me}
+              isLive={Boolean((game as any).is_live)}
+              hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+              placement="rail"
+              onChanged={refresh}
+            />
+          }
         />
+
+        <PendingChallengeGate
+          gameId={game.id}
+          userId={user?.id}
+          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+          challengerName={opponentName}
+          onAccepted={refresh}
+        />
+
+
 
         <PoolIntro
           open={!seated && !finished}

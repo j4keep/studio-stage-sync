@@ -18,6 +18,8 @@ import {
 } from "@/lib/connect-four";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 export default function ConnectFourPage() {
   const { id } = useParams<{ id: string }>();
@@ -153,6 +155,7 @@ export default function ConnectFourPage() {
 
   return (
     <GameShell
+      gameType="connect_four"
       title="Connect Four"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
@@ -221,6 +224,22 @@ export default function ConnectFourPage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         You are {myMark === "R" ? "red" : "yellow"} — tap a column to drop.
       </p>
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </GameShell>
   );
 }

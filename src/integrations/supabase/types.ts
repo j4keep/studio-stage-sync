@@ -1296,6 +1296,38 @@ export type Database = {
           },
         ]
       }
+      game_live_comments: {
+        Row: {
+          body: string
+          created_at: string
+          game_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          game_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          game_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_live_comments_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_moves: {
         Row: {
           created_at: string
@@ -1433,6 +1465,10 @@ export type Database = {
           host_user_id: string
           id: string
           is_draw: boolean
+          is_live: boolean
+          live_ended_at: string | null
+          live_started_at: string | null
+          live_title: string | null
           mode: string
           status: string
           updated_at: string
@@ -1447,6 +1483,10 @@ export type Database = {
           host_user_id: string
           id?: string
           is_draw?: boolean
+          is_live?: boolean
+          live_ended_at?: string | null
+          live_started_at?: string | null
+          live_title?: string | null
           mode?: string
           status?: string
           updated_at?: string
@@ -1461,6 +1501,10 @@ export type Database = {
           host_user_id?: string
           id?: string
           is_draw?: boolean
+          is_live?: boolean
+          live_ended_at?: string | null
+          live_started_at?: string | null
+          live_title?: string | null
           mode?: string
           status?: string
           updated_at?: string
@@ -4923,6 +4967,10 @@ export type Database = {
           host_user_id: string
           id: string
           is_draw: boolean
+          is_live: boolean
+          live_ended_at: string | null
+          live_started_at: string | null
+          live_title: string | null
           mode: string
           status: string
           updated_at: string
