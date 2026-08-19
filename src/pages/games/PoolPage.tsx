@@ -35,6 +35,7 @@ import {
 } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 const HOW_TO_PLAY = [
   "Drag anywhere on the table to aim the cue.",
@@ -378,6 +379,16 @@ export default function PoolPage() {
             />
           }
         />
+
+        <PendingChallengeGate
+          gameId={game.id}
+          userId={user?.id}
+          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+          challengerName={opponentName}
+          onAccepted={refresh}
+        />
+
+
 
         <PoolIntro
           open={!seated && !finished}

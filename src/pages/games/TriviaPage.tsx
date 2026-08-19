@@ -9,6 +9,7 @@ import { TRIVIA_BANK, TRIVIA_ROUND, computerAnswer, pickQuestions } from "@/lib/
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 export default function TriviaPage() {
   const { id } = useParams<{ id: string }>();
@@ -219,6 +220,13 @@ export default function TriviaPage() {
           </p>
         )}
       </div>
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
       <GameLiveDock
         gameId={game.id}
         userId={user?.id}
