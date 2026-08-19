@@ -113,6 +113,9 @@ export default function BoxingRing({
   oppHealth,
   oppStamina,
   oppAdvance,
+  myAccent,
+  oppAccent,
+
   myAnim,
   oppAnim,
   impact,
@@ -144,6 +147,10 @@ export default function BoxingRing({
   oppHealth: number;
   oppStamina: number;
   oppAdvance: number;
+  /** Colour that identifies each fighter by seat, so both phones agree who is who. */
+  myAccent: string;
+  oppAccent: string;
+
   myAnim: FighterAnim;
   oppAnim: FighterAnim;
   impact: { side: "me" | "opp"; nonce: number } | null;
@@ -271,8 +278,9 @@ export default function BoxingRing({
           </g>
         ))}
 
-        <FighterArt side="left" appearance={myAppearance} accent="hsl(204 100% 55%)" anim={myAnim} advance={myAdvance} />
-        <FighterArt side="right" appearance={oppAppearance} accent="#f59e0b" anim={oppAnim} advance={oppAdvance} />
+        <FighterArt side="left" appearance={myAppearance} accent={myAccent} anim={myAnim} advance={myAdvance} />
+        <FighterArt side="right" appearance={oppAppearance} accent={oppAccent} anim={oppAnim} advance={oppAdvance} />
+
         {spark && <ImpactSpark x={spark.x} y={spark.y} />}
       </svg>
 
@@ -283,7 +291,11 @@ export default function BoxingRing({
             <X className="h-4 w-4" />
           </button>
           <div className="w-32 rounded-xl bg-black/45 p-1.5">
-            <p className="mb-1 truncate text-[10px] font-black text-white">{myName}</p>
+            <p className="mb-1 flex items-center gap-1 truncate text-[10px] font-black text-white">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: myAccent }} />
+              {myName}
+            </p>
+
             <StatBar label="HP" value={myHealth} max={100} tone="health" />
             <div className="mt-1">
               <StatBar label="STA" value={myStamina} max={100} tone="stamina" />
@@ -298,6 +310,8 @@ export default function BoxingRing({
           <div className="w-32 rounded-xl bg-black/45 p-1.5 text-right">
             <p className="mb-1 flex items-center justify-end gap-1 truncate text-[10px] font-black text-white">
               {isComputer && <Bot className="h-3 w-3 text-primary" />} {oppName}
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: oppAccent }} />
+
             </p>
             <StatBar label="HP" value={oppHealth} max={100} tone="health" />
             <div className="mt-1">

@@ -148,14 +148,31 @@ export function useBoxingLive({
           stamina: payload.stamina,
           advance: payload.advance,
         };
+        // Mirror the opponent's live pose so their fighter visibly moves on this phone.
+        if (payload.anim && oppAnimRef.current.anim !== "ko") {
+          if (payload.anim === "idle") {
+            if (oppAnimRef.current.until <= now) oppAnimRef.current = { anim: "idle", until: 0 };
+          } else if (oppAnimRef.current.until <= now) {
+            setAnim("opp", payload.anim as FighterAnim, 260);
+          }
+        }
         bump();
+      } else if (payload.t === "hi") {
+        // A late joiner asked for a full picture of my fighter.
+        send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
       } else if (payload.t === "ko") {
         // Sender says they were knocked out.
         finish("me", false);
       }
     });
 
-    channel.subscribe();
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") {
+        send({ t: "hi" });
+        send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
+      }
+    });
+
     return () => {
       channelRef.current = null;
       (supabase as any).removeChannel(channel);
@@ -226,10 +243,11 @@ export function useBoxingLive({
           finish(mine === theirs ? null : mine > theirs ? "me" : "opp", true);
         }
 
-        if (mode === "multiplayer" && now - lastSync > 1200) {
+        if (mode === "multiplayer" && now - lastSync > 180) {
           lastSync = now;
-          send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance });
+          send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
         }
+
       }
 
       bump();

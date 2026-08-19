@@ -18,7 +18,7 @@ import { Appearance, DEFAULT_APPEARANCE, Seat } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
-const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: false, character: "man" };
+const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: true, character: "woman" };
 
 /** Gives the computer a varied illustrated opponent per match instead of always the same fighter. */
 function computerAppearance(gameId: string): Appearance {
@@ -61,10 +61,17 @@ export default function BoxingPage() {
   const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
   const oppSeat: Seat = mySeat === 0 ? 1 : 0;
 
+  /** Seat colours, so the same fighter is the same colour on every phone. */
+  const SEAT_ACCENTS = ["hsl(204 100% 55%)", "#f59e0b"];
+  const myAccent = SEAT_ACCENTS[mySeat];
+  const oppAccent = SEAT_ACCENTS[oppSeat];
+
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
-  const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
+  const myAppearance: Appearance = appearanceMap[mySeat] || (mySeat === 1 ? OPP_DEFAULT_APPEARANCE : DEFAULT_APPEARANCE);
   const oppAppearance: Appearance =
-    appearanceMap[oppSeat] || (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : OPP_DEFAULT_APPEARANCE);
+    appearanceMap[oppSeat] ||
+    (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : oppSeat === 1 ? OPP_DEFAULT_APPEARANCE : DEFAULT_APPEARANCE);
+
 
   /** Persist the result once, when the real-time match ends. */
   const handleFinish = async (winner: "me" | "opp" | null) => {
@@ -100,7 +107,18 @@ export default function BoxingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.status, seated]);
 
+  // Claim my seat's fighter in the shared state so each side shows a different boxer on both phones.
+  useEffect(() => {
+    if (!game || !user || game.mode !== "multiplayer") return;
+    if (appearanceMap[mySeat]) return;
+    const nextGameState = { ...game.game_state, appearance: { ...appearanceMap, [mySeat]: myAppearance } };
+    setGame({ ...game, game_state: nextGameState });
+    void updateGameState(game.id, { game_state: nextGameState });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id, mySeat, Boolean(appearanceMap[mySeat])]);
+
   const finished = live.phase === "over";
+
 
   const setMyAppearance = async (partial: Partial<Appearance>) => {
     if (!game || !user) return;
@@ -221,6 +239,9 @@ export default function BoxingPage() {
           oppHealth={live.opp.health}
           oppStamina={live.opp.stamina}
           oppAdvance={live.opp.advance}
+          myAccent={myAccent}
+          oppAccent={oppAccent}
+
           myAnim={live.myAnim}
           oppAnim={live.oppAnim}
           impact={live.impact}
