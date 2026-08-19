@@ -318,9 +318,10 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       delivery_per_mile: Number(data?.delivery_per_mile ?? 0),
       delivery_min_fee: Number(data?.delivery_min_fee ?? 0),
       delivery_max_miles: Number(data?.delivery_max_miles ?? 0),
-      buyer_address: data?.buyer_address ?? null,
-      buyer_lat: data?.buyer_lat ?? null,
-      buyer_lng: data?.buyer_lng ?? null,
+      buyer_address: loc?.buyer_address ?? null,
+      buyer_lat: loc?.buyer_lat ?? null,
+      buyer_lng: loc?.buyer_lng ?? null,
+
       share_location: Boolean(data?.share_location),
     };
   }
