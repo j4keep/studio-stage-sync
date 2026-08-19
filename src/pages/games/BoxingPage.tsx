@@ -11,13 +11,21 @@ import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import BoxingRing, { SKIN_TONES } from "@/components/games/boxing/BoxingRing";
+import BoxingRing, { SKIN_TONES, CHARACTERS } from "@/components/games/boxing/BoxingRing";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { Action, Appearance, BoxingState, DEFAULT_APPEARANCE, Seat, computerAction, initialBoxing, resolveAction } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
-const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[2], build: "athletic", fem: false };
+const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: false, character: "man" };
+
+/** Gives the computer a varied illustrated opponent per match instead of always the same fighter. */
+function computerAppearance(gameId: string): Appearance {
+  let h = 0;
+  for (let i = 0; i < gameId.length; i++) h = (h * 31 + gameId.charCodeAt(i)) % 100000;
+  const c = CHARACTERS[h % CHARACTERS.length];
+  return { skin: SKIN_TONES[h % SKIN_TONES.length], build: "athletic", fem: false, character: c.id };
+}
 
 export default function BoxingPage() {
   const { id } = useParams<{ id: string }>();
@@ -59,7 +67,8 @@ export default function BoxingPage() {
 
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
   const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
-  const oppAppearance: Appearance = appearanceMap[oppSeat] || OPP_DEFAULT_APPEARANCE;
+  const oppAppearance: Appearance =
+    appearanceMap[oppSeat] || (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : OPP_DEFAULT_APPEARANCE);
 
   // Persist stats once when a match finishes.
   useEffect(() => {
@@ -294,52 +303,43 @@ export default function BoxingPage() {
             className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
             onClick={() => setShowCustomize(false)}
           >
-            <div className="w-full max-w-xs rounded-2xl bg-[#11151f] p-4" onClick={(e) => e.stopPropagation()}>
-              <p className="mb-3 text-center text-sm font-black text-white">Customize Your Fighter</p>
+            <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-2xl bg-[#11151f] p-4" onClick={(e) => e.stopPropagation()}>
+              <p className="mb-3 text-center text-sm font-black text-white">Choose Your Fighter</p>
+
+              <div className="mb-3 grid grid-cols-3 gap-2">
+                {CHARACTERS.map((c) => {
+                  const active = (myAppearance.character ?? "man") === c.id;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => void setMyAppearance({ character: c.id, build: c.scale > 1.15 ? "heavy" : c.scale < 0.9 ? "lean" : "athletic", fem: Boolean(c.fem) })}
+                      className={`rounded-xl border-2 px-1.5 py-2 text-[11px] font-black ${
+                        active ? "border-primary bg-primary/20 text-white" : "border-white/10 bg-white/5 text-white/70"
+                      }`}
+                    >
+                      <span className="block text-base leading-none">{c.emoji}</span>
+                      <span className="mt-1 block leading-none">{c.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
               <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-white/50">Skin Tone</p>
-              <div className="mb-3 flex gap-2">
+              <div className="mb-1 flex flex-wrap gap-2">
                 {SKIN_TONES.map((tone) => (
                   <button
                     key={tone}
                     type="button"
                     onClick={() => void setMyAppearance({ skin: tone })}
-                    className="h-9 w-9 rounded-full border-2"
+                    className="h-8 w-8 rounded-full border-2"
                     style={{ background: tone, borderColor: myAppearance.skin === tone ? "hsl(var(--primary))" : "transparent" }}
                     aria-label={`Skin tone ${tone}`}
                   />
                 ))}
               </div>
+              <p className="text-[9px] text-white/35">Robot and bear fighters use their own colors.</p>
 
-              <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-white/50">Build</p>
-              <div className="mb-3 flex gap-2">
-                {(["lean", "athletic", "heavy"] as const).map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => void setMyAppearance({ build: b })}
-                    className={`flex-1 rounded-lg py-1.5 text-[11px] font-black capitalize ${
-                      myAppearance.build === b ? "bg-primary text-primary-foreground" : "bg-white/10 text-white/70"
-                    }`}
-                  >
-                    {b}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-bold uppercase tracking-wide text-white/50">Presenting Fem</p>
-                <button
-                  type="button"
-                  onClick={() => void setMyAppearance({ fem: !myAppearance.fem })}
-                  className={`h-6 w-11 rounded-full p-0.5 transition-colors ${myAppearance.fem ? "bg-primary" : "bg-white/15"}`}
-                  aria-label="Toggle presenting fem"
-                >
-                  <span
-                    className={`block h-5 w-5 rounded-full bg-white transition-transform ${myAppearance.fem ? "translate-x-5" : ""}`}
-                  />
-                </button>
-              </div>
 
               <button
                 type="button"
