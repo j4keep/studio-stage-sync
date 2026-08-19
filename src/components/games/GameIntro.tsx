@@ -61,7 +61,7 @@ export default function GameIntro({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-between overflow-hidden px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] animate-fade-in"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-between overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] animate-fade-in"
       style={{
         background:
           "radial-gradient(110% 70% at 50% 0%, hsl(268 55% 22%) 0%, hsl(250 45% 10%) 55%, hsl(240 45% 5%) 100%)",
