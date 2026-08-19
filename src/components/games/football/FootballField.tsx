@@ -145,11 +145,10 @@ export default function FootballField({
     >
       <style>{`
         @keyframes fb-flash { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
-        @keyframes fb-ball-pop { 0% { transform: scale(0.7); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
         .fb-flash { animation: fb-flash 1.1s ease-out; }
-        .fb-ball { transition: cx 650ms cubic-bezier(.3,.7,.3,1); }
-        .fb-ball-pop { animation: fb-ball-pop 400ms ease-out; transform-origin: center; }
+        ${PLAYER_KEYFRAMES}
       `}</style>
+
 
       <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
         <defs>
