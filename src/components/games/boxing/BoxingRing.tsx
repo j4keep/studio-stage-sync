@@ -130,20 +130,20 @@ export default function BoxingRing({
       timers.push(
         window.setTimeout(() => {
           setTarget("hit");
-          setSpark({ x: actorIsMe ? 560 : 345, y: 236 });
+          setSpark({ x: actorIsMe ? 470 : 430, y: 232 });
           setShake(true);
           window.setTimeout(() => setShake(false), 220);
           window.setTimeout(() => setSpark(null), 220);
-        }, 140),
+        }, 210),
       );
       timers.push(
         window.setTimeout(() => {
           const koNow = (actorIsMe ? oppHealth : myHealth) <= 0;
           setTarget(koNow ? "ko" : "idle");
-        }, 460),
+        }, 560),
       );
     }
-    timers.push(window.setTimeout(() => setActor("idle"), 340));
+    timers.push(window.setTimeout(() => setActor("idle"), 470));
     return () => timers.forEach((t) => window.clearTimeout(t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastAction?.turn]);
