@@ -4,6 +4,8 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import GameShell from "@/components/games/GameShell";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 import BoxingRing from "@/components/games/boxing/BoxingRing";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { Action, BoxingState, Seat, computerAction, initialBoxing, resolveAction } from "@/lib/boxing";
@@ -145,6 +147,7 @@ export default function BoxingPage() {
 
   return (
     <GameShell
+      gameType="boxing"
       title="Boxing"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
@@ -180,6 +183,21 @@ export default function BoxingPage() {
         finished={finished}
         winnerIsMe={finished ? iWon : null}
         onAction={(action) => void applyAction(action)}
+      />
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
       />
     </GameShell>
   );
