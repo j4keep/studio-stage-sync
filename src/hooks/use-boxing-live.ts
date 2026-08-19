@@ -1,0 +1,422 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  FighterLive,
+  Guard,
+  LUNGE,
+  MAX_ADVANCE,
+  MOVE_COOLDOWN_MS,
+  MoveDir,
+  PUNCHES,
+  PUNCH_STEP,
+  Punch,
+
+  PunchOutcome,
+  GUARD_COOLDOWN_MS,
+  GUARD_MS,
+  ROUND_SECONDS,
+  STEP,
+  clamp,
+  computerIntent,
+  gapBetween,
+  newFighter,
+  resolvePunch,
+  tickFighter,
+} from "@/lib/boxing-live";
+import type { FighterAnim } from "@/components/games/boxing/FighterArt";
+import { boxingSfx } from "@/lib/boxing-sfx";
+
+export type LiveSide = "me" | "opp";
+export type LivePhase = "idle" | "fighting" | "over";
+
+type AnimState = { anim: FighterAnim; until: number };
+
+export type BoxingLive = {
+  me: FighterLive;
+  opp: FighterLive;
+  phase: LivePhase;
+  winner: LiveSide | null;
+  decision: boolean;
+  secondsLeft: number;
+  message: string | null;
+  myAnim: FighterAnim;
+  oppAnim: FighterAnim;
+  impact: { side: LiveSide; nonce: number } | null;
+  gap: number;
+  /** 0..1 remaining cooldown per punch, for the button dials. */
+  cooldowns: Record<Punch, number>;
+  guardCooldown: number;
+  start: () => void;
+  punch: (p: Punch) => void;
+  guard: (g: Guard) => void;
+  move: (dir: MoveDir) => void;
+};
+
+/**
+ * Drives a free-flowing, real-time boxing match. Nobody waits for a turn: every
+ * punch, guard and step happens the instant the player asks for it, limited only
+ * by that action's own cooldown and the fighter's stamina.
+ */
+export function useBoxingLive({
+  gameId,
+  mode,
+  enabled,
+  myName,
+  oppName,
+  onFinish,
+}: {
+  gameId: string | undefined;
+  mode: "solo" | "multiplayer";
+  enabled: boolean;
+  /** Names used only for announcer lines — cosmetic, no gameplay effect. */
+  myName?: string;
+  oppName?: string;
+  onFinish?: (winner: LiveSide | null, myHealth: number, oppHealth: number) => void;
+}): BoxingLive {
+  const meRef = useRef<FighterLive>(newFighter());
+  const oppRef = useRef<FighterLive>(newFighter());
+  const phaseRef = useRef<LivePhase>("idle");
+  const startedAtRef = useRef<number>(0);
+  const punchCdRef = useRef<Record<Punch, number>>({ jab: 0, hook: 0, uppercut: 0 });
+  const guardCdRef = useRef(0);
+  const moveCdRef = useRef(0);
+  const oppPunchCdRef = useRef(0);
+  const myAnimRef = useRef<AnimState>({ anim: "idle", until: 0 });
+  const oppAnimRef = useRef<AnimState>({ anim: "idle", until: 0 });
+  const channelRef = useRef<any>(null);
+  const finishedRef = useRef(false);
+  const nonceRef = useRef(0);
+
+  const [snapshot, setSnapshot] = useState(0);
+  const [phase, setPhase] = useState<LivePhase>("idle");
+  const [winner, setWinner] = useState<LiveSide | null>(null);
+  const [decision, setDecision] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [impact, setImpact] = useState<{ side: LiveSide; nonce: number } | null>(null);
+  const finishRef = useRef(onFinish);
+  finishRef.current = onFinish;
+  /** Names load async (profile fetch) — read through a ref so the []-deps callbacks below never close over a stale default. */
+  const namesRef = useRef({ myName, oppName });
+  namesRef.current = { myName, oppName };
+  /** Consecutive landed punches per side — fuels the crowd swell + "on a roll" callouts. */
+  const streakRef = useRef<{ me: number; opp: number }>({ me: 0, opp: 0 });
+
+  const bump = () => setSnapshot((n) => n + 1);
+
+  const setAnim = (side: LiveSide, anim: FighterAnim, ms: number) => {
+    const ref = side === "me" ? myAnimRef : oppAnimRef;
+    ref.current = { anim, until: Date.now() + ms };
+  };
+
+  /** Impact sound + crowd reaction + occasional announcer line for one punch's outcome. */
+  const reactToOutcome = (attacker: LiveSide, outcome: { hit: boolean; blocked: boolean; damage: number; staggered: boolean }) => {
+    if (!outcome.hit) {
+      boxingSfx.miss();
+      streakRef.current[attacker] = 0;
+      return;
+    }
+    if (outcome.blocked) {
+      boxingSfx.blocked();
+      return;
+    }
+    const intensity = Math.min(1, outcome.damage / 26);
+    streakRef.current[attacker] += 1;
+    const streak = streakRef.current[attacker];
+    boxingSfx.punchLand(intensity);
+    boxingSfx.cheer(Math.max(intensity, streak >= 3 ? 0.7 : 0));
+    const attackerName = attacker === "me" ? (myName || "You") : (oppName || "Your opponent");
+    if (outcome.staggered) boxingSfx.announce(`Ohh, big shot from ${attackerName}!`);
+    else if (streak === 3) boxingSfx.announce(`${attackerName} is on a roll!`);
+  };
+
+  const finish = useCallback((w: LiveSide | null, byDecision: boolean) => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
+    phaseRef.current = "over";
+    setPhase("over");
+    setWinner(w);
+    setDecision(byDecision);
+    if (w) setAnim(w === "me" ? "opp" : "me", "ko", 60_000);
+    const { myName: mn, oppName: on } = namesRef.current;
+    const winnerName = w === "me" ? (mn || "You") : w === "opp" ? (on || "Your opponent") : null;
+    boxingSfx.koRoar();
+    boxingSfx.announce(
+      winnerName ? (byDecision ? `It's over — ${winnerName} takes it on the scorecards!` : `It's over! ${winnerName} wins by knockout!`) : "It's over — a draw!",
+    );
+    window.setTimeout(() => boxingSfx.stopCrowd(), 2200);
+    finishRef.current?.(w, meRef.current.health, oppRef.current.health);
+    bump();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Crowd murmur runs only while the fight is actually live, and stops for good on unmount.
+  useEffect(() => () => boxingSfx.stopCrowd(), []);
+
+  const send = (payload: any) => {
+    if (mode !== "multiplayer") return;
+    channelRef.current?.send({ type: "broadcast", event: "bx", payload });
+  };
+
+  /* ---------------- realtime wiring ---------------- */
+  useEffect(() => {
+    if (!gameId || mode !== "multiplayer") return;
+    const channel = (supabase as any).channel(`boxing-live-${gameId}`, { config: { broadcast: { self: false } } });
+    channelRef.current = channel;
+
+    channel.on("broadcast", { event: "bx" }, ({ payload }: any) => {
+      const now = Date.now();
+      if (!payload) return;
+      if (payload.t === "p") {
+        // The opponent threw a punch and already resolved it against my guard.
+        const o: PunchOutcome = payload.outcome;
+        setAnim("opp", o.punch, PUNCHES[o.punch].cooldownMs * 0.6);
+        boxingSfx.punchThrow();
+        if (o.hit) {
+          meRef.current = { ...meRef.current, health: clamp(meRef.current.health - o.damage, 0, 100) };
+          setAnim("me", "hit", 420);
+          nonceRef.current += 1;
+          setImpact({ side: "me", nonce: nonceRef.current });
+        }
+        reactToOutcome("opp", o);
+        setMessage(o.message);
+        bump();
+        if (meRef.current.health <= 0) {
+          send({ t: "ko", loser: "sender" });
+          finish("opp", false);
+        }
+      } else if (payload.t === "g") {
+        oppRef.current = { ...oppRef.current, guard: payload.guard, guardUntil: now + GUARD_MS[payload.guard as Guard] };
+        setAnim("opp", payload.guard === "block" ? "guard-block" : "guard-dodge", GUARD_MS[payload.guard as Guard]);
+        bump();
+      } else if (payload.t === "s") {
+        oppRef.current = {
+          ...oppRef.current,
+          health: payload.health,
+          stamina: payload.stamina,
+          advance: payload.advance,
+        };
+        // Mirror the opponent's live pose so their fighter visibly moves on this phone.
+        if (payload.anim && oppAnimRef.current.anim !== "ko") {
+          if (payload.anim === "idle") {
+            if (oppAnimRef.current.until <= now) oppAnimRef.current = { anim: "idle", until: 0 };
+          } else if (oppAnimRef.current.until <= now) {
+            setAnim("opp", payload.anim as FighterAnim, 260);
+          }
+        }
+        bump();
+      } else if (payload.t === "hi") {
+        // A late joiner asked for a full picture of my fighter.
+        send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
+      } else if (payload.t === "ko") {
+        // Sender says they were knocked out.
+        finish("me", false);
+      }
+    });
+
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") {
+        send({ t: "hi" });
+        send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
+      }
+    });
+
+    return () => {
+      channelRef.current = null;
+      (supabase as any).removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, mode]);
+
+  /* ---------------- simulation loop ---------------- */
+  useEffect(() => {
+    if (!enabled) return;
+    let last = Date.now();
+    let lastSync = 0;
+    const id = window.setInterval(() => {
+      const now = Date.now();
+      const dt = now - last;
+      last = now;
+
+      meRef.current = tickFighter(meRef.current, dt, now);
+      if (mode === "solo") oppRef.current = tickFighter(oppRef.current, dt, now);
+
+      if (myAnimRef.current.until && myAnimRef.current.until <= now && myAnimRef.current.anim !== "ko") myAnimRef.current = { anim: "idle", until: 0 };
+      if (oppAnimRef.current.until && oppAnimRef.current.until <= now && oppAnimRef.current.anim !== "ko") oppAnimRef.current = { anim: "idle", until: 0 };
+
+      if (phaseRef.current === "fighting") {
+        // Solo: the computer fights on its own clock, no turns involved.
+        if (mode === "solo" && now >= oppPunchCdRef.current) {
+          const intent = computerIntent(oppRef.current, meRef.current, now);
+          if (intent.kind === "punch") {
+            const stats = PUNCHES[intent.punch];
+            if (oppRef.current.stamina >= stats.cost) {
+              oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0, advance: clamp(oppRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE) };
+              const outcome = resolvePunch(intent.punch, oppRef.current, meRef.current, now);
+              setAnim("opp", intent.punch, stats.cooldownMs * 0.6);
+              boxingSfx.punchThrow();
+              oppPunchCdRef.current = now + stats.cooldownMs + 120 + Math.random() * 320;
+              window.setTimeout(() => {
+                if (finishedRef.current) return;
+                if (outcome.hit) {
+                  meRef.current = { ...meRef.current, health: clamp(meRef.current.health - outcome.damage, 0, 100) };
+                  setAnim("me", "hit", 400);
+                  nonceRef.current += 1;
+                  setImpact({ side: "me", nonce: nonceRef.current });
+                }
+                reactToOutcome("opp", outcome);
+                setMessage(outcome.message);
+                bump();
+                if (meRef.current.health <= 0) finish("opp", false);
+              }, stats.windupMs);
+            } else {
+              oppPunchCdRef.current = now + 400;
+            }
+          } else if (intent.kind === "guard") {
+            oppRef.current = { ...oppRef.current, guard: intent.guard, guardUntil: now + GUARD_MS[intent.guard] };
+            setAnim("opp", intent.guard === "block" ? "guard-block" : "guard-dodge", GUARD_MS[intent.guard]);
+            oppPunchCdRef.current = now + 320 + Math.random() * 380;
+          } else if (intent.kind === "move") {
+            const delta = intent.dir === "in" ? STEP : -STEP;
+            oppRef.current = { ...oppRef.current, advance: clamp(oppRef.current.advance + delta, 0, MAX_ADVANCE) };
+            oppPunchCdRef.current = now + 220;
+          } else {
+            oppPunchCdRef.current = now + 260;
+          }
+        }
+
+        // Match clock → decision.
+        const left = ROUND_SECONDS - Math.floor((now - startedAtRef.current) / 1000);
+        if (left <= 0) {
+          const mine = meRef.current.health;
+          const theirs = oppRef.current.health;
+          finish(mine === theirs ? null : mine > theirs ? "me" : "opp", true);
+        }
+
+        if (mode === "multiplayer" && now - lastSync > 180) {
+          lastSync = now;
+          send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
+        }
+
+      }
+
+      bump();
+    }, 80);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, mode, finish]);
+
+  /* ---------------- player actions ---------------- */
+  const start = useCallback(() => {
+    if (phaseRef.current !== "idle") return;
+    startedAtRef.current = Date.now();
+    phaseRef.current = "fighting";
+    setPhase("fighting");
+    oppPunchCdRef.current = Date.now() + 900;
+    boxingSfx.startCrowd();
+    const { myName: mn, oppName: on } = namesRef.current;
+    boxingSfx.announce(`In the near corner, ${mn || "You"}! In the far corner, ${on || "the challenger"}! Let's get ready to rumble!`);
+    bump();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const punch = useCallback(
+    (p: Punch) => {
+      const now = Date.now();
+      if (phaseRef.current !== "fighting" || finishedRef.current) return;
+      if (now < punchCdRef.current[p]) return;
+      const stats = PUNCHES[p];
+      if (meRef.current.stamina < stats.cost) {
+        setMessage("Out of gas — guard up to recover.");
+        return;
+      }
+      punchCdRef.current = { ...punchCdRef.current, [p]: now + stats.cooldownMs };
+      meRef.current = {
+        ...meRef.current,
+        stamina: clamp(meRef.current.stamina - stats.cost, 0, 100),
+        guard: null,
+        guardUntil: 0,
+        // Step into the opponent so the punch actually connects instead of swinging at air.
+        advance: clamp(meRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE),
+      };
+      const outcome = resolvePunch(p, meRef.current, oppRef.current, now);
+
+      setAnim("me", p, stats.cooldownMs * 0.6);
+      boxingSfx.punchThrow();
+      bump();
+
+      window.setTimeout(() => {
+        if (finishedRef.current) return;
+        if (outcome.hit) {
+          oppRef.current = { ...oppRef.current, health: clamp(oppRef.current.health - outcome.damage, 0, 100) };
+          setAnim("opp", "hit", 400);
+          nonceRef.current += 1;
+          setImpact({ side: "opp", nonce: nonceRef.current });
+        }
+        reactToOutcome("me", outcome);
+        setMessage(outcome.message);
+        send({ t: "p", outcome });
+        bump();
+        if (oppRef.current.health <= 0) finish("me", false);
+      }, stats.windupMs);
+    },
+    [finish],
+  );
+
+  const guard = useCallback((g: Guard) => {
+    const now = Date.now();
+    if (phaseRef.current !== "fighting" || finishedRef.current) return;
+    if (now < guardCdRef.current) return;
+    guardCdRef.current = now + GUARD_COOLDOWN_MS;
+    meRef.current = { ...meRef.current, guard: g, guardUntil: now + GUARD_MS[g] };
+    setAnim("me", g === "block" ? "guard-block" : "guard-dodge", GUARD_MS[g]);
+    send({ t: "g", guard: g });
+    bump();
+  }, []);
+
+  const move = useCallback((dir: MoveDir) => {
+    const now = Date.now();
+    if (phaseRef.current !== "fighting" || finishedRef.current) return;
+    if (now < moveCdRef.current) return;
+    moveCdRef.current = now + MOVE_COOLDOWN_MS;
+    const delta = dir === "in" ? STEP : -STEP;
+    meRef.current = { ...meRef.current, advance: clamp(meRef.current.advance + delta, 0, MAX_ADVANCE) };
+    send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance });
+    bump();
+  }, []);
+
+  const now = Date.now();
+  const cooldowns = useMemo(() => {
+    const out = {} as Record<Punch, number>;
+    (Object.keys(PUNCHES) as Punch[]).forEach((p) => {
+      const remaining = punchCdRef.current[p] - now;
+      out[p] = remaining > 0 ? clamp(remaining / PUNCHES[p].cooldownMs, 0, 1) : 0;
+    });
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [snapshot]);
+
+  const secondsLeft =
+    phaseRef.current === "fighting" ? Math.max(0, ROUND_SECONDS - Math.floor((now - startedAtRef.current) / 1000)) : ROUND_SECONDS;
+
+  return {
+    me: meRef.current,
+    opp: oppRef.current,
+    phase,
+    winner,
+    decision,
+    secondsLeft,
+    message,
+    myAnim: myAnimRef.current.anim,
+    oppAnim: oppAnimRef.current.anim,
+    impact,
+    gap: gapBetween(meRef.current, oppRef.current),
+    cooldowns,
+    guardCooldown: guardCdRef.current > now ? clamp((guardCdRef.current - now) / GUARD_COOLDOWN_MS, 0, 1) : 0,
+    start,
+    punch,
+    guard,
+    move,
+  };
+}
+
+export { LUNGE, MAX_ADVANCE };

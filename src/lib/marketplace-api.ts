@@ -287,11 +287,14 @@ export async function ensureMarketplaceProfile(userId: string): Promise<Marketpl
 }
 
 export async function getMarketplaceProfile(userId: string): Promise<MarketplaceProfile | null> {
-  const [{ data, error }, { data: yaj }] = await Promise.all([
+  const [{ data, error }, { data: yaj }, { data: loc }] = await Promise.all([
     (supabase as any).from("marketplace_profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("profiles").select("user_id, display_name, avatar_url, created_at").eq("user_id", userId).maybeSingle(),
+    // Private delivery location — RLS only ever returns the signed-in owner's own row.
+    (supabase as any).from("marketplace_buyer_locations").select("*").eq("user_id", userId).maybeSingle(),
   ]);
   if (error && !/schema cache|does not exist/i.test(error.message || "")) throw error;
+
 
   // Always prefer live YAJ identity for name/photo — Marketplace is not a second account.
   if (data || yaj) {
@@ -315,9 +318,10 @@ export async function getMarketplaceProfile(userId: string): Promise<Marketplace
       delivery_per_mile: Number(data?.delivery_per_mile ?? 0),
       delivery_min_fee: Number(data?.delivery_min_fee ?? 0),
       delivery_max_miles: Number(data?.delivery_max_miles ?? 0),
-      buyer_address: data?.buyer_address ?? null,
-      buyer_lat: data?.buyer_lat ?? null,
-      buyer_lng: data?.buyer_lng ?? null,
+      buyer_address: loc?.buyer_address ?? null,
+      buyer_lat: loc?.buyer_lat ?? null,
+      buyer_lng: loc?.buyer_lng ?? null,
+
       share_location: Boolean(data?.share_location),
     };
   }
@@ -352,15 +356,31 @@ export async function updateMarketplaceProfile(
   >,
 ) {
   await ensureMarketplaceProfile(userId);
+  // Delivery location lives in a private, owner-only table — never in the public profile.
+  const { buyer_address, buyer_lat, buyer_lng, ...profilePatch } = patch as Record<string, any>;
+  if (buyer_address !== undefined || buyer_lat !== undefined || buyer_lng !== undefined) {
+    const { error: locError } = await (supabase as any).from("marketplace_buyer_locations").upsert(
+      {
+        user_id: userId,
+        ...(buyer_address !== undefined ? { buyer_address } : {}),
+        ...(buyer_lat !== undefined ? { buyer_lat } : {}),
+        ...(buyer_lng !== undefined ? { buyer_lng } : {}),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (locError) throw locError;
+  }
   const { data, error } = await (supabase as any)
     .from("marketplace_profiles")
-    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+    .upsert({ user_id: userId, ...profilePatch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     .select("*")
     .maybeSingle();
   if (error) throw error;
-  return data as MarketplaceProfile;
+  return { ...(data || {}), buyer_address, buyer_lat, buyer_lng } as MarketplaceProfile;
 
 }
+
 
 export type ListListingsOpts = {
   category?: string;

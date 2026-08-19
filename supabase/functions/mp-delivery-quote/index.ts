@@ -148,13 +148,21 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { data: store, error } = await supabase
-      .from("marketplace_profiles")
-      .select(
-        "store_lat, store_lng, store_address, city, buyer_lat, buyer_lng, buyer_address, delivery_per_mile, delivery_min_fee, delivery_max_miles",
-      )
-      .eq("user_id", sellerId)
-      .maybeSingle();
+    const [{ data: store, error }, { data: sellerLoc }] = await Promise.all([
+      supabase
+        .from("marketplace_profiles")
+        .select(
+          "store_lat, store_lng, store_address, city, delivery_per_mile, delivery_min_fee, delivery_max_miles",
+        )
+        .eq("user_id", sellerId)
+        .maybeSingle(),
+      // Private location table — service role only, used purely as a store-origin fallback.
+      supabase
+        .from("marketplace_buyer_locations")
+        .select("buyer_lat, buyer_lng, buyer_address")
+        .eq("user_id", sellerId)
+        .maybeSingle(),
+    ]);
     if (error) return json({ error: error.message }, 500);
 
     // Platform fallback so buyers always see a delivery estimate, even before a seller sets a rate.
@@ -168,10 +176,11 @@ Deno.serve(async (req) => {
     let origin: Point | null =
       store?.store_lat != null && store?.store_lng != null
         ? { lat: Number(store.store_lat), lng: Number(store.store_lng), label: store.store_address || "Store" }
-        : store?.buyer_lat != null && store?.buyer_lng != null
-          ? { lat: Number(store.buyer_lat), lng: Number(store.buyer_lng), label: store.buyer_address || "Store" }
+        : sellerLoc?.buyer_lat != null && sellerLoc?.buyer_lng != null
+          ? { lat: Number(sellerLoc.buyer_lat), lng: Number(sellerLoc.buyer_lng), label: sellerLoc.buyer_address || "Store" }
           : null;
-    for (const candidate of [store?.store_address, store?.buyer_address, store?.city]) {
+    for (const candidate of [store?.store_address, sellerLoc?.buyer_address, store?.city]) {
+
       if (origin) break;
       if (candidate) origin = await geocode(String(candidate));
     }

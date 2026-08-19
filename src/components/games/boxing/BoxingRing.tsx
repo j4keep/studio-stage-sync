@@ -1,171 +1,11 @@
-import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Bot, HelpCircle, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
-import { Action, Appearance, LastAction, PUNCH_STATS, PunchType } from "@/lib/boxing";
-import { boxingSfx } from "@/lib/boxing-sfx";
+import { useEffect, useRef, useState } from "react";
+import { Bot, ChevronLeft, ChevronRight, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
+import type { Appearance } from "@/lib/boxing";
+import { Guard, MoveDir, PUNCHES, Punch } from "@/lib/boxing-live";
+import FighterArt, { SKIN_TONES, type FighterAnim } from "./FighterArt";
 
-type FighterAnim = "idle" | "jab" | "hook" | "uppercut" | "guard-block" | "guard-dodge" | "hit" | "ko";
-
-export const SKIN_TONES = ["#e8c39e", "#c58c58", "#8a5a3a", "#5a3826"];
-export const BUILD_SCALE: Record<Appearance["build"], number> = { lean: 0.86, athletic: 1, heavy: 1.24 };
-
-/** A proportioned boxer: tapered torso, staggered stance, two-segment arms, gloves, trunks —
- *  not a photoreal or hand-illustrated model, but a real fighter silhouette, not a UI placeholder. */
-function Fighter({ side, appearance, accent, anim }: { side: "left" | "right"; appearance: Appearance; accent: string; anim: FighterAnim }) {
-  const facing = side === "left" ? 1 : -1;
-  const cx = side === "left" ? 235 : 665;
-  const skin = appearance.skin;
-  const s = BUILD_SCALE[appearance.build];
-  const hit = anim === "hit";
-  const ko = anim === "ko";
-  const guarding = anim === "guard-block" || anim === "guard-dodge";
-  const ducking = anim === "guard-dodge";
-
-  const lunge = anim === "jab" ? 30 : anim === "hook" ? 21 : anim === "uppercut" ? 13 : 0;
-  const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
-  const bob = anim === "uppercut" ? -7 : ducking ? 14 : 0;
-  const knockback = hit ? 34 : 0;
-
-  const bodyStyle: CSSProperties = {
-    transform: ko
-      ? `translate(${facing * 42}px, 46px) rotate(${facing * 92}deg)`
-      : `translate(${(lunge - knockback) * facing}px, ${bob}px) rotate(${(twist - (hit ? 9 : 0)) * facing}deg)`,
-    transformOrigin: `${cx}px 300px`,
-    transition: ko ? "transform 420ms cubic-bezier(.4,0,.2,1)" : "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
-  };
-  const leadArmStyle: CSSProperties = {
-    transform:
-      anim === "jab"
-        ? `translate(${40 * facing}px, -7px) rotate(${-6 * facing}deg)`
-        : guarding
-          ? `translate(${7 * facing}px, -5px) rotate(${-16 * facing}deg)`
-          : `rotate(${-10 * facing}deg)`,
-    transformOrigin: `${cx + 14 * facing}px 218px`,
-    transition: "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
-  };
-  const rearArmStyle: CSSProperties = {
-    transform:
-      anim === "hook"
-        ? `translate(${17 * facing}px, -2px) rotate(${58 * facing}deg)`
-        : anim === "uppercut"
-          ? `translate(${12 * facing}px, -26px) rotate(${20 * facing}deg)`
-          : guarding
-            ? `translate(${2 * facing}px, -2px) rotate(${-8 * facing}deg)`
-            : `rotate(${6 * facing}deg)`,
-    transformOrigin: `${cx - 12 * facing}px 222px`,
-    transition: "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
-  };
-
-  const torsoTopW = 30 * s;
-  const torsoBotW = 20 * s;
-  const armW = 12 * s;
-  const gloveR = 13 * s;
-
-  const ink = "#12070a";
-  const inkW = 2.2 * s;
-
-  return (
-    <g style={bodyStyle}>
-      <ellipse cx={cx} cy="378" rx={34 * s} ry="8" fill="rgba(0,0,0,0.35)" />
-      {/* Legs */}
-      <path
-        d={`M ${cx - 9} 278 L ${cx - 30} 292 L ${cx - 25} 376 L ${cx - 10} 376 L ${cx - 11} 296 Z`}
-        fill="#161b26"
-        stroke={ink}
-        strokeWidth={inkW}
-        strokeLinejoin="round"
-      />
-      <path
-        d={`M ${cx + 7} 278 L ${cx + 30} 296 L ${cx + 24} 376 L ${cx + 9} 376 L ${cx + 5} 296 Z`}
-        fill="#1c2431"
-        stroke={ink}
-        strokeWidth={inkW}
-        strokeLinejoin="round"
-      />
-      <ellipse cx={cx - 23} cy="377" rx="10" ry="5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
-      <ellipse cx={cx + 21} cy="377" rx="10" ry="5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
-
-      {/* Torso */}
-      <path
-        d={`M ${cx - torsoTopW} 222 Q ${cx} 210 ${cx + torsoTopW} 222 L ${cx + torsoBotW} 278 Q ${cx} 286 ${cx - torsoBotW} 278 Z`}
-        fill={hit ? "#ff6b6b" : skin}
-        stroke={ink}
-        strokeWidth={inkW}
-        strokeLinejoin="round"
-        style={{ transition: "fill 100ms" }}
-      />
-      <path d={`M ${cx - 3} 234 L ${cx - 3} 270 M ${cx + 3} 234 L ${cx + 3} 270`} stroke="rgba(0,0,0,0.25)" strokeWidth="1.6" />
-      <path d={`M ${cx - torsoTopW + 4} 226 Q ${cx} 216 ${cx + torsoTopW - 4} 226`} stroke="rgba(255,255,255,0.18)" strokeWidth="2" fill="none" />
-      {/* Trunks */}
-      <path
-        d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 4} 292 L ${cx - torsoBotW + 4} 292 Z`}
-        fill={accent}
-        stroke={ink}
-        strokeWidth={inkW}
-        strokeLinejoin="round"
-      />
-      <path d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 1} 277 L ${cx - torsoBotW + 1} 277 Z`} fill="#0b0e14" opacity="0.32" />
-
-      {/* Rear arm (drawn behind torso) */}
-      <g style={rearArmStyle}>
-        <path
-          d={`M ${cx - 12 * facing} 222 L ${cx - 26 * facing} 244 L ${cx - 21 * facing} 247 L ${cx - 7 * facing} 226 Z`}
-          fill={skin}
-          stroke={ink}
-          strokeWidth={inkW}
-          strokeLinejoin="round"
-        />
-        <ellipse cx={cx - 26 * facing} cy="247" rx={gloveR} ry={gloveR * 0.9} fill={accent} stroke={ink} strokeWidth={inkW} />
-        <ellipse cx={cx - 26 * facing} cy="247" rx={gloveR} ry={gloveR * 0.9} fill="url(#bx-glove-sheen)" />
-      </g>
-
-      {/* Neck + head */}
-      <rect x={cx - 6} y="204" width="12" height="14" rx="3" fill={skin} stroke={ink} strokeWidth={inkW * 0.8} />
-      <ellipse cx={cx + 3 * facing} cy="192" rx="17" ry="19" fill={skin} stroke={ink} strokeWidth={inkW} />
-      {appearance.fem ? (
-        <>
-          <path
-            d={`M ${cx - 14} 186 Q ${cx + 2 * facing} 168 ${cx + 18} 184 Q ${cx + 10} 178 ${cx} 178 Q ${cx - 12} 178 ${cx - 14} 186 Z`}
-            fill="#241408"
-            stroke={ink}
-            strokeWidth={inkW * 0.7}
-          />
-          <path
-            d={`M ${cx - 15 * facing} 196 Q ${cx - 22 * facing} 214 ${cx - 17 * facing} 232 L ${cx - 12 * facing} 230 Q ${cx - 16 * facing} 214 ${cx - 12 * facing} 198 Z`}
-            fill="#241408"
-            stroke={ink}
-            strokeWidth={inkW * 0.7}
-          />
-        </>
-      ) : (
-        <path
-          d={`M ${cx - 14} 187 Q ${cx + 2 * facing} 172 ${cx + 17} 185 Q ${cx + 9} 180 ${cx} 180 Q ${cx - 11} 180 ${cx - 14} 187 Z`}
-          fill="#1c130c"
-          stroke={ink}
-          strokeWidth={inkW * 0.7}
-        />
-      )}
-      <circle cx={cx + 9 * facing} cy="191" r="2" fill="#161616" />
-
-      {/* Lead arm (drawn in front) */}
-      <g style={leadArmStyle}>
-        <path
-          d={`M ${cx + 14 * facing} 222 L ${cx + 26 * facing} 240 L ${cx + 21 * facing} 244 L ${cx + 9 * facing} 226 Z`}
-          fill={skin}
-          stroke={ink}
-          strokeWidth={inkW}
-          strokeLinejoin="round"
-        />
-        <ellipse cx={cx + 26 * facing} cy="242" rx={gloveR + 1} ry={gloveR} fill={accent} stroke={ink} strokeWidth={inkW} />
-        <ellipse cx={cx + 26 * facing} cy="242" rx={gloveR + 1} ry={gloveR} fill="url(#bx-glove-sheen)" />
-      </g>
-
-      {guarding && (
-        <circle cx={cx + 16 * facing} cy="216" r="46" fill="none" stroke={accent} strokeWidth="2.5" opacity="0.55" style={{ filter: `drop-shadow(0 0 8px ${accent})` }} />
-      )}
-      <path d={`M ${cx - armW} 236 h ${armW * 2}`} opacity="0" />
-    </g>
-  );
-}
+export { SKIN_TONES };
+export { CHARACTERS, characterFor } from "./FighterArt";
 
 function ImpactSpark({ x, y }: { x: number; y: number }) {
   return (
@@ -192,32 +32,71 @@ function StatBar({ label, value, max, tone }: { label: string; value: number; ma
         <span>{Math.round(value)}</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/40">
-        <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: gradient }} />
+        <div className="h-full rounded-full transition-[width] duration-150" style={{ width: `${pct}%`, background: gradient }} />
       </div>
     </div>
   );
 }
 
-const ATTACK_META: Record<PunchType, { icon: typeof Zap; hint: string }> = {
-  jab: { icon: Zap, hint: PUNCH_STATS.jab.cost + " stam" },
-  hook: { icon: Zap, hint: PUNCH_STATS.hook.cost + " stam" },
-  uppercut: { icon: Zap, hint: PUNCH_STATS.uppercut.cost + " stam" },
-};
-
-function SideButton({ label, hint, Icon, onClick, tone }: { label: string; hint: string; Icon: typeof Zap; onClick: () => void; tone: "attack" | "defend" }) {
+/** Round action button with a sweeping cooldown veil — no turns, just recovery time. */
+function ActionButton({
+  label,
+  hint,
+  Icon,
+  onPress,
+  tone,
+  cooldown,
+  disabled,
+}: {
+  label: string;
+  hint: string;
+  Icon: typeof Zap;
+  onPress: () => void;
+  tone: "attack" | "defend";
+  cooldown: number;
+  disabled: boolean;
+}) {
   return (
     <button
       type="button"
-      onClick={onClick}
-      className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full border-2 text-white shadow-lg active:scale-90"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        if (!disabled) onPress();
+      }}
+      className="relative flex h-16 w-16 select-none flex-col items-center justify-center gap-0.5 overflow-hidden rounded-full border-2 text-white shadow-lg active:scale-90 disabled:opacity-45"
       style={{
         borderColor: tone === "attack" ? "#f59e0b" : "hsl(204 100% 55%)",
-        background: tone === "attack" ? "radial-gradient(circle at 35% 30%, #7a3f10, #2a1608)" : "radial-gradient(circle at 35% 30%, hsl(210 60% 22%), hsl(220 55% 8%))",
+        background:
+          tone === "attack"
+            ? "radial-gradient(circle at 35% 30%, #7a3f10, #2a1608)"
+            : "radial-gradient(circle at 35% 30%, hsl(210 60% 22%), hsl(220 55% 8%))",
+        opacity: disabled ? 0.45 : 1,
       }}
     >
       <Icon className="h-5 w-5" />
       <span className="text-[8px] font-black uppercase leading-none">{label}</span>
       <span className="text-[6px] font-bold leading-none text-white/50">{hint}</span>
+      {cooldown > 0 && (
+        <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-black/65" style={{ height: `${cooldown * 100}%` }} />
+      )}
+    </button>
+  );
+}
+
+function MoveButton({ dir, onPress, disabled }: { dir: MoveDir; onPress: () => void; disabled: boolean }) {
+  const Icon = dir === "in" ? ChevronRight : ChevronLeft;
+  return (
+    <button
+      type="button"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        if (!disabled) onPress();
+      }}
+      aria-label={dir === "in" ? "Step in" : "Step back"}
+      className="flex h-11 w-11 select-none items-center justify-center rounded-full border border-white/20 bg-black/55 text-white active:scale-90"
+      style={{ opacity: disabled ? 0.4 : 1 }}
+    >
+      <Icon className="h-5 w-5" />
     </button>
   );
 }
@@ -227,127 +106,91 @@ export default function BoxingRing({
   myAppearance,
   myHealth,
   myStamina,
+  myAdvance,
   oppName,
   oppAppearance,
   isComputer,
   oppHealth,
   oppStamina,
-  lastAction,
+  oppAdvance,
+  myAccent,
+  oppAccent,
+
+  myAnim,
+  oppAnim,
+  impact,
+  gap,
+  cooldowns,
+  guardCooldown,
+  secondsLeft,
+  message,
   interactive,
   finished,
   winnerIsMe,
-  turnLabel,
-  myTurn,
-  decision,
+  statusLabel,
   muted,
   onToggleMute,
   onBack,
   onCustomize,
-  onAction,
+  onPunch,
+  onGuard,
+  onMove,
 }: {
   myName: string;
   myAppearance: Appearance;
   myHealth: number;
   myStamina: number;
+  myAdvance: number;
   oppName: string;
   oppAppearance: Appearance;
   isComputer: boolean;
   oppHealth: number;
   oppStamina: number;
-  lastAction: LastAction | null;
+  oppAdvance: number;
+  /** Colour that identifies each fighter by seat, so both phones agree who is who. */
+  myAccent: string;
+  oppAccent: string;
+
+  myAnim: FighterAnim;
+  oppAnim: FighterAnim;
+  impact: { side: "me" | "opp"; nonce: number } | null;
+  gap: number;
+  cooldowns: Record<Punch, number>;
+  guardCooldown: number;
+  secondsLeft: number;
+  message: string | null;
   interactive: boolean;
   finished: boolean;
   winnerIsMe: boolean | null;
-  turnLabel: string;
-  myTurn: boolean;
-  decision?: boolean;
+  statusLabel: string;
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
   onCustomize: () => void;
-  onAction: (action: Action) => void;
+  onPunch: (p: Punch) => void;
+  onGuard: (g: Guard) => void;
+  onMove: (dir: MoveDir) => void;
 }) {
-  const [myAnim, setMyAnim] = useState<FighterAnim>("idle");
-  const [oppAnim, setOppAnim] = useState<FighterAnim>("idle");
   const [shake, setShake] = useState(false);
   const [spark, setSpark] = useState<{ x: number; y: number } | null>(null);
-  const seenTurn = useRef<number | null>(null);
-  const streakRef = useRef<[number, number]>([0, 0]);
-  const koAnnounced = useRef(false);
+  const seen = useRef(0);
 
   useEffect(() => {
-    if (!lastAction || seenTurn.current === lastAction.turn) return;
-    seenTurn.current = lastAction.turn;
-    const actorIsMe = lastAction.seat === 0;
-    const actorName = actorIsMe ? myName : oppName;
-    const setActor = actorIsMe ? setMyAnim : setOppAnim;
-    const setTarget = actorIsMe ? setOppAnim : setMyAnim;
-
-    if (lastAction.action === "block" || lastAction.action === "dodge") {
-      setActor(lastAction.action === "block" ? "guard-block" : "guard-dodge");
-      const t = window.setTimeout(() => setActor("idle"), 750);
-      return () => window.clearTimeout(t);
-    }
-
-    boxingSfx.punchThrow();
-    setActor(lastAction.action as PunchType);
-    const timers: number[] = [];
-    timers.push(
-      window.setTimeout(() => {
-        if (lastAction.hit) {
-          setTarget("hit");
-          setSpark({ x: actorIsMe ? 560 : 345, y: 236 });
-          setShake(true);
-          window.setTimeout(() => setShake(false), 220);
-          window.setTimeout(() => setSpark(null), 220);
-
-          const intensity = Math.min(1, lastAction.damage / 26);
-          streakRef.current[lastAction.seat] += 1;
-          const streak = streakRef.current[lastAction.seat];
-
-          if (lastAction.blocked) {
-            boxingSfx.blocked();
-          } else {
-            boxingSfx.punchLand(intensity);
-            boxingSfx.cheer(Math.max(intensity, streak >= 3 ? 0.7 : 0));
-            if (lastAction.staggered) {
-              boxingSfx.announce(`Ohh, big shot from ${actorName}!`);
-            } else if (streak === 3) {
-              boxingSfx.announce(`${actorName} is on a roll!`);
-            }
-          }
-        } else {
-          boxingSfx.miss();
-          streakRef.current[lastAction.seat] = 0;
-        }
-      }, 140),
-    );
-    if (lastAction.hit) {
-      timers.push(
-        window.setTimeout(() => {
-          const koNow = (actorIsMe ? oppHealth : myHealth) <= 0;
-          setTarget(koNow ? "ko" : "idle");
-        }, 460),
-      );
-    }
-    timers.push(window.setTimeout(() => setActor("idle"), 340));
-    return () => timers.forEach((t) => window.clearTimeout(t));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastAction?.turn]);
-
-  useEffect(() => {
-    if (finished && winnerIsMe === false) setMyAnim("ko");
-    if (finished && winnerIsMe === true) setOppAnim("ko");
-    if (finished && winnerIsMe !== null && !koAnnounced.current) {
-      koAnnounced.current = true;
-      const winnerName = winnerIsMe ? myName : oppName;
-      boxingSfx.koRoar();
-      boxingSfx.announce(decision ? `It's over — ${winnerName} takes it on the scorecards!` : `It's over! ${winnerName} wins by knockout!`);
-      window.setTimeout(() => boxingSfx.stopCrowd(), 2200);
-    }
-  }, [finished, winnerIsMe]);
+    if (!impact || impact.nonce === seen.current) return;
+    seen.current = impact.nonce;
+    setSpark({ x: impact.side === "opp" ? 470 : 430, y: 232 });
+    setShake(true);
+    const a = window.setTimeout(() => setShake(false), 200);
+    const b = window.setTimeout(() => setSpark(null), 220);
+    return () => {
+      window.clearTimeout(a);
+      window.clearTimeout(b);
+    };
+  }, [impact?.nonce]);
 
   const canAct = interactive && !finished;
+  const inRange = gap <= PUNCHES.jab.reach + 62;
+  const clock = `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`;
 
   return (
     <div
@@ -363,8 +206,10 @@ export default function BoxingRing({
       <style>{`
         @keyframes bx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
         @keyframes bx-spark-pop { 0% { transform: scale(0.3); opacity: 0; } 35% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
-        .bx-shaking { animation: bx-shake 220ms ease-in-out; }
+        @keyframes bx-foot { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+        .bx-shaking { animation: bx-shake 200ms ease-in-out; }
         .bx-spark { animation: bx-spark-pop 220ms ease-out; transform-origin: center; }
+        .bx-footwork { animation: bx-foot 900ms ease-in-out infinite; }
       `}</style>
 
       <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className={`block h-full w-full ${shake ? "bx-shaking" : ""}`}>
@@ -391,7 +236,7 @@ export default function BoxingRing({
         <rect width="900" height="420" fill="url(#bx-mat)" />
         <ellipse cx="450" cy="80" rx="500" ry="220" fill="url(#bx-spot)" />
 
-        {/* Crowd, packed into the band the ropes will sit in front of */}
+        {/* Crowd */}
         <rect x="0" y="0" width="900" height="52" fill="hsl(224 48% 7%)" />
         <g>
           {Array.from({ length: 52 }).map((_, i) => {
@@ -409,7 +254,7 @@ export default function BoxingRing({
         </g>
         <rect x="0" y="0" width="900" height="12" fill="url(#bx-mat)" opacity="0.5" />
 
-        {/* Ring floor / canvas mat, receding toward the viewer — drawn first so ropes sit in front of it */}
+        {/* Ring floor */}
         <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="url(#bx-floor)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
         <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="none" stroke="hsl(204 100% 55% / 0.35)" strokeWidth="5" />
         <ellipse cx="450" cy="270" rx="230" ry="90" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
@@ -417,21 +262,13 @@ export default function BoxingRing({
           YAJ BOXING
         </text>
 
-        {/* Ropes — spaced out above the mat, not crowded against its edge */}
+        {/* Ropes */}
         {[
           { y: 66, sag: 5, c: "#e9e4d8" },
           { y: 96, sag: 6, c: "hsl(204 100% 55%)" },
           { y: 126, sag: 7, c: "#e0453f" },
         ].map((r) => (
-          <path
-            key={r.y}
-            d={`M 44 ${r.y} Q 450 ${r.y + r.sag} 856 ${r.y}`}
-            fill="none"
-            stroke={r.c}
-            strokeOpacity="0.9"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
+          <path key={r.y} d={`M 44 ${r.y} Q 450 ${r.y + r.sag} 856 ${r.y}`} fill="none" stroke={r.c} strokeOpacity="0.9" strokeWidth="4" strokeLinecap="round" />
         ))}
         {[42, 858].map((x) => (
           <g key={x}>
@@ -441,8 +278,9 @@ export default function BoxingRing({
           </g>
         ))}
 
-        <Fighter side="left" appearance={myAppearance} accent="hsl(204 100% 55%)" anim={myAnim} />
-        <Fighter side="right" appearance={oppAppearance} accent="#f59e0b" anim={oppAnim} />
+        <FighterArt side="left" appearance={myAppearance} accent={myAccent} anim={myAnim} advance={myAdvance} />
+        <FighterArt side="right" appearance={oppAppearance} accent={oppAccent} anim={oppAnim} advance={oppAdvance} />
+
         {spark && <ImpactSpark x={spark.x} y={spark.y} />}
       </svg>
 
@@ -453,27 +291,27 @@ export default function BoxingRing({
             <X className="h-4 w-4" />
           </button>
           <div className="w-32 rounded-xl bg-black/45 p-1.5">
-            <p className="mb-1 truncate text-[10px] font-black text-white">{myName}</p>
+            <p className="mb-1 flex items-center gap-1 truncate text-[10px] font-black text-white">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: myAccent }} />
+              {myName}
+            </p>
+
             <StatBar label="HP" value={myHealth} max={100} tone="health" />
             <div className="mt-1">
               <StatBar label="STA" value={myStamina} max={100} tone="stamina" />
             </div>
           </div>
         </div>
-        <span
-          className="mt-1 shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
-          style={{
-            background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
-            color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
-            boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
-          }}
-        >
-          {turnLabel}
-        </span>
+        <div className="mt-0.5 flex flex-col items-center gap-1">
+          <span className="rounded-full bg-black/60 px-3 py-0.5 font-mono text-[11px] font-black tabular-nums text-white">{clock}</span>
+          <span className="rounded-full bg-black/45 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white/80">{statusLabel}</span>
+        </div>
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="w-32 rounded-xl bg-black/45 p-1.5 text-right">
             <p className="mb-1 flex items-center justify-end gap-1 truncate text-[10px] font-black text-white">
               {isComputer && <Bot className="h-3 w-3 text-primary" />} {oppName}
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: oppAccent }} />
+
             </p>
             <StatBar label="HP" value={oppHealth} max={100} tone="health" />
             <div className="mt-1">
@@ -489,27 +327,43 @@ export default function BoxingRing({
         </div>
       </div>
 
-      {/* Side controls */}
+      {/* Punches — left rail, fire freely on their own cooldowns */}
       <div className="pointer-events-none absolute inset-y-0 left-2 z-30 flex flex-col items-center justify-center gap-3">
-        {(["jab", "hook", "uppercut"] as PunchType[]).map((a) => (
-          <div key={a} className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
-            <SideButton label={a} hint={ATTACK_META[a].hint} Icon={ATTACK_META[a].icon} tone="attack" onClick={() => canAct && onAction(a)} />
+        {(["jab", "hook", "uppercut"] as Punch[]).map((p) => (
+          <div key={p} className="pointer-events-auto">
+            <ActionButton
+              label={p}
+              hint={`${PUNCHES[p].cost} stam`}
+              Icon={Zap}
+              tone="attack"
+              cooldown={cooldowns[p]}
+              disabled={!canAct}
+              onPress={() => onPunch(p)}
+            />
           </div>
         ))}
-      </div>
-      <div className="pointer-events-none absolute inset-y-0 right-2 z-30 flex flex-col items-center justify-center gap-3">
-        <div className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
-          <SideButton label="block" hint="guard" Icon={Shield} tone="defend" onClick={() => canAct && onAction("block")} />
-        </div>
-        <div className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
-          <SideButton label="dodge" hint="evade" Icon={Wind} tone="defend" onClick={() => canAct && onAction("dodge")} />
+        <div className="pointer-events-auto mt-1 flex gap-2">
+          <MoveButton dir="out" onPress={() => onMove("out")} disabled={!canAct} />
+          <MoveButton dir="in" onPress={() => onMove("in")} disabled={!canAct} />
         </div>
       </div>
 
-      {!canAct && !finished && (
-        <p className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center text-[10px] font-bold text-white/40">
-          Waiting on {oppName}…
-        </p>
+      {/* Guards — right rail */}
+      <div className="pointer-events-none absolute inset-y-0 right-2 z-30 flex flex-col items-center justify-center gap-3">
+        <div className="pointer-events-auto">
+          <ActionButton label="block" hint="guard" Icon={Shield} tone="defend" cooldown={guardCooldown} disabled={!canAct} onPress={() => onGuard("block")} />
+        </div>
+        <div className="pointer-events-auto">
+          <ActionButton label="dodge" hint="evade" Icon={Wind} tone="defend" cooldown={guardCooldown} disabled={!canAct} onPress={() => onGuard("dodge")} />
+        </div>
+      </div>
+
+      {/* Range + last-event ticker */}
+      {!finished && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex flex-col items-center gap-1">
+          {canAct && !inRange && <span className="rounded-full bg-black/60 px-3 py-0.5 text-[10px] font-black uppercase text-amber-300">Step in to reach</span>}
+          {message && <span className="max-w-[70%] truncate rounded-full bg-black/55 px-3 py-0.5 text-[10px] font-bold text-white/85">{message}</span>}
+        </div>
       )}
     </div>
   );
