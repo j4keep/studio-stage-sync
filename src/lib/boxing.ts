@@ -46,6 +46,11 @@ export type BoxingState = {
   message: string | null;
 };
 
+/** Cosmetic-only fighter look, stored alongside (not inside) BoxingState so it never
+ *  touches the tested rules engine — synced via game_state.appearance, keyed by seat. */
+export type Appearance = { skin: string; build: "lean" | "athletic" | "heavy"; fem: boolean };
+export const DEFAULT_APPEARANCE: Appearance = { skin: "#c58c58", build: "athletic", fem: false };
+
 export const MAX_HEALTH = 100;
 export const MAX_STAMINA = 100;
 export const MAX_TURNS = 40;

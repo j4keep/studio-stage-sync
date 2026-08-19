@@ -1,123 +1,167 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { Bot, Shield, Wind, Zap } from "lucide-react";
-import { Action, LastAction, PUNCH_STATS, PunchType, Stance } from "@/lib/boxing";
+import { Bot, HelpCircle, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
+import { Action, Appearance, LastAction, PUNCH_STATS, PunchType } from "@/lib/boxing";
 
 type FighterAnim = "idle" | "jab" | "hook" | "uppercut" | "guard-block" | "guard-dodge" | "hit" | "ko";
 
+export const SKIN_TONES = ["#e8c39e", "#c58c58", "#8a5a3a", "#5a3826"];
+export const BUILD_SCALE: Record<Appearance["build"], number> = { lean: 0.86, athletic: 1, heavy: 1.24 };
+
 /** A proportioned boxer: tapered torso, staggered stance, two-segment arms, gloves, trunks —
- *  not a photoreal 3D model, but reads as an actual fighter instead of a UI placeholder. */
-function Fighter({
-  side,
-  skin,
-  accent,
-  anim,
-}: {
-  side: "left" | "right";
-  skin: string;
-  accent: string;
-  anim: FighterAnim;
-}) {
+ *  not a photoreal or hand-illustrated model, but a real fighter silhouette, not a UI placeholder. */
+function Fighter({ side, appearance, accent, anim }: { side: "left" | "right"; appearance: Appearance; accent: string; anim: FighterAnim }) {
   const facing = side === "left" ? 1 : -1;
-  const cx = side === "left" ? 98 : 282;
+  const cx = side === "left" ? 235 : 665;
+  const skin = appearance.skin;
+  const s = BUILD_SCALE[appearance.build];
   const hit = anim === "hit";
   const ko = anim === "ko";
   const guarding = anim === "guard-block" || anim === "guard-dodge";
   const ducking = anim === "guard-dodge";
 
-  const lunge = anim === "jab" ? 24 : anim === "hook" ? 17 : anim === "uppercut" ? 11 : 0;
+  const lunge = anim === "jab" ? 30 : anim === "hook" ? 21 : anim === "uppercut" ? 13 : 0;
   const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
-  const bob = anim === "uppercut" ? -6 : ducking ? 12 : 0;
-  const knockback = hit ? 28 : 0;
+  const bob = anim === "uppercut" ? -7 : ducking ? 14 : 0;
+  const knockback = hit ? 34 : 0;
 
   const bodyStyle: CSSProperties = {
     transform: ko
-      ? `translate(${facing * 34}px, 40px) rotate(${facing * 92}deg)`
+      ? `translate(${facing * 42}px, 46px) rotate(${facing * 92}deg)`
       : `translate(${(lunge - knockback) * facing}px, ${bob}px) rotate(${(twist - (hit ? 9 : 0)) * facing}deg)`,
-    transformOrigin: `${cx}px 176px`,
-    transition: ko ? "transform 380ms cubic-bezier(.4,0,.2,1)" : "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
+    transformOrigin: `${cx}px 300px`,
+    transition: ko ? "transform 420ms cubic-bezier(.4,0,.2,1)" : "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
   };
-
-  // Lead arm (nearer the opponent) drives the jab; rear arm drives hook/uppercut.
   const leadArmStyle: CSSProperties = {
-    transform: anim === "jab"
-      ? `translate(${34 * facing}px, -6px) rotate(${-6 * facing}deg)`
-      : guarding
-        ? `translate(${6 * facing}px, -4px) rotate(${-16 * facing}deg)`
-        : `rotate(${-10 * facing}deg)`,
-    transformOrigin: `${cx + 12 * facing}px 128px`,
+    transform:
+      anim === "jab"
+        ? `translate(${40 * facing}px, -7px) rotate(${-6 * facing}deg)`
+        : guarding
+          ? `translate(${7 * facing}px, -5px) rotate(${-16 * facing}deg)`
+          : `rotate(${-10 * facing}deg)`,
+    transformOrigin: `${cx + 14 * facing}px 218px`,
     transition: "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
   };
-
   const rearArmStyle: CSSProperties = {
     transform:
       anim === "hook"
-        ? `translate(${14 * facing}px, -2px) rotate(${58 * facing}deg)`
+        ? `translate(${17 * facing}px, -2px) rotate(${58 * facing}deg)`
         : anim === "uppercut"
-          ? `translate(${10 * facing}px, -22px) rotate(${20 * facing}deg)`
+          ? `translate(${12 * facing}px, -26px) rotate(${20 * facing}deg)`
           : guarding
             ? `translate(${2 * facing}px, -2px) rotate(${-8 * facing}deg)`
             : `rotate(${6 * facing}deg)`,
-    transformOrigin: `${cx - 10 * facing}px 132px`,
+    transformOrigin: `${cx - 12 * facing}px 222px`,
     transition: "transform 130ms cubic-bezier(.25,.9,.4,1.1)",
   };
 
+  const torsoTopW = 30 * s;
+  const torsoBotW = 20 * s;
+  const armW = 12 * s;
+  const gloveR = 13 * s;
+
+  const ink = "#12070a";
+  const inkW = 2.2 * s;
+
   return (
     <g style={bodyStyle}>
-      {/* Shadow */}
-      <ellipse cx={cx} cy="212" rx="26" ry="6" fill="rgba(0,0,0,0.35)" />
-
-      {/* Back leg */}
-      <path d={`M ${cx - 8} 168 L ${cx - 26} 178 L ${cx - 22} 210 L ${cx - 10} 210 L ${cx - 10} 180 Z`} fill="#161b26" />
-      {/* Front leg */}
-      <path d={`M ${cx + 6} 168 L ${cx + 24} 182 L ${cx + 20} 210 L ${cx + 8} 210 L ${cx + 4} 182 Z`} fill="#1c2431" />
-      {/* Shoes */}
-      <ellipse cx={cx - 20} cy="211" rx="9" ry="4.5" fill="#0b0e14" />
-      <ellipse cx={cx + 18} cy="211" rx="9" ry="4.5" fill="#0b0e14" />
-
-      {/* Torso (tapered, shoulders wider than waist) */}
+      <ellipse cx={cx} cy="378" rx={34 * s} ry="8" fill="rgba(0,0,0,0.35)" />
+      {/* Legs */}
       <path
-        d={`M ${cx - 24} 122 Q ${cx} 112 ${cx + 24} 122 L ${cx + 16} 168 Q ${cx} 174 ${cx - 16} 168 Z`}
-        fill={hit ? "#ff6b6b" : skin === "deep" ? "#5a3c28" : "#b97f4f"}
+        d={`M ${cx - 9} 278 L ${cx - 30} 292 L ${cx - 25} 376 L ${cx - 10} 376 L ${cx - 11} 296 Z`}
+        fill="#161b26"
+        stroke={ink}
+        strokeWidth={inkW}
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M ${cx + 7} 278 L ${cx + 30} 296 L ${cx + 24} 376 L ${cx + 9} 376 L ${cx + 5} 296 Z`}
+        fill="#1c2431"
+        stroke={ink}
+        strokeWidth={inkW}
+        strokeLinejoin="round"
+      />
+      <ellipse cx={cx - 23} cy="377" rx="10" ry="5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
+      <ellipse cx={cx + 21} cy="377" rx="10" ry="5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
+
+      {/* Torso */}
+      <path
+        d={`M ${cx - torsoTopW} 222 Q ${cx} 210 ${cx + torsoTopW} 222 L ${cx + torsoBotW} 278 Q ${cx} 286 ${cx - torsoBotW} 278 Z`}
+        fill={hit ? "#ff6b6b" : skin}
+        stroke={ink}
+        strokeWidth={inkW}
+        strokeLinejoin="round"
         style={{ transition: "fill 100ms" }}
       />
-      {/* Ab shading */}
-      <path d={`M ${cx - 3} 132 L ${cx - 3} 162 M ${cx + 3} 132 L ${cx + 3} 162`} stroke="rgba(0,0,0,0.18)" strokeWidth="1.4" />
+      <path d={`M ${cx - 3} 234 L ${cx - 3} 270 M ${cx + 3} 234 L ${cx + 3} 270`} stroke="rgba(0,0,0,0.25)" strokeWidth="1.6" />
+      <path d={`M ${cx - torsoTopW + 4} 226 Q ${cx} 216 ${cx + torsoTopW - 4} 226`} stroke="rgba(255,255,255,0.18)" strokeWidth="2" fill="none" />
       {/* Trunks */}
-      <path d={`M ${cx - 17} 160 L ${cx + 17} 160 L ${cx + 13} 176 L ${cx - 13} 176 Z`} fill={accent} />
-      <path d={`M ${cx - 17} 160 L ${cx + 17} 160 L ${cx + 15} 166 L ${cx - 15} 166 Z`} fill="#0b0e14" opacity="0.35" />
+      <path
+        d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 4} 292 L ${cx - torsoBotW + 4} 292 Z`}
+        fill={accent}
+        stroke={ink}
+        strokeWidth={inkW}
+        strokeLinejoin="round"
+      />
+      <path d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 1} 277 L ${cx - torsoBotW + 1} 277 Z`} fill="#0b0e14" opacity="0.32" />
 
-      {/* Rear arm (behind torso, drawn first) */}
+      {/* Rear arm (drawn behind torso) */}
       <g style={rearArmStyle}>
-        <path d={`M ${cx - 10 * facing} 122 L ${cx - 22 * facing} 140 L ${cx - 18 * facing} 142 L ${cx - 6 * facing} 126 Z`} fill={skin === "deep" ? "#4c331f" : "#a06f44"} />
-        <ellipse cx={cx - 22 * facing} cy="142" rx="10" ry="9" fill={accent} />
-        <ellipse cx={cx - 22 * facing} cy="142" rx="10" ry="9" fill="url(#bx-glove-sheen)" />
+        <path
+          d={`M ${cx - 12 * facing} 222 L ${cx - 26 * facing} 244 L ${cx - 21 * facing} 247 L ${cx - 7 * facing} 226 Z`}
+          fill={skin}
+          stroke={ink}
+          strokeWidth={inkW}
+          strokeLinejoin="round"
+        />
+        <ellipse cx={cx - 26 * facing} cy="247" rx={gloveR} ry={gloveR * 0.9} fill={accent} stroke={ink} strokeWidth={inkW} />
+        <ellipse cx={cx - 26 * facing} cy="247" rx={gloveR} ry={gloveR * 0.9} fill="url(#bx-glove-sheen)" />
       </g>
 
       {/* Neck + head */}
-      <rect x={cx - 5} y="108" width="10" height="12" rx="3" fill={skin === "deep" ? "#5a3c28" : "#b97f4f"} />
-      <ellipse cx={cx + 3 * facing} cy="98" rx="15" ry="17" fill={skin === "deep" ? "#63432c" : "#c58c58"} />
-      <path d={`M ${cx - 12} 92 Q ${cx + 2 * facing} 76 ${cx + 16} 90 Q ${cx + 10} 84 ${cx} 84 Q ${cx - 10} 84 ${cx - 12} 92 Z`} fill="#1c130c" />
-      <circle cx={cx + 8 * facing} cy="97" r="1.8" fill="#161616" />
+      <rect x={cx - 6} y="204" width="12" height="14" rx="3" fill={skin} stroke={ink} strokeWidth={inkW * 0.8} />
+      <ellipse cx={cx + 3 * facing} cy="192" rx="17" ry="19" fill={skin} stroke={ink} strokeWidth={inkW} />
+      {appearance.fem ? (
+        <>
+          <path
+            d={`M ${cx - 14} 186 Q ${cx + 2 * facing} 168 ${cx + 18} 184 Q ${cx + 10} 178 ${cx} 178 Q ${cx - 12} 178 ${cx - 14} 186 Z`}
+            fill="#241408"
+            stroke={ink}
+            strokeWidth={inkW * 0.7}
+          />
+          <path
+            d={`M ${cx - 15 * facing} 196 Q ${cx - 22 * facing} 214 ${cx - 17 * facing} 232 L ${cx - 12 * facing} 230 Q ${cx - 16 * facing} 214 ${cx - 12 * facing} 198 Z`}
+            fill="#241408"
+            stroke={ink}
+            strokeWidth={inkW * 0.7}
+          />
+        </>
+      ) : (
+        <path
+          d={`M ${cx - 14} 187 Q ${cx + 2 * facing} 172 ${cx + 17} 185 Q ${cx + 9} 180 ${cx} 180 Q ${cx - 11} 180 ${cx - 14} 187 Z`}
+          fill="#1c130c"
+          stroke={ink}
+          strokeWidth={inkW * 0.7}
+        />
+      )}
+      <circle cx={cx + 9 * facing} cy="191" r="2" fill="#161616" />
 
-      {/* Lead arm (front, drawn last so it's on top) */}
+      {/* Lead arm (drawn in front) */}
       <g style={leadArmStyle}>
-        <path d={`M ${cx + 12 * facing} 122 L ${cx + 22 * facing} 138 L ${cx + 18 * facing} 141 L ${cx + 8 * facing} 126 Z`} fill={skin === "deep" ? "#5a3c28" : "#b97f4f"} />
-        <ellipse cx={cx + 22 * facing} cy="140" rx="11" ry="10" fill={accent} />
-        <ellipse cx={cx + 22 * facing} cy="140" rx="11" ry="10" fill="url(#bx-glove-sheen)" />
+        <path
+          d={`M ${cx + 14 * facing} 222 L ${cx + 26 * facing} 240 L ${cx + 21 * facing} 244 L ${cx + 9 * facing} 226 Z`}
+          fill={skin}
+          stroke={ink}
+          strokeWidth={inkW}
+          strokeLinejoin="round"
+        />
+        <ellipse cx={cx + 26 * facing} cy="242" rx={gloveR + 1} ry={gloveR} fill={accent} stroke={ink} strokeWidth={inkW} />
+        <ellipse cx={cx + 26 * facing} cy="242" rx={gloveR + 1} ry={gloveR} fill="url(#bx-glove-sheen)" />
       </g>
 
       {guarding && (
-        <circle
-          cx={cx + 14 * facing}
-          cy="118"
-          r="30"
-          fill="none"
-          stroke={accent}
-          strokeWidth="2"
-          opacity="0.55"
-          style={{ filter: "drop-shadow(0 0 6px " + accent + ")" }}
-        />
+        <circle cx={cx + 16 * facing} cy="216" r="46" fill="none" stroke={accent} strokeWidth="2.5" opacity="0.55" style={{ filter: `drop-shadow(0 0 8px ${accent})` }} />
       )}
+      <path d={`M ${cx - armW} 236 h ${armW * 2}`} opacity="0" />
     </g>
   );
 }
@@ -125,7 +169,7 @@ function Fighter({
 function ImpactSpark({ x, y }: { x: number; y: number }) {
   return (
     <g transform={`translate(${x},${y})`} className="bx-spark">
-      <path d="M0,-16 L4,-4 L16,0 L4,4 L0,16 L-4,4 L-16,0 L-4,-4 Z" fill="#fff" />
+      <path d="M0,-22 L6,-6 L22,0 L6,6 L0,22 L-6,6 L-22,0 L-6,-6 Z" fill="#fff" />
     </g>
   );
 }
@@ -146,54 +190,78 @@ function StatBar({ label, value, max, tone }: { label: string; value: number; ma
         <span>{label}</span>
         <span>{Math.round(value)}</span>
       </div>
-      <div className="h-2 w-full overflow-hidden rounded-full bg-black/40">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/40">
         <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${pct}%`, background: gradient }} />
       </div>
     </div>
   );
 }
 
-const ACTION_META: Record<Action, { icon: typeof Zap; hint: string }> = {
-  jab: { icon: Zap, hint: `${PUNCH_STATS.jab.cost} stam · fast` },
-  hook: { icon: Zap, hint: `${PUNCH_STATS.hook.cost} stam` },
-  uppercut: { icon: Zap, hint: `${PUNCH_STATS.uppercut.cost} stam · heavy` },
-  block: { icon: Shield, hint: "recover + guard" },
-  dodge: { icon: Wind, hint: "recover + evade" },
+const ATTACK_META: Record<PunchType, { icon: typeof Zap; hint: string }> = {
+  jab: { icon: Zap, hint: PUNCH_STATS.jab.cost + " stam" },
+  hook: { icon: Zap, hint: PUNCH_STATS.hook.cost + " stam" },
+  uppercut: { icon: Zap, hint: PUNCH_STATS.uppercut.cost + " stam" },
 };
+
+function SideButton({ label, hint, Icon, onClick, tone }: { label: string; hint: string; Icon: typeof Zap; onClick: () => void; tone: "attack" | "defend" }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-full border-2 text-white shadow-lg active:scale-90"
+      style={{
+        borderColor: tone === "attack" ? "#f59e0b" : "hsl(204 100% 55%)",
+        background: tone === "attack" ? "radial-gradient(circle at 35% 30%, #7a3f10, #2a1608)" : "radial-gradient(circle at 35% 30%, hsl(210 60% 22%), hsl(220 55% 8%))",
+      }}
+    >
+      <Icon className="h-5 w-5" />
+      <span className="text-[8px] font-black uppercase leading-none">{label}</span>
+      <span className="text-[6px] font-bold leading-none text-white/50">{hint}</span>
+    </button>
+  );
+}
 
 export default function BoxingRing({
   myName,
-  myAvatar,
+  myAppearance,
   myHealth,
   myStamina,
-  myStance,
   oppName,
-  oppAvatar,
+  oppAppearance,
   isComputer,
   oppHealth,
   oppStamina,
-  oppStance,
   lastAction,
   interactive,
   finished,
   winnerIsMe,
+  turnLabel,
+  myTurn,
+  muted,
+  onToggleMute,
+  onBack,
+  onCustomize,
   onAction,
 }: {
   myName: string;
-  myAvatar?: string | null;
+  myAppearance: Appearance;
   myHealth: number;
   myStamina: number;
-  myStance: Stance;
   oppName: string;
-  oppAvatar?: string | null;
+  oppAppearance: Appearance;
   isComputer: boolean;
   oppHealth: number;
   oppStamina: number;
-  oppStance: Stance;
   lastAction: LastAction | null;
   interactive: boolean;
   finished: boolean;
   winnerIsMe: boolean | null;
+  turnLabel: string;
+  myTurn: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
+  onBack: () => void;
+  onCustomize: () => void;
   onAction: (action: Action) => void;
 }) {
   const [myAnim, setMyAnim] = useState<FighterAnim>("idle");
@@ -221,7 +289,7 @@ export default function BoxingRing({
       timers.push(
         window.setTimeout(() => {
           setTarget("hit");
-          setSpark({ x: actorIsMe ? 235 : 145, y: 128 });
+          setSpark({ x: actorIsMe ? 560 : 345, y: 236 });
           setShake(true);
           window.setTimeout(() => setShake(false), 220);
           window.setTimeout(() => setSpark(null), 220);
@@ -244,121 +312,168 @@ export default function BoxingRing({
     if (finished && winnerIsMe === true) setOppAnim("ko");
   }, [finished, winnerIsMe]);
 
+  const canAct = interactive && !finished;
+
   return (
-    <div className="w-full">
+    <div
+      className="relative h-full w-full overflow-hidden"
+      style={{
+        background: "radial-gradient(90% 80% at 50% 0%, hsl(210 45% 16%) 0%, hsl(220 45% 9%) 45%, hsl(226 45% 5%) 100%)",
+        paddingLeft: "max(0.4rem, env(safe-area-inset-left))",
+        paddingRight: "max(0.4rem, env(safe-area-inset-right))",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <style>{`
-        @keyframes bx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-4px); } 40% { transform: translateX(4px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
-        @keyframes bx-spark-pop { 0% { transform: scale(0.3); opacity: 0; } 35% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+        @keyframes bx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
+        @keyframes bx-spark-pop { 0% { transform: scale(0.3); opacity: 0; } 35% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
         .bx-shaking { animation: bx-shake 220ms ease-in-out; }
         .bx-spark { animation: bx-spark-pop 220ms ease-out; transform-origin: center; }
       `}</style>
 
-      <div className="flex items-center justify-between gap-3 px-1">
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[11px] font-black text-white">{myName}</p>
-          <div className="mt-1 space-y-1">
-            <StatBar label="Health" value={myHealth} max={100} tone="health" />
-            <StatBar label="Stamina" value={myStamina} max={100} tone="stamina" />
-          </div>
-        </div>
-        <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-black uppercase tracking-[0.15em] text-white/50">
-          vs
-        </span>
-        <div className="min-w-0 flex-1 text-right">
-          <p className="truncate text-[11px] font-black text-white">{oppName}</p>
-          <div className="mt-1 space-y-1">
-            <StatBar label="Health" value={oppHealth} max={100} tone="health" />
-            <StatBar label="Stamina" value={oppStamina} max={100} tone="stamina" />
-          </div>
-        </div>
-      </div>
+      <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className={`block h-full w-full ${shake ? "bx-shaking" : ""}`}>
+        <defs>
+          <radialGradient id="bx-mat" cx="50%" cy="26%" r="90%">
+            <stop offset="0%" stopColor="hsl(220 45% 15%)" />
+            <stop offset="55%" stopColor="hsl(224 48% 9%)" />
+            <stop offset="100%" stopColor="hsl(226 50% 5%)" />
+          </radialGradient>
+          <radialGradient id="bx-glove-sheen" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
+            <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
+            <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
+          </radialGradient>
+          <radialGradient id="bx-spot" cx="50%" cy="0%" r="75%">
+            <stop offset="0%" stopColor="hsl(204 100% 60% / 0.16)" />
+            <stop offset="100%" stopColor="transparent" />
+          </radialGradient>
+          <linearGradient id="bx-floor" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="hsl(214 55% 20%)" />
+            <stop offset="100%" stopColor="hsl(220 50% 11%)" />
+          </linearGradient>
+        </defs>
+        <rect width="900" height="420" fill="url(#bx-mat)" />
+        <ellipse cx="450" cy="80" rx="500" ry="220" fill="url(#bx-spot)" />
 
-      <div className="relative mt-3 overflow-hidden rounded-2xl border border-white/10" style={{ boxShadow: "inset 0 0 40px rgba(0,0,0,0.5)" }}>
-        <svg viewBox="0 0 380 224" className={`block w-full ${shake ? "bx-shaking" : ""}`}>
-          <defs>
-            <radialGradient id="bx-mat" cx="50%" cy="30%" r="90%">
-              <stop offset="0%" stopColor="hsl(220 45% 15%)" />
-              <stop offset="55%" stopColor="hsl(224 48% 9%)" />
-              <stop offset="100%" stopColor="hsl(226 50% 5%)" />
-            </radialGradient>
-            <radialGradient id="bx-glove-sheen" cx="35%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="rgba(255,255,255,0.6)" />
-              <stop offset="40%" stopColor="rgba(255,255,255,0.05)" />
-              <stop offset="100%" stopColor="rgba(0,0,0,0.25)" />
-            </radialGradient>
-          </defs>
-          <rect width="380" height="224" fill="url(#bx-mat)" />
-
-          {/* Crowd silhouettes */}
-          <g opacity="0.5">
-            {Array.from({ length: 16 }).map((_, i) => {
-              const x = 6 + i * 24.5;
-              const h = 8 + ((i * 7) % 6);
-              return (
-                <g key={i}>
-                  <circle cx={x} cy={26 - h * 0.3} r="4" fill="#0a0e18" />
-                  <path d={`M ${x - 6} ${30 - h * 0.3} Q ${x} ${20 - h * 0.3} ${x + 6} ${30 - h * 0.3} Z`} fill="#0a0e18" />
-                </g>
-              );
-            })}
-          </g>
-          <rect x="0" y="0" width="380" height="34" fill="url(#bx-mat)" opacity="0.5" />
-
-          {/* Ropes */}
-          {[
-            { y: 40, c: "#e9e4d8" },
-            { y: 55, c: "hsl(204 100% 55%)" },
-            { y: 70, c: "#e0453f" },
-          ].map((r) => (
-            <line key={r.y} x1="14" y1={r.y} x2="366" y2={r.y} stroke={r.c} strokeOpacity="0.85" strokeWidth="2.5" />
-          ))}
-          {/* Corner posts + turnbuckle pads */}
-          {[18, 362].map((x) => (
-            <g key={x}>
-              <rect x={x - 5} y="30" width="10" height="58" rx="3" fill="#2a1810" />
-              <rect x={x - 8} y="34" width="16" height="12" rx="4" fill="hsl(204 100% 45%)" opacity="0.8" />
-            </g>
-          ))}
-
-          {/* Canvas mat watermark */}
-          <text x="190" y="150" textAnchor="middle" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="34" fill="rgba(255,255,255,0.04)">
-            YAJ
-          </text>
-          {/* Floor line */}
-          <line x1="0" y1="197" x2="380" y2="197" stroke="rgba(255,255,255,0.08)" strokeWidth="1.5" />
-
-          <Fighter side="left" skin="tan" accent="hsl(204 100% 55%)" anim={myAnim} />
-          <Fighter side="right" skin="deep" accent="#f59e0b" anim={oppAnim} />
-          {spark && <ImpactSpark x={spark.x} y={spark.y} />}
-        </svg>
-        {isComputer && (
-          <div className="absolute right-2 top-2 rounded-full bg-black/55 p-1">
-            <Bot className="h-3 w-3 text-primary" />
-          </div>
-        )}
-      </div>
-
-      {interactive && !finished ? (
-        <div className="mt-3 grid grid-cols-5 gap-1.5">
-          {(["jab", "hook", "uppercut", "block", "dodge"] as Action[]).map((a) => {
-            const Icon = ACTION_META[a].icon;
+        {/* Crowd, packed into the band the ropes will sit in front of */}
+        <rect x="0" y="0" width="900" height="52" fill="hsl(224 48% 7%)" />
+        <g>
+          {Array.from({ length: 52 }).map((_, i) => {
+            const row = i % 2;
+            const x = 2 + (i - row) * 17.8 + row * 9;
+            const y = row === 0 ? 40 : 26;
+            const shirt = ["#3a3f52", "#4a2f3a", "#2f4a3f", "#4a3f2f", "#3f3f4a"][i % 5];
             return (
-              <button
-                key={a}
-                type="button"
-                onClick={() => onAction(a)}
-                className="flex flex-col items-center gap-1 rounded-xl border border-white/10 bg-white/5 px-1 py-2 text-white active:scale-95"
-              >
-                <Icon className={`h-4 w-4 ${a === "block" || a === "dodge" ? "text-primary" : "text-white"}`} />
-                <span className="text-[9px] font-black uppercase leading-none">{a}</span>
-                <span className="text-[7px] font-bold leading-none text-white/40">{ACTION_META[a].hint}</span>
-              </button>
+              <g key={i} opacity={0.55 + ((i * 7) % 4) * 0.08}>
+                <ellipse cx={x} cy={y + 8} rx="8" ry="6" fill={shirt} />
+                <circle cx={x} cy={y} r="4.4" fill="#1d1420" />
+              </g>
             );
           })}
+        </g>
+        <rect x="0" y="0" width="900" height="12" fill="url(#bx-mat)" opacity="0.5" />
+
+        {/* Ring floor / canvas mat, receding toward the viewer — drawn first so ropes sit in front of it */}
+        <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="url(#bx-floor)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
+        <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="none" stroke="hsl(204 100% 55% / 0.35)" strokeWidth="5" />
+        <ellipse cx="450" cy="270" rx="230" ry="90" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="10" />
+        <text x="450" y="360" textAnchor="middle" fontFamily="system-ui, sans-serif" fontWeight="900" fontSize="30" letterSpacing="6" fill="rgba(255,255,255,0.06)">
+          YAJ BOXING
+        </text>
+
+        {/* Ropes — spaced out above the mat, not crowded against its edge */}
+        {[
+          { y: 66, sag: 5, c: "#e9e4d8" },
+          { y: 96, sag: 6, c: "hsl(204 100% 55%)" },
+          { y: 126, sag: 7, c: "#e0453f" },
+        ].map((r) => (
+          <path
+            key={r.y}
+            d={`M 44 ${r.y} Q 450 ${r.y + r.sag} 856 ${r.y}`}
+            fill="none"
+            stroke={r.c}
+            strokeOpacity="0.9"
+            strokeWidth="4"
+            strokeLinecap="round"
+          />
+        ))}
+        {[42, 858].map((x) => (
+          <g key={x}>
+            <rect x={x - 8} y="52" width="16" height="108" rx="4" fill="#2a1810" stroke="rgba(0,0,0,0.4)" />
+            <rect x={x - 12} y="58" width="24" height="18" rx="5" fill="hsl(204 100% 45%)" opacity="0.85" />
+            <rect x={x - 12} y="82" width="24" height="18" rx="5" fill="#e0453f" opacity="0.65" />
+          </g>
+        ))}
+
+        <Fighter side="left" appearance={myAppearance} accent="hsl(204 100% 55%)" anim={myAnim} />
+        <Fighter side="right" appearance={oppAppearance} accent="#f59e0b" anim={oppAnim} />
+        {spark && <ImpactSpark x={spark.x} y={spark.y} />}
+      </svg>
+
+      {/* Top HUD */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-2">
+        <div className="pointer-events-auto flex items-center gap-2">
+          <button type="button" onClick={onBack} aria-label="Back" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
+            <X className="h-4 w-4" />
+          </button>
+          <div className="w-32 rounded-xl bg-black/45 p-1.5">
+            <p className="mb-1 truncate text-[10px] font-black text-white">{myName}</p>
+            <StatBar label="HP" value={myHealth} max={100} tone="health" />
+            <div className="mt-1">
+              <StatBar label="STA" value={myStamina} max={100} tone="stamina" />
+            </div>
+          </div>
         </div>
-      ) : (
-        <p className="mt-3 text-center text-[10px] font-bold text-white/40">
-          {finished ? "Match over." : `Waiting on ${oppName}…`}
+        <span
+          className="mt-1 shrink-0 rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
+          style={{
+            background: myTurn ? "linear-gradient(180deg, hsl(var(--primary)), hsl(var(--primary) / 0.6))" : "rgba(0,0,0,0.55)",
+            color: myTurn ? "hsl(var(--primary-foreground))" : "rgba(255,255,255,0.85)",
+            boxShadow: myTurn ? "0 0 14px hsl(var(--primary) / 0.55)" : undefined,
+          }}
+        >
+          {turnLabel}
+        </span>
+        <div className="pointer-events-auto flex items-center gap-2">
+          <div className="w-32 rounded-xl bg-black/45 p-1.5 text-right">
+            <p className="mb-1 flex items-center justify-end gap-1 truncate text-[10px] font-black text-white">
+              {isComputer && <Bot className="h-3 w-3 text-primary" />} {oppName}
+            </p>
+            <StatBar label="HP" value={oppHealth} max={100} tone="health" />
+            <div className="mt-1">
+              <StatBar label="STA" value={oppStamina} max={100} tone="stamina" />
+            </div>
+          </div>
+          <button type="button" onClick={onCustomize} aria-label="Customize fighter" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
+            <span className="block h-4 w-4 rounded-full" style={{ background: myAppearance.skin }} />
+          </button>
+          <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+        </div>
+      </div>
+
+      {/* Side controls */}
+      <div className="pointer-events-none absolute inset-y-0 left-2 z-30 flex flex-col items-center justify-center gap-3">
+        {(["jab", "hook", "uppercut"] as PunchType[]).map((a) => (
+          <div key={a} className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
+            <SideButton label={a} hint={ATTACK_META[a].hint} Icon={ATTACK_META[a].icon} tone="attack" onClick={() => canAct && onAction(a)} />
+          </div>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 right-2 z-30 flex flex-col items-center justify-center gap-3">
+        <div className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
+          <SideButton label="block" hint="guard" Icon={Shield} tone="defend" onClick={() => canAct && onAction("block")} />
+        </div>
+        <div className="pointer-events-auto" style={{ opacity: canAct ? 1 : 0.4 }}>
+          <SideButton label="dodge" hint="evade" Icon={Wind} tone="defend" onClick={() => canAct && onAction("dodge")} />
+        </div>
+      </div>
+
+      {!canAct && !finished && (
+        <p className="pointer-events-none absolute inset-x-0 bottom-2 z-20 text-center text-[10px] font-bold text-white/40">
+          Waiting on {oppName}…
         </p>
       )}
     </div>
