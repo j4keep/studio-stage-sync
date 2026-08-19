@@ -29,8 +29,9 @@ const poolArt = poolArtAsset.url;
 import boxingArt from "@/assets/games/boxing.svg";
 import battleshipArt from "@/assets/games/battleship.svg";
 import drivingArt from "@/assets/games/driving.svg";
+import pokerArt from "@/assets/games/poker.svg";
 
-type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle";
+type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card";
 
 type CardDef = {
   type: GameType;
@@ -46,6 +47,7 @@ const CARDS: CardDef[] = [
   { type: "boxing", title: "Boxing", players: "2 players", image: boxingArt, category: "Action" },
   { type: "battleship", title: "Battleship", players: "2 players", image: battleshipArt, category: "Strategy", isNew: true },
   { type: "driving", title: "Drive", players: "2 players", image: drivingArt, category: "Arcade", isNew: true },
+  { type: "poker", title: "Texas Hold'em", players: "2 players", image: pokerArt, category: "Card", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },
@@ -54,7 +56,7 @@ const CARDS: CardDef[] = [
   { type: "yaj_dash", title: "YAJ Dash", players: "Solo", image: dashArt, category: "Arcade" },
 ];
 
-const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade", "Puzzle"];
+const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade", "Puzzle", "Card"];
 
 export default function GamesHubPage() {
   const navigate = useNavigate();

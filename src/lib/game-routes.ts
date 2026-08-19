@@ -8,6 +8,7 @@ import { initialPool } from "@/lib/pool";
 import { initialBoxing } from "@/lib/boxing";
 import { initialBattleship, placeFleet, randomFleet } from "@/lib/battleship";
 import { initialDrivingRun } from "@/lib/driving-run";
+import { initialPoker } from "@/lib/poker";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -20,6 +21,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   boxing: "boxing",
   battleship: "battleship",
   driving: "driving",
+  poker: "poker",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -48,6 +50,8 @@ export function initialStateFor(type: GameType): any {
       return { battleship: placeFleet(initialBattleship(), 1, randomFleet()), moveNumber: 0 };
     case "driving":
       return { drivingRun: initialDrivingRun(), moveNumber: 0 };
+    case "poker":
+      return { poker: initialPoker(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }

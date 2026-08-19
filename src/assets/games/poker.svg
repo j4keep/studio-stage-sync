@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768">
+  <defs>
+    <radialGradient id="pk-bg" cx="50%" cy="18%" r="90%">
+      <stop offset="0%" stop-color="#241014"/>
+      <stop offset="55%" stop-color="#170a0d"/>
+      <stop offset="100%" stop-color="#0a0507"/>
+    </radialGradient>
+    <radialGradient id="pk-felt" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="#1c7a4e"/>
+      <stop offset="55%" stop-color="#0f5c39"/>
+      <stop offset="100%" stop-color="#083c26"/>
+    </radialGradient>
+    <linearGradient id="pk-rail" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7a4a26"/>
+      <stop offset="45%" stop-color="#3e2312"/>
+      <stop offset="100%" stop-color="#59341a"/>
+    </linearGradient>
+    <linearGradient id="pk-card" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e9e4d8"/>
+    </linearGradient>
+    <radialGradient id="pk-chip-red" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#ff6b63"/>
+      <stop offset="100%" stop-color="#a3231d"/>
+    </radialGradient>
+    <radialGradient id="pk-chip-blue" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#5f9dff"/>
+      <stop offset="100%" stop-color="#173e8f"/>
+    </radialGradient>
+    <radialGradient id="pk-chip-black" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#4a4a4f"/>
+      <stop offset="100%" stop-color="#0e0e10"/>
+    </radialGradient>
+    <radialGradient id="pk-spot" cx="50%" cy="0%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,220,150,0.25)"/>
+      <stop offset="100%" stop-color="rgba(255,220,150,0)"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#pk-bg)"/>
+  <rect width="1024" height="480" fill="url(#pk-spot)"/>
+
+  <!-- table -->
+  <ellipse cx="512" cy="470" rx="520" ry="300" fill="url(#pk-rail)"/>
+  <ellipse cx="512" cy="470" rx="520" ry="300" fill="none" stroke="rgba(0,0,0,0.4)" stroke-width="6"/>
+  <ellipse cx="512" cy="468" rx="470" ry="262" fill="url(#pk-felt)"/>
+  <ellipse cx="512" cy="468" rx="470" ry="262" fill="none" stroke="rgba(255,215,140,0.35)" stroke-width="3"/>
+  <ellipse cx="512" cy="468" rx="430" ry="228" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+
+  <!-- community cards -->
+  <g transform="translate(512,430)">
+    <g transform="translate(-190,0) rotate(-8)"><rect x="-38" y="-54" width="76" height="108" rx="10" fill="url(#pk-card)" stroke="#111" stroke-width="2"/><text x="-22" y="-24" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#b3231d">A♥</text></g>
+    <g transform="translate(-95,-14) rotate(-4)"><rect x="-38" y="-54" width="76" height="108" rx="10" fill="url(#pk-card)" stroke="#111" stroke-width="2"/><text x="-24" y="-24" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#111">K♠</text></g>
+    <g transform="translate(0,-20)"><rect x="-38" y="-54" width="76" height="108" rx="10" fill="url(#pk-card)" stroke="#111" stroke-width="2"/><text x="-24" y="-24" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#b3231d">Q♦</text></g>
+    <g transform="translate(95,-14) rotate(4)"><rect x="-38" y="-54" width="76" height="108" rx="10" fill="url(#pk-card)" stroke="#111" stroke-width="2"/><text x="-24" y="-24" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#111">J♣</text></g>
+    <g transform="translate(190,0) rotate(8)"><rect x="-38" y="-54" width="76" height="108" rx="10" fill="url(#pk-card)" stroke="#111" stroke-width="2"/><text x="-24" y="-24" font-family="Georgia, serif" font-size="30" font-weight="700" fill="#111">10♠</text></g>
+  </g>
+
+  <!-- chip stacks -->
+  <g transform="translate(300,590)">
+    <ellipse cx="0" cy="14" rx="46" ry="14" fill="rgba(0,0,0,0.35)"/>
+    <g>
+      <ellipse cx="0" cy="6" rx="40" ry="13" fill="url(#pk-chip-red)" stroke="#3a0d0a" stroke-width="2"/>
+      <ellipse cx="0" cy="-4" rx="40" ry="13" fill="url(#pk-chip-red)" stroke="#3a0d0a" stroke-width="2"/>
+      <ellipse cx="0" cy="-14" rx="40" ry="13" fill="url(#pk-chip-red)" stroke="#3a0d0a" stroke-width="2"/>
+    </g>
+  </g>
+  <g transform="translate(400,610)">
+    <ellipse cx="0" cy="14" rx="46" ry="14" fill="rgba(0,0,0,0.35)"/>
+    <ellipse cx="0" cy="6" rx="40" ry="13" fill="url(#pk-chip-black)" stroke="#000" stroke-width="2"/>
+    <ellipse cx="0" cy="-4" rx="40" ry="13" fill="url(#pk-chip-blue)" stroke="#0a1c40" stroke-width="2"/>
+    <ellipse cx="0" cy="-14" rx="40" ry="13" fill="url(#pk-chip-black)" stroke="#000" stroke-width="2"/>
+    <ellipse cx="0" cy="-24" rx="40" ry="13" fill="url(#pk-chip-blue)" stroke="#0a1c40" stroke-width="2"/>
+  </g>
+  <g transform="translate(720,600)">
+    <ellipse cx="0" cy="14" rx="46" ry="14" fill="rgba(0,0,0,0.35)"/>
+    <ellipse cx="0" cy="6" rx="40" ry="13" fill="url(#pk-chip-blue)" stroke="#0a1c40" stroke-width="2"/>
+    <ellipse cx="0" cy="-4" rx="40" ry="13" fill="url(#pk-chip-red)" stroke="#3a0d0a" stroke-width="2"/>
+  </g>
+
+  <!-- dealer button -->
+  <circle cx="820" cy="500" r="20" fill="#f5f2ea" stroke="#111" stroke-width="2"/>
+  <text x="820" y="507" font-family="system-ui, sans-serif" font-size="16" font-weight="900" fill="#111" text-anchor="middle">D</text>
+
+  <!-- title lockup -->
+  <text x="512" y="140" font-family="Georgia, serif" font-size="86" font-weight="700" fill="#f5d98a" text-anchor="middle" style="letter-spacing:4px" opacity="0.95">TEXAS HOLD'EM</text>
+</svg>

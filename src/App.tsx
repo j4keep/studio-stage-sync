@@ -128,6 +128,7 @@ import PoolPage from "./pages/games/PoolPage";
 import BoxingPage from "./pages/games/BoxingPage";
 import BattleshipPage from "./pages/games/BattleshipPage";
 import DrivingPage from "./pages/games/DrivingPage";
+import PokerPage from "./pages/games/PokerPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import DealsHomePage from "./pages/deals/DealsHomePage";
 import DealDetailPage from "./pages/deals/DealDetailPage";
@@ -419,6 +420,7 @@ const ProtectedRoutes = () => {
         <Route path="/games/boxing/:id" element={<BoxingPage />} />
         <Route path="/games/battleship/:id" element={<BattleshipPage />} />
         <Route path="/games/driving/:id" element={<DrivingPage />} />
+        <Route path="/games/poker/:id" element={<PokerPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
