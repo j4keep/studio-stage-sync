@@ -39,7 +39,7 @@ export function characterFor(appearance: Appearance): CharacterDef {
 }
 
 /** How far a fighter travels toward the middle of the ring to land a punch. */
-const APPROACH: Record<string, number> = { jab: 148, hook: 168, uppercut: 138 };
+const APPROACH: Record<string, number> = { jab: 96, hook: 108, uppercut: 88 };
 
 /**
  * A fully illustrated boxer — head, torso, trunks, two-segment arms, gloves, boots —
