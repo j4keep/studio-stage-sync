@@ -228,6 +228,9 @@ export default function BoxingPage() {
           oppHealth={live.opp.health}
           oppStamina={live.opp.stamina}
           oppAdvance={live.opp.advance}
+          myAccent={myAccent}
+          oppAccent={oppAccent}
+
           myAnim={live.myAnim}
           oppAnim={live.oppAnim}
           impact={live.impact}
