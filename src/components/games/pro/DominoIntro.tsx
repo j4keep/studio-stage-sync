@@ -1,5 +1,6 @@
 import { Play, Volume2, VolumeX, X } from "lucide-react";
 import hostess from "@/assets/games/domino-hostess.jpg";
+import GameQuickActions, { GameMatchup, GameRecordStats } from "@/components/games/GameQuickActions";
 
 type Props = {
   open: boolean;
@@ -8,10 +9,25 @@ type Props = {
   onToggleMute: () => void;
   onStart: () => void;
   onBack: () => void;
+  stats?: GameRecordStats | null;
+  matchups?: GameMatchup[];
+  onPlaySolo?: () => void;
+  onQuickMatch?: () => void;
 };
 
 /** Casino-style pre-game splash with the house dealer and a big Play button. */
-export default function DominoIntro({ open, subtitle, muted, onToggleMute, onStart, onBack }: Props) {
+export default function DominoIntro({
+  open,
+  subtitle,
+  muted,
+  onToggleMute,
+  onStart,
+  onBack,
+  stats,
+  matchups,
+  onPlaySolo,
+  onQuickMatch,
+}: Props) {
   if (!open) return null;
 
   return (
@@ -63,6 +79,16 @@ export default function DominoIntro({ open, subtitle, muted, onToggleMute, onSta
         >
           <Play className="h-4 w-4" /> Take a seat
         </button>
+      </div>
+
+      <div className="absolute bottom-5 right-5 w-[46%] min-w-[240px]">
+        <GameQuickActions
+          stats={stats}
+          matchups={matchups}
+          onPlaySolo={onPlaySolo}
+          onQuickMatch={onQuickMatch}
+          accent="#f0d78c"
+        />
       </div>
     </div>
   );
