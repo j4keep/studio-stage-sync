@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Goal, Rocket, Send, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
 import type { PlayKind, PlayType } from "@/lib/football";
 import { footballSfx } from "@/lib/football-sfx";
+import FootballAction from "./FootballAction";
+import { PLAYER_KEYFRAMES } from "./PlayerArt";
+
 
 type LastPlayView = { play: PlayType; kind: PlayKind; yards: number; message: string; mine: boolean } | null;
 
