@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useState } from "react";
 import { ArrowLeft, Bot, HelpCircle, Volume2, VolumeX } from "lucide-react";
-import { Card, PokerAction, PokerState, RANK_LABEL, Seat, legalActions } from "@/lib/poker";
+import { Card, PokerAction, PokerState, RANK_LABEL, Seat, legalActions, liveHandInfo } from "@/lib/poker";
 
 const SUIT_SYMBOL: Record<Card["suit"], string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
 const RED_SUITS = new Set(["h", "d"]);
@@ -24,16 +24,23 @@ type Props = {
   sideDock?: ReactNode;
 };
 
+/** Points evenly spaced around the rail's ellipse, used to seat the little embedded lights. */
+const RAIL_LIGHTS = Array.from({ length: 20 }, (_, i) => {
+  const theta = (i / 20) * Math.PI * 2;
+  return { left: 50 + 48.5 * Math.cos(theta), top: 50 + 47 * Math.sin(theta), delay: (i % 5) * 0.3 };
+});
+
 function PlayingCard({ card, faceDown, size = "md" }: { card?: Card; faceDown?: boolean; size?: "sm" | "md" | "lg" }) {
   const dims = size === "lg" ? "h-[68px] w-[48px]" : size === "md" ? "h-[52px] w-[37px]" : "h-[40px] w-[29px]";
   const fontSize = size === "lg" ? "text-[15px]" : size === "md" ? "text-[12px]" : "text-[9px]";
   if (faceDown || !card) {
     return (
       <div
-        className={`${dims} shrink-0 rounded-[5px] border border-black/50`}
+        className={`${dims} shrink-0 animate-poker-deal rounded-[5px] border border-black/50`}
         style={{
-          background: "repeating-linear-gradient(135deg, #7a1620 0px, #7a1620 4px, #5c0f18 4px, #5c0f18 8px)",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.5)",
+          background:
+            "repeating-linear-gradient(135deg, #7a1620 0px, #7a1620 4px, #5c0f18 4px, #5c0f18 8px), radial-gradient(60% 40% at 50% 20%, rgba(255,255,255,0.15), transparent)",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.5), inset 0 0 0 2px rgba(255,215,140,0.25)",
         }}
       />
     );
@@ -41,8 +48,8 @@ function PlayingCard({ card, faceDown, size = "md" }: { card?: Card; faceDown?: 
   const red = RED_SUITS.has(card.suit);
   return (
     <div
-      className={`${dims} relative shrink-0 rounded-[5px] bg-[#f8f6f0] border border-black/30 flex flex-col items-center justify-center leading-none`}
-      style={{ boxShadow: "0 2px 5px rgba(0,0,0,0.5)" }}
+      className={`${dims} relative shrink-0 animate-poker-deal rounded-[5px] bg-[#f8f6f0] border border-black/30 flex flex-col items-center justify-center leading-none`}
+      style={{ boxShadow: "0 3px 6px rgba(0,0,0,0.55)" }}
     >
       <span className={`${fontSize} font-black`} style={{ color: red ? "#b3231d" : "#111" }}>
         {RANK_LABEL[card.rank]}
@@ -56,19 +63,38 @@ function PlayingCard({ card, faceDown, size = "md" }: { card?: Card; faceDown?: 
 
 function ChipStack({ amount }: { amount: number }) {
   if (amount <= 0) return null;
-  const chips = Math.min(4, Math.max(1, Math.ceil(amount / 40)));
+  const chips = Math.min(5, Math.max(1, Math.ceil(amount / 30)));
+  const colors = ["#e0453f", "#1c3d8f", "#1c7a4e", "#0e0e10", "#c99a2e"];
   return (
-    <div className="relative flex h-4 w-6 items-end justify-center">
+    <div className="relative flex h-5 w-7 shrink-0 animate-poker-chip-pop items-end justify-center">
       {Array.from({ length: chips }).map((_, i) => (
         <div
           key={i}
-          className="absolute h-2.5 w-5 rounded-full border border-black/50"
+          className="absolute h-3 w-6 rounded-full border border-black/50"
           style={{
-            bottom: i * 2.5,
-            background: i % 2 === 0 ? "linear-gradient(180deg,#e0453f,#8f2622)" : "linear-gradient(180deg,#3a6bd6,#1c3d8f)",
+            bottom: i * 2.8,
+            background: `linear-gradient(180deg, ${colors[i % colors.length]}, rgba(0,0,0,0.55))`,
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
           }}
         />
       ))}
+    </div>
+  );
+}
+
+function StrengthMeter({ label, strength }: { label: string; strength: number }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="text-[8px] font-black uppercase italic tracking-wide text-amber-200/90">{label}</span>
+      <div className="h-1 w-20 overflow-hidden rounded-full bg-black/50">
+        <div
+          className="h-full rounded-full transition-[width] duration-500"
+          style={{
+            width: `${Math.round(strength * 100)}%`,
+            background: "linear-gradient(90deg, #3ddc84, #f5d020, #e0453f)",
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -82,6 +108,7 @@ function PokerPod({
   align,
   isButton,
   badge,
+  celebrate,
 }: {
   name: string;
   avatarUrl?: string | null;
@@ -91,16 +118,17 @@ function PokerPod({
   align: "left" | "right";
   isButton: boolean;
   badge?: string;
+  celebrate?: boolean;
 }) {
   return (
     <div className={`flex flex-col gap-1 ${align === "right" ? "items-end text-right" : "items-start"}`}>
       <div className={`flex items-center gap-1.5 ${align === "right" ? "flex-row-reverse" : ""}`}>
         <div className="relative shrink-0">
           <div
-            className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full p-[2px]"
+            className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full p-[2px] ${celebrate ? "animate-poker-winner-glow" : ""}`}
             style={{
-              background: active ? "hsl(var(--primary))" : "rgba(255,255,255,0.14)",
-              boxShadow: active ? "0 0 14px hsl(var(--primary) / 0.6)" : undefined,
+              background: celebrate ? "hsl(45 90% 55%)" : active ? "hsl(var(--primary))" : "rgba(255,255,255,0.14)",
+              boxShadow: active && !celebrate ? "0 0 14px hsl(var(--primary) / 0.65)" : undefined,
             }}
           >
             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#0c1a12]">
@@ -113,19 +141,25 @@ function PokerPod({
               )}
             </div>
           </div>
-          {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border-2 border-[#0c1a12] bg-primary" />}
+          {active && <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full border-2 border-[#0c1a12] bg-primary" />}
           {isButton && (
             <span
-              className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border border-black bg-[#f5f2ea] text-[7px] font-black text-black"
+              className="absolute -top-1 -left-1 flex h-4 w-4 items-center justify-center rounded-full border border-black text-[7px] font-black text-black"
+              style={{ background: "radial-gradient(60% 60% at 35% 30%, #fffdf5, #e8dcae)", boxShadow: "0 1px 3px rgba(0,0,0,0.6)" }}
               title="Dealer button"
             >
               D
             </span>
           )}
         </div>
-        <p className="max-w-[9ch] truncate text-[11px] font-black leading-tight text-white">{name}</p>
+        <p className="max-w-[9ch] truncate text-[11px] font-black leading-tight text-white drop-shadow">{name}</p>
       </div>
-      <span className="text-[9px] font-black text-emerald-300">${stack}</span>
+      <span
+        className="rounded-full px-2 py-0.5 text-[9px] font-black text-emerald-300"
+        style={{ background: "linear-gradient(90deg, rgba(20,10,10,0.75), rgba(60,15,15,0.55))" }}
+      >
+        ${stack}
+      </span>
       {badge && (
         <span
           className="rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-primary-foreground"
@@ -218,6 +252,7 @@ export default function PokerTable({
   const handOver = state.street === "showdown" && state.phase === "active";
   const showdownReveal = handOver && state.lastHandResult?.reason === "showdown";
   const legal = legalActions(state, mySeat);
+  const myInfo = liveHandInfo(state.holeCards[mySeat], state.community);
 
   useEffect(() => {
     setRaiseOpen(false);
@@ -236,7 +271,8 @@ export default function PokerTable({
     <div
       className="relative h-full w-full overflow-hidden"
       style={{
-        background: "radial-gradient(90% 80% at 50% 0%, hsl(140 30% 12%) 0%, hsl(140 35% 7%) 45%, hsl(140 40% 4%) 100%)",
+        background:
+          "radial-gradient(120% 65% at 50% -8%, rgba(255,190,110,0.16) 0%, transparent 55%), radial-gradient(120% 90% at 50% 15%, hsl(14 45% 16%) 0%, hsl(10 45% 9%) 45%, hsl(0 45% 4%) 100%)",
         paddingLeft: "max(0.4rem, env(safe-area-inset-left))",
         paddingRight: "max(0.4rem, env(safe-area-inset-right))",
         paddingTop: "env(safe-area-inset-top)",
@@ -249,52 +285,148 @@ export default function PokerTable({
           <div
             className="relative flex aspect-[16/9] max-h-full w-full max-w-[720px] items-center justify-center rounded-[46%]"
             style={{
-              background: "radial-gradient(80% 70% at 50% 40%, #1c7a4e 0%, #0f5c39 55%, #083c26 100%)",
-              border: "14px solid #3e2312",
-              boxShadow: "0 10px 30px rgba(0,0,0,0.6), inset 0 0 0 3px rgba(255,215,140,0.25)",
+              background: "linear-gradient(160deg, #8a5a2e 0%, #4a2c16 45%, #2a180c 100%)",
+              border: "3px solid rgba(0,0,0,0.5)",
+              boxShadow: "0 14px 34px rgba(0,0,0,0.65), inset 0 0 0 2px rgba(255,215,140,0.15)",
             }}
           >
+            {/* Padded cushion ring */}
+            <div
+              className="absolute rounded-[44%]"
+              style={{
+                inset: "10px",
+                background: "linear-gradient(160deg, #0f5c39 0%, #0a3d28 100%)",
+                boxShadow: "inset 0 0 0 2px rgba(255,215,140,0.3), inset 0 0 22px rgba(0,0,0,0.5)",
+              }}
+            />
+
+            {/* Felt */}
+            <div
+              className="absolute flex items-center justify-center rounded-[42%]"
+              style={{
+                inset: "20px",
+                background: "radial-gradient(80% 70% at 50% 40%, #1e8757 0%, #0f5c39 55%, #072e1e 100%)",
+                boxShadow: "inset 0 0 44px rgba(0,0,0,0.55)",
+              }}
+            >
+              <div
+                className="pointer-events-none absolute inset-0 rounded-[42%] opacity-[0.05]"
+                style={{ backgroundImage: "radial-gradient(circle, #fff 1px, transparent 1px)", backgroundSize: "16px 16px" }}
+              />
+              <span className="pointer-events-none select-none text-[13px] font-black uppercase italic tracking-[0.35em] text-white/10">
+                Texas Hold'em
+              </span>
+            </div>
+
+            {/* Rail lights — rendered after the felt so they paint on top of it. */}
+            {RAIL_LIGHTS.map((p, i) => (
+              <span
+                key={i}
+                className="absolute h-[5px] w-[5px] animate-poker-twinkle rounded-full"
+                style={{
+                  left: `${p.left}%`,
+                  top: `${p.top}%`,
+                  transform: "translate(-50%,-50%)",
+                  background: "#ffdb8a",
+                  boxShadow: "0 0 5px 1.5px rgba(255,214,120,0.85)",
+                  animationDelay: `${p.delay}s`,
+                }}
+              />
+            ))}
+
             {/* Opponent hole cards */}
-            <div className="absolute top-[8%] left-1/2 flex -translate-x-1/2 gap-1">
-              <PlayingCard card={state.holeCards[oppSeat][0]} faceDown={!showdownReveal} size="sm" />
-              <PlayingCard card={state.holeCards[oppSeat][1]} faceDown={!showdownReveal} size="sm" />
+            <div className="absolute top-[10%] left-1/2 flex -translate-x-1/2 gap-1">
+              <PlayingCard
+                key={`opp0-${state.handNumber}-${showdownReveal ? `${state.holeCards[oppSeat][0].rank}${state.holeCards[oppSeat][0].suit}` : "back"}`}
+                card={state.holeCards[oppSeat][0]}
+                faceDown={!showdownReveal}
+                size="sm"
+              />
+              <PlayingCard
+                key={`opp1-${state.handNumber}-${showdownReveal ? `${state.holeCards[oppSeat][1].rank}${state.holeCards[oppSeat][1].suit}` : "back"}`}
+                card={state.holeCards[oppSeat][1]}
+                faceDown={!showdownReveal}
+                size="sm"
+              />
             </div>
 
             {/* Community cards + pot */}
-            <div className="flex flex-col items-center gap-2">
+            <div className="relative flex flex-col items-center gap-2">
               <div className="flex gap-1">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <PlayingCard key={i} card={state.community[i]} faceDown={i >= state.community.length} size="md" />
-                ))}
+                {Array.from({ length: 5 }).map((_, i) => {
+                  const c = state.community[i];
+                  return (
+                    <PlayingCard
+                      key={`comm${i}-${state.handNumber}-${c ? `${c.rank}${c.suit}` : "back"}`}
+                      card={c}
+                      faceDown={i >= state.community.length}
+                      size="md"
+                    />
+                  );
+                })}
               </div>
-              <div className="flex items-center gap-1.5 rounded-full bg-black/45 px-2.5 py-1">
+              <div
+                key={`pot-${state.pot}`}
+                className="flex animate-poker-pot-pulse items-center gap-1.5 rounded-full bg-black/50 px-2.5 py-1"
+                style={{ boxShadow: "0 0 10px rgba(255,205,110,0.15)" }}
+              >
                 <ChipStack amount={state.pot} />
                 <span className="text-[10px] font-black text-amber-200">Pot ${state.pot}</span>
               </div>
               {state.lastAction && !handOver && (
-                <span className="rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-white/80">
+                <span className="rounded-full bg-black/50 px-2 py-0.5 text-[9px] font-bold text-white/80 animate-fade-in">
                   {(state.lastAction.seat === mySeat ? "You: " : `${oppName}: `) + state.lastAction.message}
                 </span>
               )}
             </div>
 
             {/* Street-side bet markers */}
-            <div className="absolute top-[26%] left-1/2 -translate-x-1/2">
+            <div className="absolute top-[28%] left-1/2 flex -translate-x-1/2 items-center gap-1">
               {state.bets[oppSeat] > 0 && (
-                <span className="rounded-full bg-black/45 px-2 py-0.5 text-[8px] font-bold text-white/80">${state.bets[oppSeat]}</span>
+                <>
+                  <ChipStack key={`opp-bet-${state.street}-${state.bets[oppSeat]}`} amount={state.bets[oppSeat]} />
+                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[8px] font-bold text-white/80">${state.bets[oppSeat]}</span>
+                </>
               )}
             </div>
-            <div className="absolute bottom-[26%] left-1/2 -translate-x-1/2">
+            <div className="absolute bottom-[28%] left-1/2 flex -translate-x-1/2 items-center gap-1">
               {state.bets[mySeat] > 0 && (
-                <span className="rounded-full bg-black/45 px-2 py-0.5 text-[8px] font-bold text-white/80">${state.bets[mySeat]}</span>
+                <>
+                  <ChipStack key={`my-bet-${state.street}-${state.bets[mySeat]}`} amount={state.bets[mySeat]} />
+                  <span className="rounded-full bg-black/45 px-2 py-0.5 text-[8px] font-bold text-white/80">${state.bets[mySeat]}</span>
+                </>
               )}
             </div>
 
-            {/* My hole cards */}
-            <div className="absolute bottom-[8%] left-1/2 flex -translate-x-1/2 gap-1.5">
-              <PlayingCard card={state.holeCards[mySeat][0]} faceDown={state.folded[mySeat] && handOver && !showdownReveal} size="lg" />
-              <PlayingCard card={state.holeCards[mySeat][1]} faceDown={state.folded[mySeat] && handOver && !showdownReveal} size="lg" />
+            {/* My hole cards + live hand strength */}
+            <div className="absolute bottom-[8%] left-1/2 flex -translate-x-1/2 flex-col items-center gap-1">
+              <div className="flex gap-1.5">
+                <PlayingCard
+                  key={`my0-${state.handNumber}`}
+                  card={state.holeCards[mySeat][0]}
+                  faceDown={state.folded[mySeat] && handOver && !showdownReveal}
+                  size="lg"
+                />
+                <PlayingCard
+                  key={`my1-${state.handNumber}`}
+                  card={state.holeCards[mySeat][1]}
+                  faceDown={state.folded[mySeat] && handOver && !showdownReveal}
+                  size="lg"
+                />
+              </div>
+              {!handOver && !state.folded[mySeat] && <StrengthMeter label={myInfo.label} strength={myInfo.strength} />}
             </div>
+
+            {/* "Your hand" deal-in flourish, once per hand */}
+            {!handOver && (
+              <span
+                key={`banner-${state.handNumber}`}
+                className="pointer-events-none absolute bottom-[34%] left-1/2 -translate-x-1/2 animate-poker-banner text-[11px] font-black uppercase italic tracking-[0.2em] text-amber-200"
+                style={{ textShadow: "0 0 12px rgba(255,205,110,0.9)" }}
+              >
+                Your Hand
+              </span>
+            )}
 
             {handOver && resultText && (
               <div className="absolute inset-x-6 top-[63%] z-30 flex flex-col items-center gap-1.5 rounded-full bg-black/85 px-3 py-2 animate-fade-in">
@@ -332,6 +464,7 @@ export default function PokerTable({
             align="right"
             isButton={state.button === oppSeat}
             badge={state.turnSeat === oppSeat && !handOver && !matchOver ? "Their turn" : undefined}
+            celebrate={handOver && state.lastHandResult?.winnerSeat === oppSeat}
           />
 
           <div className="relative flex min-h-0 flex-1 flex-col items-end justify-end gap-1.5 pb-1">
@@ -379,6 +512,7 @@ export default function PokerTable({
           align="left"
           isButton={state.button === mySeat}
           badge={myTurn && !handOver && !matchOver ? "Your turn" : undefined}
+          celebrate={handOver && state.lastHandResult?.winnerSeat === mySeat}
         />
       </div>
 

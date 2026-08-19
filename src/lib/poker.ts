@@ -352,6 +352,22 @@ export function computerAction(state: PokerState, seat: Seat, rand: () => number
   return { action: "call" };
 }
 
+/** Live hand read for the strength meter shown in the UI — cosmetic only, not used by any game logic. */
+export function liveHandInfo(hole: Card[], community: Card[]): { label: string; strength: number } {
+  if (community.length === 0) {
+    const [a, b] = hole.map((c) => c.rank).sort((x, y) => y - x);
+    const pair = a === b;
+    const suited = hole[0].suit === hole[1].suit;
+    const label = pair ? "Pocket Pair" : suited ? "Suited" : "High Card";
+    let s = (a + b) / 28;
+    if (pair) s += 0.3;
+    if (suited) s += 0.05;
+    return { label, strength: Math.min(1, s) };
+  }
+  const hand = bestHand([...hole, ...community]);
+  return { label: hand.label, strength: Math.min(1, hand.category / 8 + hand.tiebreak[0] / 140) };
+}
+
 /** Rough 0..1 hand-strength heuristic used only by the computer's decisions. */
 function handStrength(cards: Card[], communityCount: number): number {
   if (communityCount === 0) {

@@ -102,6 +102,34 @@ export default {
           "70%": { transform: "rotate(-10deg)" },
           "82%": { transform: "rotate(8deg)" },
         },
+        "poker-deal": {
+          "0%": { opacity: "0", transform: "translateY(-18px) scale(0.6) rotate(-8deg)" },
+          "60%": { opacity: "1", transform: "translateY(2px) scale(1.05) rotate(2deg)" },
+          "100%": { opacity: "1", transform: "translateY(0) scale(1) rotate(0deg)" },
+        },
+        "poker-banner": {
+          "0%": { opacity: "0", transform: "scale(0.7) translateY(6px)" },
+          "12%": { opacity: "1", transform: "scale(1.06) translateY(0)" },
+          "22%": { opacity: "1", transform: "scale(1) translateY(0)" },
+          "82%": { opacity: "1", transform: "scale(1) translateY(0)" },
+          "100%": { opacity: "0", transform: "scale(0.94) translateY(-4px)" },
+        },
+        "poker-winner-glow": {
+          "0%, 100%": { boxShadow: "0 0 10px hsl(45 100% 55% / 0.5)" },
+          "50%": { boxShadow: "0 0 26px hsl(45 100% 60% / 0.9)" },
+        },
+        "poker-twinkle": {
+          "0%, 100%": { opacity: "0.35" },
+          "50%": { opacity: "0.95" },
+        },
+        "poker-chip-pop": {
+          "0%": { opacity: "0", transform: "scale(0.5) translateY(6px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
+        },
+        "poker-pot-pulse": {
+          "0%, 100%": { transform: "scale(1)" },
+          "50%": { transform: "scale(1.08)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -110,6 +138,12 @@ export default {
         "emoji-float": "emoji-float 4.5s ease-out forwards",
         "emoji-wobble": "emoji-wobble 0.5s ease-in-out infinite",
         "create-wave": "create-wave 0.72s ease-in-out forwards",
+        "poker-deal": "poker-deal 0.42s cubic-bezier(0.16,1,0.3,1) both",
+        "poker-banner": "poker-banner 1.7s ease-in-out forwards",
+        "poker-winner-glow": "poker-winner-glow 1.1s ease-in-out infinite",
+        "poker-twinkle": "poker-twinkle 2.4s ease-in-out infinite",
+        "poker-chip-pop": "poker-chip-pop 0.3s cubic-bezier(0.16,1,0.3,1) both",
+        "poker-pot-pulse": "poker-pot-pulse 0.5s ease-in-out",
       },
     },
   },
