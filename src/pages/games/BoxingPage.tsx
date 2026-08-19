@@ -18,7 +18,7 @@ import { Appearance, DEFAULT_APPEARANCE, Seat } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
-const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: false, character: "man" };
+const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: true, character: "woman" };
 
 /** Gives the computer a varied illustrated opponent per match instead of always the same fighter. */
 function computerAppearance(gameId: string): Appearance {
