@@ -63,8 +63,9 @@ export type FighterLive = {
 };
 
 export function newFighter(): FighterLive {
-  return { health: MAX_HEALTH, stamina: MAX_STAMINA, guard: null, guardUntil: 0, advance: 0 };
+  return { health: MAX_HEALTH, stamina: MAX_STAMINA, guard: null, guardUntil: 0, advance: START_ADVANCE };
 }
+
 
 export function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
