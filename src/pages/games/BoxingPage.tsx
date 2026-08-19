@@ -11,13 +11,21 @@ import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import BoxingRing, { SKIN_TONES } from "@/components/games/boxing/BoxingRing";
+import BoxingRing, { SKIN_TONES, CHARACTERS } from "@/components/games/boxing/BoxingRing";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { Action, Appearance, BoxingState, DEFAULT_APPEARANCE, Seat, computerAction, initialBoxing, resolveAction } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
-const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[2], build: "athletic", fem: false };
+const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: false, character: "man" };
+
+/** Gives the computer a varied illustrated opponent per match instead of always the same fighter. */
+function computerAppearance(gameId: string): Appearance {
+  let h = 0;
+  for (let i = 0; i < gameId.length; i++) h = (h * 31 + gameId.charCodeAt(i)) % 100000;
+  const c = CHARACTERS[h % CHARACTERS.length];
+  return { skin: SKIN_TONES[h % SKIN_TONES.length], build: "athletic", fem: false, character: c.id };
+}
 
 export default function BoxingPage() {
   const { id } = useParams<{ id: string }>();
