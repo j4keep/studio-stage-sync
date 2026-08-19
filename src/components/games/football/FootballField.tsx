@@ -211,11 +211,18 @@ export default function FootballField({
         {/* First-down marker */}
         {!finished && <line x1={firstDownX} y1="88" x2={firstDownX} y2="382" stroke="#f0d84c" strokeWidth="3" opacity="0.85" />}
 
-        {/* Ball */}
-        <g className={flash ? "fb-ball-pop" : undefined}>
-          <ellipse className="fb-ball" cx={ballX} cy="235" rx="12" ry="7" fill="#6b4226" stroke="#1a0f08" strokeWidth="2" />
-          <line x1={ballX - 6} y1="235" x2={ballX + 6} y2="235" stroke="#e8dcc8" strokeWidth="1.4" className="fb-ball" />
-        </g>
+        {/* Players, mascots and the ball */}
+        <FootballAction
+          fieldLeft={fieldLeft}
+          fieldWidth={fieldWidth}
+          ballOnFromMyGoal={ballOnFromMyGoal}
+          myBall={myBall}
+          lastPlay={lastPlay}
+          playNumber={playNumber}
+          myAccent={myAccent}
+          oppAccent={oppAccent}
+        />
+
 
         {flash && (
           <rect
