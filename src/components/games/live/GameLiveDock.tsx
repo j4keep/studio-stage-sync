@@ -22,6 +22,8 @@ type Props = {
   hasHumanOpponent: boolean;
   /** hide the whole dock (e.g. no match loaded yet) */
   disabled?: boolean;
+  /** "float" = pill centred at the bottom; "rail" = compact vertical stack for a side rail. */
+  placement?: "float" | "rail";
   onChanged?: () => void;
 };
 
@@ -36,8 +38,10 @@ export default function GameLiveDock({
   isLive,
   hasHumanOpponent,
   disabled,
+  placement = "float",
   onChanged,
 }: Props) {
+  const rail = placement === "rail";
   const [busy, setBusy] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [comments, setComments] = useState<GameLiveComment[]>([]);
@@ -153,24 +157,37 @@ export default function GameLiveDock({
 
   return (
     <>
-      <div className="pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3">
-        <div className="pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2 py-1.5 shadow-lg backdrop-blur-xl">
+      <div
+        className={
+          rail
+            ? "flex shrink-0 justify-center"
+            : "pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3"
+        }
+      >
+        <div
+          className={
+            rail
+              ? "flex flex-col items-center gap-1 rounded-2xl border border-white/15 bg-black/70 px-1 py-1.5 shadow-lg backdrop-blur-xl"
+              : "pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2 py-1.5 shadow-lg backdrop-blur-xl"
+          }
+        >
           {isPlayer ? (
             <button
               type="button"
               onClick={toggleLive}
               disabled={busy}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black uppercase tracking-wide transition active:scale-95 ${
-                isLive ? "bg-red-500 text-white" : "bg-white/10 text-white"
-              }`}
+              aria-label={isLive ? "End live" : "Go live"}
+              className={`flex items-center gap-1.5 font-black uppercase tracking-wide transition active:scale-95 ${
+                rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"
+              } ${isLive ? "bg-red-500 text-white" : "bg-white/10 text-white"}`}
             >
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
-              {isLive ? "Live" : "Go Live"}
+              {isLive ? "Live" : rail ? "Live" : "Go Live"}
             </button>
           ) : (
-            <span className="flex items-center gap-1.5 rounded-full bg-red-500/20 px-3 py-1.5 text-[11px] font-black uppercase tracking-wide text-red-200">
+            <span className={`flex items-center gap-1.5 bg-red-500/20 font-black uppercase tracking-wide text-red-200 ${rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"}`}>
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-              Watching
+              {rail ? "Live" : "Watching"}
             </span>
           )}
 
@@ -185,16 +202,17 @@ export default function GameLiveDock({
                 if (conn === "connected") void toggleMic();
                 else setVoiceWanted(false);
               }}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-black text-white transition active:scale-95 ${
-                conn === "connected" && micOn ? "bg-emerald-500/80" : "bg-white/10"
-              }`}
+              aria-label="Talk to your opponent"
+              className={`flex items-center gap-1.5 font-black text-white transition active:scale-95 ${
+                rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"
+              } ${conn === "connected" && micOn ? "bg-emerald-500/80" : "bg-white/10"}`}
             >
               {conn === "connected" && micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
-              {voiceLabel}
+              {rail ? (conn === "connected" ? (micOn ? "On" : "Mute") : "Talk") : voiceLabel}
             </button>
           ) : null}
 
-          <span className="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1.5 text-[11px] font-black text-white">
+          <span className={`flex items-center gap-1 bg-white/10 font-black text-white ${rail ? "flex-col rounded-xl px-1.5 py-1 text-[8px]" : "rounded-full px-2.5 py-1.5 text-[11px]"}`}>
             <Eye className="h-3.5 w-3.5" /> {viewers}
           </span>
 
@@ -202,7 +220,7 @@ export default function GameLiveDock({
             type="button"
             onClick={() => setChatOpen(true)}
             aria-label="Live chat"
-            className="rounded-full bg-white/10 p-2 text-white transition active:scale-95"
+            className={`bg-white/10 text-white transition active:scale-95 ${rail ? "rounded-xl p-1.5" : "rounded-full p-2"}`}
           >
             <MessageCircle className="h-4 w-4" />
           </button>
