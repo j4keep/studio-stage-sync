@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Goal, Rocket, Send, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
 import type { PlayKind, PlayType } from "@/lib/football";
 import { footballSfx } from "@/lib/football-sfx";
+import FootballAction from "./FootballAction";
+import { PLAYER_KEYFRAMES } from "./PlayerArt";
+
 
 type LastPlayView = { play: PlayType; kind: PlayKind; yards: number; message: string; mine: boolean } | null;
 
@@ -95,7 +98,7 @@ export default function FootballField({
   const fieldLeft = 100;
   const fieldRight = 800;
   const fieldWidth = fieldRight - fieldLeft;
-  const ballX = fieldLeft + (Math.max(0, Math.min(100, ballOnFromMyGoal)) / 100) * fieldWidth;
+  
   const firstDownMark = myBall ? ballOnFromMyGoal + yardsToGo : ballOnFromMyGoal - yardsToGo;
   const firstDownX = fieldLeft + (Math.max(0, Math.min(100, firstDownMark)) / 100) * fieldWidth;
 
@@ -142,11 +145,10 @@ export default function FootballField({
     >
       <style>{`
         @keyframes fb-flash { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
-        @keyframes fb-ball-pop { 0% { transform: scale(0.7); } 40% { transform: scale(1.3); } 100% { transform: scale(1); } }
         .fb-flash { animation: fb-flash 1.1s ease-out; }
-        .fb-ball { transition: cx 650ms cubic-bezier(.3,.7,.3,1); }
-        .fb-ball-pop { animation: fb-ball-pop 400ms ease-out; transform-origin: center; }
+        ${PLAYER_KEYFRAMES}
       `}</style>
+
 
       <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
         <defs>
@@ -211,11 +213,18 @@ export default function FootballField({
         {/* First-down marker */}
         {!finished && <line x1={firstDownX} y1="88" x2={firstDownX} y2="382" stroke="#f0d84c" strokeWidth="3" opacity="0.85" />}
 
-        {/* Ball */}
-        <g className={flash ? "fb-ball-pop" : undefined}>
-          <ellipse className="fb-ball" cx={ballX} cy="235" rx="12" ry="7" fill="#6b4226" stroke="#1a0f08" strokeWidth="2" />
-          <line x1={ballX - 6} y1="235" x2={ballX + 6} y2="235" stroke="#e8dcc8" strokeWidth="1.4" className="fb-ball" />
-        </g>
+        {/* Players, mascots and the ball */}
+        <FootballAction
+          fieldLeft={fieldLeft}
+          fieldWidth={fieldWidth}
+          ballOnFromMyGoal={ballOnFromMyGoal}
+          myBall={myBall}
+          lastPlay={lastPlay}
+          playNumber={playNumber}
+          myAccent={myAccent}
+          oppAccent={oppAccent}
+        />
+
 
         {flash && (
           <rect
