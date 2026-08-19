@@ -107,7 +107,18 @@ export default function BoxingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [game?.status, seated]);
 
+  // Claim my seat's fighter in the shared state so each side shows a different boxer on both phones.
+  useEffect(() => {
+    if (!game || !user || game.mode !== "multiplayer") return;
+    if (appearanceMap[mySeat]) return;
+    const nextGameState = { ...game.game_state, appearance: { ...appearanceMap, [mySeat]: myAppearance } };
+    setGame({ ...game, game_state: nextGameState });
+    void updateGameState(game.id, { game_state: nextGameState });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.id, mySeat, Boolean(appearanceMap[mySeat])]);
+
   const finished = live.phase === "over";
+
 
   const setMyAppearance = async (partial: Partial<Appearance>) => {
     if (!game || !user) return;
