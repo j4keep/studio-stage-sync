@@ -15,6 +15,8 @@ import BoxingRing, { SKIN_TONES, CHARACTERS } from "@/components/games/boxing/Bo
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { useBoxingLive } from "@/hooks/use-boxing-live";
 import { boxingSfx } from "@/lib/boxing-sfx";
+import boxingIntroArt from "@/assets/games/yaj-boxing-intro.png";
+
 import { Appearance, DEFAULT_APPEARANCE, Seat } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
@@ -102,9 +104,16 @@ export default function BoxingPage() {
     onFinish: (winner) => void handleFinish(winner),
   });
 
+  // The crowd tracks whoever is ahead right now — the bigger the health gap, the
+  // rowdier and louder the arena gets, even between punches.
+  useEffect(() => {
+    boxingSfx.setLead(Math.abs(live.me.health - live.opp.health) / 100);
+  }, [live.me.health, live.opp.health]);
+
   // A 5-second corner countdown (with a rising bell + opening stab) plays once both
   // fighters are in the ring, then the bell rings and the real-time fight begins.
   const [countdown, setCountdown] = useState<number | null>(null);
+
   const countdownStarted = useRef(false);
   useEffect(() => {
     if (!game || !seated || countdownStarted.current) return;
@@ -314,6 +323,8 @@ export default function BoxingPage() {
 
         <GameIntro
           open={!seated && !finished}
+          artUrl={boxingIntroArt}
+
           title="Boxing"
           subtitle={game.mode === "solo" ? "Solo vs Computer — real-time" : `You vs ${opponentName} — real-time`}
           me={{ name: myName, avatarUrl: myAvatar }}

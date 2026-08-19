@@ -15,6 +15,9 @@ type Props = {
   matchups?: GameMatchup[];
   onPlaySolo?: () => void;
   onQuickMatch?: () => void;
+  /** Optional key art shown behind the splash, like the pool table's billiards poster. */
+  artUrl?: string;
+
 };
 
 const ACCENT = "hsl(275 85% 68%)";
@@ -56,6 +59,7 @@ export default function GameIntro({
   matchups,
   onPlaySolo,
   onQuickMatch,
+  artUrl,
 }: Props) {
   if (!open) return null;
 
@@ -67,7 +71,23 @@ export default function GameIntro({
           "radial-gradient(110% 70% at 50% 0%, hsl(268 55% 22%) 0%, hsl(250 45% 10%) 55%, hsl(240 45% 5%) 100%)",
       }}
     >
-      <div className="flex w-full items-center justify-between">
+      {artUrl && (
+        <>
+          <img
+            src={artUrl}
+            alt={`${title} key art`}
+            className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+          />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(6,4,14,0.35) 0%, rgba(6,4,14,0.45) 45%, rgba(6,4,14,0.92) 100%)",
+            }}
+          />
+        </>
+      )}
+      <div className="relative z-10 flex w-full items-center justify-between">
         <button
           type="button"
           onClick={onBack}
@@ -91,8 +111,9 @@ export default function GameIntro({
         </div>
       </div>
 
-      <div className="flex flex-col items-center gap-4">
-        <h1 className="text-center text-3xl font-black text-white drop-shadow">{title}</h1>
+      <div className="relative z-10 flex flex-col items-center gap-4">
+        {!artUrl && <h1 className="text-center text-3xl font-black text-white drop-shadow">{title}</h1>}
+
         <div className="flex items-center gap-5">
           <Face p={me} />
           <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-white/60">
@@ -103,7 +124,7 @@ export default function GameIntro({
         <p className="text-center text-xs font-bold italic text-white/80">{subtitle}</p>
       </div>
 
-      <div className="flex w-full flex-col items-center gap-3">
+      <div className="relative z-10 flex w-full flex-col items-center gap-3">
         <button
           type="button"
           onClick={onStart}

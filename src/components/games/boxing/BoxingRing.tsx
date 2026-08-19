@@ -211,11 +211,17 @@ export default function BoxingRing({
         @keyframes bx-spark-pop { 0% { transform: scale(0.3); opacity: 0; } 35% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
         @keyframes bx-foot { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
         @keyframes bx-light-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes bx-blink { 0%, 45% { opacity: 0.12; } 55%, 100% { opacity: 0.95; } }
+        @keyframes bx-flash { 0%, 92% { opacity: 0; } 94% { opacity: 0.85; } 100% { opacity: 0; } }
+
         @keyframes bx-count-pop { 0% { transform: scale(0.4); opacity: 0; } 30% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0; } }
         .bx-shaking { animation: bx-shake 200ms ease-in-out; }
         .bx-spark { animation: bx-spark-pop 220ms ease-out; transform-origin: center; }
         .bx-footwork { animation: bx-foot 900ms ease-in-out infinite; }
         .bx-light { animation: bx-light-pulse 2.2s ease-in-out infinite; transform-origin: center; }
+        .bx-blink { animation: bx-blink 1.2s steps(1, end) infinite; }
+        .bx-flash { animation: bx-flash 4s linear infinite; }
+
         .bx-count { animation: bx-count-pop 980ms ease-out; transform-origin: center; }
       `}</style>
 
@@ -271,6 +277,46 @@ export default function BoxingRing({
             </g>
           ))}
         </g>
+
+        {/* Colour chase bulbs strung across the stands, blinking on their own clocks */}
+        <g>
+          {Array.from({ length: 30 }).map((_, i) => {
+            const x = 14 + i * 30.5;
+            const y = i % 2 === 0 ? 46 : 50;
+            const hue = [204, 45, 340, 150, 275][i % 5];
+            return (
+              <circle
+                key={`bulb-${i}`}
+                cx={x}
+                cy={y}
+                r="3.1"
+                fill={`hsl(${hue} 95% 68%)`}
+                className="bx-blink"
+                style={{ animationDelay: `${(i % 7) * 0.19}s`, animationDuration: `${1 + (i % 4) * 0.32}s` }}
+              />
+            );
+          })}
+        </g>
+
+        {/* Press-row camera flashes popping randomly in the dark of the crowd */}
+        <g>
+          {Array.from({ length: 12 }).map((_, i) => {
+            const x = 40 + ((i * 137) % 830);
+            const y = 16 + ((i * 53) % 30);
+            return (
+              <circle
+                key={`flash-${i}`}
+                cx={x}
+                cy={y}
+                r="6"
+                fill="#ffffff"
+                className="bx-flash"
+                style={{ animationDelay: `${(i * 0.73) % 5.2}s`, animationDuration: `${3.4 + (i % 5) * 0.6}s` }}
+              />
+            );
+          })}
+        </g>
+
 
         {/* Ring floor */}
         <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="url(#bx-floor)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
