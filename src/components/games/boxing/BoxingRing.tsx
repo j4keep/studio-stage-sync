@@ -291,7 +291,11 @@ export default function BoxingRing({
             <X className="h-4 w-4" />
           </button>
           <div className="w-32 rounded-xl bg-black/45 p-1.5">
-            <p className="mb-1 truncate text-[10px] font-black text-white">{myName}</p>
+            <p className="mb-1 flex items-center gap-1 truncate text-[10px] font-black text-white">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: myAccent }} />
+              {myName}
+            </p>
+
             <StatBar label="HP" value={myHealth} max={100} tone="health" />
             <div className="mt-1">
               <StatBar label="STA" value={myStamina} max={100} tone="stamina" />
