@@ -104,9 +104,16 @@ export default function BoxingPage() {
     onFinish: (winner) => void handleFinish(winner),
   });
 
+  // The crowd tracks whoever is ahead right now — the bigger the health gap, the
+  // rowdier and louder the arena gets, even between punches.
+  useEffect(() => {
+    boxingSfx.setLead(Math.abs(live.me.health - live.opp.health) / 100);
+  }, [live.me.health, live.opp.health]);
+
   // A 5-second corner countdown (with a rising bell + opening stab) plays once both
   // fighters are in the ring, then the bell rings and the real-time fight begins.
   const [countdown, setCountdown] = useState<number | null>(null);
+
   const countdownStarted = useRef(false);
   useEffect(() => {
     if (!game || !seated || countdownStarted.current) return;
