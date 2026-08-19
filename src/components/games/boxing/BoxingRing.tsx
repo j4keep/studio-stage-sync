@@ -271,8 +271,9 @@ export default function BoxingRing({
           </g>
         ))}
 
-        <FighterArt side="left" appearance={myAppearance} accent="hsl(204 100% 55%)" anim={myAnim} advance={myAdvance} />
-        <FighterArt side="right" appearance={oppAppearance} accent="#f59e0b" anim={oppAnim} advance={oppAdvance} />
+        <FighterArt side="left" appearance={myAppearance} accent={myAccent} anim={myAnim} advance={myAdvance} />
+        <FighterArt side="right" appearance={oppAppearance} accent={oppAccent} anim={oppAnim} advance={oppAdvance} />
+
         {spark && <ImpactSpark x={spark.x} y={spark.y} />}
       </svg>
 
