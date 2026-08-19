@@ -29,6 +29,7 @@ import triviaArt from "@/assets/games/trivia.jpg";
 import dashArt from "@/assets/games/yaj-dash.jpg";
 import poolArtAsset from "@/assets/games/yaj-billiards-intro.png.asset.json";
 const poolArt = poolArtAsset.url;
+import boxingArt from "@/assets/games/boxing.svg";
 
 type CardDef = {
   type: GameType;
@@ -75,6 +76,18 @@ const CARDS: CardDef[] = [
     difficulty: "Medium",
     players: "2 players",
     image: poolArt,
+    live: true,
+    solo: true,
+    multi: true,
+    featured: true,
+  },
+  {
+    type: "boxing",
+    title: "Boxing",
+    desc: "Jab, hook, block — knock 'em out.",
+    difficulty: "Easy",
+    players: "2 players",
+    image: boxingArt,
     live: true,
     solo: true,
     multi: true,

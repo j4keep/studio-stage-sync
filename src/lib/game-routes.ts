@@ -5,6 +5,7 @@ import { initialCheckers } from "@/lib/checkers";
 import { initialDominoes } from "@/lib/dominoes";
 import { pickQuestions } from "@/lib/trivia";
 import { initialPool } from "@/lib/pool";
+import { initialBoxing } from "@/lib/boxing";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -14,6 +15,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   trivia: "trivia",
   yaj_dash: "dash",
   pool: "pool",
+  boxing: "boxing",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -35,6 +37,8 @@ export function initialStateFor(type: GameType): any {
       return { questions: pickQuestions(), i: 0, scores: [0, 0], moveNumber: 0 };
     case "pool":
       return { pool: initialPool(), moveNumber: 0 };
+    case "boxing":
+      return { boxing: initialBoxing(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }

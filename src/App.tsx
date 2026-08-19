@@ -125,6 +125,7 @@ import DominoesPage from "./pages/games/DominoesPage";
 import TriviaPage from "./pages/games/TriviaPage";
 import YajDashPage from "./pages/games/YajDashPage";
 import PoolPage from "./pages/games/PoolPage";
+import BoxingPage from "./pages/games/BoxingPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import DealsHomePage from "./pages/deals/DealsHomePage";
 import DealDetailPage from "./pages/deals/DealDetailPage";
@@ -413,6 +414,7 @@ const ProtectedRoutes = () => {
         <Route path="/games/trivia/:id" element={<TriviaPage />} />
         <Route path="/games/dash" element={<YajDashPage />} />
         <Route path="/games/pool/:id" element={<PoolPage />} />
+        <Route path="/games/boxing/:id" element={<BoxingPage />} />
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
