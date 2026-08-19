@@ -356,15 +356,31 @@ export async function updateMarketplaceProfile(
   >,
 ) {
   await ensureMarketplaceProfile(userId);
+  // Delivery location lives in a private, owner-only table — never in the public profile.
+  const { buyer_address, buyer_lat, buyer_lng, ...profilePatch } = patch as Record<string, any>;
+  if (buyer_address !== undefined || buyer_lat !== undefined || buyer_lng !== undefined) {
+    const { error: locError } = await (supabase as any).from("marketplace_buyer_locations").upsert(
+      {
+        user_id: userId,
+        ...(buyer_address !== undefined ? { buyer_address } : {}),
+        ...(buyer_lat !== undefined ? { buyer_lat } : {}),
+        ...(buyer_lng !== undefined ? { buyer_lng } : {}),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
+    if (locError) throw locError;
+  }
   const { data, error } = await (supabase as any)
     .from("marketplace_profiles")
-    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
+    .upsert({ user_id: userId, ...profilePatch, updated_at: new Date().toISOString() }, { onConflict: "user_id" })
     .select("*")
     .maybeSingle();
   if (error) throw error;
-  return data as MarketplaceProfile;
+  return { ...(data || {}), buyer_address, buyer_lat, buyer_lng } as MarketplaceProfile;
 
 }
+
 
 export type ListListingsOpts = {
   category?: string;
