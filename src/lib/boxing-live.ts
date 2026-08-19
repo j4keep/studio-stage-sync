@@ -25,6 +25,11 @@ export const STEP = 34;
 export const MOVE_COOLDOWN_MS = 190;
 /** Free lunge distance every punch carries with it. */
 export const LUNGE = 62;
+/** Fighters start already near mid-ring so they trade real punches immediately. */
+export const START_ADVANCE = 52;
+/** Every punch drives the attacker forward into the opponent. */
+export const PUNCH_STEP = 16;
+
 
 export const PUNCHES: Record<Punch, { min: number; max: number; cost: number; accuracy: number; reach: number; cooldownMs: number; windupMs: number }> = {
   jab: { min: 3, max: 8, cost: 6, accuracy: 0.92, reach: 96, cooldownMs: 330, windupMs: 110 },
@@ -58,8 +63,9 @@ export type FighterLive = {
 };
 
 export function newFighter(): FighterLive {
-  return { health: MAX_HEALTH, stamina: MAX_STAMINA, guard: null, guardUntil: 0, advance: 0 };
+  return { health: MAX_HEALTH, stamina: MAX_STAMINA, guard: null, guardUntil: 0, advance: START_ADVANCE };
 }
+
 
 export function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));

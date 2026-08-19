@@ -39,7 +39,12 @@ export function characterFor(appearance: Appearance): CharacterDef {
 }
 
 /** How far a fighter travels toward the middle of the ring to land a punch. */
-const APPROACH: Record<string, number> = { jab: 96, hook: 108, uppercut: 88 };
+const APPROACH: Record<string, number> = { jab: 64, hook: 72, uppercut: 58 };
+/** Both fighters are always drawn this much closer than their corners. */
+const BASE_CLOSE = 34;
+/** Never cross past this so the two boxers touch gloves without overlapping. */
+const MAX_CLOSE = 168;
+
 
 /**
  * A fully illustrated boxer — head, torso, trunks, two-segment arms, gloves, boots —
@@ -73,7 +78,8 @@ export default function FighterArt({
   const punching = anim === "jab" || anim === "hook" || anim === "uppercut";
 
   const lunge = punching ? APPROACH[anim] : guarding ? -10 : 0;
-  const step = advance + lunge;
+  const step = Math.min(MAX_CLOSE, BASE_CLOSE + advance + lunge);
+
   const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
   const bob = anim === "uppercut" ? -8 : ducking ? 16 : 0;
   const knockback = hit ? 26 : 0;

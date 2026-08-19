@@ -8,7 +8,9 @@ import {
   MOVE_COOLDOWN_MS,
   MoveDir,
   PUNCHES,
+  PUNCH_STEP,
   Punch,
+
   PunchOutcome,
   GUARD_COOLDOWN_MS,
   GUARD_MS,
@@ -203,7 +205,7 @@ export function useBoxingLive({
           if (intent.kind === "punch") {
             const stats = PUNCHES[intent.punch];
             if (oppRef.current.stamina >= stats.cost) {
-              oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0 };
+              oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0, advance: clamp(oppRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE) };
               const outcome = resolvePunch(intent.punch, oppRef.current, meRef.current, now);
               setAnim("opp", intent.punch, stats.cooldownMs * 0.6);
               oppPunchCdRef.current = now + stats.cooldownMs + 120 + Math.random() * 320;
@@ -277,8 +279,16 @@ export function useBoxingLive({
         return;
       }
       punchCdRef.current = { ...punchCdRef.current, [p]: now + stats.cooldownMs };
-      meRef.current = { ...meRef.current, stamina: clamp(meRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0 };
+      meRef.current = {
+        ...meRef.current,
+        stamina: clamp(meRef.current.stamina - stats.cost, 0, 100),
+        guard: null,
+        guardUntil: 0,
+        // Step into the opponent so the punch actually connects instead of swinging at air.
+        advance: clamp(meRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE),
+      };
       const outcome = resolvePunch(p, meRef.current, oppRef.current, now);
+
       setAnim("me", p, stats.cooldownMs * 0.6);
       bump();
 
