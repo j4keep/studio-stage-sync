@@ -287,11 +287,14 @@ export async function ensureMarketplaceProfile(userId: string): Promise<Marketpl
 }
 
 export async function getMarketplaceProfile(userId: string): Promise<MarketplaceProfile | null> {
-  const [{ data, error }, { data: yaj }] = await Promise.all([
+  const [{ data, error }, { data: yaj }, { data: loc }] = await Promise.all([
     (supabase as any).from("marketplace_profiles").select("*").eq("user_id", userId).maybeSingle(),
     supabase.from("profiles").select("user_id, display_name, avatar_url, created_at").eq("user_id", userId).maybeSingle(),
+    // Private delivery location — RLS only ever returns the signed-in owner's own row.
+    (supabase as any).from("marketplace_buyer_locations").select("*").eq("user_id", userId).maybeSingle(),
   ]);
   if (error && !/schema cache|does not exist/i.test(error.message || "")) throw error;
+
 
   // Always prefer live YAJ identity for name/photo — Marketplace is not a second account.
   if (data || yaj) {
