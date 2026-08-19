@@ -8,7 +8,9 @@ import {
   MOVE_COOLDOWN_MS,
   MoveDir,
   PUNCHES,
+  PUNCH_STEP,
   Punch,
+
   PunchOutcome,
   GUARD_COOLDOWN_MS,
   GUARD_MS,
