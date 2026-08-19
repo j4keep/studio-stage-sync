@@ -368,14 +368,7 @@ export default function PoolPage() {
           onBack={() => navigate("/games")}
           howToPlay={HOW_TO_PLAY}
           sideDock={
-            <PendingChallengeGate
-        gameId={game.id}
-        userId={user?.id}
-        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
-        challengerName={opponentName}
-        onAccepted={refresh}
-      />
-      <GameLiveDock
+            <GameLiveDock
               gameId={game.id}
               userId={user?.id}
               isPlayer={!!me}
