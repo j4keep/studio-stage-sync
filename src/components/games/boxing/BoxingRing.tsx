@@ -113,6 +113,9 @@ export default function BoxingRing({
   oppHealth,
   oppStamina,
   oppAdvance,
+  myAccent,
+  oppAccent,
+
   myAnim,
   oppAnim,
   impact,
