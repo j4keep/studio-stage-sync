@@ -16,13 +16,13 @@ import {
   winningLine,
 } from "@/lib/tic-tac-toe";
 import {
-import GameLiveDock from "@/components/games/live/GameLiveDock";
   bumpStats,
   createMultiplayerGame,
   createSoloGame,
   recordMove,
   updateGameState,
 } from "@/lib/games";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 
 export default function TicTacToePage() {
   const { id } = useParams<{ id: string }>();
