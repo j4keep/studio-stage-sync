@@ -7,6 +7,7 @@ import { pickQuestions } from "@/lib/trivia";
 import { initialPool } from "@/lib/pool";
 import { initialBoxing } from "@/lib/boxing";
 import { initialBattleship, placeFleet, randomFleet } from "@/lib/battleship";
+import { initialDrivingRun } from "@/lib/driving-run";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -18,6 +19,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   pool: "pool",
   boxing: "boxing",
   battleship: "battleship",
+  driving: "driving",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -44,6 +46,8 @@ export function initialStateFor(type: GameType): any {
     case "battleship":
       // Solo mode only reaches this path (see below) — pre-place the computer's fleet.
       return { battleship: placeFleet(initialBattleship(), 1, randomFleet()), moveNumber: 0 };
+    case "driving":
+      return { drivingRun: initialDrivingRun(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }
