@@ -50,11 +50,14 @@ export default function FighterArt({
   appearance,
   accent,
   anim,
+  advance = 0,
 }: {
   side: "left" | "right";
   appearance: Appearance;
   accent: string;
   anim: FighterAnim;
+  /** How far this fighter has walked toward the middle of the ring (ring units). */
+  advance?: number;
 }) {
   const def = characterFor(appearance);
   const facing = side === "left" ? 1 : -1;
@@ -69,10 +72,12 @@ export default function FighterArt({
   const ducking = anim === "guard-dodge";
   const punching = anim === "jab" || anim === "hook" || anim === "uppercut";
 
-  const step = punching ? APPROACH[anim] : guarding ? -14 : 0;
+  const lunge = punching ? APPROACH[anim] : guarding ? -10 : 0;
+  const step = advance + lunge;
   const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
   const bob = anim === "uppercut" ? -8 : ducking ? 16 : 0;
-  const knockback = hit ? 30 : 0;
+  const knockback = hit ? 26 : 0;
+
 
   const bodyStyle: CSSProperties = {
     transform: ko
