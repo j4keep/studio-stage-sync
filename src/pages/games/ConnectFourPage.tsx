@@ -154,6 +154,7 @@ export default function ConnectFourPage() {
 
   return (
     <GameShell
+      gameType="connect_four"
       title="Connect Four"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}

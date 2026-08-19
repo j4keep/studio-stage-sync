@@ -148,6 +148,7 @@ export default function TriviaPage() {
 
   return (
     <GameShell
+      gameType="trivia"
       title="Trivia Battle"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
