@@ -98,7 +98,7 @@ export default function FootballField({
   const fieldLeft = 100;
   const fieldRight = 800;
   const fieldWidth = fieldRight - fieldLeft;
-  const ballX = fieldLeft + (Math.max(0, Math.min(100, ballOnFromMyGoal)) / 100) * fieldWidth;
+  const firstDownMark0 = ballOnFromMyGoal;
   const firstDownMark = myBall ? ballOnFromMyGoal + yardsToGo : ballOnFromMyGoal - yardsToGo;
   const firstDownX = fieldLeft + (Math.max(0, Math.min(100, firstDownMark)) / 100) * fieldWidth;
 
