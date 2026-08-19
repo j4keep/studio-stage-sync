@@ -11,10 +11,10 @@ import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import FootballRunner from "@/components/games/football/FootballRunner";
+import FootballPlay from "@/components/games/football/FootballPlay";
 import { footballSfx } from "@/lib/football-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { DriveResult, FootballRunState, Seat, applyDriveResult, initialFootballRun } from "@/lib/football-run";
+import { DriveResult, FootballRunState, PlayType, Seat, applyDriveResult, initialFootballRun } from "@/lib/football-run";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
@@ -26,12 +26,14 @@ export default function FootballPage() {
   const { user } = useAuth();
   const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const statsWritten = useRef<string | null>(null);
+  const computerPlayType = useRef<PlayType>("run");
 
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
   const [muted, setMuted] = useState(footballSfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
+  const [chosenPlay, setChosenPlay] = useState<PlayType | null>(null);
 
   const run: FootballRunState = (game?.game_state?.footballRun as FootballRunState) || initialFootballRun();
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
@@ -42,6 +44,15 @@ export default function FootballPage() {
   const computersTurn = game?.mode === "solo" && !finished && run.possession === oppSeat;
 
   const { stats, matchups } = useGameRecord("football", user?.id, finished);
+
+  // Reset the play-call choice whenever a new drive comes up for me.
+  useEffect(() => {
+    setChosenPlay(null);
+  }, [run.driveNumber, mySeat]);
+
+  useEffect(() => {
+    if (computersTurn) computerPlayType.current = Math.random() < 0.55 ? "run" : "pass";
+  }, [computersTurn, run.driveNumber]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -170,7 +181,9 @@ export default function FootballPage() {
     : `${oppLabel}'s drive — ${Math.min(oppDriveNumber, run.maxDrives)} of ${run.maxDrives}`;
 
   const resultTitle = draw ? "Ends in a tie" : iWon ? "You win!" : `${oppLabel} wins`;
-  const resultDetail = finished ? `Final score — you ${run.scores[mySeat]} · ${oppLabel} ${run.scores[oppSeat]}` : undefined;
+  const resultDetail = finished
+    ? `Final score — you ${run.scores[mySeat]} · ${oppLabel} ${run.scores[oppSeat]}  •  TDs ${run.touchdowns[mySeat]}-${run.touchdowns[oppSeat]}  •  ${run.totalYards[mySeat]} total yds, ${run.totalDodges[mySeat]} dodges`
+    : undefined;
 
   const toggleMute = () => {
     const next = !muted;
@@ -178,13 +191,17 @@ export default function FootballPage() {
     footballSfx.setMuted(next);
   };
 
+  const showPlayCall = seated && !finished && myTurn && !chosenPlay;
+  const activePlayType = myTurn ? chosenPlay : computersTurn ? computerPlayType.current : null;
+
   return (
     <LandscapeStage auto>
       <div className="relative h-full w-full">
-        {seated && !finished && (myTurn || computersTurn) && (
-          <FootballRunner
-            key={`${mySeat === run.possession ? "me" : "opp"}-${run.driveNumber}`}
+        {seated && !finished && (myTurn || computersTurn) && activePlayType && !showPlayCall && (
+          <FootballPlay
+            key={`${run.possession}-${run.driveNumber}`}
             active
+            playType={activePlayType}
             auto={!myTurn}
             carrierAccent={SEAT_ACCENTS[run.possession]}
             defenderAccent={SEAT_ACCENTS[run.possession === 0 ? 1 : 0]}
@@ -199,8 +216,9 @@ export default function FootballPage() {
         )}
 
         {seated && !finished && !myTurn && !computersTurn && (
-          <FootballRunner
+          <FootballPlay
             active={false}
+            playType="run"
             carrierAccent={SEAT_ACCENTS[mySeat]}
             defenderAccent={SEAT_ACCENTS[oppSeat]}
             driveLabel={driveLabel}
@@ -211,6 +229,33 @@ export default function FootballPage() {
             onBack={() => navigate("/games")}
             onComplete={() => {}}
           />
+        )}
+
+        {showPlayCall && (
+          <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/75 px-6">
+            <p className="text-xs font-black uppercase tracking-widest text-white/60">{driveLabel}</p>
+            <p className="text-lg font-black text-white">Call your play</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setChosenPlay("run")}
+                className="flex w-32 flex-col items-center gap-1 rounded-2xl border-2 border-[hsl(204,100%,55%)] bg-[hsl(210,60%,14%)] px-4 py-4 text-white active:scale-95"
+              >
+                <span className="text-2xl">🏃</span>
+                <span className="text-sm font-black uppercase">Run</span>
+                <span className="text-[10px] text-white/60">Hand off, dodge live</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setChosenPlay("pass")}
+                className="flex w-32 flex-col items-center gap-1 rounded-2xl border-2 border-[#f59e0b] bg-[hsl(30,50%,14%)] px-4 py-4 text-white active:scale-95"
+              >
+                <span className="text-2xl">🏈</span>
+                <span className="text-sm font-black uppercase">Pass</span>
+                <span className="text-[10px] text-white/60">Aim &amp; throw, then dodge</span>
+              </button>
+            </div>
+          </div>
         )}
 
         <PendingChallengeGate
@@ -234,7 +279,7 @@ export default function FootballPage() {
         <GameIntro
           open={!seated && !finished}
           title="Football"
-          subtitle={game.mode === "solo" ? "Drag to dodge — solo vs Computer" : `Drag to dodge — you vs ${opponentName}`}
+          subtitle={game.mode === "solo" ? "Call the play — solo vs Computer" : `Call the play — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}

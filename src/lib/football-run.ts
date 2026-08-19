@@ -8,11 +8,16 @@
 
 export type Seat = 0 | 1;
 
+export type DriveOutcome = "touchdown" | "tackled" | "incomplete" | "interception" | "sack";
+export type PlayType = "run" | "pass";
+
 export type DriveResult = {
   yards: number;
   touchdown: boolean;
   dodges: number;
   score: number;
+  outcome: DriveOutcome;
+  playType: PlayType;
 };
 
 export type DriveLog = { seat: Seat; result: DriveResult };
@@ -22,6 +27,9 @@ export type FootballRunPhase = "active" | "over";
 export type FootballRunState = {
   scores: [number, number];
   drivesPlayed: [number, number];
+  touchdowns: [number, number];
+  totalYards: [number, number];
+  totalDodges: [number, number];
   /** Whose drive is up next. */
   possession: Seat;
   maxDrives: number;
@@ -40,6 +48,9 @@ export function initialFootballRun(): FootballRunState {
   return {
     scores: [0, 0],
     drivesPlayed: [0, 0],
+    touchdowns: [0, 0],
+    totalYards: [0, 0],
+    totalDodges: [0, 0],
     possession: 0,
     maxDrives: MAX_DRIVES_PER_SIDE,
     phase: "active",
@@ -60,6 +71,12 @@ export function applyDriveResult(state: FootballRunState, seat: Seat, result: Dr
   scores[seat] += result.score;
   const drivesPlayed: [number, number] = [...state.drivesPlayed] as [number, number];
   drivesPlayed[seat] += 1;
+  const touchdowns: [number, number] = [...state.touchdowns] as [number, number];
+  if (result.touchdown) touchdowns[seat] += 1;
+  const totalYards: [number, number] = [...state.totalYards] as [number, number];
+  totalYards[seat] += Math.max(0, result.yards);
+  const totalDodges: [number, number] = [...state.totalDodges] as [number, number];
+  totalDodges[seat] += result.dodges;
 
   const bothDone = drivesPlayed[0] >= state.maxDrives && drivesPlayed[1] >= state.maxDrives;
   let phase: FootballRunPhase = "active";
@@ -77,24 +94,13 @@ export function applyDriveResult(state: FootballRunState, seat: Seat, result: Dr
     ...state,
     scores,
     drivesPlayed,
+    touchdowns,
+    totalYards,
+    totalDodges,
     possession,
     phase,
     winnerSeat,
     lastDrive: { seat, result },
     driveNumber: state.driveNumber + 1,
   };
-}
-
-export type DefenderSpawn = { yardLine: number; laneX: number };
-
-/** Evenly spread defenders downfield with lateral jitter, injectable RNG for tests. */
-export function spawnDefenders(count: number, rand: () => number = Math.random): DefenderSpawn[] {
-  const spawns: DefenderSpawn[] = [];
-  const span = 92 / count;
-  for (let i = 0; i < count; i++) {
-    const yardLine = 10 + i * span + rand() * span * 0.6;
-    const laneX = 15 + rand() * 70;
-    spawns.push({ yardLine, laneX });
-  }
-  return spawns;
 }
