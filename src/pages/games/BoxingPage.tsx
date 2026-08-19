@@ -13,8 +13,9 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import BoxingRing, { SKIN_TONES, CHARACTERS } from "@/components/games/boxing/BoxingRing";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { Action, Appearance, BoxingState, DEFAULT_APPEARANCE, Seat, computerAction, initialBoxing, resolveAction } from "@/lib/boxing";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { useBoxingLive } from "@/hooks/use-boxing-live";
+import { Appearance, DEFAULT_APPEARANCE, Seat } from "@/lib/boxing";
+import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: false, character: "man" };
@@ -33,7 +34,6 @@ export default function BoxingPage() {
   const { user } = useAuth();
   const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const statsWritten = useRef<string | null>(null);
-  const boxingRef = useRef<BoxingState>(initialBoxing());
 
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -41,8 +41,9 @@ export default function BoxingPage() {
   const [muted, setMuted] = useState(false);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
+  const [ended, setEnded] = useState(false);
 
-  const { stats, matchups } = useGameRecord("boxing", user?.id, finishedDep(game));
+  const { stats, matchups } = useGameRecord("boxing", user?.id, ended);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -57,58 +58,49 @@ export default function BoxingPage() {
       });
   }, [user?.id]);
 
-  const boxing: BoxingState = (game?.game_state?.boxing as BoxingState) || initialBoxing();
-  boxingRef.current = boxing;
-  const moveNumber: number = game?.game_state?.moveNumber ?? 0;
   const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
   const oppSeat: Seat = mySeat === 0 ? 1 : 0;
-  const finished = boxing.phase === "over";
-  const myTurn = game?.status === "active" && !finished && boxing.turnSeat === mySeat;
 
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
   const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
   const oppAppearance: Appearance =
     appearanceMap[oppSeat] || (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : OPP_DEFAULT_APPEARANCE);
 
-  // Persist stats once when a match finishes.
-  useEffect(() => {
-    if (!game || !user || !finished || statsWritten.current === game.id) return;
-    if (game.status === "completed") {
-      statsWritten.current = game.id;
-      return;
-    }
+  /** Persist the result once, when the real-time match ends. */
+  const handleFinish = async (winner: "me" | "opp" | null) => {
+    setEnded(true);
+    if (!game || !user || statsWritten.current === game.id) return;
     statsWritten.current = game.id;
-    const draw = boxing.winnerSeat === null;
-    const iWon = boxing.winnerSeat === mySeat;
-    const outcome = draw ? "draw" : iWon ? "win" : "loss";
-    void (async () => {
+    const draw = winner === null;
+    const iWon = winner === "me";
+    if (game.status !== "completed") {
       await updateGameState(game.id, {
         status: "completed",
         is_draw: draw,
         winner_user_id: draw ? null : iWon ? user.id : (opponent?.user_id ?? null),
         finished_at: new Date().toISOString(),
       });
-      await bumpStats(user.id, "boxing", outcome);
-      await refresh();
-    })();
-  }, [finished, game?.id, game?.status]);
-
-  const commit = async (state: BoxingState, n: number, nextTurnUserId: string | null) => {
-    if (!game || !user) return;
-    const nextGameState = { ...game.game_state, boxing: state, moveNumber: n };
-    setGame({ ...game, game_state: nextGameState, current_turn_user_id: nextTurnUserId });
-    await updateGameState(game.id, { game_state: nextGameState, current_turn_user_id: nextTurnUserId });
+    }
+    await bumpStats(user.id, "boxing", draw ? "draw" : iWon ? "win" : "loss");
     await refresh();
   };
 
-  const applyAction = async (action: Action) => {
-    if (!game || !user || !myTurn) return;
-    const next = resolveAction(boxing, mySeat, action);
-    const n = moveNumber + 1;
-    await recordMove(game.id, user.id, n, { action, seat: mySeat });
-    const nextTurnUserId = game.mode === "solo" ? user.id : (opponent?.user_id ?? null);
-    await commit(next, n, nextTurnUserId);
-  };
+  const live = useBoxingLive({
+    gameId: game?.id,
+    mode: (game?.mode as "solo" | "multiplayer") || "solo",
+    enabled: Boolean(game) && seated,
+    onFinish: (winner) => void handleFinish(winner),
+  });
+
+  // The bell rings as soon as both fighters are in the ring — no turn order at all.
+  useEffect(() => {
+    if (!game || !seated) return;
+    if (game.status !== "active") return;
+    live.start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [game?.status, seated]);
+
+  const finished = live.phase === "over";
 
   const setMyAppearance = async (partial: Partial<Appearance>) => {
     if (!game || !user) return;
@@ -118,33 +110,21 @@ export default function BoxingPage() {
     await updateGameState(game.id, { game_state: nextGameState });
   };
 
-  // Drive the computer's turn in solo mode — delayed so the human's own punch animates first.
-  useEffect(() => {
-    if (!game || game.mode !== "solo" || finished) return;
-    if (boxing.turnSeat !== oppSeat) return;
-    const t = window.setTimeout(() => {
-      if (!user) return;
-      const state = boxingRef.current;
-      const action = computerAction(state, oppSeat);
-      const next = resolveAction(state, oppSeat, action);
-      void commit(next, moveNumber + 1, user.id);
-    }, 1100);
-    return () => window.clearTimeout(t);
-  }, [game?.id, boxing.turnSeat, finished, moveNumber]);
+  const freshState = () => ({ live: true, appearance: { [mySeat]: myAppearance } });
 
   const rematch = async () => {
     if (!user || !game) return;
     try {
-      const state = { boxing: initialBoxing(), moveNumber: 0, appearance: { [mySeat]: myAppearance } };
       const g =
         game.mode === "solo"
-          ? await createSoloGame("boxing", user.id, state)
+          ? await createSoloGame("boxing", user.id, freshState())
           : opponent?.user_id
-            ? await createMultiplayerGame("boxing", user.id, opponent.user_id, state)
+            ? await createMultiplayerGame("boxing", user.id, opponent.user_id, freshState())
             : null;
       if (g) {
         statsWritten.current = null;
         navigate(gameRoute("boxing", g.id), { replace: true });
+        window.location.reload();
       }
     } catch (e: any) {
       toast({ title: "Could not start a rematch", description: e.message, variant: "destructive" });
@@ -154,21 +134,18 @@ export default function BoxingPage() {
   const challengeOther = async (opponentId: string, name: string) => {
     if (!user) return;
     try {
-      const g = await createMultiplayerGame("boxing", user.id, opponentId, {
-        boxing: initialBoxing(),
-        moveNumber: 0,
-        appearance: { 0: myAppearance },
-      });
+      const g = await createMultiplayerGame("boxing", user.id, opponentId, { live: true, appearance: { 0: myAppearance } });
       toast({ title: `Challenge sent to ${name}` });
       navigate(gameRoute("boxing", g.id), { replace: true });
+      window.location.reload();
     } catch (e: any) {
       toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
     }
   };
 
   const shareResult = async () => {
-    const draw = boxing.winnerSeat === null;
-    const iWon = boxing.winnerSeat === mySeat;
+    const draw = live.winner === null;
+    const iWon = live.winner === "me";
     const text = `I just ${draw ? "drew" : iWon ? "won" : "lost"} a boxing match on YAJ 🥊`;
     try {
       if (navigator.share) await navigator.share({ text });
@@ -201,11 +178,11 @@ export default function BoxingPage() {
   }
 
   const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
-  const draw = finished && boxing.winnerSeat === null;
-  const iWon = finished && boxing.winnerSeat === mySeat;
+  const draw = finished && live.winner === null;
+  const iWon = finished && live.winner === "me";
   const outcome: "win" | "loss" | "draw" = draw ? "draw" : iWon ? "win" : "loss";
 
-  const turnLabel =
+  const statusLabel =
     game.status === "waiting"
       ? "Waiting"
       : game.status === "cancelled"
@@ -216,14 +193,18 @@ export default function BoxingPage() {
             : iWon
               ? "You won"
               : "You lost"
-          : myTurn
-            ? "Your turn"
-            : `${oppLabel}'s turn`;
+          : live.phase === "fighting"
+            ? "Live — fight!"
+            : "Get ready";
 
-  const resultTitle = draw ? "Goes the distance" : iWon ? "Victory by knockout!" : `${oppLabel} wins`;
-  const resultDetail = finished
-    ? `Final health — you ${Math.round(boxing.boxers[mySeat].health)} · ${oppLabel} ${Math.round(boxing.boxers[oppSeat].health)}`
-    : undefined;
+  const resultTitle = draw
+    ? "Goes the distance"
+    : iWon
+      ? live.decision
+        ? "Victory by decision!"
+        : "Victory by knockout!"
+      : `${oppLabel} wins`;
+  const resultDetail = finished ? `Final health — you ${Math.round(live.me.health)} · ${oppLabel} ${Math.round(live.opp.health)}` : undefined;
 
   return (
     <LandscapeStage auto>
@@ -231,24 +212,34 @@ export default function BoxingPage() {
         <BoxingRing
           myName={myName}
           myAppearance={myAppearance}
-          myHealth={boxing.boxers[mySeat].health}
-          myStamina={boxing.boxers[mySeat].stamina}
+          myHealth={live.me.health}
+          myStamina={live.me.stamina}
+          myAdvance={live.me.advance}
           oppName={oppLabel}
           oppAppearance={oppAppearance}
           isComputer={game.mode === "solo"}
-          oppHealth={boxing.boxers[oppSeat].health}
-          oppStamina={boxing.boxers[oppSeat].stamina}
-          lastAction={boxing.lastAction ? { ...boxing.lastAction, seat: boxing.lastAction.seat === mySeat ? 0 : 1 } : null}
-          interactive={Boolean(myTurn) && seated}
+          oppHealth={live.opp.health}
+          oppStamina={live.opp.stamina}
+          oppAdvance={live.opp.advance}
+          myAnim={live.myAnim}
+          oppAnim={live.oppAnim}
+          impact={live.impact}
+          gap={live.gap}
+          cooldowns={live.cooldowns}
+          guardCooldown={live.guardCooldown}
+          secondsLeft={live.secondsLeft}
+          message={live.message}
+          interactive={seated && live.phase === "fighting"}
           finished={finished}
           winnerIsMe={finished ? iWon : null}
-          turnLabel={turnLabel}
-          myTurn={Boolean(myTurn)}
+          statusLabel={statusLabel}
           muted={muted}
           onToggleMute={() => setMuted((m) => !m)}
           onBack={() => navigate("/games")}
           onCustomize={() => setShowCustomize(true)}
-          onAction={(action) => void applyAction(action)}
+          onPunch={live.punch}
+          onGuard={live.guard}
+          onMove={live.move}
         />
 
         <PendingChallengeGate
@@ -272,7 +263,7 @@ export default function BoxingPage() {
         <GameIntro
           open={!seated && !finished}
           title="Boxing"
-          subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
+          subtitle={game.mode === "solo" ? "Solo vs Computer — real-time" : `You vs ${opponentName} — real-time`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
@@ -287,9 +278,10 @@ export default function BoxingPage() {
             void (async () => {
               if (!user) return;
               try {
-                const g = await createSoloGame("boxing", user.id, { boxing: initialBoxing(), moveNumber: 0 });
+                const g = await createSoloGame("boxing", user.id, { live: true });
                 statsWritten.current = null;
                 navigate(gameRoute("boxing", g.id), { replace: true });
+                window.location.reload();
               } catch (e: any) {
                 toast({ title: "Could not start a solo match", description: e.message, variant: "destructive" });
               }
@@ -299,10 +291,7 @@ export default function BoxingPage() {
         />
 
         {showCustomize && (
-          <div
-            className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4"
-            onClick={() => setShowCustomize(false)}
-          >
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4" onClick={() => setShowCustomize(false)}>
             <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-2xl bg-[#11151f] p-4" onClick={(e) => e.stopPropagation()}>
               <p className="mb-3 text-center text-sm font-black text-white">Choose Your Fighter</p>
 
@@ -340,7 +329,6 @@ export default function BoxingPage() {
               </div>
               <p className="text-[9px] text-white/35">Robot and bear fighters use their own colors.</p>
 
-
               <button
                 type="button"
                 onClick={() => setShowCustomize(false)}
@@ -374,8 +362,4 @@ export default function BoxingPage() {
       />
     </LandscapeStage>
   );
-}
-
-function finishedDep(game: any) {
-  return game?.game_state?.boxing?.phase === "over";
 }
