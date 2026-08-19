@@ -277,8 +277,16 @@ export function useBoxingLive({
         return;
       }
       punchCdRef.current = { ...punchCdRef.current, [p]: now + stats.cooldownMs };
-      meRef.current = { ...meRef.current, stamina: clamp(meRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0 };
+      meRef.current = {
+        ...meRef.current,
+        stamina: clamp(meRef.current.stamina - stats.cost, 0, 100),
+        guard: null,
+        guardUntil: 0,
+        // Step into the opponent so the punch actually connects instead of swinging at air.
+        advance: clamp(meRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE),
+      };
       const outcome = resolvePunch(p, meRef.current, oppRef.current, now);
+
       setAnim("me", p, stats.cooldownMs * 0.6);
       bump();
 
