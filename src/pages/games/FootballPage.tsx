@@ -11,10 +11,10 @@ import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import FootballField from "@/components/games/football/FootballField";
+import FootballRunner from "@/components/games/football/FootballRunner";
 import { footballSfx } from "@/lib/football-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { FootballState, MAX_PLAYS, PlayType, Seat, computerPlay, initialFootball, resolvePlay } from "@/lib/football";
+import { DriveResult, FootballRunState, Seat, applyDriveResult, initialFootballRun } from "@/lib/football-run";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
@@ -26,7 +26,6 @@ export default function FootballPage() {
   const { user } = useAuth();
   const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const statsWritten = useRef<string | null>(null);
-  const footballRef = useRef<FootballState>(initialFootball());
 
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -34,13 +33,13 @@ export default function FootballPage() {
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
 
-  const football: FootballState = (game?.game_state?.football as FootballState) || initialFootball();
-  footballRef.current = football;
+  const run: FootballRunState = (game?.game_state?.footballRun as FootballRunState) || initialFootballRun();
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
   const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
   const oppSeat: Seat = mySeat === 0 ? 1 : 0;
-  const finished = football.phase === "over";
-  const myTurn = game?.status === "active" && !finished && football.possession === mySeat;
+  const finished = run.phase === "over";
+  const myTurn = game?.status === "active" && !finished && run.possession === mySeat;
+  const computersTurn = game?.mode === "solo" && !finished && run.possession === oppSeat;
 
   const { stats, matchups } = useGameRecord("football", user?.id, finished);
 
@@ -64,8 +63,8 @@ export default function FootballPage() {
       return;
     }
     statsWritten.current = game.id;
-    const draw = football.winnerSeat === null;
-    const iWon = football.winnerSeat === mySeat;
+    const draw = run.winnerSeat === null;
+    const iWon = run.winnerSeat === mySeat;
     const outcome = draw ? "draw" : iWon ? "win" : "loss";
     void (async () => {
       await updateGameState(game.id, {
@@ -79,40 +78,26 @@ export default function FootballPage() {
     })();
   }, [finished, game?.id, game?.status]);
 
-  const commit = async (state: FootballState, n: number, nextTurnUserId: string | null) => {
+  const commit = async (state: FootballRunState, n: number, nextTurnUserId: string | null) => {
     if (!game || !user) return;
-    setGame({ ...game, game_state: { football: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
-    await updateGameState(game.id, { game_state: { football: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
+    setGame({ ...game, game_state: { footballRun: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
+    await updateGameState(game.id, { game_state: { footballRun: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
     await refresh();
   };
 
-  const applyPlay = async (play: PlayType) => {
-    if (!game || !user || !myTurn) return;
-    const next = resolvePlay(football, mySeat, play);
+  const finishDrive = async (seat: Seat, result: DriveResult) => {
+    if (!game || !user) return;
+    const next = applyDriveResult(run, seat, result);
     const n = moveNumber + 1;
-    await recordMove(game.id, user.id, n, { play, seat: mySeat });
+    await recordMove(game.id, seat === mySeat ? user.id : null, n, { result, seat });
     const nextTurnUserId = game.mode === "solo" ? user.id : next.possession === mySeat ? user.id : (opponent?.user_id ?? null);
     await commit(next, n, nextTurnUserId);
   };
 
-  // Drive the computer's play-calling in solo mode.
-  useEffect(() => {
-    if (!game || game.mode !== "solo" || finished) return;
-    if (football.possession !== oppSeat) return;
-    const t = window.setTimeout(() => {
-      if (!user) return;
-      const state = footballRef.current;
-      const play = computerPlay(state);
-      const next = resolvePlay(state, oppSeat, play);
-      void commit(next, moveNumber + 1, user.id);
-    }, 1000);
-    return () => window.clearTimeout(t);
-  }, [game?.id, football.possession, finished, moveNumber]);
-
   const rematch = async () => {
     if (!user || !game) return;
     try {
-      const state = { football: initialFootball(), moveNumber: 0 };
+      const state = { footballRun: initialFootballRun(), moveNumber: 0 };
       const g =
         game.mode === "solo"
           ? await createSoloGame("football", user.id, state)
@@ -131,7 +116,7 @@ export default function FootballPage() {
   const challengeOther = async (opponentId: string, name: string) => {
     if (!user) return;
     try {
-      const g = await createMultiplayerGame("football", user.id, opponentId, { football: initialFootball(), moveNumber: 0 });
+      const g = await createMultiplayerGame("football", user.id, opponentId, { footballRun: initialFootballRun(), moveNumber: 0 });
       toast({ title: `Challenge sent to ${name}` });
       navigate(gameRoute("football", g.id), { replace: true });
     } catch (e: any) {
@@ -140,9 +125,9 @@ export default function FootballPage() {
   };
 
   const shareResult = async () => {
-    const draw = football.winnerSeat === null;
-    const iWon = football.winnerSeat === mySeat;
-    const text = `I just ${draw ? "drew" : iWon ? "won" : "lost"} a football game on YAJ 🏈`;
+    const draw = run.winnerSeat === null;
+    const iWon = run.winnerSeat === mySeat;
+    const text = `I just ${draw ? "drew" : iWon ? "won" : "lost"} a game of Football on YAJ 🏈`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -174,65 +159,59 @@ export default function FootballPage() {
   }
 
   const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
-  const draw = finished && football.winnerSeat === null;
-  const iWon = finished && football.winnerSeat === mySeat;
+  const draw = finished && run.winnerSeat === null;
+  const iWon = finished && run.winnerSeat === mySeat;
   const outcome: "win" | "loss" | "draw" = draw ? "draw" : iWon ? "win" : "loss";
 
-  const statusLabel =
-    game.status === "waiting"
-      ? "Waiting"
-      : game.status === "cancelled"
-        ? "Declined"
-        : finished
-          ? draw
-            ? "Draw"
-            : iWon
-              ? "You won"
-              : "You lost"
-          : myTurn
-            ? "Your ball"
-            : `${oppLabel} has the ball`;
+  const myDriveNumber = run.drivesPlayed[mySeat] + 1;
+  const oppDriveNumber = run.drivesPlayed[oppSeat] + 1;
+  const driveLabel = myTurn
+    ? `Your drive — ${Math.min(myDriveNumber, run.maxDrives)} of ${run.maxDrives}`
+    : `${oppLabel}'s drive — ${Math.min(oppDriveNumber, run.maxDrives)} of ${run.maxDrives}`;
 
   const resultTitle = draw ? "Ends in a tie" : iWon ? "You win!" : `${oppLabel} wins`;
-  const resultDetail = finished ? `Final score — you ${football.scores[mySeat]} · ${oppLabel} ${football.scores[oppSeat]}` : undefined;
+  const resultDetail = finished ? `Final score — you ${run.scores[mySeat]} · ${oppLabel} ${run.scores[oppSeat]}` : undefined;
 
-  const myBall = football.possession === mySeat;
-  const ballOnFromMyGoal = myBall ? football.ballOn : 100 - football.ballOn;
-  const lastPlayView = football.lastPlay
-    ? { play: football.lastPlay.play, kind: football.lastPlay.kind, yards: football.lastPlay.yards, message: football.lastPlay.message, mine: football.lastPlay.seat === mySeat }
-    : null;
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    footballSfx.setMuted(next);
+  };
 
   return (
     <LandscapeStage auto>
       <div className="relative h-full w-full">
-        <FootballField
-          myName={myName}
-          oppName={oppLabel}
-          isComputer={game.mode === "solo"}
-          myAccent={SEAT_ACCENTS[mySeat]}
-          oppAccent={SEAT_ACCENTS[oppSeat]}
-          myScore={football.scores[mySeat]}
-          oppScore={football.scores[oppSeat]}
-          myBall={myBall}
-          down={football.down}
-          yardsToGo={football.yardsToGo}
-          ballOnFromMyGoal={ballOnFromMyGoal}
-          lastPlay={lastPlayView}
-          interactive={Boolean(myTurn) && seated}
-          finished={finished}
-          winnerIsMe={finished ? iWon : null}
-          statusLabel={statusLabel}
-          playNumber={football.play}
-          maxPlays={MAX_PLAYS}
-          muted={muted}
-          onToggleMute={() => {
-            const next = !muted;
-            setMuted(next);
-            footballSfx.setMuted(next);
-          }}
-          onBack={() => navigate("/games")}
-          onPlay={(play) => void applyPlay(play)}
-        />
+        {seated && !finished && (myTurn || computersTurn) && (
+          <FootballRunner
+            key={`${mySeat === run.possession ? "me" : "opp"}-${run.driveNumber}`}
+            active
+            auto={!myTurn}
+            carrierAccent={SEAT_ACCENTS[run.possession]}
+            defenderAccent={SEAT_ACCENTS[run.possession === 0 ? 1 : 0]}
+            driveLabel={driveLabel}
+            myScore={run.scores[mySeat]}
+            oppScore={run.scores[oppSeat]}
+            muted={muted}
+            onToggleMute={toggleMute}
+            onBack={() => navigate("/games")}
+            onComplete={(result) => void finishDrive(run.possession, result)}
+          />
+        )}
+
+        {seated && !finished && !myTurn && !computersTurn && (
+          <FootballRunner
+            active={false}
+            carrierAccent={SEAT_ACCENTS[mySeat]}
+            defenderAccent={SEAT_ACCENTS[oppSeat]}
+            driveLabel={driveLabel}
+            myScore={run.scores[mySeat]}
+            oppScore={run.scores[oppSeat]}
+            muted={muted}
+            onToggleMute={toggleMute}
+            onBack={() => navigate("/games")}
+            onComplete={() => {}}
+          />
+        )}
 
         <PendingChallengeGate
           gameId={game.id}
@@ -255,7 +234,7 @@ export default function FootballPage() {
         <GameIntro
           open={!seated && !finished}
           title="Football"
-          subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
+          subtitle={game.mode === "solo" ? "Drag to dodge — solo vs Computer" : `Drag to dodge — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
@@ -274,7 +253,7 @@ export default function FootballPage() {
             void (async () => {
               if (!user) return;
               try {
-                const g = await createSoloGame("football", user.id, { football: initialFootball(), moveNumber: 0 });
+                const g = await createSoloGame("football", user.id, { footballRun: initialFootballRun(), moveNumber: 0 });
                 statsWritten.current = null;
                 navigate(gameRoute("football", g.id), { replace: true });
               } catch (e: any) {
