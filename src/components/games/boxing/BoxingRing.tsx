@@ -310,6 +310,8 @@ export default function BoxingRing({
           <div className="w-32 rounded-xl bg-black/45 p-1.5 text-right">
             <p className="mb-1 flex items-center justify-end gap-1 truncate text-[10px] font-black text-white">
               {isComputer && <Bot className="h-3 w-3 text-primary" />} {oppName}
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: oppAccent }} />
+
             </p>
             <StatBar label="HP" value={oppHealth} max={100} tone="health" />
             <div className="mt-1">
