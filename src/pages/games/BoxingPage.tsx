@@ -67,7 +67,8 @@ export default function BoxingPage() {
 
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
   const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
-  const oppAppearance: Appearance = appearanceMap[oppSeat] || OPP_DEFAULT_APPEARANCE;
+  const oppAppearance: Appearance =
+    appearanceMap[oppSeat] || (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : OPP_DEFAULT_APPEARANCE);
 
   // Persist stats once when a match finishes.
   useEffect(() => {
