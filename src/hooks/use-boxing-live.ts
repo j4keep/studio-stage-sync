@@ -243,10 +243,11 @@ export function useBoxingLive({
           finish(mine === theirs ? null : mine > theirs ? "me" : "opp", true);
         }
 
-        if (mode === "multiplayer" && now - lastSync > 1200) {
+        if (mode === "multiplayer" && now - lastSync > 180) {
           lastSync = now;
-          send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance });
+          send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
         }
+
       }
 
       bump();
