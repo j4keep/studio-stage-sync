@@ -203,7 +203,7 @@ export function useBoxingLive({
           if (intent.kind === "punch") {
             const stats = PUNCHES[intent.punch];
             if (oppRef.current.stamina >= stats.cost) {
-              oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0 };
+              oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0, advance: clamp(oppRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE) };
               const outcome = resolvePunch(intent.punch, oppRef.current, meRef.current, now);
               setAnim("opp", intent.punch, stats.cooldownMs * 0.6);
               oppPunchCdRef.current = now + stats.cooldownMs + 120 + Math.random() * 320;
