@@ -144,6 +144,10 @@ export default function BoxingRing({
   oppHealth: number;
   oppStamina: number;
   oppAdvance: number;
+  /** Colour that identifies each fighter by seat, so both phones agree who is who. */
+  myAccent: string;
+  oppAccent: string;
+
   myAnim: FighterAnim;
   oppAnim: FighterAnim;
   impact: { side: "me" | "opp"; nonce: number } | null;
