@@ -380,6 +380,16 @@ export default function PoolPage() {
           }
         />
 
+        <PendingChallengeGate
+          gameId={game.id}
+          userId={user?.id}
+          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+          challengerName={opponentName}
+          onAccepted={refresh}
+        />
+
+
+
         <PoolIntro
           open={!seated && !finished}
           subtitle={game.mode === "solo" ? "Solo table vs the house computer" : `You vs ${opponentName}`}
