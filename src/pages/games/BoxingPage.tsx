@@ -12,6 +12,7 @@ import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import BoxingRing, { SKIN_TONES } from "@/components/games/boxing/BoxingRing";
+import { boxingSfx } from "@/lib/boxing-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { Action, Appearance, BoxingState, DEFAULT_APPEARANCE, Seat, computerAction, initialBoxing, resolveAction } from "@/lib/boxing";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
@@ -30,7 +31,7 @@ export default function BoxingPage() {
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
-  const [muted, setMuted] = useState(false);
+  const [muted, setMuted] = useState(boxingSfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
 
@@ -60,6 +61,13 @@ export default function BoxingPage() {
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
   const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
   const oppAppearance: Appearance = appearanceMap[oppSeat] || OPP_DEFAULT_APPEARANCE;
+
+  // Crowd murmur runs for the duration of a live match, fading out once it ends or the page is left.
+  useEffect(() => {
+    if (seated && !finished) boxingSfx.startCrowd();
+    else boxingSfx.stopCrowd();
+    return () => boxingSfx.stopCrowd();
+  }, [seated, finished]);
 
   // Persist stats once when a match finishes.
   useEffect(() => {
@@ -235,8 +243,13 @@ export default function BoxingPage() {
           winnerIsMe={finished ? iWon : null}
           turnLabel={turnLabel}
           myTurn={Boolean(myTurn)}
+          decision={boxing.decision}
           muted={muted}
-          onToggleMute={() => setMuted((m) => !m)}
+          onToggleMute={() => {
+            const next = !muted;
+            setMuted(next);
+            boxingSfx.setMuted(next);
+          }}
           onBack={() => navigate("/games")}
           onCustomize={() => setShowCustomize(true)}
           onAction={(action) => void applyAction(action)}
@@ -268,7 +281,11 @@ export default function BoxingPage() {
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
           matchups={matchups}
-          onStart={() => setSeated(true)}
+          onStart={() => {
+            setSeated(true);
+            void boxingSfx.prime();
+            boxingSfx.announce(`In the near corner, ${myName}! In the far corner, ${oppLabel}! Let's get ready to rumble!`);
+          }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
             if (game.mode === "solo" && game.status === "active") {

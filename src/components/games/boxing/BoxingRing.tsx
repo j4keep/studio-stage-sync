@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { Bot, HelpCircle, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
 import { Action, Appearance, LastAction, PUNCH_STATS, PunchType } from "@/lib/boxing";
+import { boxingSfx } from "@/lib/boxing-sfx";
 
 type FighterAnim = "idle" | "jab" | "hook" | "uppercut" | "guard-block" | "guard-dodge" | "hit" | "ko";
 
@@ -237,6 +238,7 @@ export default function BoxingRing({
   winnerIsMe,
   turnLabel,
   myTurn,
+  decision,
   muted,
   onToggleMute,
   onBack,
@@ -258,6 +260,7 @@ export default function BoxingRing({
   winnerIsMe: boolean | null;
   turnLabel: string;
   myTurn: boolean;
+  decision?: boolean;
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
@@ -269,11 +272,14 @@ export default function BoxingRing({
   const [shake, setShake] = useState(false);
   const [spark, setSpark] = useState<{ x: number; y: number } | null>(null);
   const seenTurn = useRef<number | null>(null);
+  const streakRef = useRef<[number, number]>([0, 0]);
+  const koAnnounced = useRef(false);
 
   useEffect(() => {
     if (!lastAction || seenTurn.current === lastAction.turn) return;
     seenTurn.current = lastAction.turn;
     const actorIsMe = lastAction.seat === 0;
+    const actorName = actorIsMe ? myName : oppName;
     const setActor = actorIsMe ? setMyAnim : setOppAnim;
     const setTarget = actorIsMe ? setOppAnim : setMyAnim;
 
@@ -283,18 +289,40 @@ export default function BoxingRing({
       return () => window.clearTimeout(t);
     }
 
+    boxingSfx.punchThrow();
     setActor(lastAction.action as PunchType);
     const timers: number[] = [];
-    if (lastAction.hit) {
-      timers.push(
-        window.setTimeout(() => {
+    timers.push(
+      window.setTimeout(() => {
+        if (lastAction.hit) {
           setTarget("hit");
           setSpark({ x: actorIsMe ? 560 : 345, y: 236 });
           setShake(true);
           window.setTimeout(() => setShake(false), 220);
           window.setTimeout(() => setSpark(null), 220);
-        }, 140),
-      );
+
+          const intensity = Math.min(1, lastAction.damage / 26);
+          streakRef.current[lastAction.seat] += 1;
+          const streak = streakRef.current[lastAction.seat];
+
+          if (lastAction.blocked) {
+            boxingSfx.blocked();
+          } else {
+            boxingSfx.punchLand(intensity);
+            boxingSfx.cheer(Math.max(intensity, streak >= 3 ? 0.7 : 0));
+            if (lastAction.staggered) {
+              boxingSfx.announce(`Ohh, big shot from ${actorName}!`);
+            } else if (streak === 3) {
+              boxingSfx.announce(`${actorName} is on a roll!`);
+            }
+          }
+        } else {
+          boxingSfx.miss();
+          streakRef.current[lastAction.seat] = 0;
+        }
+      }, 140),
+    );
+    if (lastAction.hit) {
       timers.push(
         window.setTimeout(() => {
           const koNow = (actorIsMe ? oppHealth : myHealth) <= 0;
@@ -310,6 +338,13 @@ export default function BoxingRing({
   useEffect(() => {
     if (finished && winnerIsMe === false) setMyAnim("ko");
     if (finished && winnerIsMe === true) setOppAnim("ko");
+    if (finished && winnerIsMe !== null && !koAnnounced.current) {
+      koAnnounced.current = true;
+      const winnerName = winnerIsMe ? myName : oppName;
+      boxingSfx.koRoar();
+      boxingSfx.announce(decision ? `It's over — ${winnerName} takes it on the scorecards!` : `It's over! ${winnerName} wins by knockout!`);
+      window.setTimeout(() => boxingSfx.stopCrowd(), 2200);
+    }
   }, [finished, winnerIsMe]);
 
   const canAct = interactive && !finished;
