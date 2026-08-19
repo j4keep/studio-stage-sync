@@ -162,6 +162,7 @@ export default function TicTacToePage() {
 
   return (
     <GameShell
+      gameType="tic_tac_toe"
       title="Tic-Tac-Toe"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}

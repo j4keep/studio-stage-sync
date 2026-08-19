@@ -25,6 +25,7 @@ import {
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import { useGameRecord } from "@/components/games/GameQuickActions";
 
 const HOW_TO_PLAY = [
   "Drag a glowing tile from your hand onto a glowing open end of the chain.",
@@ -47,6 +48,7 @@ export default function DominoesPage() {
   const [muted, setMuted] = useState(casinoMusic.muted);
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
   const [myName, setMyName] = useState("You");
+  const { stats, matchups } = useGameRecord("dominoes", user?.id, game?.status);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -263,6 +265,26 @@ export default function DominoesPage() {
             if (!muted) void casinoMusic.start();
           }}
           onBack={() => navigate("/games")}
+          stats={stats}
+          matchups={matchups}
+          onPlaySolo={() => {
+            if (game.mode === "solo" && game.status === "active") {
+              setSeated(true);
+              if (!muted) void casinoMusic.start();
+              return;
+            }
+            void (async () => {
+              if (!user) return;
+              try {
+                const g = await createSoloGame("dominoes", user.id, { dom: initialDominoes(), moveNumber: 0 });
+                written.current = null;
+                navigate(gameRoute("dominoes", g.id), { replace: true });
+              } catch (err: any) {
+                toast({ title: "Could not start a solo table", description: err.message, variant: "destructive" });
+              }
+            })();
+          }}
+          onQuickMatch={() => setPicker(true)}
         />
       </div>
 

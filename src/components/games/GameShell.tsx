@@ -1,12 +1,20 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, RotateCcw, Share2, Users } from "lucide-react";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
+import GameIntro from "@/components/games/GameIntro";
+import { useGameRecord } from "@/components/games/GameQuickActions";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { GameType, createSoloGame } from "@/lib/games";
+import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import PlayerBadge, { ArenaPlayer } from "@/components/games/PlayerBadge";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import { toast } from "@/hooks/use-toast";
 
 type Props = {
+  /** Which game this is — powers the shared intro (solo / quick match / record). */
+  gameType: GameType;
   title: string;
   subtitle: string;
   status: string;
@@ -26,6 +34,7 @@ type Props = {
 };
 
 export default function GameShell({
+  gameType,
   title,
   subtitle,
   status,
@@ -43,8 +52,41 @@ export default function GameShell({
   footer,
 }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [picker, setPicker] = useState(false);
   const [resultDismissed, setResultDismissed] = useState(false);
+  const [seated, setSeated] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; avatar: string | null } | null>(null);
+  const { stats, matchups } = useGameRecord(gameType, user?.id, finished);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void (supabase as any)
+      .from("profiles")
+      .select("display_name, avatar_url")
+      .eq("user_id", user.id)
+      .maybeSingle()
+      .then(({ data }: any) => setProfile({ name: data?.display_name || "You", avatar: data?.avatar_url || null }));
+  }, [user?.id]);
+
+  const myPlayer = {
+    ...(me || { name: "You" }),
+    name: me?.name && me.name !== "You" ? me.name : (profile?.name ?? "You"),
+    avatarUrl: me?.avatarUrl ?? profile?.avatar ?? null,
+  };
+
+  const playSolo = () => {
+    if (!user) return;
+    void (async () => {
+      try {
+        const g = await createSoloGame(gameType, user.id, initialStateFor(gameType));
+        navigate(gameRoute(gameType, g.id), { replace: true });
+        setSeated(true);
+      } catch (e: any) {
+        toast({ title: "Could not start a solo game", description: e?.message, variant: "destructive" });
+      }
+    })();
+  };
 
   const share = async () => {
     try {
@@ -88,7 +130,7 @@ export default function GameShell({
       <main className="px-4 pt-4">
         {(me || them) && (
           <div className="mx-auto flex max-w-[420px] items-center justify-between gap-2">
-            {me ? <PlayerBadge {...me} active={Boolean(myTurn)} /> : <span />}
+            {me ? <PlayerBadge {...myPlayer} active={Boolean(myTurn)} /> : <span />}
             <span className="shrink-0 rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white/50">
               vs
             </span>
@@ -159,6 +201,20 @@ export default function GameShell({
           }}
         />
       )}
+
+      <GameIntro
+        open={!seated && !finished}
+        title={title}
+        subtitle={subtitle}
+        me={{ name: myPlayer.name, avatarUrl: myPlayer.avatarUrl }}
+        them={{ name: them?.name || "Opponent", avatarUrl: them?.avatarUrl, isComputer: them?.isComputer }}
+        stats={stats}
+        matchups={matchups}
+        onStart={() => setSeated(true)}
+        onPlaySolo={playSolo}
+        onQuickMatch={() => setPicker(true)}
+        onBack={() => navigate("/games")}
+      />
 
       <OpponentPickerSheet
         open={picker}

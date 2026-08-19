@@ -366,6 +366,17 @@ export default function PoolPage() {
           onToggleMute={toggleMute}
           onBack={() => navigate("/games")}
           howToPlay={HOW_TO_PLAY}
+          sideDock={
+            <GameLiveDock
+              gameId={game.id}
+              userId={user?.id}
+              isPlayer={!!me}
+              isLive={Boolean((game as any).is_live)}
+              hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+              placement="rail"
+              onChanged={refresh}
+            />
+          }
         />
 
         <PoolIntro
@@ -421,15 +432,6 @@ export default function PoolPage() {
         }}
         title="Challenge to 8-Ball Pool"
       />
-      <GameLiveDock
-        gameId={game.id}
-        userId={user?.id}
-        isPlayer={!!me}
-        isLive={Boolean((game as any).is_live)}
-        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
-        onChanged={refresh}
-      />
-
     </LandscapeStage>
   );
 }

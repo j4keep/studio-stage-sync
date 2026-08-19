@@ -165,6 +165,7 @@ export default function CheckersPage() {
 
   return (
     <GameShell
+      gameType="checkers"
       title="Checkers"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
