@@ -184,11 +184,23 @@ class BoxingSfx {
     this.crowdGain = ctx.createGain();
     this.crowdGain.gain.value = 0;
     this.crowdGain.connect(ctx.destination);
-    this.crowdBase = 0.05;
-    this.crowdLayer(420, 0.7, 0.13, 0.01, 0.05);
-    this.crowdLayer(900, 0.6, 0.09, 0.012, 0.035);
-    this.crowdLayer(1600, 0.5, 0.17, 0.008, 0.02);
+    this.crowdBase = 0.09;
+    this.crowdLayer(420, 0.7, 0.13, 0.018, 0.09);
+    this.crowdLayer(900, 0.6, 0.09, 0.02, 0.065);
+    this.crowdLayer(1600, 0.5, 0.17, 0.014, 0.04);
     this.crowdGain.gain.setTargetAtTime(this.crowdBase, ctx.currentTime, 0.6);
+  }
+
+  /**
+   * Nudges the ambient bed toward however lopsided the fight currently is — the
+   * crowd gets audibly louder/rowdier the more one fighter is dominating.
+   * `lead` is 0 (even fight) .. 1 (total beatdown).
+   */
+  setLead(lead: number) {
+    if (this.muted || !this.crowdGain || !this.ctx) return;
+    const amt = Math.min(1, Math.max(0, lead));
+    this.crowdBase = 0.09 + amt * 0.09;
+    this.crowdGain.gain.setTargetAtTime(this.crowdBase, this.ctx.currentTime, 1.1);
   }
 
   /** A swell above the ambient bed — call when a punch lands clean. Bigger intensity = bigger roar. */
@@ -197,16 +209,16 @@ class BoxingSfx {
     const ctx = this.ctx;
     const t = ctx.currentTime;
     const amt = Math.min(1, Math.max(0, intensity));
-    const peak = this.crowdBase + 0.09 + amt * 0.22;
+    const peak = this.crowdBase + 0.2 + amt * 0.4;
     this.crowdGain.gain.cancelScheduledValues(t);
     this.crowdGain.gain.setValueAtTime(this.crowdGain.gain.value, t);
-    this.crowdGain.gain.linearRampToValueAtTime(peak, t + 0.12);
+    this.crowdGain.gain.linearRampToValueAtTime(peak, t + 0.1);
     this.crowdGain.gain.setTargetAtTime(this.crowdBase, t + 0.3, 0.5 + amt * 0.6);
 
-    const whoops = 2 + Math.round(amt * 4);
+    const whoops = 3 + Math.round(amt * 5);
     for (let i = 0; i < whoops; i++) {
       const wt = t + Math.random() * (0.5 + amt * 0.6);
-      this.crack(wt, 0.09, 700 + Math.random() * 1400, 1.1, 0.05 + Math.random() * 0.05, 0.2 + Math.random() * 0.15);
+      this.crack(wt, 0.09, 700 + Math.random() * 1400, 1.1, 0.09 + Math.random() * 0.08, 0.22 + Math.random() * 0.15);
     }
   }
 
@@ -217,12 +229,67 @@ class BoxingSfx {
     const t = ctx.currentTime;
     this.crowdGain.gain.cancelScheduledValues(t);
     this.crowdGain.gain.setValueAtTime(this.crowdGain.gain.value, t);
-    this.crowdGain.gain.linearRampToValueAtTime(this.crowdBase + 0.4, t + 0.25);
-    this.crowdGain.gain.setTargetAtTime(this.crowdBase + 0.05, t + 1.6, 1.4);
-    for (let i = 0; i < 10; i++) {
+    this.crowdGain.gain.linearRampToValueAtTime(this.crowdBase + 0.6, t + 0.25);
+    this.crowdGain.gain.setTargetAtTime(this.crowdBase + 0.1, t + 1.6, 1.4);
+    for (let i = 0; i < 14; i++) {
       const wt = t + Math.random() * 1.4;
-      this.crack(wt, 0.12, 500 + Math.random() * 1800, 1, 0.06 + Math.random() * 0.06, 0.25 + Math.random() * 0.2);
+      this.crack(wt, 0.12, 500 + Math.random() * 1800, 1, 0.1 + Math.random() * 0.09, 0.25 + Math.random() * 0.2);
     }
+  }
+
+  /** A struck bell/gong tone — used for the pre-fight countdown and the opening bell. */
+  private bell(t: number, freq: number, gainPeak: number, decay: number) {
+    const ctx = this.ctx!;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(freq, t);
+    const overtone = ctx.createOscillator();
+    overtone.type = "sine";
+    overtone.frequency.setValueAtTime(freq * 2.01, t);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(gainPeak, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+    const overtoneGain = ctx.createGain();
+    overtoneGain.gain.setValueAtTime(gainPeak * 0.35, t);
+    overtoneGain.gain.exponentialRampToValueAtTime(0.001, t + decay * 0.6);
+    osc.connect(gain).connect(ctx.destination);
+    overtone.connect(overtoneGain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + decay + 0.05);
+    overtone.start(t);
+    overtone.stop(t + decay * 0.6 + 0.05);
+  }
+
+  /** One tick of the pre-fight countdown — pitch rises as it approaches zero, building tension. */
+  countdownBeat(secondsLeft: number) {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const freq = 300 + Math.max(0, 5 - secondsLeft) * 70;
+    this.bell(t, freq, 0.24, 0.5);
+  }
+
+  /** The opening bell — a bigger bell + a brass-ish stab chord, right as the fight begins. */
+  fightBell() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.bell(t, 660, 0.34, 0.9);
+    this.bell(t + 0.08, 880, 0.26, 0.7);
+    [440, 554.37, 659.25].forEach((f) => {
+      const osc = ctx.createOscillator();
+      osc.type = "sawtooth";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.11, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.55);
+    });
   }
 
   /** Fades out and stops the crowd bed — call when a match ends or the page unmounts. */
@@ -251,18 +318,28 @@ class BoxingSfx {
 
   // ---- Announcer ----
 
-  /** Speaks a line via the browser's built-in voice. Cancels any line still in progress first. */
+  /**
+   * Speaks a line via the browser's built-in voice. Cancels any line still in
+   * progress first. This is generic OS/browser text-to-speech — it can be tuned
+   * (voice pick, pitch, pacing) but will never sound like a trained human
+   * announcer; that needs a real speech-generation service, not this API.
+   */
   announce(text: string) {
     if (this.muted || !("speechSynthesis" in window)) return;
     try {
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.05;
-      u.pitch = 0.8;
+      u.rate = 1.12;
+      u.pitch = 0.65;
       u.volume = 1;
       const voices = window.speechSynthesis.getVoices();
-      const v = voices.find((v) => /en(-|_)?(US|GB)?/i.test(v.lang)) ?? voices[0];
-      if (v) u.voice = v;
+      const englishVoices = voices.filter((v) => /^en/i.test(v.lang));
+      const preferred =
+        englishVoices.find((v) => /male|daniel|fred|alex|arthur|oliver|david|george|guy/i.test(v.name)) ??
+        englishVoices.find((v) => !/female|samantha|victoria|karen|moira|tessa|zira|susan/i.test(v.name)) ??
+        englishVoices[0] ??
+        voices[0];
+      if (preferred) u.voice = preferred;
       window.speechSynthesis.speak(u);
     } catch {
       /* ignore — announcer is a nice-to-have, never block the match on it */

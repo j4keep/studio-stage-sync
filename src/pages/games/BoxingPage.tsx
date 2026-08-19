@@ -102,13 +102,36 @@ export default function BoxingPage() {
     onFinish: (winner) => void handleFinish(winner),
   });
 
-  // The bell rings as soon as both fighters are in the ring — no turn order at all.
+  // A 5-second corner countdown (with a rising bell + opening stab) plays once both
+  // fighters are in the ring, then the bell rings and the real-time fight begins.
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const countdownStarted = useRef(false);
   useEffect(() => {
-    if (!game || !seated) return;
-    if (game.status !== "active") return;
-    live.start();
+    if (!game || !seated || countdownStarted.current) return;
+    if (game.status !== "active" || live.phase !== "idle") return;
+    countdownStarted.current = true;
+
+    let n = 5;
+    setCountdown(n);
+    boxingSfx.countdownBeat(n);
+    const iv = window.setInterval(() => {
+      n -= 1;
+      if (n > 0) {
+        setCountdown(n);
+        boxingSfx.countdownBeat(n);
+        return;
+      }
+      window.clearInterval(iv);
+      setCountdown(0);
+      boxingSfx.fightBell();
+      window.setTimeout(() => {
+        setCountdown(null);
+        live.start();
+      }, 550);
+    }, 1000);
+    return () => window.clearInterval(iv);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game?.status, seated]);
+  }, [game?.status, seated, live.phase]);
 
   // Claim my seat's fighter in the shared state so each side shows a different boxer on both phones.
   useEffect(() => {
@@ -257,6 +280,7 @@ export default function BoxingPage() {
           finished={finished}
           winnerIsMe={finished ? iWon : null}
           statusLabel={statusLabel}
+          countdown={countdown}
           muted={muted}
           onToggleMute={() => {
             const next = !muted;

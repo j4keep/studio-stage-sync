@@ -123,8 +123,17 @@ export function useBoxingLive({
     streakRef.current[attacker] += 1;
     const streak = streakRef.current[attacker];
     boxingSfx.punchLand(intensity);
-    boxingSfx.cheer(Math.max(intensity, streak >= 3 ? 0.7 : 0));
-    const attackerName = attacker === "me" ? (myName || "You") : (oppName || "Your opponent");
+
+    // The crowd pops harder when the fighter who's already ahead extends their lead.
+    const attackerHealth = attacker === "me" ? meRef.current.health : oppRef.current.health;
+    const defenderHealth = attacker === "me" ? oppRef.current.health : meRef.current.health;
+    const isLeading = attackerHealth >= defenderHealth;
+    const leadBoost = isLeading ? 0.28 : 0;
+    boxingSfx.cheer(Math.min(1, Math.max(intensity, streak >= 3 ? 0.7 : 0) + leadBoost));
+    boxingSfx.setLead(Math.abs(attackerHealth - defenderHealth) / 100);
+
+    const { myName: mn, oppName: on } = namesRef.current;
+    const attackerName = attacker === "me" ? (mn || "You") : (on || "Your opponent");
     if (outcome.staggered) boxingSfx.announce(`Ohh, big shot from ${attackerName}!`);
     else if (streak === 3) boxingSfx.announce(`${attackerName} is on a roll!`);
   };

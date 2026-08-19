@@ -128,6 +128,7 @@ export default function BoxingRing({
   finished,
   winnerIsMe,
   statusLabel,
+  countdown,
   muted,
   onToggleMute,
   onBack,
@@ -163,6 +164,8 @@ export default function BoxingRing({
   finished: boolean;
   winnerIsMe: boolean | null;
   statusLabel: string;
+  /** 5..1 counting down, 0 = "FIGHT!" flash, null = no countdown showing. */
+  countdown?: number | null;
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
@@ -207,9 +210,13 @@ export default function BoxingRing({
         @keyframes bx-shake { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(4px); } }
         @keyframes bx-spark-pop { 0% { transform: scale(0.3); opacity: 0; } 35% { transform: scale(1.15); opacity: 1; } 100% { transform: scale(1.6); opacity: 0; } }
         @keyframes bx-foot { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-4px) } }
+        @keyframes bx-light-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes bx-count-pop { 0% { transform: scale(0.4); opacity: 0; } 30% { transform: scale(1.15); opacity: 1; } 70% { transform: scale(1); opacity: 1; } 100% { transform: scale(0.9); opacity: 0; } }
         .bx-shaking { animation: bx-shake 200ms ease-in-out; }
         .bx-spark { animation: bx-spark-pop 220ms ease-out; transform-origin: center; }
         .bx-footwork { animation: bx-foot 900ms ease-in-out infinite; }
+        .bx-light { animation: bx-light-pulse 2.2s ease-in-out infinite; transform-origin: center; }
+        .bx-count { animation: bx-count-pop 980ms ease-out; transform-origin: center; }
       `}</style>
 
       <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className={`block h-full w-full ${shake ? "bx-shaking" : ""}`}>
@@ -253,6 +260,17 @@ export default function BoxingRing({
           })}
         </g>
         <rect x="0" y="0" width="900" height="12" fill="url(#bx-mat)" opacity="0.5" />
+
+        {/* Arena floodlights, softly pulsing on and off above the crowd */}
+        <g>
+          {[70, 240, 410, 490, 660, 830].map((x, i) => (
+            <g key={x} className="bx-light" style={{ animationDelay: `${i * 0.35}s`, animationDuration: `${1.8 + (i % 3) * 0.5}s` }}>
+              <circle cx={x} cy="10" r="13" fill="hsl(45 100% 75%)" opacity="0.18" />
+              <circle cx={x} cy="10" r="8" fill="hsl(45 100% 80%)" opacity="0.22" />
+              <circle cx={x} cy="10" r="3" fill="#fffdf0" />
+            </g>
+          ))}
+        </g>
 
         {/* Ring floor */}
         <path d="M 96 148 L 804 148 L 862 388 L 38 388 Z" fill="url(#bx-floor)" stroke="rgba(255,255,255,0.08)" strokeWidth="2" />
@@ -363,6 +381,22 @@ export default function BoxingRing({
         <div className="pointer-events-none absolute inset-x-0 bottom-2 z-20 flex flex-col items-center gap-1">
           {canAct && !inRange && <span className="rounded-full bg-black/60 px-3 py-0.5 text-[10px] font-black uppercase text-amber-300">Step in to reach</span>}
           {message && <span className="max-w-[70%] truncate rounded-full bg-black/55 px-3 py-0.5 text-[10px] font-bold text-white/85">{message}</span>}
+        </div>
+      )}
+
+      {countdown != null && (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/25">
+          <span
+            key={countdown}
+            className="bx-count font-black drop-shadow-[0_0_18px_rgba(0,0,0,0.8)]"
+            style={{
+              fontSize: countdown === 0 ? "56px" : "128px",
+              color: countdown === 0 ? "hsl(0 85% 58%)" : "#fff",
+              letterSpacing: countdown === 0 ? "0.1em" : undefined,
+            }}
+          >
+            {countdown === 0 ? "FIGHT!" : countdown}
+          </span>
         </div>
       )}
     </div>
