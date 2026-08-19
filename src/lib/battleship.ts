@@ -60,14 +60,32 @@ export function initialBattleship(): BattleshipState {
   };
 }
 
-function inBounds(c: Cell) {
+export function inBounds(c: Cell) {
   return c.x >= 0 && c.x < BOARD_SIZE && c.y >= 0 && c.y < BOARD_SIZE;
 }
 
-function cellsForShip(x: number, y: number, length: number, orientation: Orientation): Cell[] {
+export function cellsForShip(x: number, y: number, length: number, orientation: Orientation): Cell[] {
   const cells: Cell[] = [];
   for (let i = 0; i < length; i++) cells.push(orientation === "H" ? { x: x + i, y } : { x, y: y + i });
   return cells;
+}
+
+/** Every cell occupied by any ship already in a (possibly partial) fleet-in-progress. */
+export function occupiedCells(fleet: Fleet): Set<string> {
+  const set = new Set<string>();
+  fleet.forEach((ship) => ship.cells.forEach((c) => set.add(`${c.x},${c.y}`)));
+  return set;
+}
+
+/**
+ * Whether a ship of `id` can be placed at (x, y, orientation) — in bounds and
+ * not overlapping any ship already placed in `fleet`. Used by the interactive
+ * placement UI to validate a tap before committing it.
+ */
+export function canPlaceShip(fleet: Fleet, id: ShipId, x: number, y: number, orientation: Orientation): boolean {
+  const cells = cellsForShip(x, y, SHIP_LENGTHS[id], orientation);
+  const occupied = occupiedCells(fleet);
+  return cells.every((c) => inBounds(c) && !occupied.has(`${c.x},${c.y}`));
 }
 
 /** A fleet is valid if it has exactly the standard five ships, correctly sized, in bounds, with no overlaps. */

@@ -1,0 +1,140 @@
+/**
+ * Procedural Battleship sound effects (WebAudio, no audio files) — a splash
+ * for a miss, an explosion for a hit, and a bigger explosion + descending
+ * "going under" tone when a ship sinks. Same style as this app's other games.
+ */
+
+const KEY = "yaj.games.battleship.sfx.muted";
+
+class BattleshipSfx {
+  private ctx: AudioContext | null = null;
+  muted = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) === "1" : false;
+
+  private ensure() {
+    if (!this.ctx) {
+      const Ctor = window.AudioContext || (window as any).webkitAudioContext;
+      this.ctx = new Ctor();
+    }
+    return this.ctx!;
+  }
+
+  async prime() {
+    try {
+      await this.ensure().resume();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    try {
+      localStorage.setItem(KEY, muted ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private noiseBuffer(ctx: AudioContext, len: number) {
+    const buf = ctx.createBuffer(1, Math.max(1, Math.ceil(ctx.sampleRate * len)), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    return buf;
+  }
+
+  private crack(t: number, len: number, centerFreq: number, q: number, gainPeak: number, decay: number) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx, len);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = centerFreq;
+    bp.Q.value = q;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(gainPeak, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+    src.connect(bp).connect(gain).connect(ctx.destination);
+    src.start(t);
+  }
+
+  private thud(t: number, len: number, lpFreq: number, gainPeak: number, decay: number) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx, len);
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = lpFreq;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(gainPeak, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + decay);
+    src.connect(lp).connect(gain).connect(ctx.destination);
+    src.start(t);
+  }
+
+  /** Shell lands in open water — a soft filtered splash, no impact. */
+  miss() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuffer(ctx, 0.4);
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.Q.value = 0.7;
+    bp.frequency.setValueAtTime(1200, t);
+    bp.frequency.exponentialRampToValueAtTime(300, t + 0.35);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    src.connect(bp).connect(gain).connect(ctx.destination);
+    src.start(t);
+  }
+
+  /** A shell connects with a hull — a sharp crack over a heavy thud. */
+  hit() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.crack(t, 0.03, 1600, 1.4, 0.6, 0.09);
+    this.thud(t, 0.16, 160, 0.85, 0.22);
+  }
+
+  /** A ship goes down — a bigger blast plus a descending groan as it sinks. */
+  sunk() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.crack(t, 0.04, 1400, 1.2, 0.9, 0.14);
+    this.thud(t, 0.3, 130, 1.1, 0.5);
+    for (let i = 0; i < 6; i++) {
+      const wt = t + 0.05 + Math.random() * 0.5;
+      this.crack(wt, 0.03, 900 + Math.random() * 900, 1, 0.3 + Math.random() * 0.2, 0.15);
+    }
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(220, t + 0.1);
+    osc.frequency.exponentialRampToValueAtTime(40, t + 1.1);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t + 0.1);
+    gain.gain.linearRampToValueAtTime(0.16, t + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t + 0.1);
+    osc.stop(t + 1.25);
+  }
+
+  /** A light click for placing a ship during setup. */
+  place() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.thud(t, 0.04, 300, 0.3, 0.06);
+  }
+}
+
+export const battleshipSfx = new BattleshipSfx();

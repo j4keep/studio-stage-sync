@@ -6,9 +6,12 @@ import {
   SHIP_LENGTHS,
   SHIP_ORDER,
   alreadyShot,
+  canPlaceShip,
+  cellsForShip,
   computerShot,
   fireShot,
   initialBattleship,
+  occupiedCells,
   placeFleet,
   randomFleet,
   shipsRemaining,
@@ -154,5 +157,29 @@ describe("battleship", () => {
     const next = computerShot(s, 1, () => 0);
     const isAdjacent = (Math.abs(next.x - 5) === 1 && next.y === 5) || (next.x === 5 && Math.abs(next.y - 5) === 1);
     expect(isAdjacent).toBe(true);
+  });
+
+  it("canPlaceShip allows an empty spot and rejects out-of-bounds placement", () => {
+    expect(canPlaceShip([], "destroyer", 0, 0, "H")).toBe(true);
+    expect(canPlaceShip([], "carrier", 8, 0, "H")).toBe(false); // 5-length ship, only room for 2
+    expect(canPlaceShip([], "destroyer", 9, 9, "V")).toBe(false); // runs off the bottom edge
+  });
+
+  it("canPlaceShip rejects overlapping an already-placed ship", () => {
+    const fleet: Fleet = [{ id: "destroyer", cells: cellsForShip(0, 0, 2, "H"), hits: [false, false] }];
+    expect(canPlaceShip(fleet, "submarine", 1, 0, "V")).toBe(false); // shares cell (1,0)
+    expect(canPlaceShip(fleet, "submarine", 2, 0, "V")).toBe(true); // clear of the destroyer
+  });
+
+  it("occupiedCells reflects every ship placed so far", () => {
+    const fleet: Fleet = [
+      { id: "destroyer", cells: cellsForShip(0, 0, 2, "H"), hits: [false, false] },
+      { id: "submarine", cells: cellsForShip(3, 3, 3, "V"), hits: [false, false, false] },
+    ];
+    const occ = occupiedCells(fleet);
+    expect(occ.has("0,0")).toBe(true);
+    expect(occ.has("1,0")).toBe(true);
+    expect(occ.has("3,5")).toBe(true);
+    expect(occ.has("5,5")).toBe(false);
   });
 });
