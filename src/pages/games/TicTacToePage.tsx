@@ -23,6 +23,7 @@ import {
   updateGameState,
 } from "@/lib/games";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 export default function TicTacToePage() {
   const { id } = useParams<{ id: string }>();
@@ -186,6 +187,13 @@ export default function TicTacToePage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         {myTurn ? "Tap an empty square to place your mark." : "Waiting on the other player…"}
       </p>
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
       <GameLiveDock
         gameId={game.id}
         userId={user?.id}

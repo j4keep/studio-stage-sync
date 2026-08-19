@@ -19,6 +19,7 @@ import {
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 
 export default function CheckersPage() {
   const { id } = useParams<{ id: string }>();
@@ -249,6 +250,13 @@ export default function CheckersPage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         You play {mySide === "r" ? "red (moving up)" : "black (moving down)"} — captures are forced.
       </p>
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
+      />
       <GameLiveDock
         gameId={game.id}
         userId={user?.id}

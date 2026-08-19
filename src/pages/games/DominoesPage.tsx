@@ -25,6 +25,7 @@ import {
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 
 const HOW_TO_PLAY = [
@@ -306,6 +307,13 @@ export default function DominoesPage() {
           void challenge(p.user_id, p.display_name || "your opponent");
         }}
         title="Challenge to Dominoes"
+      />
+      <PendingChallengeGate
+        gameId={game.id}
+        userId={user?.id}
+        waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+        challengerName={opponentName}
+        onAccepted={refresh}
       />
       <GameLiveDock
         gameId={game.id}
