@@ -16,6 +16,7 @@ import {
   winningLine,
 } from "@/lib/tic-tac-toe";
 import {
+import GameLiveDock from "@/components/games/live/GameLiveDock";
   bumpStats,
   createMultiplayerGame,
   createSoloGame,
@@ -184,6 +185,15 @@ export default function TicTacToePage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         {myTurn ? "Tap an empty square to place your mark." : "Waiting on the other player…"}
       </p>
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </GameShell>
   );
 }

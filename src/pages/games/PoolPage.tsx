@@ -34,6 +34,7 @@ import {
   updateGameState,
 } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 
 const HOW_TO_PLAY = [
   "Drag anywhere on the table to aim the cue.",
@@ -420,6 +421,15 @@ export default function PoolPage() {
         }}
         title="Challenge to 8-Ball Pool"
       />
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </LandscapeStage>
   );
 }

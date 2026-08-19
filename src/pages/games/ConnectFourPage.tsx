@@ -18,6 +18,7 @@ import {
 } from "@/lib/connect-four";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 
 export default function ConnectFourPage() {
   const { id } = useParams<{ id: string }>();
@@ -221,6 +222,15 @@ export default function ConnectFourPage() {
       <p className="mt-3 text-center text-[11px] text-white/50">
         You are {myMark === "R" ? "red" : "yellow"} — tap a column to drop.
       </p>
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </GameShell>
   );
 }
