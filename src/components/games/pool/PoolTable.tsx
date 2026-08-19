@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Bot, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import {
   BALL_COLORS,
@@ -48,6 +48,8 @@ type Props = {
   onToggleMute: () => void;
   onBack: () => void;
   howToPlay: string[];
+  /** Live controls (go live / talk / viewers / chat) rendered in the side rail, never over the felt. */
+  sideDock?: ReactNode;
 };
 
 /** Cast the aim ray from the cue ball forward, returning where it first meets a ball or a rail. */
@@ -303,6 +305,7 @@ export default function PoolTable({
   onToggleMute,
   onBack,
   howToPlay,
+  sideDock,
 }: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -791,6 +794,7 @@ export default function PoolTable({
           <div className="flex min-h-0 flex-1 flex-col items-center pb-1">
             <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
           </div>
+          {sideDock ? <div className="flex shrink-0 justify-center pb-0.5">{sideDock}</div> : null}
         </div>
       </div>
 
