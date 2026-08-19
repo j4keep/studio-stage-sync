@@ -61,10 +61,17 @@ export default function BoxingPage() {
   const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
   const oppSeat: Seat = mySeat === 0 ? 1 : 0;
 
+  /** Seat colours, so the same fighter is the same colour on every phone. */
+  const SEAT_ACCENTS = ["hsl(204 100% 55%)", "#f59e0b"];
+  const myAccent = SEAT_ACCENTS[mySeat];
+  const oppAccent = SEAT_ACCENTS[oppSeat];
+
   const appearanceMap = (game?.game_state?.appearance as Record<number, Appearance>) || {};
-  const myAppearance: Appearance = appearanceMap[mySeat] || DEFAULT_APPEARANCE;
+  const myAppearance: Appearance = appearanceMap[mySeat] || (mySeat === 1 ? OPP_DEFAULT_APPEARANCE : DEFAULT_APPEARANCE);
   const oppAppearance: Appearance =
-    appearanceMap[oppSeat] || (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : OPP_DEFAULT_APPEARANCE);
+    appearanceMap[oppSeat] ||
+    (game?.mode === "solo" && game?.id ? computerAppearance(game.id) : oppSeat === 1 ? OPP_DEFAULT_APPEARANCE : DEFAULT_APPEARANCE);
+
 
   /** Persist the result once, when the real-time match ends. */
   const handleFinish = async (winner: "me" | "opp" | null) => {
