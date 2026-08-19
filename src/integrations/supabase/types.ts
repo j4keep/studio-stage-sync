@@ -2055,6 +2055,33 @@ export type Database = {
           },
         ]
       }
+      marketplace_buyer_locations: {
+        Row: {
+          buyer_address: string | null
+          buyer_lat: number | null
+          buyer_lng: number | null
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buyer_address?: string | null
+          buyer_lat?: number | null
+          buyer_lng?: number | null
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buyer_address?: string | null
+          buyer_lat?: number | null
+          buyer_lng?: number | null
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       marketplace_cart_items: {
         Row: {
           cart_id: string
@@ -2342,9 +2369,6 @@ export type Database = {
         Row: {
           avatar_url: string | null
           bio: string | null
-          buyer_address: string | null
-          buyer_lat: number | null
-          buyer_lng: number | null
           city: string | null
           created_at: string
           delivery_max_miles: number
@@ -2367,9 +2391,6 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           bio?: string | null
-          buyer_address?: string | null
-          buyer_lat?: number | null
-          buyer_lng?: number | null
           city?: string | null
           created_at?: string
           delivery_max_miles?: number
@@ -2392,9 +2413,6 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           bio?: string | null
-          buyer_address?: string | null
-          buyer_lat?: number | null
-          buyer_lng?: number | null
           city?: string | null
           created_at?: string
           delivery_max_miles?: number
