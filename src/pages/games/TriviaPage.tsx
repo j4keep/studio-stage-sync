@@ -8,6 +8,7 @@ import { useTurnGame } from "@/hooks/use-turn-game";
 import { TRIVIA_BANK, TRIVIA_ROUND, computerAnswer, pickQuestions } from "@/lib/trivia";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 
 export default function TriviaPage() {
   const { id } = useParams<{ id: string }>();
@@ -217,6 +218,15 @@ export default function TriviaPage() {
           </p>
         )}
       </div>
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </GameShell>
   );
 }

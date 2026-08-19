@@ -24,6 +24,7 @@ import {
 } from "@/lib/dominoes";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 
 const HOW_TO_PLAY = [
   "Drag a glowing tile from your hand onto a glowing open end of the chain.",
@@ -284,6 +285,15 @@ export default function DominoesPage() {
         }}
         title="Challenge to Dominoes"
       />
+      <GameLiveDock
+        gameId={game.id}
+        userId={user?.id}
+        isPlayer={!!me}
+        isLive={Boolean((game as any).is_live)}
+        hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+        onChanged={refresh}
+      />
+
     </LandscapeStage>
   );
 }
