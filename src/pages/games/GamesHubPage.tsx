@@ -30,6 +30,7 @@ import dashArt from "@/assets/games/yaj-dash.jpg";
 import poolArtAsset from "@/assets/games/yaj-billiards-intro.png.asset.json";
 const poolArt = poolArtAsset.url;
 import boxingArt from "@/assets/games/boxing.svg";
+import footballArt from "@/assets/games/football.svg";
 
 type CardDef = {
   type: GameType;
@@ -88,6 +89,18 @@ const CARDS: CardDef[] = [
     difficulty: "Easy",
     players: "2 players",
     image: boxingArt,
+    live: true,
+    solo: true,
+    multi: true,
+    featured: true,
+  },
+  {
+    type: "football",
+    title: "Football",
+    desc: "Call the play, drive the field, score.",
+    difficulty: "Easy",
+    players: "2 players",
+    image: footballArt,
     live: true,
     solo: true,
     multi: true,
