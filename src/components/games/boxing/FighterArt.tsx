@@ -78,7 +78,8 @@ export default function FighterArt({
   const punching = anim === "jab" || anim === "hook" || anim === "uppercut";
 
   const lunge = punching ? APPROACH[anim] : guarding ? -10 : 0;
-  const step = advance + lunge;
+  const step = Math.min(MAX_CLOSE, BASE_CLOSE + advance + lunge);
+
   const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
   const bob = anim === "uppercut" ? -8 : ducking ? 16 : 0;
   const knockback = hit ? 26 : 0;
