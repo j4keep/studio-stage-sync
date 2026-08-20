@@ -470,13 +470,18 @@ export default function CityRunBoard({
     lastSectionRef.current = null;
     autoTargetRef.current = null;
     timeLeftRef.current = ROUND_SECONDS_CAP;
+    powerUpsRef.current = initialPowerUps();
+    boostSecondsRef.current = 0;
+    bonusRef.current = 0;
     setDistance(0);
     setStars(0);
     setStumblesLeft(STUMBLE_LIVES);
     setPopup(null);
     setEnded(false);
     setShowJunction(false);
+    setPowerUps(initialPowerUps());
     setTimeLeft(ROUND_SECONDS_CAP);
+
 
     const spawnPopup = (text: string) => {
       popupIdRef.current += 1;
