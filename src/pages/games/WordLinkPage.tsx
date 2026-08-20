@@ -132,7 +132,7 @@ export default function WordLinkPage() {
   const shareResult = async () => {
     const draw = run.winnerSeat === null;
     const iWon = run.winnerSeat === mySeat;
-    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of Word Link on YAJ 🔤`;
+    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of YAJ Word Link 🔤`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -238,7 +238,7 @@ export default function WordLinkPage() {
 
         <GameIntro
           open={!seated && !finished}
-          title="Word Link"
+          title="YAJ Word Link"
           subtitle={game.mode === "solo" ? "Race to spell words — solo vs Computer" : `Race to spell words — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
@@ -287,7 +287,7 @@ export default function WordLinkPage() {
           setPicker(false);
           void challengeOther(p.user_id, p.display_name || "your opponent");
         }}
-        title="Challenge to Word Link"
+        title="Challenge to YAJ Word Link"
       />
     </div>
   );
