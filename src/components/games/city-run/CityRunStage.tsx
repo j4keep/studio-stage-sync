@@ -220,7 +220,7 @@ function Runner({
       const squash = s.sliding > 0 ? 0.5 : 1;
       group.current.position.set(s.x, s.y, s.z);
       group.current.scale.set(1, squash, 1);
-      group.current.rotation.y = Math.PI; // facing away, down the street
+      group.current.rotation.y = 0; // facing away from camera, down the street
     }
 
     camera.position.x += (s.x * 0.55 - camera.position.x) * Math.min(1, dt * 5);
