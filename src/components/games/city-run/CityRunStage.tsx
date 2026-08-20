@@ -478,24 +478,16 @@ export default function CityRunStage({
 
       {/* Controls */}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 pb-8">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onPointerDown={() => move(-1)}
-            aria-label="Move left"
-            className="h-16 w-16 touch-none rounded-2xl border border-white/25 bg-white/15 text-lg font-black text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            onPointerDown={() => move(1)}
-            aria-label="Move right"
-            className="h-16 w-16 touch-none rounded-2xl border border-white/25 bg-white/15 text-lg font-black text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            ▶
-          </button>
-        </div>
+        <RunJoystick
+          onLane={move}
+          onJump={() => {
+            inputRef.current.jump = true;
+          }}
+          onSlide={() => {
+            inputRef.current.slide = true;
+          }}
+        />
+
         <div className="flex items-end gap-2">
           <button
             type="button"
