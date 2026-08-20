@@ -273,9 +273,15 @@ function GhostRacer({ g }: { g: Ghost }) {
 
 /* --------------------------------------------------------------- HUD inputs */
 
+/**
+ * One-stick control pad: push left/right/forward/back to run, flick up hard to
+ * jump. Camera looks down +z, so screen-right is -x — the axis is inverted here
+ * so the character always moves the way your thumb goes.
+ */
 function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
   const base = useRef<HTMLDivElement>(null);
   const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const flick = useRef(false);
 
   const update = (clientX: number, clientY: number) => {
     const el = base.current;
@@ -293,7 +299,7 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
     setKnob({ x: dx, y: dy });
     // Normalised axes with a dead-zone plus axis-snapping so a straight push
     // never leaks a little sideways drift (which used to walk you into lava).
-    let nx = dx / max;
+    let nx = -dx / max;
     let nz = -dy / max;
     const dead = 0.18;
     if (Math.abs(nx) < dead) nx = 0;
@@ -302,11 +308,22 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
     if (Math.abs(nz) < Math.abs(nx) * 0.45) nz = 0;
     inputRef.current.x = nx;
     inputRef.current.z = nz;
+
+    // Hard swipe up = jump (fires once until the stick eases back down).
+    if (nz > 0.88 && Math.abs(nx) < 0.6) {
+      if (!flick.current) {
+        inputRef.current.jump = true;
+        flick.current = true;
+      }
+    } else if (nz < 0.55) {
+      flick.current = false;
+    }
   };
 
 
   const release = () => {
     setKnob({ x: 0, y: 0 });
+    flick.current = false;
     inputRef.current.x = 0;
     inputRef.current.z = 0;
   };
@@ -325,16 +342,20 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
       onPointerUp={release}
       onPointerCancel={release}
       onPointerLeave={release}
-      aria-label="Move"
-      className="relative h-32 w-32 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
+      aria-label="Move and jump"
+      className="relative h-36 w-36 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
     >
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 rounded-full border border-white/40 bg-white/70"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 rounded-full border border-white/40 bg-white/70"
         style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
       />
+      <span className="pointer-events-none absolute inset-x-0 -top-6 text-center text-[10px] font-black uppercase tracking-wide text-primary-foreground/70">
+        Swipe up to jump
+      </span>
     </div>
   );
 }
+
 
 /* ------------------------------------------------------------------- stage */
 
