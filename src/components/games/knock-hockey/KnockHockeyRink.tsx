@@ -4,21 +4,28 @@ import { ROUND_SECONDS, pointsForStreak } from "@/lib/knock-hockey-run";
 import type { RoundResult } from "@/lib/knock-hockey-run";
 import { knockHockeySfx } from "@/lib/knock-hockey-sfx";
 
-const VIEW_W = 900;
-const VIEW_H = 420;
-const RINK_X0 = 220;
-const RINK_X1 = 680;
+// Portrait canvas — a hockey table is taller than it is wide, and this game plays in the
+// phone's natural orientation (no rotate prompt) so there's real room to maneuver.
+const VIEW_W = 480;
+const VIEW_H = 900;
+const RINK_X0 = 30;
+const RINK_X1 = 450;
 const RINK_CX = (RINK_X0 + RINK_X1) / 2;
-const WALL_TOP = 20;
-const WALL_BOTTOM = 408;
-const GOAL_HALF_W = 95;
-const GOALIE_Y = 70;
-const GOALIE_R = 16;
-const GOALIE_HALF_RANGE = 34;
-const PADDLE_R = 26;
-const PUCK_R = 13;
-const PLAYER_MIN_Y = 220;
-const PLAYER_MAX_Y = 396;
+const WALL_TOP = 80;
+const WALL_BOTTOM = 860;
+const GOAL_HALF_W = 105;
+const GOALIE_Y = 160;
+const GOALIE_R = 24;
+/** How far the AI goalie's crease reaches (only used while it's defending the human's shot). */
+const GOALIE_AI_HALF_RANGE = 46;
+/** How far the human-controlled goalie can roam (defending the computer's shot) — full width. */
+const GOALIE_ZONE_Y_MIN = WALL_TOP + 15;
+const GOALIE_ZONE_Y_MAX = 420;
+const CENTER_LINE_Y = 460;
+const PADDLE_R = 30;
+const PUCK_R = 15;
+const PLAYER_MIN_Y = 490;
+const PLAYER_MAX_Y = 820;
 const FRICTION = 0.965;
 const WALL_DAMPING = 0.82;
 const SETTLE_SPEED = 55;
@@ -28,9 +35,91 @@ function clamp(v: number, min: number, max: number) {
   return Math.max(min, Math.min(max, v));
 }
 
-const PUCK_START = { x: RINK_CX, y: 320 };
+const PUCK_START = { x: RINK_CX, y: 600 };
+const PADDLE_REST = { x: RINK_CX, y: 780 };
 
-type Phase = "live" | "reset";
+type Body = { x: number; y: number; vx: number; vy: number };
+
+/**
+ * Circle-vs-circle bounce, shared by both the paddle and the goalie. The bounce direction
+ * follows the *striker's own velocity* (not the geometric contact normal) whenever the striker
+ * is genuinely moving — the normal is only reliable for a slow/gentle touch. At drag speeds
+ * fast enough to matter, a striker can remain "overlapping" the puck across two or three
+ * consecutive samples while its position relative to the puck flips (effectively sweeping past
+ * it), which made the normal-based direction unreliable and occasionally fired the puck
+ * backwards. Following the striker's travel direction instead matches what the player actually
+ * did (dragged this way, so the puck should go this way) regardless of exactly which sample
+ * caught the contact.
+ *
+ * Called from both the 16ms physics tick *and* directly from the pointer-drag handlers — a
+ * fast drag can move the paddle/goalie further in one pointermove than the physics tick's own
+ * per-frame step, so checking only once per tick let quick strikes tunnel straight past the
+ * puck without ever registering contact.
+ */
+function resolveStrikerHit(puck: Body, striker: Body, strikerR: number, minBounce: number): boolean {
+  const dx = puck.x - striker.x;
+  const dy = puck.y - striker.y;
+  const dist = Math.hypot(dx, dy) || 0.001;
+  if (dist >= strikerR + PUCK_R) return false;
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const strikerSpeed = Math.hypot(striker.vx, striker.vy);
+  const puckSpeed = Math.hypot(puck.vx, puck.vy);
+  let hit = false;
+  if (strikerSpeed > 30) {
+    // Pure velocity direction — no blending with the contact normal. Even a small normal
+    // contribution can flip the sign of an axis where the normal and the velocity disagree
+    // (e.g. the striker grazes the puck mostly from the side while travelling mostly
+    // vertically), which sent pucks flying in a different direction than the player dragged.
+    const dirx = striker.vx / strikerSpeed;
+    const diry = striker.vy / strikerSpeed;
+    const bounceSpeed = Math.max(strikerSpeed, minBounce) * 1.05;
+    puck.vx = dirx * bounceSpeed;
+    puck.vy = diry * bounceSpeed;
+    hit = true;
+  } else if (puckSpeed > minBounce) {
+    // Striker is essentially still — a moving puck bounces off it along the contact normal.
+    const bounceSpeed = Math.max(puckSpeed * 0.8, minBounce);
+    puck.vx = nx * bounceSpeed;
+    puck.vy = ny * bounceSpeed;
+    hit = true;
+  }
+  const overlap = strikerR + PUCK_R - dist;
+  puck.x += nx * overlap;
+  puck.y += ny * overlap;
+  return hit;
+}
+
+/** The goalie's block always repels on contact (never just rests against the puck), unlike the
+ *  paddle, but otherwise follows the same "trust the striker's own direction" logic above. */
+function resolveGoalieBlock(puck: Body, goalie: Body): boolean {
+  const dx = puck.x - goalie.x;
+  const dy = puck.y - goalie.y;
+  const dist = Math.hypot(dx, dy) || 0.001;
+  if (dist >= GOALIE_R + PUCK_R) return false;
+  const nx = dx / dist;
+  const ny = dy / dist;
+  const goalieSpeed = Math.hypot(goalie.vx, goalie.vy);
+  const puckSpeed = Math.hypot(puck.vx, puck.vy);
+  const baseSpeed = Math.max(goalieSpeed, puckSpeed * 0.6, 180);
+  if (goalieSpeed > 30) {
+    // Pure velocity direction, same reasoning as resolveStrikerHit — blending in the contact
+    // normal can flip the sign of an axis where the two disagree. The block always keeps a
+    // downward push (below) so the puck can never continue straight through the goalie.
+    const dirx = goalie.vx / goalieSpeed;
+    const diry = goalie.vy / goalieSpeed;
+    puck.vx = dirx * baseSpeed;
+    puck.vy = Math.abs(diry * baseSpeed) + 60;
+  } else {
+    puck.vx = nx * baseSpeed;
+    puck.vy = Math.abs(ny * baseSpeed) + 60;
+  }
+  const overlap = GOALIE_R + PUCK_R - dist;
+  puck.x += nx * overlap;
+  puck.y += ny * overlap;
+  return true;
+}
+
 type Popup = { id: number; text: string; x: number; y: number };
 
 export default function KnockHockeyRink({
@@ -67,10 +156,9 @@ export default function KnockHockeyRink({
   const [help, setHelp] = useState(false);
   const [flash, setFlash] = useState(false);
 
-  const phaseRef = useRef<Phase>("live");
   const puckRef = useRef({ x: PUCK_START.x, y: PUCK_START.y, vx: 0, vy: 0 });
-  const paddleRef = useRef({ x: RINK_CX, y: 370, vx: 0, vy: 0 });
-  const goalieRef = useRef({ x: RINK_CX, targetX: RINK_CX });
+  const paddleRef = useRef({ x: PADDLE_REST.x, y: PADDLE_REST.y, vx: 0, vy: 0 });
+  const goalieRef = useRef({ x: RINK_CX, y: GOALIE_Y, vx: 0, vy: 0, targetX: RINK_CX });
   const draggingRef = useRef(false);
   const idleTicksRef = useRef(0);
   const streakRef = useRef(0);
@@ -82,19 +170,25 @@ export default function KnockHockeyRink({
   const timeLeftRef = useRef(ROUND_SECONDS);
   const endedRef = useRef(false);
   const hitCooldownRef = useRef(0);
+  /** Short debounce so a striker sweeping through the puck across several drag samples doesn't
+   *  re-resolve the collision (and flip the bounce direction) multiple times in a row. */
+  const resolveCooldownRef = useRef(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const goalieReactionRef = useRef(0);
   const aimBiasRef = useRef<1 | -1>(1);
+  /** Who the human is dragging this round: the attacking paddle, or the defending goalie. */
+  const autoRef = useRef(auto);
+  autoRef.current = auto;
 
   useEffect(() => {
     if (!active) return;
-    phaseRef.current = "live";
     puckRef.current = { x: PUCK_START.x, y: PUCK_START.y, vx: 0, vy: 0 };
-    paddleRef.current = { x: RINK_CX, y: 370, vx: 0, vy: 0 };
-    goalieRef.current = { x: RINK_CX, targetX: RINK_CX };
+    paddleRef.current = { x: PADDLE_REST.x, y: PADDLE_REST.y, vx: 0, vy: 0 };
+    goalieRef.current = { x: RINK_CX, y: GOALIE_Y, vx: 0, vy: 0, targetX: RINK_CX };
     draggingRef.current = false;
     idleTicksRef.current = 0;
     hitCooldownRef.current = 0;
+    resolveCooldownRef.current = 0;
     aimBiasRef.current = Math.random() < 0.5 ? 1 : -1;
     streakRef.current = 0;
     bestStreakRef.current = 0;
@@ -154,7 +248,7 @@ export default function KnockHockeyRink({
         knockHockeySfx.onFire();
       }
       knockHockeySfx.goal();
-      spawnPopup(hot ? `+${pts} ON FIRE!` : `+${pts} GOAL!`, RINK_CX, 140);
+      spawnPopup(hot ? `+${pts} ON FIRE!` : `+${pts} GOAL!`, RINK_CX, WALL_TOP + 90);
       setFlash(true);
       window.setTimeout(() => setFlash(false), 260);
     };
@@ -173,15 +267,18 @@ export default function KnockHockeyRink({
       const dt = TICK_MS / 1000;
       const puck = puckRef.current;
       const paddle = paddleRef.current;
+      const goalie = goalieRef.current;
       if (hitCooldownRef.current > 0) hitCooldownRef.current -= 1;
+      if (resolveCooldownRef.current > 0) resolveCooldownRef.current -= 1;
 
       // Computer auto-play: paddle visually chases the puck. The actual shot (below) is aimed
       // deterministically at a goal corner rather than relying on emergent collision angles —
       // the same "closed-form aim, not physics-derived" approach used for Pop Shot's computer.
-      if (auto) {
-        const followSpeed = 460 * skill;
+      // While the computer attacks, the human drags the goalie below to defend live.
+      if (autoRef.current) {
+        const followSpeed = 780 * skill;
         const targetX = clamp(puck.x, RINK_X0 + PADDLE_R, RINK_X1 - PADDLE_R);
-        const targetY = clamp(puck.y + 34, PLAYER_MIN_Y, PLAYER_MAX_Y);
+        const targetY = clamp(puck.y + 50, PLAYER_MIN_Y, PLAYER_MAX_Y);
         const dx = targetX - paddle.x;
         const dy = targetY - paddle.y;
         const dist = Math.hypot(dx, dy) || 1;
@@ -192,84 +289,59 @@ export default function KnockHockeyRink({
         paddle.y += (dy / dist) * step;
 
         const puckSpeed = Math.hypot(puck.vx, puck.vy);
-        const canStrike = Math.hypot(puck.x - paddle.x, puck.y - paddle.y) < PADDLE_R + PUCK_R + 10;
+        const canStrike = Math.hypot(puck.x - paddle.x, puck.y - paddle.y) < PADDLE_R + PUCK_R + 12;
         if (canStrike && puckSpeed < 40 && hitCooldownRef.current <= 0) {
           const precision = 0.35 + skill * 0.55; // how close to the true corner the aim lands
-          const targetGoalX = RINK_CX + aimBiasRef.current * (GOAL_HALF_W - 8) * precision;
+          const targetGoalX = RINK_CX + aimBiasRef.current * (GOAL_HALF_W - 10) * precision;
           const ddx = targetGoalX - puck.x;
-          const ddy = WALL_TOP + 4 - puck.y;
+          const ddy = WALL_TOP + 6 - puck.y;
           const ddist = Math.hypot(ddx, ddy) || 1;
-          const shotSpeed = 640 + skill * 260;
+          const shotSpeed = 1500 + skill * 500;
           puck.vx = (ddx / ddist) * shotSpeed;
           puck.vy = (ddy / ddist) * shotSpeed;
           attemptsRef.current += 1;
           hitCooldownRef.current = 40;
           knockHockeySfx.paddleHit(0.7);
         }
-      }
 
-      // Goalie AI: tracks the puck's x with a reaction lag, confined to its crease.
-      // Higher skill = shorter reaction lag and a faster crease slide.
-      const goalieReactionLag = 0.22 - skill * 0.14;
-      const goalieMaxSpeed = 200 + skill * 200;
-      goalieReactionRef.current += dt;
-      if (goalieReactionRef.current > goalieReactionLag) {
-        goalieReactionRef.current = 0;
-        goalieRef.current.targetX = clamp(puck.x, RINK_CX - GOALIE_HALF_RANGE, RINK_CX + GOALIE_HALF_RANGE);
-      }
-      {
-        const g = goalieRef.current;
+        // Goalie AI is dormant — the human drags it live during the computer's round.
+        goalie.vx = 0;
+      } else {
+        // Goalie AI: tracks the puck's x with a reaction lag, confined to its crease.
+        // Higher skill = shorter reaction lag and a faster crease slide.
+        const goalieReactionLag = 0.22 - skill * 0.14;
+        const goalieMaxSpeed = 200 + skill * 200;
+        goalieReactionRef.current += dt;
+        if (goalieReactionRef.current > goalieReactionLag) {
+          goalieReactionRef.current = 0;
+          goalie.targetX = clamp(puck.x, RINK_CX - GOALIE_AI_HALF_RANGE, RINK_CX + GOALIE_AI_HALF_RANGE);
+        }
         const maxStep = goalieMaxSpeed * dt;
-        const dx = clamp(g.targetX - g.x, -maxStep, maxStep);
-        g.x += dx;
+        const gdx = clamp(goalie.targetX - goalie.x, -maxStep, maxStep);
+        goalie.x += gdx;
+        goalie.y = GOALIE_Y;
       }
 
       // Paddle-puck collision (human control only — auto's shot is fired deterministically
-      // above). Uses velocity *relative* to the paddle so this works whether the paddle is
-      // swinging into a resting puck, or a fast puck is falling back into a stationary paddle.
-      if (!auto) {
-        const dx = puck.x - paddle.x;
-        const dy = puck.y - paddle.y;
-        const dist = Math.hypot(dx, dy) || 0.001;
-        if (dist < PADDLE_R + PUCK_R) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const relVx = puck.vx - paddle.vx;
-          const relVy = puck.vy - paddle.vy;
-          const closingSpeed = -(relVx * nx + relVy * ny); // positive when they're approaching each other
-          if (closingSpeed > 0) {
-            const bounceSpeed = Math.max(closingSpeed, 60) * 1.05;
-            puck.vx = nx * bounceSpeed + paddle.vx * 0.35;
-            puck.vy = ny * bounceSpeed + paddle.vy * 0.35;
-            knockHockeySfx.paddleHit(Math.min(1, Math.hypot(puck.vx, puck.vy) / 900));
-            if (hitCooldownRef.current <= 0) {
-              attemptsRef.current += 1;
-              hitCooldownRef.current = 15;
-            }
+      // above). Also checked live from the drag handlers themselves; this tick-based check
+      // catches the other case, a fast puck falling back into a now-stationary paddle.
+      if (!autoRef.current && resolveCooldownRef.current <= 0) {
+        const hit = resolveStrikerHit(puck, paddle, PADDLE_R, 60);
+        if (hit) {
+          resolveCooldownRef.current = 6;
+          knockHockeySfx.paddleHit(Math.min(1, Math.hypot(puck.vx, puck.vy) / 900));
+          if (hitCooldownRef.current <= 0) {
+            attemptsRef.current += 1;
+            hitCooldownRef.current = 15;
           }
-          const overlap = PADDLE_R + PUCK_R - dist;
-          puck.x += nx * overlap;
-          puck.y += ny * overlap;
         }
       }
 
-      // Goalie-puck collision (block).
-      {
-        const g = goalieRef.current;
-        const dx = puck.x - g.x;
-        const dy = puck.y - GOALIE_Y;
-        const dist = Math.hypot(dx, dy) || 0.001;
-        if (dist < GOALIE_R + PUCK_R) {
-          const nx = dx / dist;
-          const ny = dy / dist;
-          const speed = Math.max(220, Math.hypot(puck.vx, puck.vy) * 0.7);
-          puck.vx = nx * speed;
-          puck.vy = Math.abs(ny * speed) + 80;
-          const overlap = GOALIE_R + PUCK_R - dist;
-          puck.x += nx * overlap;
-          puck.y += ny * overlap;
-          knockHockeySfx.block();
-        }
+      // Goalie-puck collision (block) — always repels on contact. Also checked live from the
+      // drag handler while the human is defending, for the same reason as the paddle above.
+      if (resolveCooldownRef.current <= 0 && resolveGoalieBlock(puck, goalie)) {
+        resolveCooldownRef.current = 6;
+        knockHockeySfx.block();
       }
 
       // Integrate puck motion + friction.
@@ -341,28 +413,59 @@ export default function KnockHockeyRink({
     p.vy = (ny - p.y) / (TICK_MS / 1000);
     p.x = nx;
     p.y = ny;
+    // Checked here too, not just once per physics tick — a fast drag can otherwise move the
+    // paddle clean past the puck between two pointermove events without ever overlapping it
+    // at a tick boundary. Gated by the same short debounce as the tick check so a striker
+    // sweeping through the puck across several drag samples resolves the hit exactly once.
+    if (resolveCooldownRef.current <= 0 && resolveStrikerHit(puckRef.current, p, PADDLE_R, 60)) {
+      resolveCooldownRef.current = 6;
+      knockHockeySfx.paddleHit(Math.min(1, Math.hypot(puckRef.current.vx, puckRef.current.vy) / 900));
+      if (hitCooldownRef.current <= 0) {
+        attemptsRef.current += 1;
+        hitCooldownRef.current = 15;
+      }
+    }
+  };
+
+  const moveGoalieTo = (x: number, y: number) => {
+    const g = goalieRef.current;
+    const nx = clamp(x, RINK_X0 + GOALIE_R, RINK_X1 - GOALIE_R);
+    const ny = clamp(y, GOALIE_ZONE_Y_MIN, GOALIE_ZONE_Y_MAX);
+    g.vx = (nx - g.x) / (TICK_MS / 1000);
+    g.vy = (ny - g.y) / (TICK_MS / 1000);
+    g.x = nx;
+    g.y = ny;
+    if (resolveCooldownRef.current <= 0 && resolveGoalieBlock(puckRef.current, g)) {
+      resolveCooldownRef.current = 6;
+      knockHockeySfx.block();
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (auto) return;
     const pt = canvasToView(e.clientX, e.clientY);
     if (!pt) return;
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     draggingRef.current = true;
-    movePaddleTo(pt.x, pt.y);
+    if (auto) moveGoalieTo(pt.x, pt.y);
+    else movePaddleTo(pt.x, pt.y);
     bump();
   };
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!draggingRef.current) return;
     const pt = canvasToView(e.clientX, e.clientY);
     if (!pt) return;
-    movePaddleTo(pt.x, pt.y);
+    if (auto) moveGoalieTo(pt.x, pt.y);
+    else movePaddleTo(pt.x, pt.y);
   };
   const handlePointerUp = () => {
     draggingRef.current = false;
-    const p = paddleRef.current;
-    p.vx = 0;
-    p.vy = 0;
+    if (auto) {
+      goalieRef.current.vx = 0;
+      goalieRef.current.vy = 0;
+    } else {
+      paddleRef.current.vx = 0;
+      paddleRef.current.vy = 0;
+    }
   };
 
   if (!active) {
@@ -403,91 +506,101 @@ export default function KnockHockeyRink({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-      <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
-        <defs>
-          <linearGradient id="kh-ice" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(200 60% 88%)" />
-            <stop offset="100%" stopColor="hsl(200 50% 76%)" />
-          </linearGradient>
-        </defs>
+        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet" className="block h-full w-full">
+          <defs>
+            <linearGradient id="kh-ice" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="hsl(200 60% 88%)" />
+              <stop offset="100%" stopColor="hsl(200 50% 76%)" />
+            </linearGradient>
+          </defs>
 
-        {/* Crowd */}
-        <rect x="0" y="0" width={VIEW_W} height="20" fill="hsl(214 45% 8%)" />
+          {/* Rink surface */}
+          <rect x={RINK_X0} y={WALL_TOP} width={RINK_X1 - RINK_X0} height={WALL_BOTTOM - WALL_TOP} fill="url(#kh-ice)" stroke="#0a0e14" strokeWidth="6" />
+          <line x1={RINK_X0} y1={CENTER_LINE_Y} x2={RINK_X1} y2={CENTER_LINE_Y} stroke="hsl(0 70% 55%)" strokeWidth="3" opacity="0.55" />
+          <circle cx={RINK_CX} cy={CENTER_LINE_Y} r="60" fill="none" stroke="hsl(210 70% 45%)" strokeWidth="2.5" opacity="0.4" />
+          {!auto && (
+            <line x1={RINK_X0} y1={PLAYER_MIN_Y} x2={RINK_X1} y2={PLAYER_MIN_Y} stroke="hsl(210 100% 60%)" strokeWidth="2" strokeDasharray="8 8" opacity="0.3" />
+          )}
+          {auto && (
+            <line x1={RINK_X0} y1={GOALIE_ZONE_Y_MAX} x2={RINK_X1} y2={GOALIE_ZONE_Y_MAX} stroke="hsl(0 85% 60%)" strokeWidth="2" strokeDasharray="8 8" opacity="0.3" />
+          )}
 
-        {/* Rink surface */}
-        <rect x={RINK_X0} y={WALL_TOP} width={RINK_X1 - RINK_X0} height={WALL_BOTTOM - WALL_TOP} fill="url(#kh-ice)" stroke="#0a0e14" strokeWidth="6" />
-        <line x1={RINK_X0} y1={VIEW_H / 2 - 10} x2={RINK_X1} y2={VIEW_H / 2 - 10} stroke="hsl(0 70% 55%)" strokeWidth="2.5" opacity="0.55" />
-        <circle cx={RINK_CX} cy={VIEW_H / 2 - 10} r="46" fill="none" stroke="hsl(210 70% 45%)" strokeWidth="2" opacity="0.4" />
+          {/* Goal mouth + net — fully inside the visible rink, never clipped by the canvas edge. */}
+          <rect x={RINK_CX - GOAL_HALF_W} y={WALL_TOP - 46} width={GOAL_HALF_W * 2} height="46" rx="4" fill="#0a0e14" opacity="0.9" />
+          <g stroke="rgba(255,255,255,0.55)" strokeWidth="1.4">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <line
+                key={i}
+                x1={RINK_CX - GOAL_HALF_W + (i * GOAL_HALF_W * 2) / 8}
+                y1={WALL_TOP - 46}
+                x2={RINK_CX - GOAL_HALF_W + (i * GOAL_HALF_W * 2) / 8}
+                y2={WALL_TOP}
+              />
+            ))}
+            <line x1={RINK_CX - GOAL_HALF_W} y1={WALL_TOP - 23} x2={RINK_CX + GOAL_HALF_W} y2={WALL_TOP - 23} />
+          </g>
+          <rect x={RINK_CX - GOAL_HALF_W - 6} y={WALL_TOP - 6} width={GOAL_HALF_W * 2 + 12} height="6" rx="3" fill="#e0453f" />
 
-        {/* Goal mouth + net */}
-        <rect x={RINK_CX - GOAL_HALF_W} y={WALL_TOP - 22} width={GOAL_HALF_W * 2} height="22" fill="#0a0e14" opacity="0.85" />
-        <g stroke="rgba(255,255,255,0.5)" strokeWidth="1.2">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <line key={i} x1={RINK_CX - GOAL_HALF_W + (i * GOAL_HALF_W * 2) / 6} y1={WALL_TOP - 22} x2={RINK_CX - GOAL_HALF_W + (i * GOAL_HALF_W * 2) / 6} y2={WALL_TOP} />
-          ))}
-        </g>
-        <rect x={RINK_CX - GOAL_HALF_W} y={WALL_TOP - 4} width={GOAL_HALF_W * 2} height="4" fill="#e0453f" />
+          {/* Goalie */}
+          <g transform={`translate(${goalie.x} ${goalie.y})`}>
+            <ellipse cx="0" cy="8" rx={GOALIE_R * 0.9} ry="7" fill="rgba(0,0,0,0.2)" />
+            <circle r={GOALIE_R} fill="#e0453f" stroke="#7a1614" strokeWidth="2.5" />
+            <circle r={GOALIE_R * 0.5} fill="#f8f6f0" />
+          </g>
 
-        {/* Goalie */}
-        <g transform={`translate(${goalie.x} ${GOALIE_Y})`}>
-          <ellipse cx="0" cy="6" rx={GOALIE_R * 0.9} ry="6" fill="rgba(0,0,0,0.2)" />
-          <circle r={GOALIE_R} fill="#e0453f" stroke="#7a1614" strokeWidth="2" />
-          <circle r={GOALIE_R * 0.5} fill="#f8f6f0" />
-        </g>
+          {/* Player paddle */}
+          <g transform={`translate(${paddle.x} ${paddle.y})`}>
+            <ellipse cx="0" cy="8" rx={PADDLE_R * 0.9} ry="7" fill="rgba(0,0,0,0.25)" />
+            <circle r={PADDLE_R} fill="#3a6bd6" stroke="#12275c" strokeWidth="3" />
+            <circle r={PADDLE_R * 0.5} fill="#f8f6f0" />
+          </g>
 
-        {/* Player paddle */}
-        <g transform={`translate(${paddle.x} ${paddle.y})`}>
-          <ellipse cx="0" cy="6" rx={PADDLE_R * 0.9} ry="6" fill="rgba(0,0,0,0.25)" />
-          <circle r={PADDLE_R} fill="#3a6bd6" stroke="#12275c" strokeWidth="2.5" />
-          <circle r={PADDLE_R * 0.5} fill="#f8f6f0" />
-        </g>
+          {/* Puck */}
+          <g transform={`translate(${puck.x} ${puck.y})`}>
+            <circle r={PUCK_R} fill="#111318" stroke="#000" strokeWidth="1.6" />
+            <circle r={PUCK_R * 0.4} fill="#333" />
+          </g>
+        </svg>
 
-        {/* Puck */}
-        <g transform={`translate(${puck.x} ${puck.y})`}>
-          <circle r={PUCK_R} fill="#111318" stroke="#000" strokeWidth="1.4" />
-          <circle r={PUCK_R * 0.4} fill="#333" />
-        </g>
-      </svg>
+        {flash && <div className="pointer-events-none absolute inset-0 bg-white/25" />}
 
-      {flash && <div className="pointer-events-none absolute inset-0 bg-white/25" />}
-
-      {popups.map((p) => (
-        <span
-          key={p.id}
-          className="kh-pop pointer-events-none absolute -translate-x-1/2 rounded-full bg-[#f0d84c] px-2.5 py-1 text-[12px] font-black text-black"
-          style={{ left: `${(p.x / VIEW_W) * 100}%`, top: `${(p.y / VIEW_H) * 100}%` }}
-        >
-          {p.text}
-        </span>
-      ))}
-
-      {onFire && (
-        <span className="pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-red-600 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-white shadow-lg animate-pulse">
-          🔥 On Fire!
-        </span>
-      )}
-
-      {buzzer && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="kh-buzzer rounded-xl border-2 border-[#f0d84c] bg-black/70 px-5 py-2 text-2xl font-black uppercase tracking-widest text-[#f0d84c]">
-            Time!
+        {popups.map((p) => (
+          <span
+            key={p.id}
+            className="kh-pop pointer-events-none absolute -translate-x-1/2 rounded-full bg-[#f0d84c] px-2.5 py-1 text-[12px] font-black text-black"
+            style={{ left: `${(p.x / VIEW_W) * 100}%`, top: `${(p.y / VIEW_H) * 100}%` }}
+          >
+            {p.text}
           </span>
-        </div>
-      )}
+        ))}
 
-      {help ? (
-        <ul className="absolute inset-x-6 top-16 z-30 space-y-1 rounded-xl bg-black/85 p-3 text-[10px] text-white/80 animate-fade-in">
-          {howToPlay.map((line) => (
-            <li key={line}>• {line}</li>
-          ))}
-        </ul>
-      ) : null}
+        {onFire && (
+          <span className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-red-600 px-3 py-1 text-[11px] font-black uppercase tracking-wide text-white shadow-lg animate-pulse">
+            🔥 On Fire!
+          </span>
+        )}
 
-      {!auto && !help && (
-        <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white/40">
-          Drag your paddle to knock the puck into the goal
-        </p>
-      )}
+        {buzzer && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="kh-buzzer rounded-xl border-2 border-[#f0d84c] bg-black/70 px-5 py-2 text-2xl font-black uppercase tracking-widest text-[#f0d84c]">
+              Time!
+            </span>
+          </div>
+        )}
+
+        {help ? (
+          <ul className="absolute inset-x-6 top-16 z-30 space-y-1 rounded-xl bg-black/85 p-3 text-[11px] text-white/80 animate-fade-in">
+            {howToPlay.map((line) => (
+              <li key={line}>• {line}</li>
+            ))}
+          </ul>
+        ) : null}
+
+        {!help && (
+          <p className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 text-[11px] font-bold text-white/45">
+            {auto ? "Drag your red goalie to block their shot" : "Drag your blue paddle to knock the puck into the goal"}
+          </p>
+        )}
       </div>
 
       {/* Scoreboard HUD */}

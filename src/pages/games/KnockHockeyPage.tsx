@@ -8,7 +8,6 @@ import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
-import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import KnockHockeyRink from "@/components/games/knock-hockey/KnockHockeyRink";
@@ -19,10 +18,10 @@ import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGam
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
-  "Drag your blue paddle anywhere on your half of the table — it follows your finger directly.",
-  "Knock the puck into the goal at the top. A red goalie will try to block your shot, so aim for the corners.",
+  "On your round: drag your blue paddle anywhere on your half of the table — it follows your finger directly. Knock the puck into the goal, aiming for the corners past the goalie.",
+  "On their round: you control the red goalie — drag it side to side to block their shots from going in.",
   "Every goal is worth 1 point. Score 3 in a row and you're 'On Fire' — goals are worth 2 points until you miss.",
-  "You've got 20 seconds to score as many as you can. 3 rounds each, alternating with your opponent — highest total score wins.",
+  "You've got 20 seconds per round to score as many as you can. 3 rounds each, alternating with your opponent — highest total score wins.",
 ];
 
 export default function KnockHockeyPage() {
@@ -187,7 +186,7 @@ export default function KnockHockeyPage() {
   };
 
   return (
-    <LandscapeStage auto>
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
         {seated && !finished && (myTurn || computersTurn) && (
           <KnockHockeyRink
@@ -240,7 +239,7 @@ export default function KnockHockeyPage() {
         <GameIntro
           open={!seated && !finished}
           title="Knock Hockey"
-          subtitle={game.mode === "solo" ? "20-second shootout — solo vs Computer" : `20-second shootout — you vs ${opponentName}`}
+          subtitle={game.mode === "solo" ? "Attack and defend — solo vs Computer" : `Attack and defend — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
@@ -290,6 +289,6 @@ export default function KnockHockeyPage() {
         }}
         title="Challenge to Knock Hockey"
       />
-    </LandscapeStage>
+    </div>
   );
 }
