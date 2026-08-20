@@ -37,6 +37,7 @@ import wordLinkArt from "@/assets/games/word-link.svg";
 import miniGolfArt from "@/assets/games/mini-golf.svg";
 import snakeRoyaleArt from "@/assets/games/snake-royale.svg";
 import cityRunArt from "@/assets/games/city-run.svg";
+import obbyArt from "@/assets/games/yaj-obby-intro.png";
 
 type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card" | "Adventure";
 
@@ -61,6 +62,7 @@ const CARDS: CardDef[] = [
   { type: "word_link", title: "Word Link", players: "2 players", image: wordLinkArt, category: "Puzzle", isNew: true },
   { type: "mini_golf", title: "Mini Golf", players: "2 players", image: miniGolfArt, category: "Sports", isNew: true },
   { type: "snake_royale", title: "Snake Royale", players: "2 players", image: snakeRoyaleArt, category: "Arcade", isNew: true },
+  { type: "obby", title: "YAJ Obby", players: "2 players", image: obbyArt, category: "Adventure", isNew: true },
   { type: "city_run", title: "YAJ City Run", players: "2 players", image: cityRunArt, category: "Adventure", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
