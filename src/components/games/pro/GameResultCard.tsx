@@ -6,7 +6,7 @@ type Props = {
   title: string;
   detail?: string;
   onRematch: () => void;
-  onChallenge: () => void;
+  onChallenge?: () => void;
   onShare: () => void;
 };
 
@@ -84,13 +84,15 @@ export default function GameResultCard({
           >
             <RotateCcw className="h-4 w-4" /> Rematch
           </button>
-          <button
-            type="button"
-            onClick={onChallenge}
-            className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-3 text-sm font-black text-white active:scale-[0.98]"
-          >
-            <Users className="h-4 w-4" /> Challenge Someone
-          </button>
+          {onChallenge && (
+            <button
+              type="button"
+              onClick={onChallenge}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/20 px-4 py-3 text-sm font-black text-white active:scale-[0.98]"
+            >
+              <Users className="h-4 w-4" /> Challenge Someone
+            </button>
+          )}
           <button
             type="button"
             onClick={onShare}
