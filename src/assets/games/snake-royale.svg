@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
+      <stop offset="0%" stop-color="hsl(152,45%,26%)" />
+      <stop offset="60%" stop-color="hsl(152,45%,14%)" />
+      <stop offset="100%" stop-color="hsl(154,48%,7%)" />
+    </radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#bg)" />
+
+  <!-- Play field -->
+  <rect x="55" y="45" width="290" height="290" rx="14" fill="hsl(150,42%,15%)" stroke="#0a1a0d" stroke-width="6" />
+
+  <!-- Storm ring (danger zone) -->
+  <rect x="55" y="45" width="290" height="290" rx="14" fill="none" />
+  <rect x="55" y="45" width="290" height="46" fill="rgba(180,20,20,0.4)" />
+  <rect x="55" y="289" width="290" height="46" fill="rgba(180,20,20,0.4)" />
+  <rect x="55" y="91" width="46" height="198" fill="rgba(180,20,20,0.4)" />
+  <rect x="299" y="91" width="46" height="198" fill="rgba(180,20,20,0.4)" />
+  <rect x="101" y="91" width="198" height="198" fill="none" stroke="#f0d84c" stroke-width="3" stroke-dasharray="10 8" opacity="0.75" />
+
+  <!-- Food -->
+  <circle cx="255" cy="150" r="10" fill="#ff5a5a" stroke="#7a1614" stroke-width="2" />
+
+  <!-- Snake -->
+  <rect x="135" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
+  <rect x="161" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
+  <rect x="187" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
+  <rect x="213" y="185" width="26" height="26" rx="6" fill="#4ade80" stroke="#0d5f30" stroke-width="1.5" />
+
+  <!-- Title lockup -->
+  <text x="200" y="378" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="26" fill="#ffffff" letter-spacing="1">SNAKE ROYALE</text>
+</svg>
