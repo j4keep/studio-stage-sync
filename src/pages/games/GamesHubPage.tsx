@@ -70,6 +70,7 @@ const CARDS: CardDef[] = [
   { type: "city_run", title: "YAJ City Run", players: "Solo endless run", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
   { type: "treasure_rush", title: "YAJ Treasure Rush", players: "Solo treasure hunt", image: treasureRushArtAsset.url, category: "Adventure", isNew: true },
   { type: "tower_escape", title: "YAJ Tower Escape", players: "Solo tower climb", image: towerEscapeArtAsset.url, category: "Adventure", isNew: true },
+  { type: "survival_island", title: "YAJ Survival Island", players: "Solo survival", image: survivalIslandArtAsset.url, category: "Adventure", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },
@@ -82,11 +83,10 @@ const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade
 
 /** YAJ Adventures — the original-IP adventure line-up. The rest are planned titles that
  *  reuse the same movement/collision/score/power-up systems. */
-const ADVENTURE_TYPES: GameType[] = ["tower_escape", "treasure_rush", "city_run", "obby"];
+const ADVENTURE_TYPES: GameType[] = ["survival_island", "tower_escape", "treasure_rush", "city_run", "obby"];
 const ADVENTURE_CARDS: CardDef[] = ADVENTURE_TYPES.map((t) => CARDS.find((c) => c.type === t)!).filter(Boolean);
 
 const ADVENTURES_COMING_SOON = [
-  { title: "YAJ Survival Island", blurb: "Outlast the hazards for three minutes", image: survivalIslandArtAsset.url },
   { title: "YAJ Neighborhood", blurb: "Explore the block and finish missions", image: neighborhoodArtAsset.url },
 ];
 
