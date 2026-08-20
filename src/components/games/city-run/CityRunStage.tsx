@@ -220,7 +220,7 @@ function Runner({
       const squash = s.sliding > 0 ? 0.5 : 1;
       group.current.position.set(s.x, s.y, s.z);
       group.current.scale.set(1, squash, 1);
-      group.current.rotation.y = Math.PI; // facing away, down the street
+      group.current.rotation.y = 0; // facing away from camera, down the street
     }
 
     camera.position.x += (s.x * 0.55 - camera.position.x) * Math.min(1, dt * 5);
@@ -254,7 +254,90 @@ function Runner({
   );
 }
 
+/* ------------------------------------------------------------- joystick */
+
+/** Same round thumbstick as YAJ Obby: push left/right to switch lane, up to jump, down to slide. */
+function RunJoystick({
+  onLane,
+  onJump,
+  onSlide,
+}: {
+  onLane: (dir: -1 | 1) => void;
+  onJump: () => void;
+  onSlide: () => void;
+}) {
+  const base = useRef<HTMLDivElement>(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const fired = useRef({ lane: 0, vert: 0 });
+
+  const update = (clientX: number, clientY: number) => {
+    const el = base.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    const max = r.width / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const len = Math.hypot(dx, dy) || 1;
+    const clamped = Math.min(len, max);
+    dx = (dx / len) * clamped;
+    dy = (dy / len) * clamped;
+    setKnob({ x: dx, y: dy });
+
+    const nx = dx / max;
+    const ny = dy / max;
+    if (Math.abs(nx) >= Math.abs(ny)) {
+      const dir = nx > 0.4 ? 1 : nx < -0.4 ? -1 : 0;
+      if (dir !== 0 && fired.current.lane !== dir) {
+        onLane(dir as -1 | 1);
+        fired.current.lane = dir;
+      }
+      if (dir === 0) fired.current.lane = 0;
+    } else {
+      const dir = ny < -0.4 ? -1 : ny > 0.4 ? 1 : 0;
+      if (dir !== 0 && fired.current.vert !== dir) {
+        if (dir === -1) onJump();
+        else onSlide();
+        fired.current.vert = dir;
+      }
+      if (dir === 0) fired.current.vert = 0;
+    }
+  };
+
+  const release = () => {
+    setKnob({ x: 0, y: 0 });
+    fired.current = { lane: 0, vert: 0 };
+  };
+
+  return (
+    <div
+      ref={base}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+        update(e.clientX, e.clientY);
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons === 0 && e.pointerType === "mouse") return;
+        update(e.clientX, e.clientY);
+      }}
+      onPointerUp={release}
+      onPointerCancel={release}
+      onPointerLeave={release}
+      aria-label="Move"
+      className="relative h-32 w-32 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
+    >
+      <div
+        className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 rounded-full border border-white/40 bg-white/70"
+        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
+      />
+    </div>
+  );
+}
+
 /* ----------------------------------------------------------------- stage */
+
 
 export default function CityRunStage({
   myColor,
@@ -395,24 +478,16 @@ export default function CityRunStage({
 
       {/* Controls */}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 pb-8">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onPointerDown={() => move(-1)}
-            aria-label="Move left"
-            className="h-16 w-16 touch-none rounded-2xl border border-white/25 bg-white/15 text-lg font-black text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            onPointerDown={() => move(1)}
-            aria-label="Move right"
-            className="h-16 w-16 touch-none rounded-2xl border border-white/25 bg-white/15 text-lg font-black text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            ▶
-          </button>
-        </div>
+        <RunJoystick
+          onLane={move}
+          onJump={() => {
+            inputRef.current.jump = true;
+          }}
+          onSlide={() => {
+            inputRef.current.slide = true;
+          }}
+        />
+
         <div className="flex items-end gap-2">
           <button
             type="button"
