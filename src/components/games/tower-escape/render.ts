@@ -428,11 +428,16 @@ function drawStar(g: CanvasRenderingContext2D, cx: number, cy: number, r: number
 }
 
 /** The blocky YAJ Adventure character, side-on, with limb animation. */
-function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTop: number, cam: Camera) {
-  const s = cam.scale;
+function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTopRaw: number, cam: Camera) {
+  // Art-only upscale so the shared YAJ Adventure character reads as big as in Obby.
+  const ART = 1.45;
+  const s = cam.scale * ART;
   const w = PLAYER_W * s;
   const hh = PLAYER_H * s;
-  const cx = x + w / 2;
+  // keep the feet planted where the physics box bottom is
+  const yTop = yTopRaw + PLAYER_H * cam.scale - hh;
+  const cx = x + (PLAYER_W * cam.scale) / 2;
+
   const flicker = st.invuln > 0 && Math.floor(st.t * 14) % 2 === 0;
 
   g.save();
