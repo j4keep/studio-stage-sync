@@ -19,7 +19,7 @@ export type Camera = { x: number; y: number; scale: number; vw: number; vh: numb
 
 const THEME: Record<SectionTheme, { sky: [string, string]; wall: string; deck: string; face: string; accent: string; glow: string }> = {
   lobby: { sky: ["#241a44", "#120c26"], wall: "#2b2050", deck: "#c9a24a", face: "#8a6c2c", accent: "#f0d78c", glow: "#ffcf6b" },
-  industrial: { sky: ["#1c2a3d", "#0d1522"], wall: "#233246", deck: "#9fb4c9", face: "#5d7governments" as any, face2: "" } as any,
+  industrial: { sky: ["#1c2a3d", "#0d1522"], wall: "#233246", deck: "#9fb4c9", face: "#5d7387", accent: "#67e8f9", glow: "#22d3ee" },
   neon: { sky: ["#2a1046", "#120524"], wall: "#331253", deck: "#b98cf5", face: "#6c3fa8", accent: "#e879f9", glow: "#a855f7" },
   glass: { sky: ["#0d2a33", "#06171d"], wall: "#123640", deck: "#8fdfe4", face: "#3d8d96", accent: "#7de0a6", glow: "#5eead4" },
   shaft: { sky: ["#1b1b26", "#0b0b12"], wall: "#232333", deck: "#b6b9c9", face: "#6a6d80", accent: "#f59e0b", glow: "#fbbf24" },
@@ -27,15 +27,6 @@ const THEME: Record<SectionTheme, { sky: [string, string]; wall: string; deck: s
   sky: { sky: ["#1b3d6b", "#0a1830"], wall: "#20456f", deck: "#cfe6ff", face: "#6f93bd", accent: "#7dd3fc", glow: "#38bdf8" },
 };
 
-// The industrial entry above is written out properly here to keep the palette clean.
-THEME.industrial = {
-  sky: ["#1c2a3d", "#0d1522"],
-  wall: "#233246",
-  deck: "#9fb4c9",
-  face: "#5d7387",
-  accent: "#67e8f9",
-  glow: "#22d3ee",
-};
 
 export function themeAt(st: TowerState, y: number) {
   const s = st.level.sections.find((sec) => y >= sec.from && y < sec.to) ?? st.level.sections[0];
