@@ -15,10 +15,28 @@ import {
   RunResult,
   STUMBLE_LIVES,
   generateCourse,
+  isPowerUpKind,
   scoreRun,
   sectionAt,
 } from "@/lib/city-run-run";
+import {
+  BOOST_SPEED,
+  MAGNET_LANE_REACH,
+  MAGNET_RANGE,
+  POWER_UP_LABEL,
+  POWER_UP_POINTS,
+  PowerUpKind,
+  PowerUpState,
+  activatePowerUp,
+  activeList,
+  boostBonus,
+  consumeShield,
+  initialPowerUps,
+  isActive,
+  tickPowerUps,
+} from "@/lib/city-run-powerups";
 import { cityRunSfx } from "@/lib/city-run-sfx";
+
 
 // Same fixed-viewBox trick every physics game this session uses: the camera follows a runner
 // whose *world* distance always advances, projected onto a fixed screen row — this is a
