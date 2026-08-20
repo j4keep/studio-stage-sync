@@ -972,10 +972,22 @@ export default function CityRunBoard({
 
           <g transform={`translate(${playerX} ${PLAYER_SCREEN_Y - jumpLift - pose.bob})`}>
             <ellipse cx="0" cy={72 + pose.bob} rx="42" ry="11" fill="url(#shadowGradCR)" />
+            {boostOn && (
+              <g opacity="0.75">
+                <rect x="-58" y="-70" width="26" height="4" rx="2" fill="#FFD166" opacity="0.7" />
+                <rect x="-64" y="-40" width="34" height="4" rx="2" fill="#FFD166" opacity="0.5" />
+                <rect x="34" y="-58" width="28" height="4" rx="2" fill="#FFD166" opacity="0.6" />
+                <rect x="38" y="-24" width="22" height="4" rx="2" fill="#FFD166" opacity="0.45" />
+              </g>
+            )}
             <g transform={`rotate(${pose.tilt}) scale(1, ${pose.squashY}) translate(0, ${pose.squashY < 1 ? 78 - 78 / pose.squashY : 0})`}>
               <RunnerGraphic pose={pose} />
             </g>
+            {shieldOn && (
+              <ellipse cx="0" cy="-46" rx="52" ry="82" fill="#7FE7F0" opacity="0.16" stroke="#7FE7F0" strokeWidth="2.5" strokeOpacity="0.55" />
+            )}
           </g>
+
 
           <rect width={VIEW_W} height={VIEW_H} fill="url(#vignetteCR)" />
         </svg>
