@@ -628,7 +628,7 @@ export default function CityRunBoard({
           chooseBranch(Math.random() < 0.35 + skillRef.current * 0.3 ? "alley" : "main_street");
         }
         const next = items.find((it) => it.distance + ITEM_HALF_WIDTH > d);
-        if (next && next.kind !== "star" && next.lane === laneRef.current) {
+        if (next && next.kind !== "star" && !isPowerUpKind(next.kind) && next.lane === laneRef.current) {
           if (!autoTargetRef.current || autoTargetRef.current.key !== next.distance) {
             const poorReactionChance = (1 - skillRef.current) * 0.3;
             const reactsLate = Math.random() < poorReactionChance;
