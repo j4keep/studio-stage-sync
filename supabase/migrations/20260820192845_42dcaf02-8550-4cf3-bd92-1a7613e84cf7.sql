@@ -1,5 +1,3 @@
--- YAJ City Run is being pulled — remove it from the create_game RPC's allowed types
--- so no new city_run games can be created. Existing rows (if any) are left as-is.
 CREATE OR REPLACE FUNCTION public.create_game(
   p_game_type text,
   p_mode text,
@@ -19,7 +17,7 @@ BEGIN
     RAISE EXCEPTION 'Sign in required';
   END IF;
 
-  IF p_game_type NOT IN ('tic_tac_toe', 'connect_four', 'dominoes', 'checkers', 'trivia', 'pool', 'boxing', 'battleship', 'driving', 'poker', 'pop_shot', 'knock_hockey', 'bingo', 'word_link', 'mini_golf', 'snake_royale', 'obby') THEN
+  IF p_game_type NOT IN ('tic_tac_toe', 'connect_four', 'dominoes', 'checkers', 'trivia', 'pool', 'boxing', 'battleship', 'driving', 'poker', 'pop_shot', 'knock_hockey', 'bingo', 'word_link', 'mini_golf', 'snake_royale', 'city_run', 'obby') THEN
     RAISE EXCEPTION 'Unsupported game type';
   END IF;
 
