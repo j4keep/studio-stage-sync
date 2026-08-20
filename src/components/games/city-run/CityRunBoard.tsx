@@ -1056,6 +1056,20 @@ export default function CityRunBoard({
               <span key={i} className={`h-2 w-2 rounded-full ${i < stumblesLeft ? "bg-[#FF7A59]" : "bg-white/20"}`} />
             ))}
           </div>
+          {activePowerUps.length > 0 && (
+            <div className="flex items-center gap-1">
+              {activePowerUps.map(({ kind, secondsLeft }) => (
+                <span
+                  key={kind}
+                  className="rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-black"
+                  style={{ background: POWER_UP_TINT[kind], boxShadow: `0 0 10px ${POWER_UP_TINT[kind]}` }}
+                >
+                  {POWER_UP_LABEL[kind]} {Math.ceil(secondsLeft)}s
+                </span>
+              ))}
+            </div>
+          )}
+
         </div>
 
         <div className="pointer-events-auto flex shrink-0 items-center gap-1">
