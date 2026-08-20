@@ -85,8 +85,7 @@ function buildCourse(opts: CourseOpts): Plat[] {
   push({ x: 0, y: 0, z: 0, w: 9, d: 9, kind: "start", hue: 150 });
   z = 7;
 
-  const SEGMENTS = 9;
-  for (let s = 0; s < SEGMENTS; s++) {
+  for (let s = 0; s < segments; s++) {
     const steps = 3 + Math.floor(rnd() * 2);
     for (let i = 0; i < steps; i++) {
       const gap = 3.4 + rnd() * 2.1;
@@ -94,16 +93,16 @@ function buildCourse(opts: CourseOpts): Plat[] {
       y += (rnd() - 0.35) * 1.1;
       const x = (rnd() - 0.5) * 7;
       const roll = rnd();
-      const hue = (s * 41 + i * 17) % 360;
+      const hue = (hueBase + s * 41 + i * 17) % 360;
 
-      if (roll > 0.78) {
+      if (roll < movingChance) {
         // Sliding platform
         push({
           x,
           y,
           z,
-          w: 3.4,
-          d: 3.4,
+          w: 3.4 + padBonus,
+          d: 3.4 + padBonus,
           kind: "moving",
           hue,
           mv: {
@@ -113,13 +112,13 @@ function buildCourse(opts: CourseOpts): Plat[] {
             phase: rnd() * Math.PI * 2,
           },
         });
-      } else if (roll > 0.62) {
-        // Narrow beam + a lava block beside it to punish sloppy lines
-        push({ x, y, z, w: 1.7, d: 6.5, kind: "static", hue });
+      } else if (roll < movingChance + lavaChance) {
+        // Narrow beam + a hazard block beside it to punish sloppy lines
+        push({ x, y, z, w: 1.7 + padBonus * 0.5, d: 6.5, kind: "static", hue });
         push({ x: x + (rnd() > 0.5 ? 3.6 : -3.6), y, z, w: 3, d: 3, kind: "lava", hue: 12 });
         z += 2;
       } else {
-        push({ x, y, z, w: 3.6 + rnd() * 1.6, d: 3.6, kind: "static", hue });
+        push({ x, y, z, w: 3.6 + padBonus + rnd() * 1.6, d: 3.6 + padBonus, kind: "static", hue });
       }
     }
 
@@ -128,6 +127,7 @@ function buildCourse(opts: CourseOpts): Plat[] {
     y += 0.4;
     push({ x: 0, y, z, w: 6, d: 5, kind: "checkpoint", hue: 190 });
   }
+
 
   z += 7;
   push({ x: 0, y, z, w: 10, d: 8, kind: "finish", hue: 48 });
