@@ -381,15 +381,9 @@ export default function KnockHockeyRink({
 
   return (
     <div
-      ref={containerRef}
-      className="relative h-full w-full touch-none select-none overflow-hidden"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
+      className="relative h-full w-full overflow-hidden"
       style={{
         background: "linear-gradient(180deg, hsl(210 50% 16%) 0%, hsl(212 50% 9%) 45%, hsl(214 50% 6%) 100%)",
-        paddingTop: "env(safe-area-inset-top)",
       }}
     >
       <style>{`
@@ -399,6 +393,16 @@ export default function KnockHockeyRink({
         .kh-buzzer { animation: kh-buzzer 0.4s ease-in-out 2; }
       `}</style>
 
+      {/* Rink area — starts below the scoreboard so the goal is never hidden behind it. */}
+      <div
+        ref={containerRef}
+        className="absolute inset-x-0 bottom-0 touch-none select-none"
+        style={{ top: "calc(4.75rem + env(safe-area-inset-top))" }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
       <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
         <defs>
           <linearGradient id="kh-ice" x1="0" y1="0" x2="0" y2="1">
@@ -484,6 +488,7 @@ export default function KnockHockeyRink({
           Drag your paddle to knock the puck into the goal
         </p>
       )}
+      </div>
 
       {/* Scoreboard HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-2 pt-2">
