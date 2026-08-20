@@ -39,9 +39,39 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Builds the (fixed, deterministic) course every player races on. */
-function buildCourse(): Plat[] {
-  const rnd = mulberry32(0x0bb17);
+/** A themed, fully-built course. Every YAJ Adventure runs on one of these. */
+export type CourseTheme = { sky: string; fog: string; floor: string; floorEmissive: string };
+export type Course = {
+  plats: Plat[];
+  finish: Plat;
+  checkpoints: Plat[];
+  length: number;
+  theme: CourseTheme;
+};
+
+type CourseOpts = {
+  seed: number;
+  segments?: number;
+  /** Wider pads + fewer hazards make a course friendlier (City Run rooftops). */
+  padBonus?: number;
+  lavaChance?: number;
+  movingChance?: number;
+  hueBase?: number;
+  theme: CourseTheme;
+};
+
+/** Builds a (fixed, deterministic) course every player races on. */
+function buildCourse(opts: CourseOpts): Plat[] {
+  const {
+    seed,
+    segments = 9,
+    padBonus = 0,
+    lavaChance = 0.16,
+    movingChance = 0.22,
+    hueBase = 0,
+  } = opts;
+  const rnd = mulberry32(seed);
+
   const out: Plat[] = [];
   let id = 0;
   let z = 0;
@@ -55,8 +85,7 @@ function buildCourse(): Plat[] {
   push({ x: 0, y: 0, z: 0, w: 9, d: 9, kind: "start", hue: 150 });
   z = 7;
 
-  const SEGMENTS = 9;
-  for (let s = 0; s < SEGMENTS; s++) {
+  for (let s = 0; s < segments; s++) {
     const steps = 3 + Math.floor(rnd() * 2);
     for (let i = 0; i < steps; i++) {
       const gap = 3.4 + rnd() * 2.1;
@@ -64,16 +93,16 @@ function buildCourse(): Plat[] {
       y += (rnd() - 0.35) * 1.1;
       const x = (rnd() - 0.5) * 7;
       const roll = rnd();
-      const hue = (s * 41 + i * 17) % 360;
+      const hue = (hueBase + s * 41 + i * 17) % 360;
 
-      if (roll > 0.78) {
+      if (roll < movingChance) {
         // Sliding platform
         push({
           x,
           y,
           z,
-          w: 3.4,
-          d: 3.4,
+          w: 3.4 + padBonus,
+          d: 3.4 + padBonus,
           kind: "moving",
           hue,
           mv: {
@@ -83,13 +112,13 @@ function buildCourse(): Plat[] {
             phase: rnd() * Math.PI * 2,
           },
         });
-      } else if (roll > 0.62) {
-        // Narrow beam + a lava block beside it to punish sloppy lines
-        push({ x, y, z, w: 1.7, d: 6.5, kind: "static", hue });
+      } else if (roll < movingChance + lavaChance) {
+        // Narrow beam + a hazard block beside it to punish sloppy lines
+        push({ x, y, z, w: 1.7 + padBonus * 0.5, d: 6.5, kind: "static", hue });
         push({ x: x + (rnd() > 0.5 ? 3.6 : -3.6), y, z, w: 3, d: 3, kind: "lava", hue: 12 });
         z += 2;
       } else {
-        push({ x, y, z, w: 3.6 + rnd() * 1.6, d: 3.6, kind: "static", hue });
+        push({ x, y, z, w: 3.6 + padBonus + rnd() * 1.6, d: 3.6 + padBonus, kind: "static", hue });
       }
     }
 
@@ -99,15 +128,49 @@ function buildCourse(): Plat[] {
     push({ x: 0, y, z, w: 6, d: 5, kind: "checkpoint", hue: 190 });
   }
 
+
   z += 7;
   push({ x: 0, y, z, w: 10, d: 8, kind: "finish", hue: 48 });
   return out;
 }
 
-export const COURSE: Plat[] = buildCourse();
-export const FINISH = COURSE[COURSE.length - 1];
-export const CHECKPOINTS: Plat[] = COURSE.filter((p) => p.kind === "checkpoint" || p.kind === "start");
-export const COURSE_LENGTH = FINISH.z;
+function makeCourse(opts: CourseOpts): Course {
+  const plats = buildCourse(opts);
+  const finish = plats[plats.length - 1];
+  return {
+    plats,
+    finish,
+    checkpoints: plats.filter((p) => p.kind === "checkpoint" || p.kind === "start"),
+    length: finish.z,
+    theme: opts.theme,
+  };
+}
+
+/** YAJ Obby — floating blocks over lava. */
+export const OBBY_COURSE: Course = makeCourse({
+  seed: 0x0bb17,
+  segments: 9,
+  movingChance: 0.22,
+  lavaChance: 0.16,
+  theme: { sky: "#78c6f7", fog: "#8fd0f8", floor: "#ff5a1f", floorEmissive: "#ff3b00" },
+});
+
+/** YAJ City Run — wider rooftop pads, fewer hazards, sunset skyline. */
+export const CITY_RUN_COURSE: Course = makeCourse({
+  seed: 0xc17ee9,
+  segments: 10,
+  padBonus: 1.4,
+  movingChance: 0.3,
+  lavaChance: 0.1,
+  hueBase: 210,
+  theme: { sky: "#ff9e5e", fog: "#ffb98a", floor: "#2b2140", floorEmissive: "#5b3fa8" },
+});
+
+export const COURSE: Plat[] = OBBY_COURSE.plats;
+export const FINISH = OBBY_COURSE.finish;
+export const CHECKPOINTS: Plat[] = OBBY_COURSE.checkpoints;
+export const COURSE_LENGTH = OBBY_COURSE.length;
+
 
 /** Live world position of a platform at time `t` (seconds). */
 export function platPos(p: Plat, t: number): [number, number, number] {
@@ -140,9 +203,10 @@ export function platformUnder(
   pz: number,
   t: number,
   tolerance = 0.45,
+  course: Course = OBBY_COURSE,
 ): { plat: Plat; top: number } | null {
   let best: { plat: Plat; top: number } | null = null;
-  for (const p of COURSE) {
+  for (const p of course.plats) {
     const [x, y, z] = platPos(p, t);
     if (Math.abs(px - x) > p.w / 2 + PLAYER_RADIUS) continue;
     if (Math.abs(pz - z) > p.d / 2 + PLAYER_RADIUS) continue;
@@ -152,14 +216,14 @@ export function platformUnder(
   return best;
 }
 
-export function nearestCheckpoint(z: number): Plat {
-  let best = CHECKPOINTS[0];
-  for (const c of CHECKPOINTS) if (c.z <= z + 0.5 && c.z >= best.z) best = c;
+export function nearestCheckpoint(z: number, course: Course = OBBY_COURSE): Plat {
+  let best = course.checkpoints[0];
+  for (const c of course.checkpoints) if (c.z <= z + 0.5 && c.z >= best.z) best = c;
   return best;
 }
 
-export function progressPct(z: number) {
-  return Math.max(0, Math.min(100, Math.round((z / COURSE_LENGTH) * 100)));
+export function progressPct(z: number, course: Course = OBBY_COURSE) {
+  return Math.max(0, Math.min(100, Math.round((z / course.length) * 100)));
 }
 
 export function formatMs(ms: number) {

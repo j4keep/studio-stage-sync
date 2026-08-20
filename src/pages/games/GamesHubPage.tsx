@@ -37,6 +37,11 @@ import wordLinkArt from "@/assets/games/word-link.svg";
 import miniGolfArt from "@/assets/games/mini-golf.svg";
 import snakeRoyaleArt from "@/assets/games/snake-royale.svg";
 import obbyArt from "@/assets/games/yaj-obby-intro.png";
+import cityRunArtAsset from "@/assets/games/adventures/city-run.png.asset.json";
+import treasureRushArtAsset from "@/assets/games/adventures/treasure-rush.png.asset.json";
+import towerEscapeArtAsset from "@/assets/games/adventures/tower-escape.png.asset.json";
+import survivalIslandArtAsset from "@/assets/games/adventures/survival-island.png.asset.json";
+import neighborhoodArtAsset from "@/assets/games/adventures/neighborhood.png.asset.json";
 
 type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card" | "Adventure";
 
@@ -62,6 +67,7 @@ const CARDS: CardDef[] = [
   { type: "mini_golf", title: "Mini Golf", players: "2 players", image: miniGolfArt, category: "Sports", isNew: true },
   { type: "snake_royale", title: "Snake Royale", players: "2 players", image: snakeRoyaleArt, category: "Arcade", isNew: true },
   { type: "obby", title: "YAJ Obby", players: "2 players", image: obbyArt, category: "Adventure", isNew: true },
+  { type: "city_run", title: "YAJ City Run", players: "Solo · 2 players", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },
@@ -74,14 +80,14 @@ const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade
 
 /** YAJ Adventures — the original-IP adventure line-up. The rest are planned titles that
  *  reuse the same movement/collision/score/power-up systems. */
-const ADVENTURE_TYPES: GameType[] = ["obby"];
+const ADVENTURE_TYPES: GameType[] = ["city_run", "obby"];
 const ADVENTURE_CARDS: CardDef[] = ADVENTURE_TYPES.map((t) => CARDS.find((c) => c.type === t)!).filter(Boolean);
 
 const ADVENTURES_COMING_SOON = [
-  { title: "YAJ Treasure Rush", blurb: "Grab the treasure before the timer runs out" },
-  { title: "YAJ Tower Escape", blurb: "Climb the tower, hit every checkpoint" },
-  { title: "YAJ Survival Island", blurb: "Outlast the hazards for three minutes" },
-  { title: "YAJ Neighborhood", blurb: "Explore the block and finish missions" },
+  { title: "YAJ Treasure Rush", blurb: "Grab the treasure before the timer runs out", image: treasureRushArtAsset.url },
+  { title: "YAJ Tower Escape", blurb: "Climb the tower, hit every checkpoint", image: towerEscapeArtAsset.url },
+  { title: "YAJ Survival Island", blurb: "Outlast the hazards for three minutes", image: survivalIslandArtAsset.url },
+  { title: "YAJ Neighborhood", blurb: "Explore the block and finish missions", image: neighborhoodArtAsset.url },
 ];
 
 
@@ -332,13 +338,25 @@ export default function GamesHubPage() {
                 {ADVENTURES_COMING_SOON.map((a) => (
                   <div
                     key={a.title}
-                    className="relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-2xl border border-dashed border-border bg-card p-3"
+                    className="relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-2xl border border-white/10 p-3 shadow-[0_10px_28px_rgba(0,0,0,0.35)]"
                   >
-                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-muted-foreground">
+                    <img
+                      src={a.image}
+                      alt={`${a.title} cover art`}
+                      loading="lazy"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/30 to-black/10" />
+                    <span className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
                       Soon
                     </span>
-                    <p className="text-base font-black italic uppercase leading-[0.95] tracking-tight">{a.title}</p>
-                    <p className="mt-1 text-[10px] font-bold text-muted-foreground">{a.blurb}</p>
+                    <p
+                      className="relative text-base font-black italic uppercase leading-[0.95] tracking-tight text-white"
+                      style={{ textShadow: "0 2px 0 rgba(0,0,0,0.55), 0 6px 16px rgba(0,0,0,0.7)" }}
+                    >
+                      {a.title}
+                    </p>
+                    <p className="relative mt-1 text-[10px] font-bold text-white/70">{a.blurb}</p>
                   </div>
                 ))}
               </div>

@@ -4,12 +4,11 @@ import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
 import {
   AIR_CONTROL,
-  COURSE,
-  COURSE_LENGTH,
+  Course,
   FALL_DEATH_Y,
-  FINISH,
   GRAVITY,
   JUMP_V,
+  OBBY_COURSE,
   PLAT_THICKNESS,
   Plat,
   RUN_SPEED,
@@ -40,6 +39,8 @@ type StageProps = {
   muted: boolean;
   onToggleMute: () => void;
   frozen?: boolean;
+  /** Which YAJ Adventure course to race — defaults to the YAJ Obby course. */
+  course?: Course;
 };
 
 /* ------------------------------------------------------------------ scenery */
@@ -65,7 +66,8 @@ function PlatformMesh({ p }: { p: Plat }) {
   );
 }
 
-function FinishFlag() {
+function FinishFlag({ course }: { course: Course }) {
+  const FINISH = course.finish;
   return (
     <group position={[FINISH.x, FINISH.y, FINISH.z]}>
       <mesh position={[0, 2.2, 0]}>
@@ -80,11 +82,11 @@ function FinishFlag() {
   );
 }
 
-function Lava() {
+function Lava({ course }: { course: Course }) {
   return (
-    <mesh position={[0, -9, COURSE_LENGTH / 2]} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[220, COURSE_LENGTH + 120]} />
-      <meshStandardMaterial color="#ff5a1f" emissive="#ff3b00" emissiveIntensity={0.55} />
+    <mesh position={[0, -9, course.length / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[220, course.length + 120]} />
+      <meshStandardMaterial color={course.theme.floor} emissive={course.theme.floorEmissive} emissiveIntensity={0.55} />
     </mesh>
   );
 }
@@ -99,7 +101,9 @@ function LocalRacer({
   onHud,
   frozen,
   startedAt,
+  course,
 }: {
+  course: Course;
   inputRef: React.MutableRefObject<Input>;
   color: string;
   onSample?: StageProps["onSample"];
@@ -129,7 +133,7 @@ function LocalRacer({
   const [airborne, setAirborne] = useState(false);
 
   const respawn = (z: number) => {
-    const cp = nearestCheckpoint(z);
+    const cp = nearestCheckpoint(z, course);
     st.current.x = cp.x;
     st.current.y = cp.y + 0.05;
     st.current.z = cp.z;
@@ -166,7 +170,7 @@ function LocalRacer({
 
       // Ride moving platforms
       if (s.carry) {
-        const plat = COURSE.find((p) => p.id === s.carry!.id);
+        const plat = course.plats.find((p) => p.id === s.carry!.id);
         if (plat) {
           const [nx, ny, nz] = platPos(plat, t);
           s.x += nx - s.carry.x;
@@ -179,7 +183,7 @@ function LocalRacer({
       s.vy -= GRAVITY * dt;
       s.y += s.vy * dt;
 
-      const hit = platformUnder(s.x, s.y, s.z, t, s.vy <= 0 ? 0.75 : 0.1);
+      const hit = platformUnder(s.x, s.y, s.z, t, s.vy <= 0 ? 0.75 : 0.1, course);
       if (hit && s.vy <= 0) {
         if (hit.plat.kind === "lava") {
           respawn(s.z);
@@ -329,6 +333,7 @@ export default function ObbyStage({
   muted,
   onToggleMute,
   frozen,
+  course = OBBY_COURSE,
 }: StageProps) {
   const inputRef = useRef<Input>({ x: 0, z: 0, jump: false });
   const [hud, setHud] = useState({ z: 0, deaths: 0 });
@@ -390,23 +395,24 @@ export default function ObbyStage({
     return () => window.clearInterval(id);
   }, [raceStartedAt]);
 
-  const platforms = useMemo(() => COURSE.map((p) => <PlatformMesh key={p.id} p={p} />), []);
-  const pct = progressPct(hud.z);
+  const platforms = useMemo(() => course.plats.map((p) => <PlatformMesh key={p.id} p={p} />), [course]);
+  const pct = progressPct(hud.z, course);
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#7ec8f5]">
+    <div className="absolute inset-0 overflow-hidden" style={{ background: course.theme.sky }}>
       <Canvas shadows dpr={[1, 1.6]} camera={{ position: [0, 5, -8], fov: 62 }}>
-        <color attach="background" args={["#78c6f7"]} />
-        <fog attach="fog" args={["#8fd0f8", 40, 130]} />
+        <color attach="background" args={[course.theme.sky]} />
+        <fog attach="fog" args={[course.theme.fog, 40, 130]} />
         <hemisphereLight args={["#dff1ff", "#4c6b8a", 0.9]} />
         <directionalLight position={[12, 26, -8]} intensity={1.35} castShadow shadow-mapSize={[1024, 1024]} />
-        <Lava />
+        <Lava course={course} />
         {platforms}
-        <FinishFlag />
+        <FinishFlag course={course} />
         {ghosts.map((g) => (
           <GhostRacer key={g.id} g={g} />
         ))}
         <LocalRacer
+          course={course}
           inputRef={inputRef}
           color={myColor}
           onSample={onSample}
