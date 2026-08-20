@@ -75,9 +75,9 @@ export const GAME_LABELS: Record<GameType, string> = {
   pop_shot: "Pop Shot",
   knock_hockey: "Knock Hockey",
   bingo: "Bingo",
-  word_link: "YAJ Word Link",
-  mini_golf: "YAJ Mini Golf",
-  snake_royale: "YAJ Snake Royale",
+  word_link: "Word Link",
+  mini_golf: "Mini Golf",
+  snake_royale: "Snake Royale",
 };
 
 /** Create a solo game vs the computer. */

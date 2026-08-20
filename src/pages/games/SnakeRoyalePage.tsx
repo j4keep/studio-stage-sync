@@ -132,7 +132,7 @@ export default function SnakeRoyalePage() {
   const shareResult = async () => {
     const draw = run.winnerSeat === null;
     const iWon = run.winnerSeat === mySeat;
-    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of YAJ Snake Royale 🐍`;
+    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of Snake Royale on YAJ 🐍`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -238,7 +238,7 @@ export default function SnakeRoyalePage() {
 
         <GameIntro
           open={!seated && !finished}
-          title="YAJ Snake Royale"
+          title="Snake Royale"
           subtitle={game.mode === "solo" ? "Grow, survive, avoid the storm — solo vs Computer" : `Grow, survive, avoid the storm — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
@@ -287,7 +287,7 @@ export default function SnakeRoyalePage() {
           setPicker(false);
           void challengeOther(p.user_id, p.display_name || "your opponent");
         }}
-        title="Challenge to YAJ Snake Royale"
+        title="Challenge to Snake Royale"
       />
     </div>
   );

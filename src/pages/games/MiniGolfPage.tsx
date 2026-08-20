@@ -132,7 +132,7 @@ export default function MiniGolfPage() {
   const shareResult = async () => {
     const draw = run.winnerSeat === null;
     const iWon = run.winnerSeat === mySeat;
-    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of YAJ Mini Golf ⛳`;
+    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of Mini Golf on YAJ ⛳`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -238,7 +238,7 @@ export default function MiniGolfPage() {
 
         <GameIntro
           open={!seated && !finished}
-          title="YAJ Mini Golf"
+          title="Mini Golf"
           subtitle={game.mode === "solo" ? "Putt through the course — solo vs Computer" : `Putt through the course — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
@@ -287,7 +287,7 @@ export default function MiniGolfPage() {
           setPicker(false);
           void challengeOther(p.user_id, p.display_name || "your opponent");
         }}
-        title="Challenge to YAJ Mini Golf"
+        title="Challenge to Mini Golf"
       />
     </div>
   );
