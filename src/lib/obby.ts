@@ -41,7 +41,7 @@ function mulberry32(seed: number) {
 
 /** Builds the (fixed, deterministic) course every player races on. */
 function buildCourse(): Plat[] {
-  const rnd = mulberry32(0x0bby7);
+  const rnd = mulberry32(0x0bb17);
   const out: Plat[] = [];
   let id = 0;
   let z = 0;
