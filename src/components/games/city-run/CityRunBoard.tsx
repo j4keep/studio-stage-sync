@@ -419,6 +419,10 @@ export default function CityRunBoard({
   const resolvedHazardsRef = useRef<Set<number>>(new Set());
   const checkpointsHitRef = useRef<Set<number>>(new Set());
   const lastSectionRef = useRef<string | null>(null);
+  const powerUpsRef = useRef<PowerUpState>(initialPowerUps());
+  const boostSecondsRef = useRef(0);
+  const bonusRef = useRef(0);
+
   const popupIdRef = useRef(0);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
