@@ -220,9 +220,6 @@ export function drawIsland(g: CanvasRenderingContext2D, st: IslandState, cam: Ca
     items.push({ y: hz.y, draw: () => drawCrate(g, sx(hz.x), sy(hz.y, elev) - 14 * s, 30 * s, 0) });
   }
 
-  const playerElev = ELEVATION[st.map.tiles[idx(clampT(st.x), clampTY(st.y))] ?? "sand"];
-  items.push({ y: st.y + 1, draw: () => drawPlayer(g, st, sx(st.x), sy(st.y, playerElev), s) });
-
   items.sort((a, b) => a.y - b.y);
   items.forEach((i) => i.draw());
 
@@ -442,110 +439,6 @@ function drawProp(
     g.fillRect(cx - 11 * s, cy - 27 * s, 14 * s, 2 * s);
   }
   g.restore();
-}
-
-/** The blocky YAJ Adventure character, front-facing for top-down play. */
-function drawPlayer(g: CanvasRenderingContext2D, st: IslandState, cx: number, cy: number, sIn: number) {
-  // Art-only upscale — same blocky YAJ Adventure character, drawn big like in Obby.
-  const s = sIn * 1.6;
-  const flicker = st.invuln > 0 && Math.floor(st.t * 14) % 2 === 0;
-  const w = PLAYER_R * 2 * s;
-  const bodyH = 20 * s;
-  const wading = st.anim === "wade";
-
-
-  g.save();
-  g.globalAlpha = 0.3;
-  g.fillStyle = "#000";
-  g.beginPath();
-  g.ellipse(cx, cy + 3 * s, w * 0.52, 5 * s, 0, 0, Math.PI * 2);
-  g.fill();
-  g.globalAlpha = flicker ? 0.45 : 1;
-
-  const cycle = st.t * 12;
-  const running = st.anim === "run" || wading;
-  const legSwing = running ? Math.sin(cycle) * 6 * s : 0;
-  const armSwing = running ? -Math.sin(cycle) * 6 * s : Math.sin(st.t * 2) * 1.5 * s;
-  const stumble = st.anim === "hit" ? Math.sin(st.t * 26) * 0.14 : 0;
-  const cheer = st.anim === "celebrate" ? Math.abs(Math.sin(st.t * 6)) * 6 * s : 0;
-
-  g.translate(cx, cy);
-  g.rotate(stumble);
-
-  const legY = -bodyH * 0.1;
-  const legH = 12 * s;
-  const legW = w * 0.26;
-  if (!wading) {
-    g.fillStyle = "#2c3350";
-    g.fillRect(-legW - 1 * s + legSwing * 0.5, legY, legW, legH);
-    g.fillRect(1 * s - legSwing * 0.5, legY, legW, legH);
-    g.fillStyle = "#1b2033";
-    g.fillRect(-legW - 1 * s + legSwing * 0.5, legY + legH - 3 * s, legW + 2 * s, 3.5 * s);
-    g.fillRect(1 * s - legSwing * 0.5, legY + legH - 3 * s, legW + 2 * s, 3.5 * s);
-  }
-
-  // torso
-  const bodyY = legY - bodyH;
-  g.fillStyle = "#5b8cff";
-  g.fillRect(-w * 0.4, bodyY, w * 0.8, bodyH);
-
-  // arms
-  g.fillStyle = "#f2c396";
-  const armW = w * 0.2;
-  const armH = bodyH * 0.8;
-  g.fillRect(-w * 0.4 - armW + 1 * s, bodyY + 2 * s + armSwing * 0.5 - cheer, armW, armH);
-  g.fillRect(w * 0.4 - 1 * s, bodyY + 2 * s - armSwing * 0.5 - cheer, armW, armH);
-
-  // head with two eyes and a mouth bar
-  const head = w * 0.66;
-  const headY = bodyY - head - 1 * s;
-  g.fillStyle = "#f2c396";
-  g.fillRect(-head / 2, headY, head, head);
-  g.fillStyle = "#241a12";
-  const eyeW = head * 0.15;
-  const eyeH = head * 0.18;
-  const shift = st.facing * head * 0.06;
-  g.fillRect(shift - head * 0.27, headY + head * 0.38, eyeW, eyeH);
-  g.fillRect(shift + head * 0.12, headY + head * 0.38, eyeW, eyeH);
-  g.fillRect(shift - head * 0.16, headY + head * 0.68, head * 0.32, head * 0.08);
-  g.restore();
-
-  // wading ripple
-  if (wading) {
-    g.save();
-    g.strokeStyle = "rgba(255,255,255,0.55)";
-    g.lineWidth = 1.6;
-    const r = (8 + (st.t * 40) % 18) * s;
-    g.beginPath();
-    g.ellipse(cx, cy, r, r * 0.4, 0, 0, Math.PI * 2);
-    g.stroke();
-    g.restore();
-  }
-
-  if (st.powers.shield > 0) {
-    g.save();
-    g.strokeStyle = "rgba(56,189,248,0.9)";
-    g.lineWidth = Math.max(1.5, 2 * s);
-    g.shadowColor = "#38bdf8";
-    g.shadowBlur = 14;
-    g.beginPath();
-    g.ellipse(cx, cy - 22 * s, w * 0.95, 30 * s, 0, 0, Math.PI * 2);
-    g.stroke();
-    g.restore();
-  }
-  if (st.powers.speed > 0 && Math.hypot(st.vx, st.vy) > 60) {
-    g.save();
-    g.strokeStyle = "rgba(251,113,133,0.7)";
-    g.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
-      const yy = cy - 12 * s - i * 8 * s;
-      g.beginPath();
-      g.moveTo(cx - st.facing * (w * 0.6 + i * 5 * s), yy);
-      g.lineTo(cx - st.facing * (w * 1.4 + i * 9 * s), yy);
-      g.stroke();
-    }
-    g.restore();
-  }
 }
 
 /** Drawn separately by the mini-map component. */

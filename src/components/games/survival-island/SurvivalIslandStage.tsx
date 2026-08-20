@@ -12,6 +12,7 @@ import {
 import { Camera, drawIsland, makeCamera } from "./render";
 import IslandHud from "./IslandHud";
 import IslandControls from "./IslandControls";
+import SurvivalIslandAvatar from "./SurvivalIslandAvatar";
 
 export type IslandOutcome = IslandScore & {
   survived: boolean;
@@ -130,6 +131,7 @@ export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute,
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#0b2b42]">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
+      <SurvivalIslandAvatar stateRef={stRef} cameraRef={camRef} />
 
       <IslandHud
         st={st}
