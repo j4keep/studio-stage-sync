@@ -34,17 +34,17 @@ export function themeAt(st: TowerState, y: number) {
 }
 
 export function makeCamera(st: TowerState, w: number, h: number, prev?: Camera): Camera {
-  const worldH = Math.max(560, Math.min(760, h / (w / 420)));
+  const worldH = Math.max(480, Math.min(640, h / (w / 460)));
   const scale = h / worldH;
   const vw = w / scale;
   const vh = worldH;
-  const targetY = st.y - vh * 0.36;
+  const targetY = st.y - vh * 0.42;
   const targetX = Math.max(0, Math.min(st.level.width - vw, st.x + PLAYER_W / 2 - vw / 2));
-  if (!prev) return { x: targetX, y: Math.max(-40, targetY), scale, vw, vh };
+  if (!prev) return { x: targetX, y: Math.max(-130, targetY), scale, vw, vh };
   const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
   return {
     x: lerp(prev.x, targetX, 0.16),
-    y: Math.max(-40, lerp(prev.y, targetY, 0.14)),
+    y: Math.max(-130, lerp(prev.y, targetY, 0.14)),
     scale,
     vw,
     vh,
