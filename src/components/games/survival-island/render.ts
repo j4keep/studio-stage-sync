@@ -445,11 +445,14 @@ function drawProp(
 }
 
 /** The blocky YAJ Adventure character, front-facing for top-down play. */
-function drawPlayer(g: CanvasRenderingContext2D, st: IslandState, cx: number, cy: number, s: number) {
+function drawPlayer(g: CanvasRenderingContext2D, st: IslandState, cx: number, cy: number, sIn: number) {
+  // Art-only upscale — same blocky YAJ Adventure character, drawn big like in Obby.
+  const s = sIn * 1.6;
   const flicker = st.invuln > 0 && Math.floor(st.t * 14) % 2 === 0;
   const w = PLAYER_R * 2 * s;
   const bodyH = 20 * s;
   const wading = st.anim === "wade";
+
 
   g.save();
   g.globalAlpha = 0.3;
