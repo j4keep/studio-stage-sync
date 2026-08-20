@@ -36,6 +36,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   mini_golf: "mini-golf",
   snake_royale: "snake-royale",
   obby: "obby",
+  city_run: "city-run",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -79,6 +80,7 @@ export function initialStateFor(type: GameType): any {
     case "snake_royale":
       return { snakeRoyale: initialSnakeRoyale(), moveNumber: 0 };
     case "obby":
+    case "city_run":
       return { obby: initialObby(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
