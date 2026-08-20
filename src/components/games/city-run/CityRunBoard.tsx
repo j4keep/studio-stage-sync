@@ -818,6 +818,11 @@ export default function CityRunBoard({
   const currentSection = sectionAt(distance, branchRef.current ?? "main_street");
   const theme = SECTION_THEME[currentSection?.background ?? "street"];
   const isRooftop = currentSection?.background === "rooftop";
+  const activePowerUps = activeList(powerUps);
+  const shieldOn = powerUps.shield > 0;
+  const boostOn = powerUps.boost > 0;
+
+
 
   return (
     <div
