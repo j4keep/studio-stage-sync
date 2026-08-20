@@ -14,13 +14,20 @@
  * the three lanes are still always open — a lane change alone always works).
  */
 
+import { POWER_UP_KINDS, PowerUpKind } from "@/lib/city-run-powerups";
+
 export type Seat = 0 | 1;
 export type Lane = 0 | 1 | 2;
 
 export type GroundKind = "cone" | "trash" | "barrier" | "puddle" | "box" | "bike" | "roadwork" | "car";
 export type OverheadKind = "sign";
 export type ObstacleKind = GroundKind | OverheadKind;
-export type ItemKind = ObstacleKind | "star";
+export type ItemKind = ObstacleKind | "star" | PowerUpKind;
+
+export function isPowerUpKind(kind: ItemKind): kind is PowerUpKind {
+  return (POWER_UP_KINDS as string[]).includes(kind);
+}
+
 
 export type SectionId =
   | "street_start"
