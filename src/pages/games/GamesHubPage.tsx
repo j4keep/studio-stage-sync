@@ -67,7 +67,7 @@ const CARDS: CardDef[] = [
   { type: "mini_golf", title: "Mini Golf", players: "2 players", image: miniGolfArt, category: "Sports", isNew: true },
   { type: "snake_royale", title: "Snake Royale", players: "2 players", image: snakeRoyaleArt, category: "Arcade", isNew: true },
   { type: "obby", title: "YAJ Obby", players: "2 players", image: obbyArt, category: "Adventure", isNew: true },
-  { type: "city_run", title: "YAJ City Run", players: "Solo · 2 players", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
+  { type: "city_run", title: "YAJ City Run", players: "Solo endless run", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },
