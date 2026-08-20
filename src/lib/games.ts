@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot";
+export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot" | "knock_hockey";
 export type GameMode = "solo" | "multiplayer";
 export type GameStatus = "waiting" | "active" | "completed" | "cancelled";
 
@@ -73,6 +73,7 @@ export const GAME_LABELS: Record<GameType, string> = {
   driving: "Drive",
   poker: "Texas Hold'em",
   pop_shot: "Pop Shot",
+  knock_hockey: "Knock Hockey",
 };
 
 /** Create a solo game vs the computer. */

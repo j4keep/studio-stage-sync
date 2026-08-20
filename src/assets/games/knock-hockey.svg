@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768">
+  <defs>
+    <linearGradient id="kh-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3a5c"/>
+      <stop offset="55%" stop-color="#0e2038"/>
+      <stop offset="100%" stop-color="#05101c"/>
+    </linearGradient>
+    <linearGradient id="kh-ice" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#dff0f8"/>
+      <stop offset="100%" stop-color="#a9d0e6"/>
+    </linearGradient>
+    <radialGradient id="kh-puck" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#3a3d44"/>
+      <stop offset="100%" stop-color="#0a0b0e"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#kh-bg)"/>
+
+  <!-- rink -->
+  <rect x="272" y="90" width="480" height="620" rx="18" fill="url(#kh-ice)" stroke="#05101c" stroke-width="10"/>
+  <line x1="272" y1="400" x2="752" y2="400" stroke="#c0392b" stroke-width="4" opacity="0.6"/>
+  <circle cx="512" cy="400" r="60" fill="none" stroke="#2a5fa8" stroke-width="3" opacity="0.5"/>
+
+  <!-- goal -->
+  <rect x="432" y="70" width="160" height="26" fill="#05101c"/>
+  <rect x="432" y="92" width="160" height="6" fill="#e0453f"/>
+
+  <!-- goalie -->
+  <g transform="translate(512,150)">
+    <ellipse cx="0" cy="10" rx="34" ry="8" fill="rgba(0,0,0,0.2)"/>
+    <circle r="34" fill="#e0453f" stroke="#7a1614" stroke-width="4"/>
+    <circle r="17" fill="#f8f6f0"/>
+  </g>
+
+  <!-- player paddle -->
+  <g transform="translate(440,610)">
+    <ellipse cx="0" cy="10" rx="38" ry="9" fill="rgba(0,0,0,0.25)"/>
+    <circle r="38" fill="#3a6bd6" stroke="#12275c" stroke-width="5"/>
+    <circle r="19" fill="#f8f6f0"/>
+  </g>
+
+  <!-- puck mid-flight with trail -->
+  <g opacity="0.35">
+    <circle cx="470" cy="500" r="16" fill="#111318"/>
+    <circle cx="500" cy="420" r="18" fill="#111318"/>
+  </g>
+  <circle cx="540" cy="340" r="20" fill="url(#kh-puck)" stroke="#000" stroke-width="2"/>
+
+  <!-- title lockup -->
+  <text x="512" y="712" font-family="system-ui, -apple-system, sans-serif" font-size="70" font-weight="900" fill="#f5d98a" text-anchor="middle" style="letter-spacing:3px" opacity="0.95">KNOCK HOCKEY</text>
+</svg>
