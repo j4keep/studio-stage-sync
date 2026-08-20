@@ -11,6 +11,7 @@ import { initialDrivingRun } from "@/lib/driving-run";
 import { initialPoker } from "@/lib/poker";
 import { initialPopShot } from "@/lib/pop-shot-run";
 import { initialKnockHockey } from "@/lib/knock-hockey-run";
+import { initialBingo } from "@/lib/bingo-run";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -26,6 +27,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   poker: "poker",
   pop_shot: "pop-shot",
   knock_hockey: "knock-hockey",
+  bingo: "bingo",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -60,6 +62,8 @@ export function initialStateFor(type: GameType): any {
       return { popShot: initialPopShot(), moveNumber: 0 };
     case "knock_hockey":
       return { knockHockey: initialKnockHockey(), moveNumber: 0 };
+    case "bingo":
+      return { bingo: initialBingo(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }
