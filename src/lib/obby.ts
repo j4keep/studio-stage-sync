@@ -157,7 +157,7 @@ export const OBBY_COURSE: Course = makeCourse({
 
 /** YAJ City Run — wider rooftop pads, fewer hazards, sunset skyline. */
 export const CITY_RUN_COURSE: Course = makeCourse({
-  seed: 0xc17run,
+  seed: 0xc17ee9,
   segments: 10,
   padBonus: 1.4,
   movingChance: 0.3,
@@ -203,9 +203,10 @@ export function platformUnder(
   pz: number,
   t: number,
   tolerance = 0.45,
+  course: Course = OBBY_COURSE,
 ): { plat: Plat; top: number } | null {
   let best: { plat: Plat; top: number } | null = null;
-  for (const p of COURSE) {
+  for (const p of course.plats) {
     const [x, y, z] = platPos(p, t);
     if (Math.abs(px - x) > p.w / 2 + PLAYER_RADIUS) continue;
     if (Math.abs(pz - z) > p.d / 2 + PLAYER_RADIUS) continue;
@@ -215,14 +216,14 @@ export function platformUnder(
   return best;
 }
 
-export function nearestCheckpoint(z: number): Plat {
-  let best = CHECKPOINTS[0];
-  for (const c of CHECKPOINTS) if (c.z <= z + 0.5 && c.z >= best.z) best = c;
+export function nearestCheckpoint(z: number, course: Course = OBBY_COURSE): Plat {
+  let best = course.checkpoints[0];
+  for (const c of course.checkpoints) if (c.z <= z + 0.5 && c.z >= best.z) best = c;
   return best;
 }
 
-export function progressPct(z: number) {
-  return Math.max(0, Math.min(100, Math.round((z / COURSE_LENGTH) * 100)));
+export function progressPct(z: number, course: Course = OBBY_COURSE) {
+  return Math.max(0, Math.min(100, Math.round((z / course.length) * 100)));
 }
 
 export function formatMs(ms: number) {
