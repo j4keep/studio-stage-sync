@@ -33,6 +33,7 @@ import pokerArt from "@/assets/games/poker.svg";
 import popShotArt from "@/assets/games/pop-shot.svg";
 import knockHockeyArt from "@/assets/games/knock-hockey.svg";
 import bingoArt from "@/assets/games/bingo.svg";
+import wordLinkArt from "@/assets/games/word-link.svg";
 
 type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card";
 
@@ -54,6 +55,7 @@ const CARDS: CardDef[] = [
   { type: "pop_shot", title: "Pop Shot", players: "2 players", image: popShotArt, category: "Arcade", isNew: true },
   { type: "knock_hockey", title: "Knock Hockey", players: "2 players", image: knockHockeyArt, category: "Arcade", isNew: true },
   { type: "bingo", title: "Bingo", players: "2 players", image: bingoArt, category: "Board", isNew: true },
+  { type: "word_link", title: "Word Link", players: "2 players", image: wordLinkArt, category: "Puzzle", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },

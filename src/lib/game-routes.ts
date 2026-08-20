@@ -12,6 +12,7 @@ import { initialPoker } from "@/lib/poker";
 import { initialPopShot } from "@/lib/pop-shot-run";
 import { initialKnockHockey } from "@/lib/knock-hockey-run";
 import { initialBingo } from "@/lib/bingo-run";
+import { initialWordLink } from "@/lib/word-link-run";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -28,6 +29,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   pop_shot: "pop-shot",
   knock_hockey: "knock-hockey",
   bingo: "bingo",
+  word_link: "word-link",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -64,6 +66,8 @@ export function initialStateFor(type: GameType): any {
       return { knockHockey: initialKnockHockey(), moveNumber: 0 };
     case "bingo":
       return { bingo: initialBingo(), moveNumber: 0 };
+    case "word_link":
+      return { wordLink: initialWordLink(), moveNumber: 0 };
     default:
       return { moveNumber: 0 };
   }

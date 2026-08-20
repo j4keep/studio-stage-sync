@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768">
+  <defs>
+    <radialGradient id="wl-bg" cx="50%" cy="20%" r="90%">
+      <stop offset="0%" stop-color="#1e5a7c"/>
+      <stop offset="55%" stop-color="#123a52"/>
+      <stop offset="100%" stop-color="#081a28"/>
+    </radialGradient>
+    <linearGradient id="wl-tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f5e6a8"/>
+      <stop offset="100%" stop-color="#d9b23a"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#wl-bg)"/>
+
+  <!-- connecting line trail -->
+  <g stroke="#f0d84c" stroke-width="8" stroke-linecap="round" opacity="0.7" fill="none">
+    <path d="M 380,300 L 512,220 L 644,300 L 590,420 L 434,420 Z"/>
+  </g>
+
+  <!-- letter wheel -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="52" font-weight="900" text-anchor="middle">
+    <g transform="translate(512,220)">
+      <circle r="54" fill="url(#wl-tile)" stroke="#7a5a10" stroke-width="5"/>
+      <text y="20" fill="#241a05">P</text>
+    </g>
+    <g transform="translate(644,300)">
+      <circle r="54" fill="url(#wl-tile)" stroke="#7a5a10" stroke-width="5"/>
+      <text y="20" fill="#241a05">L</text>
+    </g>
+    <g transform="translate(590,420)">
+      <circle r="54" fill="url(#wl-tile)" stroke="#7a5a10" stroke-width="5"/>
+      <text y="20" fill="#241a05">A</text>
+    </g>
+    <g transform="translate(434,420)">
+      <circle r="54" fill="url(#wl-tile)" stroke="#7a5a10" stroke-width="5"/>
+      <text y="20" fill="#241a05">N</text>
+    </g>
+    <g transform="translate(380,300)">
+      <circle r="54" fill="url(#wl-tile)" stroke="#7a5a10" stroke-width="5"/>
+      <text y="20" fill="#241a05">E</text>
+    </g>
+    <g transform="translate(512,340)">
+      <circle r="54" fill="rgba(255,255,255,0.12)" stroke="rgba(255,255,255,0.3)" stroke-width="4"/>
+      <text y="20" fill="#fff">T</text>
+    </g>
+  </g>
+
+  <!-- found word chips -->
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="800" fill="#fff">
+    <rect x="392" y="510" width="90" height="42" rx="21" fill="rgba(255,255,255,0.12)"/>
+    <text x="437" y="538" text-anchor="middle">PLAN</text>
+    <rect x="500" y="510" width="120" height="42" rx="21" fill="rgba(255,255,255,0.12)"/>
+    <text x="560" y="538" text-anchor="middle">PLATE</text>
+    <rect x="638" y="510" width="90" height="42" rx="21" fill="rgba(255,255,255,0.12)"/>
+    <text x="683" y="538" text-anchor="middle">TAP</text>
+  </g>
+
+  <!-- title lockup -->
+  <text x="512" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="76" font-weight="900" fill="#f5d98a" text-anchor="middle" style="letter-spacing:4px" opacity="0.95">WORD LINK</text>
+</svg>
