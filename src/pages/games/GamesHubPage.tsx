@@ -74,6 +74,19 @@ const CARDS: CardDef[] = [
 
 const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade", "Puzzle", "Card", "Adventure"];
 
+/** YAJ Adventures — the original-IP adventure line-up. City Run ships first; the rest are
+ *  planned titles that reuse the same movement/collision/score/power-up systems. */
+const ADVENTURE_TYPES: GameType[] = ["city_run", "obby"];
+const ADVENTURE_CARDS: CardDef[] = ADVENTURE_TYPES.map((t) => CARDS.find((c) => c.type === t)!).filter(Boolean);
+
+const ADVENTURES_COMING_SOON = [
+  { title: "YAJ Treasure Rush", blurb: "Grab the treasure before the timer runs out" },
+  { title: "YAJ Tower Escape", blurb: "Climb the tower, hit every checkpoint" },
+  { title: "YAJ Survival Island", blurb: "Outlast the hazards for three minutes" },
+  { title: "YAJ Neighborhood", blurb: "Explore the block and finish missions" },
+];
+
+
 export default function GamesHubPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
