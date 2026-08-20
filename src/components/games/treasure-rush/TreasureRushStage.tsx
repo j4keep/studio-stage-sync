@@ -91,6 +91,14 @@ function Explorer({
   );
 }
 
+type FullSnapshot = HudSnapshot & {
+  itemsRef: TrState["items"];
+  gatesRef: TrState["gates"];
+  padsRef: TrState["switches"];
+  spikesRef: TrState["spikes"];
+  barrelsRef: TrState["barrels"];
+};
+
 const HOW_TO = [
   "Steer with the stick — the market is open, explore any direction.",
   "Walk over coins, gems and power-ups to collect them.",
@@ -106,7 +114,7 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
   const ended = useRef(false);
 
   const [paused, setPaused] = useState(false);
-  const [hud, setHud] = useState<HudSnapshot>(() => snapshot(state.current));
+  const [hud, setHud] = useState<FullSnapshot>(() => snapshot(state.current));
   const [prompt, setPrompt] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -310,14 +318,6 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
     </div>
   );
 }
-
-type FullSnapshot = HudSnapshot & {
-  itemsRef: TrState["items"];
-  gatesRef: TrState["gates"];
-  padsRef: TrState["switches"];
-  spikesRef: TrState["spikes"];
-  barrelsRef: TrState["barrels"];
-};
 
 function snapshot(s: TrState): FullSnapshot {
   return {
