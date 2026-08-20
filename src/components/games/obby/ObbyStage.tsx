@@ -154,9 +154,17 @@ function LocalRacer({
     if (!frozen && !s.done) {
       const wantX = input.x * RUN_SPEED;
       const wantZ = input.z * RUN_SPEED;
-      const k = s.grounded ? 1 : AIR_CONTROL * dt * 8;
-      s.vx += (wantX - s.vx) * Math.min(1, s.grounded ? 0.55 : k);
-      s.vz += (wantZ - s.vz) * Math.min(1, s.grounded ? 0.55 : k);
+      if (s.grounded) {
+        s.vx += (wantX - s.vx) * 0.55;
+        s.vz += (wantZ - s.vz) * 0.55;
+      } else {
+        // In the air the jump arc is preserved: input only nudges you, so a
+        // straight jump stays straight instead of sliding off to the side.
+        const k = Math.min(0.35, AIR_CONTROL * dt * 3);
+        s.vx += (wantX - s.vx) * k;
+        s.vz += (wantZ - s.vz) * k;
+      }
+
 
       if (input.jump && s.grounded) {
         s.vy = JUMP_V;
