@@ -456,54 +456,43 @@ function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTop
   const bodyY = yTop + 14 * s + crouch;
   const bodyH = hh * 0.42;
 
-  // legs
-  g.fillStyle = "#2b2b45";
+  // legs — same navy trousers as the Obby / City Run avatar
+  g.fillStyle = "#2c3350";
   const legH = hh * 0.3;
   const legW = w * 0.3;
   const legY = bodyY + bodyH;
   g.fillRect(cx - legW - 1 * s + legSwing * 0.4, legY, legW, legH - crouch);
   g.fillRect(cx + 1 * s - legSwing * 0.4, legY, legW, legH - crouch);
   // shoes
-  g.fillStyle = "#12121f";
+  g.fillStyle = "#1b2033";
   g.fillRect(cx - legW - 1 * s + legSwing * 0.4, legY + legH - crouch - 3 * s, legW + 2 * s, 4 * s);
   g.fillRect(cx + 1 * s - legSwing * 0.4, legY + legH - crouch - 3 * s, legW + 2 * s, 4 * s);
 
-  // torso (YAJ jersey)
-  const torsoGrad = g.createLinearGradient(cx - w / 2, bodyY, cx + w / 2, bodyY + bodyH);
-  torsoGrad.addColorStop(0, "#8b5cf6");
-  torsoGrad.addColorStop(1, "#6d28d9");
-  g.fillStyle = torsoGrad;
+  // torso — flat block shirt, matching the shared YAJ Adventure character
+  g.fillStyle = "#5b8cff";
   g.fillRect(cx - w * 0.42, bodyY, w * 0.84, bodyH);
-  g.fillStyle = "rgba(255,255,255,0.85)";
-  g.font = `900 ${Math.round(9 * s)}px ui-sans-serif, system-ui`;
-  g.textAlign = "center";
-  g.fillText("YAJ", cx, bodyY + bodyH * 0.62);
-  g.textAlign = "left";
 
   // arms
-  g.fillStyle = "#f5c9a4";
+  g.fillStyle = "#f2c396";
   const armW = w * 0.22;
   const armH = bodyH * 0.78;
   const armY = bodyY + 2 * s + (anim === "climb" || anim === "hang" ? -8 * s : 0);
   g.fillRect(cx - w * 0.42 - armW + 1 * s, armY + armSwing * 0.4, armW, armH);
   g.fillRect(cx + w * 0.42 - 1 * s, armY - armSwing * 0.4, armW, armH);
 
-  // head
-  const headSize = w * 0.62;
+  // head — cube head, two eyes and a mouth bar like the 3D avatar
+  const headSize = w * 0.72;
   const headY = bodyY - headSize - 1 * s;
-  g.fillStyle = "#f5c9a4";
+  g.fillStyle = "#f2c396";
   g.fillRect(cx - headSize / 2, headY, headSize, headSize);
-  // hair / cap
-  g.fillStyle = "#1f2937";
-  g.fillRect(cx - headSize / 2, headY, headSize, headSize * 0.28);
-  g.fillRect(cx - headSize / 2 + (face > 0 ? headSize * 0.5 : -headSize * 0.25), headY + headSize * 0.2, headSize * 0.75, headSize * 0.12);
-  // eye — always faces the direction of travel
-  g.fillStyle = "#111827";
-  const eyeX = cx + face * headSize * 0.16;
-  g.fillRect(eyeX - 1.6 * s, headY + headSize * 0.45, 3.2 * s, 3.6 * s);
-  // mouth
-  g.fillStyle = "rgba(17,24,39,0.7)";
-  g.fillRect(cx + face * headSize * 0.08, headY + headSize * 0.68, 5 * s, 1.6 * s);
+  g.fillStyle = "#241a12";
+  const eyeW = headSize * 0.14;
+  const eyeH = headSize * 0.17;
+  const shift = face * headSize * 0.08;
+  g.fillRect(cx + shift - headSize * 0.26, headY + headSize * 0.4, eyeW, eyeH);
+  g.fillRect(cx + shift + headSize * 0.12, headY + headSize * 0.4, eyeW, eyeH);
+  g.fillRect(cx + shift - headSize * 0.18, headY + headSize * 0.68, headSize * 0.36, headSize * 0.08);
+
 
   g.restore();
 

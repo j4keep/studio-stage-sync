@@ -170,8 +170,9 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/80 px-6 text-center backdrop-blur-sm">
           <p className="text-2xl font-black uppercase tracking-widest text-white">Paused</p>
           <p className="max-w-[300px] text-xs text-white/60">
-            Left / right to move, Jump to hop, Up on a ladder to climb, Down to drop.
+            Touch anywhere and drag: left / right to move, swipe up to jump or climb, swipe down to drop.
           </p>
+
           <button
             type="button"
             onClick={() => setPaused(false)}

@@ -1,5 +1,4 @@
-import { useEffect, useRef } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { TowerInput } from "@/lib/tower-escape/engine";
 
 type Props = {
@@ -8,12 +7,18 @@ type Props = {
   onJump: () => void;
 };
 
+const MAX = 58;
+const DEAD = 0.28;
+
 /**
- * Mobile controls: move left / right, jump, climb up, drop down.
- * Keyboard (WASD / arrows / space) is wired in the same place so desktop feels native.
+ * One-stick control, same feel as City Run / Obby: touch anywhere on the screen to
+ * spawn an invisible stick — left / right to move, swipe up to jump (or climb a
+ * ladder), swipe down to drop. Keyboard (WASD / arrows / space) still works.
  */
 export default function TowerControls({ input, onJump }: Props) {
-  const held = useRef<Set<string>>(new Set());
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const jumped = useRef(false);
+  const [knob, setKnob] = useState<{ ox: number; oy: number; dx: number; dy: number } | null>(null);
 
   useEffect(() => {
     const map: Record<string, keyof TowerInput> = {
@@ -39,13 +44,13 @@ export default function TowerControls({ input, onJump }: Props) {
       e.preventDefault();
       if (k === "jump" && !input.current.jump) onJump();
       input.current[k] = true;
-      held.current.add(e.key);
+      if (k === "up") input.current.jump = true;
     };
     const up = (e: KeyboardEvent) => {
       const k = map[e.key];
       if (!k) return;
       input.current[k] = false;
-      held.current.delete(e.key);
+      if (k === "up") input.current.jump = false;
     };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -55,60 +60,74 @@ export default function TowerControls({ input, onJump }: Props) {
     };
   }, [input, onJump]);
 
-  const bind = (key: keyof TowerInput, fire?: () => void) => ({
-    onPointerDown: (e: React.PointerEvent) => {
-      e.preventDefault();
-      (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-      input.current[key] = true;
-      fire?.();
-    },
-    onPointerUp: (e: React.PointerEvent) => {
-      e.preventDefault();
-      input.current[key] = false;
-    },
-    onPointerCancel: () => {
-      input.current[key] = false;
-    },
-    onPointerLeave: () => {
-      input.current[key] = false;
-    },
-    onContextMenu: (e: React.MouseEvent) => e.preventDefault(),
-  });
+  const reset = () => {
+    origin.current = null;
+    jumped.current = false;
+    setKnob(null);
+    const i = input.current;
+    i.left = i.right = i.up = i.down = i.jump = false;
+  };
 
-  const pad =
-    "flex items-center justify-center rounded-2xl border border-white/20 bg-black/45 text-white backdrop-blur-md active:scale-95 active:bg-primary/70 transition select-none touch-none";
+  const move = (cx: number, cy: number) => {
+    const o = origin.current;
+    if (!o) return;
+    let dx = cx - o.x;
+    let dy = cy - o.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const clamped = Math.min(len, MAX);
+    dx = (dx / len) * clamped;
+    dy = (dy / len) * clamped;
+    setKnob({ ox: o.x, oy: o.y, dx, dy });
+
+    const nx = dx / MAX;
+    const ny = dy / MAX;
+    const i = input.current;
+    i.left = nx < -DEAD;
+    i.right = nx > DEAD;
+    i.down = ny > 0.45;
+
+    const wantsUp = ny < -0.4;
+    i.up = wantsUp; // climbs ladders when one is in reach
+    if (wantsUp && !jumped.current) {
+      jumped.current = true;
+      i.jump = true;
+      onJump();
+    }
+    if (!wantsUp) {
+      jumped.current = false;
+      i.jump = false;
+    }
+  };
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 select-none pb-5 pl-4 pr-4">
-      <div className="flex items-end justify-between">
-        <div className="pointer-events-auto flex items-end gap-2">
-          <button type="button" aria-label="Move left" className={`${pad} h-16 w-16`} {...bind("left")}>
-            <ChevronLeft className="h-8 w-8" />
-          </button>
-          <button type="button" aria-label="Move right" className={`${pad} h-16 w-16`} {...bind("right")}>
-            <ChevronRight className="h-8 w-8" />
-          </button>
+    <div
+      className="absolute inset-0 z-30 touch-none select-none"
+      onPointerDown={(e) => {
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        origin.current = { x: e.clientX, y: e.clientY };
+        setKnob({ ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 });
+      }}
+      onPointerMove={(e) => {
+        if (!origin.current) return;
+        move(e.clientX, e.clientY);
+      }}
+      onPointerUp={reset}
+      onPointerCancel={reset}
+      onPointerLeave={reset}
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label="Move, swipe up to jump, swipe down to drop"
+    >
+      {knob && (
+        <div
+          className="pointer-events-none absolute h-28 w-28 rounded-full border border-white/15 bg-white/5"
+          style={{ left: knob.ox, top: knob.oy, transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-white/25 bg-white/25"
+            style={{ transform: `translate(calc(-50% + ${knob.dx}px), calc(-50% + ${knob.dy}px))` }}
+          />
         </div>
-
-        <div className="pointer-events-auto flex items-end gap-2">
-          <div className="flex flex-col gap-2">
-            <button type="button" aria-label="Climb up" className={`${pad} h-12 w-12`} {...bind("up")}>
-              <ChevronUp className="h-6 w-6" />
-            </button>
-            <button type="button" aria-label="Drop down" className={`${pad} h-12 w-12`} {...bind("down")}>
-              <ChevronDown className="h-6 w-6" />
-            </button>
-          </div>
-          <button
-            type="button"
-            aria-label="Jump"
-            className={`${pad} h-16 w-16 border-primary/60 bg-primary/35 text-[13px] font-black uppercase tracking-wide`}
-            {...bind("jump", onJump)}
-          >
-            Jump
-          </button>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
