@@ -154,7 +154,7 @@ export function buildTower(): TowerLevel {
   // Route choice: LEFT is the safe stair, RIGHT is a laser gauntlet worth extra stars.
   platforms.push(solid(60, 2260, 130));
   platforms.push(solid(230, 2350, 120));
-  platforms.push(solid(470, 2270, 90, 18, "blink", { on: 1.4, off: 1.0 }));
+  platforms.push(solid(470, 2246, 90, 18, "blink", { on: 1.4, off: 1.0 }));
   platforms.push(solid(600, 2350, 90, 18, "blink", { on: 1.4, off: 1.0, phase: 0.7 }));
   hazards.push({ id: uid("h"), kind: "block", x: 520, y: 2300, w: 48, h: 48, axis: "y", amp: 90, speed: 0.6 });
   stars.push(star(250, 1760), star(160, 1870), star(400, 1950), star(600, 2020), star(140, 2210));
@@ -171,7 +171,7 @@ export function buildTower(): TowerLevel {
   hazards.push({ id: uid("h"), kind: "crate", x: 330, y: 3100, w: 54, h: 54, axis: "y", amp: 260, speed: 0.42 });
   hazards.push({ id: uid("h"), kind: "crate", x: 560, y: 3100, w: 54, h: 54, axis: "y", amp: 260, speed: 0.42, phase: 0.5 });
   platforms.push(solid(60, 3060, 150));
-  fallRow(3160, [250, 430]);
+  fallRow(3160, [250, 398]);
   platforms.push(solid(560, 3250, 130));
   platforms.push(solid(300, 3340, 120, 20, "bounce", { power: 1.45 }));
   stars.push(star(340, 2650), star(240, 2760), star(320, 2880), star(240, 3000), star(300, 3220));
