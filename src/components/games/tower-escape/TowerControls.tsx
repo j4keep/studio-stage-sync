@@ -102,7 +102,7 @@ export default function TowerControls({ input, onJump }: Props) {
           <button
             type="button"
             aria-label="Jump"
-            className={`${pad} h-20 w-20 border-primary/60 bg-primary/35 text-[13px] font-black uppercase tracking-wide`}
+            className={`${pad} h-16 w-16 border-primary/60 bg-primary/35 text-[13px] font-black uppercase tracking-wide`}
             {...bind("jump", onJump)}
           >
             Jump
