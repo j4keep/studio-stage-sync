@@ -97,8 +97,14 @@ function generateSectionItems(spec: SectionSpec, rand: () => number): CourseItem
   while (d < spec.end - spec.minGap / 2) {
     const lane = Math.floor(rand() * LANE_COUNT) as Lane;
     const roll = rand();
-    const kind: ItemKind = roll < spec.starChance ? "star" : spec.obstacleKinds[Math.floor(rand() * spec.obstacleKinds.length)];
+    const kind: ItemKind =
+      roll < POWER_UP_CHANCE
+        ? POWER_UP_KINDS[Math.floor(rand() * POWER_UP_KINDS.length)]
+        : roll < POWER_UP_CHANCE + spec.starChance
+          ? "star"
+          : spec.obstacleKinds[Math.floor(rand() * spec.obstacleKinds.length)];
     items.push({ distance: d, lane, kind, sectionId: spec.id });
+
     d += spec.minGap + rand() * (spec.maxGap - spec.minGap);
   }
   return items;
