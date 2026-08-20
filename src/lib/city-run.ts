@@ -7,7 +7,9 @@
  * when you crash — the score is how far you got plus the coins you banked.
  */
 
-export const LANES = [-2.7, 0, 2.7] as const;
+// Camera looks down +z, so +x renders on the LEFT of the screen. Lane 0 is the
+// screen-left lane, lane 2 the screen-right one, so a right push moves right.
+export const LANES = [2.7, 0, -2.7] as const;
 export const LANE_SWITCH_SPEED = 12;
 export const RUN_START_SPEED = 16.5;
 export const RUN_MAX_SPEED = 34;
