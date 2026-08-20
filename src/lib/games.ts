@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot" | "knock_hockey" | "bingo" | "word_link" | "mini_golf" | "snake_royale" | "city_run";
+export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot" | "knock_hockey" | "bingo" | "word_link" | "mini_golf" | "snake_royale" | "city_run" | "obby";
 export type GameMode = "solo" | "multiplayer";
 export type GameStatus = "waiting" | "active" | "completed" | "cancelled";
 
