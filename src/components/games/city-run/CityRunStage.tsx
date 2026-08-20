@@ -326,12 +326,15 @@ function RunJoystick({
       onPointerCancel={release}
       onPointerLeave={release}
       aria-label="Move"
-      className="relative h-32 w-32 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
+      className="relative h-36 w-36 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
     >
       <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-14 w-14 rounded-full border border-white/40 bg-white/70"
+        className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 rounded-full border border-white/40 bg-white/70"
         style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
       />
+      <span className="pointer-events-none absolute inset-x-0 -top-6 text-center text-[10px] font-black uppercase tracking-wide text-primary-foreground/70">
+        Swipe up jump · down slide
+      </span>
     </div>
   );
 }
@@ -476,8 +479,8 @@ export default function CityRunStage({
         )}
       </div>
 
-      {/* Controls */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 pb-8">
+      {/* Controls — single stick: left/right to switch lane, swipe up to jump, down to slide */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-center p-4 pb-8">
         <RunJoystick
           onLane={move}
           onJump={() => {
@@ -487,27 +490,6 @@ export default function CityRunStage({
             inputRef.current.slide = true;
           }}
         />
-
-        <div className="flex items-end gap-2">
-          <button
-            type="button"
-            onPointerDown={() => {
-              inputRef.current.slide = true;
-            }}
-            className="h-16 w-20 touch-none rounded-2xl border border-white/25 bg-white/15 text-xs font-black uppercase text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            Slide
-          </button>
-          <button
-            type="button"
-            onPointerDown={() => {
-              inputRef.current.jump = true;
-            }}
-            className="h-20 w-20 touch-none rounded-full border border-white/30 bg-primary/85 text-sm font-black uppercase tracking-wide text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            Jump
-          </button>
-        </div>
       </div>
     </div>
   );

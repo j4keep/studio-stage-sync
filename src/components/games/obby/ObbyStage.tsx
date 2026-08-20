@@ -385,10 +385,10 @@ export default function ObbyStage({
       ArrowUp: [0, 1],
       KeyS: [0, -1],
       ArrowDown: [0, -1],
-      KeyA: [-1, 0],
-      ArrowLeft: [-1, 0],
-      KeyD: [1, 0],
-      ArrowRight: [1, 0],
+      KeyA: [1, 0],
+      ArrowLeft: [1, 0],
+      KeyD: [-1, 0],
+      ArrowRight: [-1, 0],
     };
     const held = new Set<string>();
     const apply = () => {
@@ -513,18 +513,9 @@ export default function ObbyStage({
         )}
       </div>
 
-      {/* Controls */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-8">
+      {/* Controls — single stick: run with it, swipe up to jump */}
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-center p-4 pb-8">
         <Joystick inputRef={inputRef} />
-        <button
-          type="button"
-          onPointerDown={() => {
-            inputRef.current.jump = true;
-          }}
-          className="h-24 w-24 touch-none rounded-full border border-white/30 bg-primary/85 text-sm font-black uppercase tracking-wide text-primary-foreground backdrop-blur-md active:scale-95"
-        >
-          Jump
-        </button>
       </div>
     </div>
   );
