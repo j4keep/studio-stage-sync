@@ -2,7 +2,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef } from "react";
 import type { Group } from "three";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
-import { ELEVATION, TILE, idx } from "@/lib/survival-island/map";
+import { ELEVATION, GRID_H, GRID_W, TILE, idx } from "@/lib/survival-island/map";
 import type { IslandState } from "@/lib/survival-island/engine";
 import type { Camera } from "./render";
 
@@ -24,8 +24,8 @@ function Avatar({ stateRef, cameraRef }: Props) {
     if (!groupNode || !camera) return;
 
     const state = stateRef.current;
-    const tx = Math.max(0, Math.min(state.map.width - 1, Math.floor(state.x / TILE)));
-    const ty = Math.max(0, Math.min(state.map.height - 1, Math.floor(state.y / TILE)));
+    const tx = Math.max(0, Math.min(GRID_W - 1, Math.floor(state.x / TILE)));
+    const ty = Math.max(0, Math.min(GRID_H - 1, Math.floor(state.y / TILE)));
     const terrain = state.map.tiles[idx(tx, ty)] ?? "sand";
     const elevation = ELEVATION[terrain];
     const screenX = (state.x - camera.x) * camera.scale;
