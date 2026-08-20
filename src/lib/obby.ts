@@ -83,15 +83,17 @@ function buildCourse(opts: CourseOpts): Plat[] {
 
   // Spawn pad
   push({ x: 0, y: 0, z: 0, w: 9, d: 9, kind: "start", hue: 150 });
-  z = 7;
+  z = 4.6;
 
   for (let s = 0; s < segments; s++) {
     const steps = 3 + Math.floor(rnd() * 2);
     for (let i = 0; i < steps; i++) {
-      const gap = 3.4 + rnd() * 2.1;
+      // Keep every hop comfortably inside a single jump arc.
+      const gap = 1.7 + rnd() * 1.2;
       z += gap + 2.4;
-      y += (rnd() - 0.35) * 1.1;
-      const x = (rnd() - 0.5) * 7;
+      y += (rnd() - 0.45) * 0.7;
+      const x = (rnd() - 0.5) * 4.6;
+
       const roll = rnd();
       const hue = (hueBase + s * 41 + i * 17) % 360;
 
