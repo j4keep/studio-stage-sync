@@ -39,9 +39,39 @@ function mulberry32(seed: number) {
   };
 }
 
-/** Builds the (fixed, deterministic) course every player races on. */
-function buildCourse(): Plat[] {
-  const rnd = mulberry32(0x0bb17);
+/** A themed, fully-built course. Every YAJ Adventure runs on one of these. */
+export type CourseTheme = { sky: string; fog: string; floor: string; floorEmissive: string };
+export type Course = {
+  plats: Plat[];
+  finish: Plat;
+  checkpoints: Plat[];
+  length: number;
+  theme: CourseTheme;
+};
+
+type CourseOpts = {
+  seed: number;
+  segments?: number;
+  /** Wider pads + fewer hazards make a course friendlier (City Run rooftops). */
+  padBonus?: number;
+  lavaChance?: number;
+  movingChance?: number;
+  hueBase?: number;
+  theme: CourseTheme;
+};
+
+/** Builds a (fixed, deterministic) course every player races on. */
+function buildCourse(opts: CourseOpts): Plat[] {
+  const {
+    seed,
+    segments = 9,
+    padBonus = 0,
+    lavaChance = 0.16,
+    movingChance = 0.22,
+    hueBase = 0,
+  } = opts;
+  const rnd = mulberry32(seed);
+
   const out: Plat[] = [];
   let id = 0;
   let z = 0;
