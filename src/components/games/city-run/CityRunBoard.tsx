@@ -396,6 +396,9 @@ export default function CityRunBoard({
   const [popup, setPopup] = useState<Popup | null>(null);
   const [ended, setEnded] = useState(false);
   const [showJunction, setShowJunction] = useState(false);
+  const [powerUps, setPowerUps] = useState<PowerUpState>(initialPowerUps);
+
+
 
   const courseRef = useRef<CourseItem[] | null>(null);
   const playerDistanceRef = useRef(0);
