@@ -16,8 +16,8 @@ import cityArt from "@/assets/games/adventures/city-run.png.asset.json";
 
 const HOW_TO_PLAY = [
   "You run automatically — the longer you survive, the faster the city gets.",
-  "Swipe left/right (or tap ◀ ▶) to switch lanes and dodge cars and buses.",
-  "Tap JUMP or swipe up to hop cones and barriers; SLIDE or swipe down to duck under low signs.",
+  "One stick does everything — push it left or right to switch lanes and dodge cars and buses.",
+  "Swipe the stick up to jump cones and barriers, swipe it down to slide under low signs.",
   "Collect coins for 10 points each — 🧲 magnet pulls them in, 🛡️ shield saves you from one crash, ⚡ boost speeds you up.",
   "One crash without a shield ends the run. Score = distance + coins.",
 ];
