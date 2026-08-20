@@ -139,6 +139,7 @@ import ObbyPage from "./pages/games/ObbyPage";
 import CityRunPage from "./pages/games/CityRunPage";
 import TreasureRushPage from "./pages/games/TreasureRushPage";
 import TowerEscapePage from "./pages/games/TowerEscapePage";
+import SurvivalIslandPage from "./pages/games/SurvivalIslandPage";
 import EventDetailPage from "./pages/EventDetailPage";
 import DealsHomePage from "./pages/deals/DealsHomePage";
 import DealDetailPage from "./pages/deals/DealDetailPage";
@@ -441,6 +442,8 @@ const ProtectedRoutes = () => {
         <Route path="/games/city-run/:id" element={<CityRunPage />} />
         <Route path="/games/treasure-rush/:id" element={<TreasureRushPage />} />
         <Route path="/games/tower-escape/:id" element={<TowerEscapePage />} />
+        <Route path="/games/survival-island/:id" element={<SurvivalIslandPage />} />
+
         <Route path="/deals" element={<DealsHomePage />} />
         <Route path="/deals/my" element={<MyDealsPage />} />
         <Route path="/deals/create" element={<DealCreatePage />} />
