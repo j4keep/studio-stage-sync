@@ -30,6 +30,7 @@ import boxingArt from "@/assets/games/boxing.svg";
 import battleshipArt from "@/assets/games/battleship.svg";
 import drivingArt from "@/assets/games/driving.svg";
 import pokerArt from "@/assets/games/poker.svg";
+import popShotArt from "@/assets/games/pop-shot.svg";
 
 type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card";
 
@@ -48,6 +49,7 @@ const CARDS: CardDef[] = [
   { type: "battleship", title: "Battleship", players: "2 players", image: battleshipArt, category: "Strategy", isNew: true },
   { type: "driving", title: "Drive", players: "2 players", image: drivingArt, category: "Arcade", isNew: true },
   { type: "poker", title: "Texas Hold'em", players: "2 players", image: pokerArt, category: "Card", isNew: true },
+  { type: "pop_shot", title: "Pop Shot", players: "2 players", image: popShotArt, category: "Arcade", isNew: true },
   { type: "dominoes", title: "Dominoes", players: "2 players", image: dominoesArt, category: "Board" },
   { type: "tic_tac_toe", title: "Tic-Tac-Toe", players: "2 players", image: tttArt, category: "Board" },
   { type: "connect_four", title: "Connect Four", players: "2 players", image: connectFourArt, category: "Board" },

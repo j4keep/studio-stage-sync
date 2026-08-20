@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 768" width="1024" height="768">
+  <defs>
+    <linearGradient id="ps-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7a3d1e"/>
+      <stop offset="55%" stop-color="#3a1c0e"/>
+      <stop offset="100%" stop-color="#160a05"/>
+    </linearGradient>
+    <linearGradient id="ps-floor" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#c9863f"/>
+      <stop offset="100%" stop-color="#7a4a20"/>
+    </linearGradient>
+    <radialGradient id="ps-ball" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#f2a35c"/>
+      <stop offset="100%" stop-color="#c9601f"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1024" height="768" fill="url(#ps-sky)"/>
+
+  <!-- crowd dots -->
+  <g opacity="0.5">
+    <rect x="0" y="0" width="1024" height="130" fill="#160a05"/>
+    <g fill="#e0453f">
+      <circle cx="60" cy="40" r="9"/><circle cx="140" cy="60" r="9"/><circle cx="220" cy="35" r="9"/>
+      <circle cx="760" cy="45" r="9"/><circle cx="840" cy="65" r="9"/><circle cx="930" cy="38" r="9"/>
+    </g>
+    <g fill="#3a6bd6">
+      <circle cx="100" cy="75" r="9"/><circle cx="180" cy="90" r="9"/><circle cx="300" cy="55" r="9"/>
+      <circle cx="700" cy="80" r="9"/><circle cx="880" cy="90" r="9"/>
+    </g>
+    <g fill="#d6b23a">
+      <circle cx="40" cy="95" r="9"/><circle cx="260" cy="90" r="9"/><circle cx="500" cy="60" r="9"/>
+      <circle cx="600" cy="50" r="9"/><circle cx="960" cy="70" r="9"/>
+    </g>
+  </g>
+
+  <!-- floor -->
+  <rect x="0" y="560" width="1024" height="208" fill="url(#ps-floor)"/>
+  <path d="M 420,768 A 380,260 0 0 1 1024,600" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="5"/>
+  <g stroke="rgba(0,0,0,0.15)" stroke-width="2">
+    <line x1="0" y1="560" x2="0" y2="768"/>
+    <line x1="80" y1="560" x2="80" y2="768"/>
+    <line x1="160" y1="560" x2="160" y2="768"/>
+    <line x1="240" y1="560" x2="240" y2="768"/>
+    <line x1="320" y1="560" x2="320" y2="768"/>
+    <line x1="400" y1="560" x2="400" y2="768"/>
+  </g>
+
+  <!-- backboard + hoop -->
+  <rect x="790" y="150" width="18" height="200" fill="#e9e4d8" stroke="#111" stroke-width="4"/>
+  <rect x="794" y="200" width="10" height="40" fill="none" stroke="#e0453f" stroke-width="4"/>
+  <ellipse cx="700" cy="330" rx="70" ry="16" fill="none" stroke="#e0453f" stroke-width="10"/>
+  <g stroke="rgba(255,255,255,0.6)" stroke-width="2.5">
+    <line x1="640" y1="332" x2="655" y2="400"/>
+    <line x1="660" y1="335" x2="668" y2="404"/>
+    <line x1="680" y1="337" x2="682" y2="406"/>
+    <line x1="700" y1="337" x2="700" y2="407"/>
+    <line x1="720" y1="337" x2="718" y2="406"/>
+    <line x1="740" y1="335" x2="732" y2="404"/>
+    <line x1="760" y1="332" x2="745" y2="400"/>
+  </g>
+
+  <!-- ball mid-flight with motion trail -->
+  <g opacity="0.35">
+    <circle cx="300" cy="420" r="26" fill="#e0803a"/>
+    <circle cx="380" cy="330" r="30" fill="#e0803a"/>
+  </g>
+  <g>
+    <ellipse cx="470" cy="255" rx="22" ry="6" fill="rgba(0,0,0,0.3)"/>
+    <circle cx="470" cy="240" r="38" fill="url(#ps-ball)" stroke="#7a3d10" stroke-width="4"/>
+    <path d="M 434,240 A 38,38 0 0 1 506,240" fill="none" stroke="#3a1e08" stroke-width="3"/>
+    <line x1="470" y1="202" x2="470" y2="278" stroke="#3a1e08" stroke-width="3"/>
+  </g>
+
+  <!-- shooter silhouette -->
+  <g transform="translate(210,470)" opacity="0.95">
+    <ellipse cx="60" cy="230" rx="70" ry="18" fill="rgba(0,0,0,0.35)"/>
+    <rect x="30" y="60" width="60" height="130" rx="26" fill="#e0453f"/>
+    <circle cx="60" cy="30" r="32" fill="#8a5a2e"/>
+    <rect x="-10" y="70" width="36" height="90" rx="16" fill="#e0453f"/>
+    <rect x="20" y="180" width="30" height="70" rx="12" fill="#1c2a44"/>
+    <rect x="70" y="180" width="30" height="70" rx="12" fill="#1c2a44"/>
+  </g>
+
+  <!-- title lockup -->
+  <text x="512" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="88" font-weight="900" fill="#f5d98a" text-anchor="middle" style="letter-spacing:3px" opacity="0.95">POP SHOT</text>
+</svg>
