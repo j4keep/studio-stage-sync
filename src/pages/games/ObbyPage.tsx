@@ -20,7 +20,7 @@ import { gameRoute } from "@/lib/game-routes";
 import obbyArt from "@/assets/games/yaj-obby-intro.png";
 
 const HOW_TO_PLAY = [
-  "Drag the pad on the left to run, tap JUMP to hop — on a laptop use WASD and Space.",
+  "One stick does everything: drag it to run, and flick it up hard to jump — on a laptop use WASD and Space.",
   "Hop platform to platform down the floating course. Fall off and you respawn at the last blue checkpoint.",
   "Orange lava blocks reset you instantly, so pick your line on the narrow beams.",
   "Some platforms slide side to side or up and down — time your jump and ride them.",
