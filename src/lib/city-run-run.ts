@@ -89,8 +89,12 @@ export function sectionAt(distance: number, branch: Branch): SectionSpec | null 
   return null;
 }
 
+/** Odds any one slot becomes a power-up instead of a star/obstacle. */
+export const POWER_UP_CHANCE = 0.07;
+
 /** One item per distance step, always a single lane, injectable RNG — the same generator the
  *  original flat course used, just parametrized per section. */
+
 function generateSectionItems(spec: SectionSpec, rand: () => number): CourseItem[] {
   const items: CourseItem[] = [];
   let d = spec.start + spec.minGap;
