@@ -307,7 +307,34 @@ export default function GamesHubPage() {
               </section>
             )}
 
+            {/* YAJ Adventures — original YAJ arcade/adventure titles, City Run first. */}
             <section>
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="text-[13px] font-black uppercase tracking-[0.12em] text-primary">YAJ Adventures</h2>
+                  <p className="text-[11px] text-muted-foreground">Original YAJ worlds — run, climb, explore and survive</p>
+                </div>
+              </div>
+
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                {ADVENTURE_CARDS.map(renderCard)}
+                {ADVENTURES_COMING_SOON.map((a) => (
+                  <div
+                    key={a.title}
+                    className="relative flex aspect-[3/4] flex-col justify-end overflow-hidden rounded-2xl border border-dashed border-border bg-card p-3"
+                  >
+                    <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-muted-foreground">
+                      Soon
+                    </span>
+                    <p className="text-base font-black italic uppercase leading-[0.95] tracking-tight">{a.title}</p>
+                    <p className="mt-1 text-[10px] font-bold text-muted-foreground">{a.blurb}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+
               <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
                 {(["All", ...CATEGORIES] as const).map((c) => (
                   <button
