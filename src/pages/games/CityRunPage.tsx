@@ -6,58 +6,40 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
-import PendingChallengeGate from "@/components/games/PendingChallengeGate";
-import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import ObbyStage from "@/components/games/obby/ObbyStage";
-import { useObbyLive } from "@/hooks/use-obby-live";
+import CityRunStage from "@/components/games/city-run/CityRunStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { CITY_RUN_COURSE, ObbyState, formatMs, initialObby } from "@/lib/obby";
 import { obbySfx } from "@/lib/obby-sfx";
-import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import cityArt from "@/assets/games/adventures/city-run.png.asset.json";
 
 const HOW_TO_PLAY = [
-  "Drag the pad on the left to run, tap JUMP to hop — on a laptop use WASD and Space.",
-  "Leap rooftop to rooftop across the city skyline. Fall off and you respawn at the last blue checkpoint.",
-  "Hazard blocks reset you instantly, so pick your line on the narrow beams.",
-  "Some platforms slide side to side or up and down — time your jump and ride them.",
-  "First racer to touch the gold finish pad wins. You can see your opponent running live beside you.",
+  "You run automatically — the longer you survive, the faster the city gets.",
+  "Swipe left/right (or tap ◀ ▶) to switch lanes and dodge cars and buses.",
+  "Tap JUMP or swipe up to hop cones and barriers; SLIDE or swipe down to duck under low signs.",
+  "Collect coins for 10 points each — 🧲 magnet pulls them in, 🛡️ shield saves you from one crash, ⚡ boost speeds you up.",
+  "One crash without a shield ends the run. Score = distance + coins.",
 ];
 
 const MY_COLOR = "#2f7bff";
-const OPP_COLOR = "#ff8a3d";
 
 export default function CityRunPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
-  const statsWritten = useRef<string | null>(null);
+  const { game, loading } = useTurnGame(id, user?.id);
 
   const [seated, setSeated] = useState(false);
-  const [picker, setPicker] = useState(false);
   const [muted, setMuted] = useState(obbySfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
-  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [runKey, setRunKey] = useState(1);
+  const [result, setResult] = useState<{ score: number; coins: number; distance: number } | null>(null);
+  const saved = useRef<number | null>(null);
 
-  const obby: ObbyState = (game?.game_state?.obby as ObbyState) || initialObby();
-  const mySeat: 0 | 1 = ((me?.seat ?? 1) === 1 ? 0 : 1) as 0 | 1;
-  const oppSeat: 0 | 1 = mySeat === 0 ? 1 : 0;
-  const finished = obby.phase === "over";
-  const isMultiplayer = game?.mode === "multiplayer";
-
-  const { stats, matchups } = useGameRecord("city_run", user?.id, finished);
-  const { ghosts, sample, announceFinish, oppFinishMs } = useObbyLive({
-    gameId: game?.id,
-    userId: user?.id,
-    name: myName,
-    color: mySeat === 0 ? MY_COLOR : OPP_COLOR,
-    enabled: Boolean(seated && isMultiplayer && game?.status === "active"),
-  });
+  const { stats, matchups } = useGameRecord("city_run", user?.id, result?.score ?? null);
+  const best = stats?.highScore ?? null;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -72,82 +54,43 @@ export default function CityRunPage() {
       });
   }, [user?.id]);
 
-  const commitResult = async (winnerSeat: 0 | 1, ms: number) => {
-    if (!game || !user) return;
-    const times: [number | null, number | null] = [...obby.times] as [number | null, number | null];
-    times[winnerSeat] = ms;
-    const next: ObbyState = { winnerSeat, times, phase: "over" };
-    setGame({ ...game, game_state: { ...(game.game_state || {}), obby: next } });
-    await updateGameState(game.id, {
-      game_state: { ...(game.game_state || {}), obby: next },
-      status: "completed",
-      is_draw: false,
-      winner_user_id: winnerSeat === mySeat ? user.id : (opponent?.user_id ?? null),
-      finished_at: new Date().toISOString(),
-    });
-    await refresh();
-  };
-
-  const onFinish = (ms: number) => {
-    if (finished || !user) return;
-    obbySfx.win();
-    announceFinish(ms);
+  const onEnd = (score: number, coins: number, distance: number) => {
+    setResult({ score, coins, distance });
     void (async () => {
-      await commitResult(mySeat, ms);
-      if (statsWritten.current !== game?.id) {
-        statsWritten.current = game?.id ?? null;
-        await bumpStats(user.id, "city_run", "win", Math.max(0, 200000 - ms));
+      if (!user || !game) return;
+      if (saved.current === runKey) return;
+      saved.current = runKey;
+      try {
+        await bumpStats(user.id, "city_run", "win", score);
+        await updateGameState(game.id, {
+          game_state: { ...(game.game_state || {}), cityRun: { score, coins, distance } },
+          status: "completed",
+          is_draw: false,
+          winner_user_id: user.id,
+          finished_at: new Date().toISOString(),
+        });
+      } catch {
+        /* score keeping is non-critical */
       }
     })();
   };
 
-  // Opponent crossed the line first.
-  useEffect(() => {
-    if (oppFinishMs === null || finished || !user) return;
-    void (async () => {
-      await commitResult(oppSeat, oppFinishMs);
-      if (statsWritten.current !== game?.id) {
-        statsWritten.current = game?.id ?? null;
-        await bumpStats(user.id, "city_run", "loss");
-      }
-    })();
-  }, [oppFinishMs]);
-
-  const rematch = async () => {
-    if (!user || !game) return;
-    try {
-      const state = { obby: initialObby(), moveNumber: 0 };
-      const g =
-        game.mode === "solo"
-          ? await createSoloGame("city_run", user.id, state)
-          : opponent?.user_id
-            ? await createMultiplayerGame("city_run", user.id, opponent.user_id, state)
-            : null;
-      if (g) {
-        statsWritten.current = null;
-        setStartedAt(null);
-        navigate(gameRoute("city_run", g.id), { replace: true });
-      }
-    } catch (e: any) {
-      toast({ title: "Could not start a rematch", description: e.message, variant: "destructive" });
-    }
-  };
-
-  const challengeOther = async (opponentId: string, name: string) => {
+  const runAgain = async () => {
     if (!user) return;
     try {
-      const g = await createMultiplayerGame("city_run", user.id, opponentId, { obby: initialObby(), moveNumber: 0 });
-      toast({ title: `Challenge sent to ${name}` });
+      const g = await createSoloGame("city_run", user.id, { moveNumber: 0 });
+      setResult(null);
+      saved.current = null;
+      setRunKey((k) => k + 1);
       navigate(gameRoute("city_run", g.id), { replace: true });
+      setSeated(true);
     } catch (e: any) {
-      toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
+      toast({ title: "Could not start a new run", description: e.message, variant: "destructive" });
     }
   };
 
   const shareResult = async () => {
-    const iWon = obby.winnerSeat === mySeat;
-    const t = obby.times[obby.winnerSeat ?? 0];
-    const text = `I just ${iWon ? "won" : "lost"} a YAJ City Run race${t ? ` — ${formatMs(t)}` : ""} 🧱`;
+    const text = `I just ran ${Math.round(result?.distance ?? 0)}m in YAJ City Run for ${result?.score ?? 0} points 🏃‍♂️🌆`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -170,7 +113,7 @@ export default function CityRunPage() {
   if (!game) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-bold">This game is no longer available.</p>
+        <p className="font-bold">This run is no longer available.</p>
         <button
           type="button"
           onClick={() => navigate("/games")}
@@ -182,10 +125,6 @@ export default function CityRunPage() {
     );
   }
 
-  const oppLabel = game.mode === "solo" ? "Time trial" : opponentName;
-  const iWon = obby.winnerSeat === mySeat;
-  const winTime = obby.times[obby.winnerSeat ?? 0];
-
   const toggleMute = () => {
     const next = !muted;
     setMuted(next);
@@ -196,102 +135,48 @@ export default function CityRunPage() {
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
         {seated && (
-          <ObbyStage
-            myColor={mySeat === 0 ? MY_COLOR : OPP_COLOR}
-            ghosts={ghosts}
-            onSample={isMultiplayer ? sample : undefined}
-            onFinish={onFinish}
+          <CityRunStage
+            runKey={runKey}
+            myColor={MY_COLOR}
             onBack={() => navigate("/games")}
-            raceStartedAt={startedAt}
-            headline={game.mode === "solo" ? "YAJ City Run — time trial" : `YAJ City Run — you vs ${opponentName}`}
-            subline={
-              finished
-                ? iWon
-                  ? "You reached the finish first"
-                  : `${oppLabel} reached the finish first`
-                : "Sprint the rooftops to the gold pad"
-            }
+            onEnd={onEnd}
+            headline="YAJ City Run"
+            subline="Endless sprint through the city — dodge, jump, slide"
             howToPlay={HOW_TO_PLAY}
             muted={muted}
             onToggleMute={toggleMute}
-            frozen={finished}
-            course={CITY_RUN_COURSE}
+            best={best}
           />
         )}
 
-        <PendingChallengeGate
-          gameId={game.id}
-          userId={user?.id}
-          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
-          challengerName={opponentName}
-          onAccepted={refresh}
-        />
-
-        <GameLiveDock
-          gameId={game.id}
-          userId={user?.id}
-          isPlayer={!!me}
-          isLive={Boolean((game as any).is_live)}
-          hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
-          placement="rail"
-          onChanged={refresh}
-        />
-
         <GameIntro
-          open={!seated && !finished}
+          open={!seated}
           title="YAJ City Run"
-          subtitle={game.mode === "solo" ? "Beat the course — solo time trial" : `Race the course — you vs ${opponentName}`}
+          subtitle="Endless runner — how far can you get before you crash?"
           artUrl={cityArt.url}
           me={{ name: myName, avatarUrl: myAvatar }}
-          them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
+          them={{ name: "The city", avatarUrl: null, isComputer: true }}
           stats={stats}
           matchups={matchups}
           onStart={() => {
             setSeated(true);
-            setStartedAt(Date.now());
             void obbySfx.prime();
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
-            if (game.mode === "solo" && game.status === "active") {
-              setSeated(true);
-              setStartedAt(Date.now());
-              void obbySfx.prime();
-              return;
-            }
-            void (async () => {
-              if (!user) return;
-              try {
-                const g = await createSoloGame("city_run", user.id, { obby: initialObby(), moveNumber: 0 });
-                statsWritten.current = null;
-                navigate(gameRoute("city_run", g.id), { replace: true });
-              } catch (e: any) {
-                toast({ title: "Could not start a solo game", description: e.message, variant: "destructive" });
-              }
-            })();
+            setSeated(true);
+            void obbySfx.prime();
           }}
-          onQuickMatch={() => setPicker(true)}
         />
       </div>
 
       <GameResultCard
-        open={finished}
-        outcome={iWon ? "win" : "loss"}
-        title={iWon ? "You win the race!" : `${oppLabel} wins the race`}
-        detail={winTime ? `Winning time — ${formatMs(winTime)}` : undefined}
-        onRematch={rematch}
-        onChallenge={() => setPicker(true)}
+        open={Boolean(result)}
+        outcome="win"
+        title={result && best && result.score >= best ? "New personal best!" : "Run over"}
+        detail={result ? `${result.score.toLocaleString()} pts — ${Math.round(result.distance)}m and ${result.coins} coins` : undefined}
+        onRematch={runAgain}
         onShare={shareResult}
-      />
-
-      <OpponentPickerSheet
-        open={picker}
-        onClose={() => setPicker(false)}
-        onPick={(p) => {
-          setPicker(false);
-          void challengeOther(p.user_id, p.display_name || "your opponent");
-        }}
-        title="Challenge to YAJ City Run"
       />
     </div>
   );
