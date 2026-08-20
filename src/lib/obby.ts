@@ -125,13 +125,13 @@ function buildCourse(opts: CourseOpts): Plat[] {
     }
 
     // Checkpoint pad closes every segment
-    z += 5.6;
+    z += 4.2;
     y += 0.4;
     push({ x: 0, y, z, w: 6, d: 5, kind: "checkpoint", hue: 190 });
   }
 
 
-  z += 7;
+  z += 5;
   push({ x: 0, y, z, w: 10, d: 8, kind: "finish", hue: 48 });
   return out;
 }
