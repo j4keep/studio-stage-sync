@@ -820,6 +820,22 @@ export default function CityRunBoard({
               <stop offset="55%" stopColor="#FFD166" stopOpacity="0.28" />
               <stop offset="100%" stopColor="#FFD166" stopOpacity="0" />
             </radialGradient>
+            <radialGradient id="magnetGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#C9A6FF" stopOpacity="0.85" />
+              <stop offset="60%" stopColor="#7A4FC9" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#7A4FC9" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="shieldGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#B6F5FA" stopOpacity="0.85" />
+              <stop offset="60%" stopColor="#2FB6C4" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#2FB6C4" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="boostGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#FFF3D6" stopOpacity="0.9" />
+              <stop offset="60%" stopColor="#FF9C4A" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#FF9C4A" stopOpacity="0" />
+            </radialGradient>
+
             <radialGradient id="vignetteCR" cx="50%" cy="52%" r="72%">
               <stop offset="55%" stopColor="#000000" stopOpacity="0" />
               <stop offset="100%" stopColor="#000000" stopOpacity="0.26" />
