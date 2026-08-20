@@ -495,7 +495,9 @@ export default function CityRunBoard({
       endedRef.current = true;
       setEnded(true);
       const d = Math.min(playerDistanceRef.current, FINISH_DISTANCE);
-      const score = scoreRun(d, starsRef.current, checkpointsRef.current, finished);
+      const bonus = bonusRef.current + boostBonus(boostSecondsRef.current);
+      const score = scoreRun(d, starsRef.current, checkpointsRef.current, finished, bonus);
+
       if (finished) {
         spawnPopup(`FINISH! +${score}`);
         cityRunSfx.finish();
