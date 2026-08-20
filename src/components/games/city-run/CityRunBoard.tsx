@@ -303,7 +303,40 @@ function ItemGraphic({ kind }: { kind: ItemKind }) {
       </>
     );
   }
+  if (kind === "magnet") {
+    return (
+      <>
+        <circle cx="0" cy="-4" r="24" fill="url(#magnetGlowCR)" />
+        <path d="M-13 -18 a13 13 0 0 1 26 0 v10 h-9 v-10 a4 4 0 0 0 -8 0 v10 h-9 z" fill="#7A4FC9" />
+        <rect x="-13" y="-8" width="9" height="12" rx="2" fill="#FF7A59" />
+        <rect x="4" y="-8" width="9" height="12" rx="2" fill="#FF7A59" />
+        <rect x="-13" y="-20" width="26" height="4" rx="2" fill="#FFFFFF" opacity="0.3" />
+      </>
+    );
+  }
+  if (kind === "shield") {
+    return (
+      <>
+        <circle cx="0" cy="-6" r="24" fill="url(#shieldGlowCR)" />
+        <path d="M0 -26 l16 6 v10 c0 9 -7 16 -16 20 c-9 -4 -16 -11 -16 -20 v-10 z" fill="#2FB6C4" />
+        <path d="M0 -26 l16 6 v10 c0 9 -7 16 -16 20 z" fill="#000000" opacity="0.14" />
+        <path d="M-6 -8 l4 5 8 -10" fill="none" stroke="#FFF7EA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    );
+  }
+  if (kind === "boost") {
+    return (
+      <>
+        <circle cx="0" cy="-4" r="24" fill="url(#boostGlowCR)" />
+        <path d="M2 -26 l-14 18 h9 l-5 16 15 -20 h-9 z" fill="#FFD166" />
+        <path d="M2 -26 l-14 18 h5 z" fill="#FFFFFF" opacity="0.35" />
+        <line x1="-18" y1="6" x2="-9" y2="6" stroke="#FFD166" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+        <line x1="10" y1="6" x2="19" y2="6" stroke="#FFD166" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+      </>
+    );
+  }
   // star
+
   return (
     <>
       <circle cx="0" cy="0" r="21" fill="url(#starGlowCR)" />
