@@ -9,9 +9,10 @@
 
 export const LANES = [-2.7, 0, 2.7] as const;
 export const LANE_SWITCH_SPEED = 12;
-export const RUN_START_SPEED = 13;
-export const RUN_MAX_SPEED = 30;
-export const RUN_ACCEL = 0.34; // units of speed gained per second
+export const RUN_START_SPEED = 16.5;
+export const RUN_MAX_SPEED = 34;
+export const RUN_ACCEL = 0.46; // units of speed gained per second
+
 export const JUMP_V = 11.5;
 export const GRAVITY = 30;
 export const SLIDE_MS = 620;
