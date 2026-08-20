@@ -134,10 +134,43 @@ function buildCourse(opts: CourseOpts): Plat[] {
   return out;
 }
 
-export const COURSE: Plat[] = buildCourse();
-export const FINISH = COURSE[COURSE.length - 1];
-export const CHECKPOINTS: Plat[] = COURSE.filter((p) => p.kind === "checkpoint" || p.kind === "start");
-export const COURSE_LENGTH = FINISH.z;
+function makeCourse(opts: CourseOpts): Course {
+  const plats = buildCourse(opts);
+  const finish = plats[plats.length - 1];
+  return {
+    plats,
+    finish,
+    checkpoints: plats.filter((p) => p.kind === "checkpoint" || p.kind === "start"),
+    length: finish.z,
+    theme: opts.theme,
+  };
+}
+
+/** YAJ Obby — floating blocks over lava. */
+export const OBBY_COURSE: Course = makeCourse({
+  seed: 0x0bb17,
+  segments: 9,
+  movingChance: 0.22,
+  lavaChance: 0.16,
+  theme: { sky: "#78c6f7", fog: "#8fd0f8", floor: "#ff5a1f", floorEmissive: "#ff3b00" },
+});
+
+/** YAJ City Run — wider rooftop pads, fewer hazards, sunset skyline. */
+export const CITY_RUN_COURSE: Course = makeCourse({
+  seed: 0xc17run,
+  segments: 10,
+  padBonus: 1.4,
+  movingChance: 0.3,
+  lavaChance: 0.1,
+  hueBase: 210,
+  theme: { sky: "#ff9e5e", fog: "#ffb98a", floor: "#2b2140", floorEmissive: "#5b3fa8" },
+});
+
+export const COURSE: Plat[] = OBBY_COURSE.plats;
+export const FINISH = OBBY_COURSE.finish;
+export const CHECKPOINTS: Plat[] = OBBY_COURSE.checkpoints;
+export const COURSE_LENGTH = OBBY_COURSE.length;
+
 
 /** Live world position of a platform at time `t` (seconds). */
 export function platPos(p: Plat, t: number): [number, number, number] {
