@@ -27,7 +27,7 @@ const RAW = [
   "##########=..c.g..=##########",
   "##########=========##########",
   "###########.......###########",
-  "###########...T...###########",
+  "##############T##############",
   "###########.......###########",
   "############.....############",
   "###..c.....#.....#.....g..###",
@@ -159,7 +159,7 @@ export const WALL_RUNS: WallRun[] = (() => {
 
 /** Barrels roll up and down the two market-street lanes — a light, readable hazard. */
 export const BARREL_TRACKS = [
-  { col: 12, from: 22, to: 29, speed: 4.4, phase: 0 },
-  { col: 16, from: 22, to: 29, speed: 5.2, phase: 0.5 },
+  { col: 13, from: 22, to: 29, speed: 4.4, phase: 0 },
+  { col: 15, from: 22, to: 29, speed: 5.2, phase: 0.5 },
   { col: 14, from: 11, to: 17, speed: 3.6, phase: 0.25 },
 ];
