@@ -22,8 +22,10 @@ const HOW_TO_PLAY = [
   "Swipe up to jump ground obstacles (cones, barriers, puddles), swipe down to slide under overhead signs.",
   "Only one hazard ever blocks a lane at a time, so changing lanes always works too — jump and slide are just faster.",
   "Grab stars for bonus points, and reaching the finish line clean pays out a big bonus.",
+  "Power-ups: MAGNET pulls nearby stars in, SHIELD absorbs one hit, BOOST speeds you up for bonus points.",
   "3 runs each, alternating with your opponent — highest total score wins.",
 ];
+
 
 export default function CityRunPage() {
   const { id } = useParams<{ id: string }>();

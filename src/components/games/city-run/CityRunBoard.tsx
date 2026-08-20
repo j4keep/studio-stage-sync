@@ -15,10 +15,28 @@ import {
   RunResult,
   STUMBLE_LIVES,
   generateCourse,
+  isPowerUpKind,
   scoreRun,
   sectionAt,
 } from "@/lib/city-run-run";
+import {
+  BOOST_SPEED,
+  MAGNET_LANE_REACH,
+  MAGNET_RANGE,
+  POWER_UP_LABEL,
+  POWER_UP_POINTS,
+  PowerUpKind,
+  PowerUpState,
+  activatePowerUp,
+  activeList,
+  boostBonus,
+  consumeShield,
+  initialPowerUps,
+  isActive,
+  tickPowerUps,
+} from "@/lib/city-run-powerups";
 import { cityRunSfx } from "@/lib/city-run-sfx";
+
 
 // Same fixed-viewBox trick every physics game this session uses: the camera follows a runner
 // whose *world* distance always advances, projected onto a fixed screen row — this is a
@@ -285,7 +303,40 @@ function ItemGraphic({ kind }: { kind: ItemKind }) {
       </>
     );
   }
+  if (kind === "magnet") {
+    return (
+      <>
+        <circle cx="0" cy="-4" r="24" fill="url(#magnetGlowCR)" />
+        <path d="M-13 -18 a13 13 0 0 1 26 0 v10 h-9 v-10 a4 4 0 0 0 -8 0 v10 h-9 z" fill="#7A4FC9" />
+        <rect x="-13" y="-8" width="9" height="12" rx="2" fill="#FF7A59" />
+        <rect x="4" y="-8" width="9" height="12" rx="2" fill="#FF7A59" />
+        <rect x="-13" y="-20" width="26" height="4" rx="2" fill="#FFFFFF" opacity="0.3" />
+      </>
+    );
+  }
+  if (kind === "shield") {
+    return (
+      <>
+        <circle cx="0" cy="-6" r="24" fill="url(#shieldGlowCR)" />
+        <path d="M0 -26 l16 6 v10 c0 9 -7 16 -16 20 c-9 -4 -16 -11 -16 -20 v-10 z" fill="#2FB6C4" />
+        <path d="M0 -26 l16 6 v10 c0 9 -7 16 -16 20 z" fill="#000000" opacity="0.14" />
+        <path d="M-6 -8 l4 5 8 -10" fill="none" stroke="#FFF7EA" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </>
+    );
+  }
+  if (kind === "boost") {
+    return (
+      <>
+        <circle cx="0" cy="-4" r="24" fill="url(#boostGlowCR)" />
+        <path d="M2 -26 l-14 18 h9 l-5 16 15 -20 h-9 z" fill="#FFD166" />
+        <path d="M2 -26 l-14 18 h5 z" fill="#FFFFFF" opacity="0.35" />
+        <line x1="-18" y1="6" x2="-9" y2="6" stroke="#FFD166" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+        <line x1="10" y1="6" x2="19" y2="6" stroke="#FFD166" strokeWidth="2.5" strokeLinecap="round" opacity="0.7" />
+      </>
+    );
+  }
   // star
+
   return (
     <>
       <circle cx="0" cy="0" r="21" fill="url(#starGlowCR)" />
@@ -307,7 +358,14 @@ const SECTION_THEME: Record<Background, { road: string; sidewalk: string; label:
   finalBlock: { road: "#4A3570", sidewalk: "#E6DCC9", label: "FINAL BLOCK" },
 };
 
+const POWER_UP_TINT: Record<PowerUpKind, string> = {
+  magnet: "#C9A6FF",
+  shield: "#7FE7F0",
+  boost: "#FFD166",
+};
+
 type Popup = { id: number; text: string };
+
 type AutoTarget = { key: number; triggerDistance: number; overhead: boolean; preferLaneChange: boolean };
 
 export default function CityRunBoard({
@@ -345,6 +403,9 @@ export default function CityRunBoard({
   const [popup, setPopup] = useState<Popup | null>(null);
   const [ended, setEnded] = useState(false);
   const [showJunction, setShowJunction] = useState(false);
+  const [powerUps, setPowerUps] = useState<PowerUpState>(initialPowerUps);
+
+
 
   const courseRef = useRef<CourseItem[] | null>(null);
   const playerDistanceRef = useRef(0);
@@ -365,6 +426,10 @@ export default function CityRunBoard({
   const resolvedHazardsRef = useRef<Set<number>>(new Set());
   const checkpointsHitRef = useRef<Set<number>>(new Set());
   const lastSectionRef = useRef<string | null>(null);
+  const powerUpsRef = useRef<PowerUpState>(initialPowerUps());
+  const boostSecondsRef = useRef(0);
+  const bonusRef = useRef(0);
+
   const popupIdRef = useRef(0);
   const dragStartRef = useRef<{ x: number; y: number } | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -412,13 +477,18 @@ export default function CityRunBoard({
     lastSectionRef.current = null;
     autoTargetRef.current = null;
     timeLeftRef.current = ROUND_SECONDS_CAP;
+    powerUpsRef.current = initialPowerUps();
+    boostSecondsRef.current = 0;
+    bonusRef.current = 0;
     setDistance(0);
     setStars(0);
     setStumblesLeft(STUMBLE_LIVES);
     setPopup(null);
     setEnded(false);
     setShowJunction(false);
+    setPowerUps(initialPowerUps());
     setTimeLeft(ROUND_SECONDS_CAP);
+
 
     const spawnPopup = (text: string) => {
       popupIdRef.current += 1;
@@ -432,7 +502,9 @@ export default function CityRunBoard({
       endedRef.current = true;
       setEnded(true);
       const d = Math.min(playerDistanceRef.current, FINISH_DISTANCE);
-      const score = scoreRun(d, starsRef.current, checkpointsRef.current, finished);
+      const bonus = bonusRef.current + boostBonus(boostSecondsRef.current);
+      const score = scoreRun(d, starsRef.current, checkpointsRef.current, finished, bonus);
+
       if (finished) {
         spawnPopup(`FINISH! +${score}`);
         cityRunSfx.finish();
@@ -486,9 +558,23 @@ export default function CityRunBoard({
       if (endedRef.current) return;
       const dt = TICK_MS / 1000;
 
+      // Power-up timers tick on the same clock as everything else; boost also pays per second.
+      const boosting = isActive(powerUpsRef.current, "boost");
+      if (boosting) boostSecondsRef.current += dt;
+      const before = powerUpsRef.current;
+      powerUpsRef.current = tickPowerUps(before, dt);
+      if (
+        Math.ceil(before.magnet) !== Math.ceil(powerUpsRef.current.magnet) ||
+        Math.ceil(before.shield) !== Math.ceil(powerUpsRef.current.shield) ||
+        Math.ceil(before.boost) !== Math.ceil(powerUpsRef.current.boost)
+      ) {
+        setPowerUps(powerUpsRef.current);
+      }
+
       const stumbling = stumbleTRef.current > 0;
-      const speedMult = stumbling ? 0.5 : 1;
+      const speedMult = (stumbling ? 0.5 : 1) * (boosting ? BOOST_SPEED : 1);
       playerDistanceRef.current += RUN_SPEED * speedMult * dt;
+
 
       if (jumpTRef.current > 0) {
         jumpTRef.current += dt;
@@ -549,7 +635,7 @@ export default function CityRunBoard({
           chooseBranch(Math.random() < 0.35 + skillRef.current * 0.3 ? "alley" : "main_street");
         }
         const next = items.find((it) => it.distance + ITEM_HALF_WIDTH > d);
-        if (next && next.kind !== "star" && next.lane === laneRef.current) {
+        if (next && next.kind !== "star" && !isPowerUpKind(next.kind) && next.lane === laneRef.current) {
           if (!autoTargetRef.current || autoTargetRef.current.key !== next.distance) {
             const poorReactionChance = (1 - skillRef.current) * 0.3;
             const reactsLate = Math.random() < poorReactionChance;
@@ -571,7 +657,21 @@ export default function CityRunBoard({
 
       lanePosRef.current += (laneRef.current - lanePosRef.current) * Math.min(1, dt * 10);
 
-      // Obstacles + stars, skipped entirely while briefly invulnerable after a stumble.
+      // MAGNET: vacuums up any star within range across nearby lanes, no lane change needed.
+      if (isActive(powerUpsRef.current, "magnet")) {
+        for (const item of items) {
+          if (item.kind !== "star") continue;
+          if (collectedRef.current.has(item.distance)) continue;
+          if (item.distance < d - ITEM_HALF_WIDTH || item.distance > d + MAGNET_RANGE) continue;
+          if (Math.abs(item.lane - laneRef.current) > MAGNET_LANE_REACH) continue;
+          collectedRef.current.add(item.distance);
+          starsRef.current += 1;
+          setStars(starsRef.current);
+          cityRunSfx.star();
+        }
+      }
+
+      // Obstacles, stars + power-ups, skipped entirely while briefly invulnerable after a stumble.
       if (invulnRef.current <= 0) {
         for (const item of items) {
           if (d < item.distance - ITEM_HALF_WIDTH || d >= item.distance + ITEM_HALF_WIDTH) continue;
@@ -586,10 +686,32 @@ export default function CityRunBoard({
             }
             continue;
           }
+          if (isPowerUpKind(item.kind)) {
+            if (!collectedRef.current.has(item.distance)) {
+              collectedRef.current.add(item.distance);
+              const kind = item.kind as PowerUpKind;
+              powerUpsRef.current = activatePowerUp(powerUpsRef.current, kind);
+              setPowerUps(powerUpsRef.current);
+              bonusRef.current += POWER_UP_POINTS;
+              cityRunSfx.powerUp();
+              spawnPopup(POWER_UP_LABEL[kind]);
+            }
+            continue;
+          }
           if (resolvedHazardsRef.current.has(item.distance)) continue;
-          const safe = isOverhead(item.kind) ? sliding : airborne;
+          const safe = isOverhead(item.kind as ObstacleKind) ? sliding : airborne;
           if (!safe) {
             resolvedHazardsRef.current.add(item.distance);
+            // SHIELD eats the hit instead of costing a stumble.
+            const shielded = consumeShield(powerUpsRef.current);
+            if (shielded) {
+              powerUpsRef.current = shielded;
+              setPowerUps(shielded);
+              invulnRef.current = INVULN_DURATION;
+              cityRunSfx.shieldBlock();
+              spawnPopup("SHIELD SAVED YOU!");
+              continue;
+            }
             stumbleTRef.current = 0.0001;
             invulnRef.current = INVULN_DURATION;
             stumblesLeftRef.current = Math.max(0, stumblesLeftRef.current - 1);
@@ -604,6 +726,7 @@ export default function CityRunBoard({
           }
         }
       }
+
 
       setDistance(d);
       bump();
@@ -695,6 +818,11 @@ export default function CityRunBoard({
   const currentSection = sectionAt(distance, branchRef.current ?? "main_street");
   const theme = SECTION_THEME[currentSection?.background ?? "street"];
   const isRooftop = currentSection?.background === "rooftop";
+  const activePowerUps = activeList(powerUps);
+  const shieldOn = powerUps.shield > 0;
+  const boostOn = powerUps.boost > 0;
+
+
 
   return (
     <div
@@ -769,6 +897,22 @@ export default function CityRunBoard({
               <stop offset="55%" stopColor="#FFD166" stopOpacity="0.28" />
               <stop offset="100%" stopColor="#FFD166" stopOpacity="0" />
             </radialGradient>
+            <radialGradient id="magnetGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#C9A6FF" stopOpacity="0.85" />
+              <stop offset="60%" stopColor="#7A4FC9" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#7A4FC9" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="shieldGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#B6F5FA" stopOpacity="0.85" />
+              <stop offset="60%" stopColor="#2FB6C4" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#2FB6C4" stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="boostGlowCR" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#FFF3D6" stopOpacity="0.9" />
+              <stop offset="60%" stopColor="#FF9C4A" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#FF9C4A" stopOpacity="0" />
+            </radialGradient>
+
             <radialGradient id="vignetteCR" cx="50%" cy="52%" r="72%">
               <stop offset="55%" stopColor="#000000" stopOpacity="0" />
               <stop offset="100%" stopColor="#000000" stopOpacity="0.26" />
@@ -828,10 +972,22 @@ export default function CityRunBoard({
 
           <g transform={`translate(${playerX} ${PLAYER_SCREEN_Y - jumpLift - pose.bob})`}>
             <ellipse cx="0" cy={72 + pose.bob} rx="42" ry="11" fill="url(#shadowGradCR)" />
+            {boostOn && (
+              <g opacity="0.75">
+                <rect x="-58" y="-70" width="26" height="4" rx="2" fill="#FFD166" opacity="0.7" />
+                <rect x="-64" y="-40" width="34" height="4" rx="2" fill="#FFD166" opacity="0.5" />
+                <rect x="34" y="-58" width="28" height="4" rx="2" fill="#FFD166" opacity="0.6" />
+                <rect x="38" y="-24" width="22" height="4" rx="2" fill="#FFD166" opacity="0.45" />
+              </g>
+            )}
             <g transform={`rotate(${pose.tilt}) scale(1, ${pose.squashY}) translate(0, ${pose.squashY < 1 ? 78 - 78 / pose.squashY : 0})`}>
               <RunnerGraphic pose={pose} />
             </g>
+            {shieldOn && (
+              <ellipse cx="0" cy="-46" rx="52" ry="82" fill="#7FE7F0" opacity="0.16" stroke="#7FE7F0" strokeWidth="2.5" strokeOpacity="0.55" />
+            )}
           </g>
+
 
           <rect width={VIEW_W} height={VIEW_H} fill="url(#vignetteCR)" />
         </svg>
@@ -924,6 +1080,20 @@ export default function CityRunBoard({
               <span key={i} className={`h-2 w-2 rounded-full ${i < stumblesLeft ? "bg-[#FF7A59]" : "bg-white/20"}`} />
             ))}
           </div>
+          {activePowerUps.length > 0 && (
+            <div className="flex items-center gap-1">
+              {activePowerUps.map(({ kind, secondsLeft }) => (
+                <span
+                  key={kind}
+                  className="rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-wide text-black"
+                  style={{ background: POWER_UP_TINT[kind], boxShadow: `0 0 10px ${POWER_UP_TINT[kind]}` }}
+                >
+                  {POWER_UP_LABEL[kind]} {Math.ceil(secondsLeft)}s
+                </span>
+              ))}
+            </div>
+          )}
+
         </div>
 
         <div className="pointer-events-auto flex shrink-0 items-center gap-1">

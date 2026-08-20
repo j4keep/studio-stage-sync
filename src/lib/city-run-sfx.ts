@@ -218,6 +218,45 @@ class CityRunSfx {
       osc.stop(t + 0.6);
     });
   }
+
+  /** Grabbed a magnet / shield / boost pickup — a bright rising arpeggio. */
+  powerUp() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    [523.25, 698.46, 880, 1174.66].forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.055;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.16, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.24);
+    });
+  }
+
+  /** The shield eats an obstacle hit — a dull metallic clank instead of a stumble. */
+  shieldBlock() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(120, t + 0.22);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.26);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.28);
+  }
 }
+
 
 export const cityRunSfx = new CityRunSfx();

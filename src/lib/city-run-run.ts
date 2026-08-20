@@ -14,13 +14,20 @@
  * the three lanes are still always open — a lane change alone always works).
  */
 
+import { POWER_UP_KINDS, PowerUpKind } from "@/lib/city-run-powerups";
+
 export type Seat = 0 | 1;
 export type Lane = 0 | 1 | 2;
 
 export type GroundKind = "cone" | "trash" | "barrier" | "puddle" | "box" | "bike" | "roadwork" | "car";
 export type OverheadKind = "sign";
 export type ObstacleKind = GroundKind | OverheadKind;
-export type ItemKind = ObstacleKind | "star";
+export type ItemKind = ObstacleKind | "star" | PowerUpKind;
+
+export function isPowerUpKind(kind: ItemKind): kind is PowerUpKind {
+  return (POWER_UP_KINDS as string[]).includes(kind);
+}
+
 
 export type SectionId =
   | "street_start"
@@ -82,16 +89,26 @@ export function sectionAt(distance: number, branch: Branch): SectionSpec | null 
   return null;
 }
 
+/** Odds any one slot becomes a power-up instead of a star/obstacle. */
+export const POWER_UP_CHANCE = 0.07;
+
 /** One item per distance step, always a single lane, injectable RNG — the same generator the
  *  original flat course used, just parametrized per section. */
+
 function generateSectionItems(spec: SectionSpec, rand: () => number): CourseItem[] {
   const items: CourseItem[] = [];
   let d = spec.start + spec.minGap;
   while (d < spec.end - spec.minGap / 2) {
     const lane = Math.floor(rand() * LANE_COUNT) as Lane;
     const roll = rand();
-    const kind: ItemKind = roll < spec.starChance ? "star" : spec.obstacleKinds[Math.floor(rand() * spec.obstacleKinds.length)];
+    const kind: ItemKind =
+      roll < POWER_UP_CHANCE
+        ? POWER_UP_KINDS[Math.floor(rand() * POWER_UP_KINDS.length)]
+        : roll < POWER_UP_CHANCE + spec.starChance
+          ? "star"
+          : spec.obstacleKinds[Math.floor(rand() * spec.obstacleKinds.length)];
     items.push({ distance: d, lane, kind, sectionId: spec.id });
+
     d += spec.minGap + rand() * (spec.maxGap - spec.minGap);
   }
   return items;
@@ -150,9 +167,10 @@ export function initialCityRun(): CityRunState {
   };
 }
 
-export function scoreRun(distance: number, stars: number, checkpoints: number, finished: boolean): number {
+export function scoreRun(distance: number, stars: number, checkpoints: number, finished: boolean, bonus = 0): number {
   return Math.round(
-    Math.max(0, distance) * DISTANCE_POINTS + stars * STAR_POINTS + checkpoints * CHECKPOINT_POINTS + (finished ? FINISH_POINTS : 0),
+    Math.max(0, distance) * DISTANCE_POINTS + stars * STAR_POINTS + checkpoints * CHECKPOINT_POINTS + Math.max(0, bonus) + (finished ? FINISH_POINTS : 0),
+
   );
 }
 
