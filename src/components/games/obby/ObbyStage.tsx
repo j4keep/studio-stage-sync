@@ -20,6 +20,7 @@ import {
   platformUnder,
   progressPct,
 } from "@/lib/obby";
+import { obbySfx } from "@/lib/obby-sfx";
 
 export type Ghost = { id: string; name: string; color: string; x: number; y: number; z: number; ry: number };
 
@@ -137,6 +138,7 @@ function LocalRacer({
     st.current.vy = 0;
     st.current.carry = null;
     st.current.deaths += 1;
+    obbySfx.fall();
   };
 
   useFrame(({ clock }, rawDt) => {
@@ -155,6 +157,7 @@ function LocalRacer({
       if (input.jump && s.grounded) {
         s.vy = JUMP_V;
         s.grounded = false;
+        obbySfx.jump();
       }
       input.jump = false;
 
@@ -181,6 +184,7 @@ function LocalRacer({
         if (hit.plat.kind === "lava") {
           respawn(s.z);
         } else {
+          if (!s.grounded && s.vy < -4) obbySfx.land();
           s.y = hit.top;
           s.vy = 0;
           s.grounded = true;
