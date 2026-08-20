@@ -551,9 +551,23 @@ export default function CityRunBoard({
       if (endedRef.current) return;
       const dt = TICK_MS / 1000;
 
+      // Power-up timers tick on the same clock as everything else; boost also pays per second.
+      const boosting = isActive(powerUpsRef.current, "boost");
+      if (boosting) boostSecondsRef.current += dt;
+      const before = powerUpsRef.current;
+      powerUpsRef.current = tickPowerUps(before, dt);
+      if (
+        Math.ceil(before.magnet) !== Math.ceil(powerUpsRef.current.magnet) ||
+        Math.ceil(before.shield) !== Math.ceil(powerUpsRef.current.shield) ||
+        Math.ceil(before.boost) !== Math.ceil(powerUpsRef.current.boost)
+      ) {
+        setPowerUps(powerUpsRef.current);
+      }
+
       const stumbling = stumbleTRef.current > 0;
-      const speedMult = stumbling ? 0.5 : 1;
+      const speedMult = (stumbling ? 0.5 : 1) * (boosting ? BOOST_SPEED : 1);
       playerDistanceRef.current += RUN_SPEED * speedMult * dt;
+
 
       if (jumpTRef.current > 0) {
         jumpTRef.current += dt;
