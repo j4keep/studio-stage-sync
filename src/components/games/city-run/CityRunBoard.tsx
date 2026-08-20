@@ -650,7 +650,21 @@ export default function CityRunBoard({
 
       lanePosRef.current += (laneRef.current - lanePosRef.current) * Math.min(1, dt * 10);
 
-      // Obstacles + stars, skipped entirely while briefly invulnerable after a stumble.
+      // MAGNET: vacuums up any star within range across nearby lanes, no lane change needed.
+      if (isActive(powerUpsRef.current, "magnet")) {
+        for (const item of items) {
+          if (item.kind !== "star") continue;
+          if (collectedRef.current.has(item.distance)) continue;
+          if (item.distance < d - ITEM_HALF_WIDTH || item.distance > d + MAGNET_RANGE) continue;
+          if (Math.abs(item.lane - laneRef.current) > MAGNET_LANE_REACH) continue;
+          collectedRef.current.add(item.distance);
+          starsRef.current += 1;
+          setStars(starsRef.current);
+          cityRunSfx.star();
+        }
+      }
+
+      // Obstacles, stars + power-ups, skipped entirely while briefly invulnerable after a stumble.
       if (invulnRef.current <= 0) {
         for (const item of items) {
           if (d < item.distance - ITEM_HALF_WIDTH || d >= item.distance + ITEM_HALF_WIDTH) continue;
@@ -665,10 +679,32 @@ export default function CityRunBoard({
             }
             continue;
           }
+          if (isPowerUpKind(item.kind)) {
+            if (!collectedRef.current.has(item.distance)) {
+              collectedRef.current.add(item.distance);
+              const kind = item.kind as PowerUpKind;
+              powerUpsRef.current = activatePowerUp(powerUpsRef.current, kind);
+              setPowerUps(powerUpsRef.current);
+              bonusRef.current += POWER_UP_POINTS;
+              cityRunSfx.powerUp();
+              spawnPopup(POWER_UP_LABEL[kind]);
+            }
+            continue;
+          }
           if (resolvedHazardsRef.current.has(item.distance)) continue;
-          const safe = isOverhead(item.kind) ? sliding : airborne;
+          const safe = isOverhead(item.kind as ObstacleKind) ? sliding : airborne;
           if (!safe) {
             resolvedHazardsRef.current.add(item.distance);
+            // SHIELD eats the hit instead of costing a stumble.
+            const shielded = consumeShield(powerUpsRef.current);
+            if (shielded) {
+              powerUpsRef.current = shielded;
+              setPowerUps(shielded);
+              invulnRef.current = INVULN_DURATION;
+              cityRunSfx.shieldBlock();
+              spawnPopup("SHIELD SAVED YOU!");
+              continue;
+            }
             stumbleTRef.current = 0.0001;
             invulnRef.current = INVULN_DURATION;
             stumblesLeftRef.current = Math.max(0, stumblesLeftRef.current - 1);
@@ -683,6 +719,7 @@ export default function CityRunBoard({
           }
         }
       }
+
 
       setDistance(d);
       bump();
