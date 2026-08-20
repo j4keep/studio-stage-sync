@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type { Group } from "three";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
 import { ELEVATION, GRID_H, GRID_W, TILE, idx } from "@/lib/survival-island/map";
@@ -17,6 +17,8 @@ const LIFT = 7;
 function Avatar({ stateRef, cameraRef }: Props) {
   const group = useRef<Group>(null);
   const { size } = useThree();
+  const [moving, setMoving] = useState(false);
+  const movingRef = useRef(false);
 
   useFrame(() => {
     const groupNode = group.current;
@@ -34,10 +36,13 @@ function Avatar({ stateRef, cameraRef }: Props) {
     groupNode.position.set(screenX - size.width / 2, size.height / 2 - screenY, 0);
     groupNode.rotation.y = Math.atan2(state.vx, state.vy);
     groupNode.visible = !(state.invuln > 0 && Math.floor(state.t * 14) % 2 === 0);
-  });
 
-  const state = stateRef.current;
-  const moving = Math.hypot(state.vx, state.vy) > 10;
+    const isMoving = Math.hypot(state.vx, state.vy) > 10;
+    if (isMoving !== movingRef.current) {
+      movingRef.current = isMoving;
+      setMoving(isMoving);
+    }
+  });
 
   return (
     <group ref={group} scale={31}>
