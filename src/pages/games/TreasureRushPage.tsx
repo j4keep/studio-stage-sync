@@ -135,7 +135,7 @@ export default function TreasureRushPage() {
   }
 
   const detail = result
-    ? `${result.lines.map((l) => `${l.label}: ${l.value.toLocaleString()}`).join(" · ')}`}`.replace(/'\)\}\}/, "")
+    ? result.lines.map((l) => `${l.label}: ${l.value.toLocaleString()}`).join(" · ")
     : undefined;
 
   return (
