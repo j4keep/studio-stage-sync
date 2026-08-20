@@ -167,9 +167,10 @@ export function initialCityRun(): CityRunState {
   };
 }
 
-export function scoreRun(distance: number, stars: number, checkpoints: number, finished: boolean): number {
+export function scoreRun(distance: number, stars: number, checkpoints: number, finished: boolean, bonus = 0): number {
   return Math.round(
-    Math.max(0, distance) * DISTANCE_POINTS + stars * STAR_POINTS + checkpoints * CHECKPOINT_POINTS + (finished ? FINISH_POINTS : 0),
+    Math.max(0, distance) * DISTANCE_POINTS + stars * STAR_POINTS + checkpoints * CHECKPOINT_POINTS + Math.max(0, bonus) + (finished ? FINISH_POINTS : 0),
+
   );
 }
 
