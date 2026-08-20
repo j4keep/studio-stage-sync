@@ -18,6 +18,13 @@ import { PopShotState, RoundResult, Seat, applyRoundResult, initialPopShot } fro
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
+const HOW_TO_PLAY = [
+  "Drag the power bar on the right upward to charge your shot, then let go to release it.",
+  "Release inside the glowing green band for the best chance to swish it — too soft falls short, too hard sails long.",
+  "Every make is worth 2 points. Sink 3 in a row and you're 'On Fire' — makes are worth 3 points until you miss.",
+  "You've got 24 seconds to shoot as many as you can. 3 rounds each, alternating with your opponent — highest total score wins.",
+];
+
 export default function PopShotPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -193,6 +200,7 @@ export default function PopShotPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            howToPlay={HOW_TO_PLAY}
             onComplete={(result) => void finishRound(run.possession, result)}
           />
         )}
@@ -206,6 +214,7 @@ export default function PopShotPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            howToPlay={HOW_TO_PLAY}
             onComplete={() => {}}
           />
         )}
