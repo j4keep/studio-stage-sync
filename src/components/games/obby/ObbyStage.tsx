@@ -283,9 +283,19 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
     dx = (dx / len) * clamped;
     dy = (dy / len) * clamped;
     setKnob({ x: dx, y: dy });
-    inputRef.current.x = dx / max;
-    inputRef.current.z = -dy / max;
+    // Normalised axes with a dead-zone plus axis-snapping so a straight push
+    // never leaks a little sideways drift (which used to walk you into lava).
+    let nx = dx / max;
+    let nz = -dy / max;
+    const dead = 0.18;
+    if (Math.abs(nx) < dead) nx = 0;
+    if (Math.abs(nz) < dead) nz = 0;
+    if (Math.abs(nx) < Math.abs(nz) * 0.45) nx = 0;
+    if (Math.abs(nz) < Math.abs(nx) * 0.45) nz = 0;
+    inputRef.current.x = nx;
+    inputRef.current.z = nz;
   };
+
 
   const release = () => {
     setKnob({ x: 0, y: 0 });
