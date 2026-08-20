@@ -358,7 +358,14 @@ const SECTION_THEME: Record<Background, { road: string; sidewalk: string; label:
   finalBlock: { road: "#4A3570", sidewalk: "#E6DCC9", label: "FINAL BLOCK" },
 };
 
+const POWER_UP_TINT: Record<PowerUpKind, string> = {
+  magnet: "#C9A6FF",
+  shield: "#7FE7F0",
+  boost: "#FFD166",
+};
+
 type Popup = { id: number; text: string };
+
 type AutoTarget = { key: number; triggerDistance: number; overhead: boolean; preferLaneChange: boolean };
 
 export default function CityRunBoard({
