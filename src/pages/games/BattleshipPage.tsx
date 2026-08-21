@@ -15,7 +15,9 @@ import { useTurnGame } from "@/hooks/use-turn-game";
 import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
 import { initialBattleship } from "@/lib/battleship";
 import { gameRoute } from "@/lib/game-routes";
-import fleetClashArt from "@/assets/games/fleet-clash.svg";
+import fleetClashArtAsset from "@/assets/games/adventures/fleet-clash.png.asset.json";
+
+const fleetClashArt = fleetClashArtAsset.url;
 
 export default function BattleshipPage() {
   const { id } = useParams<{ id: string }>();
