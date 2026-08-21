@@ -153,78 +153,93 @@ export default function GameLiveDock({
     return "Talk";
   }, [conn, micOn]);
 
+  const [open, setOpen] = useState(false);
+
   if (disabled || !gameId) return null;
 
   return (
     <>
-      <div
-        className={
-          rail
-            ? "flex shrink-0 justify-center"
-            : "pointer-events-none fixed inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-40 flex justify-center px-3"
-        }
-      >
-        <div
-          className={
-            rail
-              ? "flex flex-col items-center gap-1 rounded-2xl border border-white/15 bg-black/70 px-1 py-1.5 shadow-lg backdrop-blur-xl"
-              : "pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full border border-white/15 bg-black/70 px-2 py-1.5 shadow-lg backdrop-blur-xl"
-          }
+      <div className={rail ? "relative shrink-0" : "fixed bottom-[max(0.75rem,env(safe-area-inset-bottom))] right-3 z-40"}>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-label="Live options"
+          aria-expanded={open}
+          className={`relative flex items-center justify-center rounded-full border border-white/15 bg-black/70 text-white shadow-lg backdrop-blur-xl transition active:scale-95 ${
+            rail ? "h-8 w-8" : "h-11 w-11"
+          }`}
         >
-          {isPlayer ? (
-            <button
-              type="button"
-              onClick={toggleLive}
-              disabled={busy}
-              aria-label={isLive ? "End live" : "Go live"}
-              className={`flex items-center gap-1.5 font-black uppercase tracking-wide transition active:scale-95 ${
-                rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"
-              } ${isLive ? "bg-red-500 text-white" : "bg-white/10 text-white"}`}
-            >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
-              {isLive ? "Live" : rail ? "Live" : "Go Live"}
-            </button>
-          ) : (
-            <span className={`flex items-center gap-1.5 bg-red-500/20 font-black uppercase tracking-wide text-red-200 ${rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"}`}>
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-              {rail ? "Live" : "Watching"}
-            </span>
+          <Radio className={rail ? "h-4 w-4" : "h-5 w-5"} />
+          {isLive && (
+            <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 animate-pulse rounded-full border border-black/60 bg-red-500" />
           )}
+        </button>
 
-          {isPlayer && hasHumanOpponent ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (!voiceWanted) {
-                  setVoiceWanted(true);
-                  return;
-                }
-                if (conn === "connected") void toggleMic();
-                else setVoiceWanted(false);
-              }}
-              aria-label="Talk to your opponent"
-              className={`flex items-center gap-1.5 font-black text-white transition active:scale-95 ${
-                rail ? "flex-col rounded-xl px-1.5 py-1.5 text-[7px]" : "rounded-full px-3 py-1.5 text-[11px]"
-              } ${conn === "connected" && micOn ? "bg-emerald-500/80" : "bg-white/10"}`}
+        {open && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
+            <div
+              className={`absolute z-40 flex w-44 flex-col gap-1.5 rounded-2xl border border-white/15 bg-black/85 p-2 shadow-xl backdrop-blur-xl ${
+                rail ? "right-0 top-full mt-2" : "bottom-full right-0 mb-2"
+              }`}
             >
-              {conn === "connected" && micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
-              {rail ? (conn === "connected" ? (micOn ? "On" : "Mute") : "Talk") : voiceLabel}
-            </button>
-          ) : null}
+              {isPlayer ? (
+                <button
+                  type="button"
+                  onClick={toggleLive}
+                  disabled={busy}
+                  aria-label={isLive ? "End live" : "Go live"}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-black uppercase tracking-wide transition active:scale-95 ${
+                    isLive ? "bg-red-500 text-white" : "bg-white/10 text-white"
+                  }`}
+                >
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
+                  {isLive ? "End Live" : "Go Live"}
+                </button>
+              ) : (
+                <span className="flex items-center gap-2 rounded-xl bg-red-500/20 px-3 py-2 text-[11px] font-black uppercase tracking-wide text-red-200">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
+                  {isLive ? "Watching live" : "Not live"}
+                </span>
+              )}
 
-          <span className={`flex items-center gap-1 bg-white/10 font-black text-white ${rail ? "flex-col rounded-xl px-1.5 py-1 text-[8px]" : "rounded-full px-2.5 py-1.5 text-[11px]"}`}>
-            <Eye className="h-3.5 w-3.5" /> {viewers}
-          </span>
+              {isPlayer && hasHumanOpponent ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!voiceWanted) {
+                      setVoiceWanted(true);
+                      return;
+                    }
+                    if (conn === "connected") void toggleMic();
+                    else setVoiceWanted(false);
+                  }}
+                  aria-label="Talk to your opponent"
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-[11px] font-black text-white transition active:scale-95 ${
+                    conn === "connected" && micOn ? "bg-emerald-500/80" : "bg-white/10"
+                  }`}
+                >
+                  {conn === "connected" && micOn ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+                  {voiceLabel}
+                </button>
+              ) : null}
 
-          <button
-            type="button"
-            onClick={() => setChatOpen(true)}
-            aria-label="Live chat"
-            className={`bg-white/10 text-white transition active:scale-95 ${rail ? "rounded-xl p-1.5" : "rounded-full p-2"}`}
-          >
-            <MessageCircle className="h-4 w-4" />
-          </button>
-        </div>
+              <div className="flex items-center gap-1.5">
+                <span className="flex flex-1 items-center gap-2 rounded-xl bg-white/10 px-3 py-2 text-[11px] font-black text-white">
+                  <Eye className="h-3.5 w-3.5" /> {viewers}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setChatOpen(true)}
+                  aria-label="Live chat"
+                  className="rounded-xl bg-white/10 p-2 text-white transition active:scale-95"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {chatOpen ? (

@@ -215,6 +215,17 @@ export default function ObbyPage() {
             muted={muted}
             onToggleMute={toggleMute}
             frozen={finished}
+            liveDock={
+              <GameLiveDock
+                gameId={game.id}
+                userId={user?.id}
+                isPlayer={!!me}
+                isLive={Boolean((game as any).is_live)}
+                hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+                placement="rail"
+                onChanged={refresh}
+              />
+            }
           />
         )}
 
@@ -224,16 +235,6 @@ export default function ObbyPage() {
           waiting={game.status === "waiting" && game.host_user_id !== user?.id}
           challengerName={opponentName}
           onAccepted={refresh}
-        />
-
-        <GameLiveDock
-          gameId={game.id}
-          userId={user?.id}
-          isPlayer={!!me}
-          isLive={Boolean((game as any).is_live)}
-          hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
-          placement="rail"
-          onChanged={refresh}
         />
 
         <GameIntro

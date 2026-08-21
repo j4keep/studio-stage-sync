@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
@@ -41,6 +41,7 @@ type StageProps = {
   frozen?: boolean;
   /** Which YAJ Adventure course to race — defaults to the YAJ Obby course. */
   course?: Course;
+  liveDock?: ReactNode;
 };
 
 /* ------------------------------------------------------------------ scenery */
@@ -380,6 +381,7 @@ export default function ObbyStage({
   onToggleMute,
   frozen,
   course = OBBY_COURSE,
+  liveDock,
 }: StageProps) {
   const inputRef = useRef<Input>({ x: 0, z: 0, jump: false });
   const [hud, setHud] = useState({ z: 0, deaths: 0 });
@@ -495,6 +497,7 @@ export default function ObbyStage({
               </span>
             </div>
           </div>
+          {liveDock}
           <button
             type="button"
             onClick={onToggleMute}

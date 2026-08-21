@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
@@ -60,6 +60,7 @@ type Props = {
   onStatus: (status: string) => void;
   onFinish: (won: boolean, score: number) => void;
   onBack?: () => void;
+  liveDock?: ReactNode;
 };
 
 type Zone = {
@@ -953,7 +954,7 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
   );
 }
 
-export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack }: Props) {
+export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, liveDock }: Props) {
   const inputRef = useRef<Input>({ x: 0, z: 0 });
   const fireRef = useRef(false);
   const duckRef = useRef(false);
@@ -1034,9 +1035,12 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
         </div>
       </div>
 
-      <button type="button" onClick={onToggleMute} className="absolute right-3 top-[90px] z-40 rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md" aria-label="Toggle sound">
-        {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-      </button>
+      <div className="absolute right-3 top-[90px] z-40 flex items-center gap-2">
+        {liveDock}
+        <button type="button" onClick={onToggleMute} className="rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md" aria-label="Toggle sound">
+          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
+        </button>
+      </div>
 
       <ScreenSteering inputRef={inputRef} />
 

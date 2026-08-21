@@ -773,6 +773,7 @@ export default function PoolTable({
         </div>
         <div className="flex h-full shrink-0 flex-col items-end gap-1 py-1.5">
           <div className="flex shrink-0 items-center gap-1">
+            {sideDock}
             <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
               {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
             </button>
@@ -794,7 +795,6 @@ export default function PoolTable({
           <div className="flex min-h-0 flex-1 flex-col items-center pb-1">
             <PowerSlider disabled={!canShoot} onChange={handlePowerChange} onRelease={handlePowerRelease} />
           </div>
-          {sideDock ? <div className="flex shrink-0 justify-center pb-0.5">{sideDock}</div> : null}
         </div>
       </div>
 
