@@ -91,7 +91,7 @@ export default function IslandControls({ input }: Props) {
 
   return (
     <div
-      className="absolute inset-0 z-30 touch-none select-none"
+      className="absolute inset-0 z-10 touch-none select-none"
       onPointerDown={(e) => {
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
         origin.current = { x: e.clientX, y: e.clientY };
