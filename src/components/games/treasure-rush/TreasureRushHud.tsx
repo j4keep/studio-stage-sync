@@ -46,7 +46,7 @@ export default function TreasureRushHud({
   const active = (Object.keys(hud.powers) as PowerKind[]).filter((k) => hud.powers[k] > 0);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 p-3">
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex items-center gap-1.5">
           <button

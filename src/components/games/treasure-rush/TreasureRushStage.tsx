@@ -247,6 +247,13 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
         <Explorer state={state} inputRef={inputRef} pausedRef={pausedRef} color={myColor} onEvents={handleEvents} />
       </Canvas>
 
+      <TreasureStick
+        onAxis={(ax, az) => {
+          inputRef.current.ax = ax;
+          inputRef.current.az = az;
+        }}
+      />
+
       <TreasureRushHud
         hud={hud}
         best={best}
@@ -263,15 +270,7 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
         </div>
       )}
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <div className="pointer-events-auto">
-          <TreasureStick
-            onAxis={(ax, az) => {
-              inputRef.current.ax = ax;
-              inputRef.current.az = az;
-            }}
-          />
-        </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-20 flex items-end justify-end gap-3 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
         <div className="pointer-events-auto flex flex-col items-end gap-2">
           {prompt && <p className="rounded-full bg-black/60 px-3 py-1 text-[11px] font-black text-white">{prompt}</p>}
           <button

@@ -256,7 +256,11 @@ function Runner({
 
 /* ------------------------------------------------------------- joystick */
 
-/** Same round thumbstick as YAJ Obby: push left/right to switch lane, up to jump, down to slide. */
+const STICK_MAX = 58;
+
+/** Touch anywhere on the screen to steer, same invisible-until-touched feel as Survival
+ *  Island/Tower Escape/Neighborhood Adventure: push left/right to switch lane, up to jump,
+ *  down to slide. No fixed visible controller — the knob only appears at the point you touch. */
 function RunJoystick({
   onLane,
   onJump,
@@ -266,27 +270,23 @@ function RunJoystick({
   onJump: () => void;
   onSlide: () => void;
 }) {
-  const base = useRef<HTMLDivElement>(null);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState<{ ox: number; oy: number; dx: number; dy: number } | null>(null);
   const fired = useRef({ lane: 0, vert: 0 });
 
   const update = (clientX: number, clientY: number) => {
-    const el = base.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const max = r.width / 2;
-    let dx = clientX - cx;
-    let dy = clientY - cy;
+    const o = origin.current;
+    if (!o) return;
+    let dx = clientX - o.x;
+    let dy = clientY - o.y;
     const len = Math.hypot(dx, dy) || 1;
-    const clamped = Math.min(len, max);
+    const clamped = Math.min(len, STICK_MAX);
     dx = (dx / len) * clamped;
     dy = (dy / len) * clamped;
-    setKnob({ x: dx, y: dy });
+    setKnob({ ox: o.x, oy: o.y, dx, dy });
 
-    const nx = dx / max;
-    const ny = dy / max;
+    const nx = dx / STICK_MAX;
+    const ny = dy / STICK_MAX;
     if (Math.abs(nx) >= Math.abs(ny)) {
       const dir = nx > 0.4 ? 1 : nx < -0.4 ? -1 : 0;
       if (dir !== 0 && fired.current.lane !== dir) {
@@ -306,35 +306,40 @@ function RunJoystick({
   };
 
   const release = () => {
-    setKnob({ x: 0, y: 0 });
+    origin.current = null;
+    setKnob(null);
     fired.current = { lane: 0, vert: 0 };
   };
 
   return (
     <div
-      ref={base}
+      className="absolute inset-0 z-10 touch-none select-none"
       onPointerDown={(e) => {
-        e.stopPropagation();
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        update(e.clientX, e.clientY);
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        origin.current = { x: e.clientX, y: e.clientY };
+        setKnob({ ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 });
       }}
       onPointerMove={(e) => {
-        if (e.buttons === 0 && e.pointerType === "mouse") return;
+        if (!origin.current) return;
         update(e.clientX, e.clientY);
       }}
       onPointerUp={release}
       onPointerCancel={release}
       onPointerLeave={release}
-      aria-label="Move"
-      className="relative h-36 w-36 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
+      onContextMenu={(e) => e.preventDefault()}
+      aria-label="Move, swipe up to jump, swipe down to slide"
     >
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 rounded-full border border-white/40 bg-white/70"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
-      />
-      <span className="pointer-events-none absolute inset-x-0 -top-6 text-center text-[10px] font-black uppercase tracking-wide text-primary-foreground/70">
-        Swipe up jump · down slide
-      </span>
+      {knob && (
+        <div
+          className="pointer-events-none absolute h-28 w-28 rounded-full border border-white/15 bg-white/5"
+          style={{ left: knob.ox, top: knob.oy, transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-white/25 bg-white/25"
+            style={{ transform: `translate(calc(-50% + ${knob.dx}px), calc(-50% + ${knob.dy}px))` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -380,44 +385,32 @@ export default function CityRunStage({
     return () => window.removeEventListener("keydown", down);
   }, []);
 
-  // Swipe anywhere on the street: left/right to change lane, up to jump, down to slide.
-  const touch = useRef<{ x: number; y: number } | null>(null);
-  const onDown = (e: React.PointerEvent) => {
-    touch.current = { x: e.clientX, y: e.clientY };
-  };
-  const onUp = (e: React.PointerEvent) => {
-    const t = touch.current;
-    touch.current = null;
-    if (!t) return;
-    const dx = e.clientX - t.x;
-    const dy = e.clientY - t.y;
-    if (Math.hypot(dx, dy) < 24) {
-      inputRef.current.jump = true;
-      return;
-    }
-    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1);
-    else if (dy < 0) inputRef.current.jump = true;
-    else inputRef.current.slide = true;
-  };
-
   const activePowers = (Object.keys(hud.powers) as PowerKind[]).filter((k) => hud.powers[k] > 0);
 
   return (
     <div className="absolute inset-0 overflow-hidden bg-[#12142a]">
-      <div className="absolute inset-0 touch-none" onPointerDown={onDown} onPointerUp={onUp}>
-        <Canvas shadows dpr={[1, 1.6]} camera={{ position: [0, 4.6, -9.5], fov: 66 }}>
-          <color attach="background" args={["#1b2140"]} />
-          <fog attach="fog" args={["#1b2140", 45, 150]} />
-          <hemisphereLight args={["#ffd7a8", "#2a2f52", 0.85]} />
-          <directionalLight position={[10, 26, 30]} intensity={1.25} castShadow shadow-mapSize={[1024, 1024]} />
-          <Street />
-          <ScrollingCity zRef={zRef} />
-          <Runner color={myColor} inputRef={inputRef} onHud={setHud} onEnd={onEnd} zRef={zRef} runKey={runKey} />
-        </Canvas>
-      </div>
+      <Canvas shadows dpr={[1, 1.6]} camera={{ position: [0, 4.6, -9.5], fov: 66 }}>
+        <color attach="background" args={["#1b2140"]} />
+        <fog attach="fog" args={["#1b2140", 45, 150]} />
+        <hemisphereLight args={["#ffd7a8", "#2a2f52", 0.85]} />
+        <directionalLight position={[10, 26, 30]} intensity={1.25} castShadow shadow-mapSize={[1024, 1024]} />
+        <Street />
+        <ScrollingCity zRef={zRef} />
+        <Runner color={myColor} inputRef={inputRef} onHud={setHud} onEnd={onEnd} zRef={zRef} runKey={runKey} />
+      </Canvas>
+
+      <RunJoystick
+        onLane={move}
+        onJump={() => {
+          inputRef.current.jump = true;
+        }}
+        onSlide={() => {
+          inputRef.current.slide = true;
+        }}
+      />
 
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 p-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
         <div className="pointer-events-auto flex items-start gap-2">
           <button
             type="button"
@@ -477,19 +470,6 @@ export default function CityRunStage({
             ))}
           </ul>
         )}
-      </div>
-
-      {/* Controls — single stick: left/right to switch lane, swipe up to jump, down to slide */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-center p-4 pb-8">
-        <RunJoystick
-          onLane={move}
-          onJump={() => {
-            inputRef.current.jump = true;
-          }}
-          onSlide={() => {
-            inputRef.current.slide = true;
-          }}
-        />
       </div>
     </div>
   );

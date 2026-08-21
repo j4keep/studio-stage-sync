@@ -1,27 +1,29 @@
 import { useRef, useState } from "react";
 
-/** Analog thumbstick — free 360° movement, unlike City Run's lane switcher. */
+const STICK_MAX = 58;
+
+/**
+ * Touch anywhere on the screen to steer — free 360° movement, same invisible-until-touched
+ * feel as Survival Island/Tower Escape/Neighborhood Adventure. No fixed visible controller;
+ * the knob only appears at the point you touch.
+ */
 export default function TreasureStick({ onAxis }: { onAxis: (ax: number, az: number) => void }) {
-  const base = useRef<HTMLDivElement>(null);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState<{ ox: number; oy: number; dx: number; dy: number } | null>(null);
 
   const update = (clientX: number, clientY: number) => {
-    const el = base.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const max = r.width / 2;
-    let dx = clientX - cx;
-    let dy = clientY - cy;
+    const o = origin.current;
+    if (!o) return;
+    let dx = clientX - o.x;
+    let dy = clientY - o.y;
     const len = Math.hypot(dx, dy) || 1;
-    const clamped = Math.min(len, max);
+    const clamped = Math.min(len, STICK_MAX);
     dx = (dx / len) * clamped;
     dy = (dy / len) * clamped;
-    setKnob({ x: dx, y: dy });
+    setKnob({ ox: o.x, oy: o.y, dx, dy });
 
-    const nx = dx / max;
-    const ny = dy / max;
+    const nx = dx / STICK_MAX;
+    const ny = dy / STICK_MAX;
     const dead = 0.16;
     const shape = (v: number) => (Math.abs(v) < dead ? 0 : (v - Math.sign(v) * dead) / (1 - dead));
     // Screen up (negative y) walks away from the camera, i.e. negative world z.
@@ -29,32 +31,40 @@ export default function TreasureStick({ onAxis }: { onAxis: (ax: number, az: num
   };
 
   const release = () => {
-    setKnob({ x: 0, y: 0 });
+    origin.current = null;
+    setKnob(null);
     onAxis(0, 0);
   };
 
   return (
     <div
-      ref={base}
+      className="absolute inset-0 z-10 touch-none select-none"
       onPointerDown={(e) => {
-        e.stopPropagation();
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        update(e.clientX, e.clientY);
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        origin.current = { x: e.clientX, y: e.clientY };
+        setKnob({ ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 });
       }}
       onPointerMove={(e) => {
-        if (e.buttons === 0 && e.pointerType === "mouse") return;
+        if (!origin.current) return;
         update(e.clientX, e.clientY);
       }}
       onPointerUp={release}
       onPointerCancel={release}
       onPointerLeave={release}
+      onContextMenu={(e) => e.preventDefault()}
       aria-label="Move"
-      className="relative h-36 w-36 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
     >
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 rounded-full border border-white/40 bg-white/70"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
-      />
+      {knob && (
+        <div
+          className="pointer-events-none absolute h-28 w-28 rounded-full border border-white/15 bg-white/5"
+          style={{ left: knob.ox, top: knob.oy, transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-white/25 bg-white/25"
+            style={{ transform: `translate(calc(-50% + ${knob.dx}px), calc(-50% + ${knob.dy}px))` }}
+          />
+        </div>
+      )}
     </div>
   );
 }

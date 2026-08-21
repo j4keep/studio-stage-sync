@@ -278,29 +278,30 @@ function GhostRacer({ g }: { g: Ghost }) {
  * jump. Camera looks down +z, so screen-right is -x — the axis is inverted here
  * so the character always moves the way your thumb goes.
  */
+const STICK_MAX = 58;
+
+/** Touch anywhere on the screen to steer, same invisible-until-touched feel as Survival
+ *  Island/Tower Escape/Neighborhood Adventure — no fixed visible controller, the knob only
+ *  appears at the point you touch. */
 function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
-  const base = useRef<HTMLDivElement>(null);
-  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState<{ ox: number; oy: number; dx: number; dy: number } | null>(null);
   const flick = useRef(false);
 
   const update = (clientX: number, clientY: number) => {
-    const el = base.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    const max = r.width / 2;
-    let dx = clientX - cx;
-    let dy = clientY - cy;
+    const o = origin.current;
+    if (!o) return;
+    let dx = clientX - o.x;
+    let dy = clientY - o.y;
     const len = Math.hypot(dx, dy) || 1;
-    const clamped = Math.min(len, max);
+    const clamped = Math.min(len, STICK_MAX);
     dx = (dx / len) * clamped;
     dy = (dy / len) * clamped;
-    setKnob({ x: dx, y: dy });
+    setKnob({ ox: o.x, oy: o.y, dx, dy });
     // Normalised axes with a dead-zone plus axis-snapping so a straight push
     // never leaks a little sideways drift (which used to walk you into lava).
-    let nx = -dx / max;
-    let nz = -dy / max;
+    let nx = -dx / STICK_MAX;
+    let nz = -dy / STICK_MAX;
     const dead = 0.18;
     if (Math.abs(nx) < dead) nx = 0;
     if (Math.abs(nz) < dead) nz = 0;
@@ -322,7 +323,8 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
 
 
   const release = () => {
-    setKnob({ x: 0, y: 0 });
+    origin.current = null;
+    setKnob(null);
     flick.current = false;
     inputRef.current.x = 0;
     inputRef.current.z = 0;
@@ -330,28 +332,33 @@ function Joystick({ inputRef }: { inputRef: React.MutableRefObject<Input> }) {
 
   return (
     <div
-      ref={base}
+      className="absolute inset-0 z-10 touch-none select-none"
       onPointerDown={(e) => {
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        update(e.clientX, e.clientY);
+        (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+        origin.current = { x: e.clientX, y: e.clientY };
+        setKnob({ ox: e.clientX, oy: e.clientY, dx: 0, dy: 0 });
       }}
       onPointerMove={(e) => {
-        if (e.buttons === 0 && e.pointerType === "mouse") return;
+        if (!origin.current) return;
         update(e.clientX, e.clientY);
       }}
       onPointerUp={release}
       onPointerCancel={release}
       onPointerLeave={release}
+      onContextMenu={(e) => e.preventDefault()}
       aria-label="Move and jump"
-      className="relative h-36 w-36 touch-none rounded-full border border-white/25 bg-white/10 backdrop-blur-md"
     >
-      <div
-        className="pointer-events-none absolute left-1/2 top-1/2 h-16 w-16 rounded-full border border-white/40 bg-white/70"
-        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))` }}
-      />
-      <span className="pointer-events-none absolute inset-x-0 -top-6 text-center text-[10px] font-black uppercase tracking-wide text-primary-foreground/70">
-        Swipe up to jump
-      </span>
+      {knob && (
+        <div
+          className="pointer-events-none absolute h-28 w-28 rounded-full border border-white/15 bg-white/5"
+          style={{ left: knob.ox, top: knob.oy, transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 h-12 w-12 rounded-full border border-white/25 bg-white/25"
+            style={{ transform: `translate(calc(-50% + ${knob.dx}px), calc(-50% + ${knob.dy}px))` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -462,8 +469,10 @@ export default function ObbyStage({
         />
       </Canvas>
 
+      <Joystick inputRef={inputRef} />
+
       {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 p-3">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
         <div className="pointer-events-auto flex items-start gap-2">
           <button
             type="button"
@@ -511,11 +520,6 @@ export default function ObbyStage({
             ))}
           </ul>
         )}
-      </div>
-
-      {/* Controls — single stick: run with it, swipe up to jump */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-center p-4 pb-8">
-        <Joystick inputRef={inputRef} />
       </div>
     </div>
   );
