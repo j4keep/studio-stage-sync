@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
 import { battleshipSfx } from "@/lib/battleship-sfx";
 
@@ -55,6 +55,7 @@ type Props = {
   onToggleMute: () => void;
   onStatus: (status: string) => void;
   onFinish: (won: boolean, score: number) => void;
+  onBack?: () => void;
 };
 
 type Zone = {
@@ -781,13 +782,12 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
   );
 }
 
-export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish }: Props) {
+export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack }: Props) {
   const inputRef = useRef<Input>({ x: 0, z: 0 });
   const fireRef = useRef(false);
   const duckRef = useRef(false);
   const [health, setHealth] = useState(3);
   const [rivalHealth, setRivalHealth] = useState(3);
-  const [score, setScore] = useState(0);
   const [progress, setProgress] = useState(0);
   const [rivalProgress, setRivalProgress] = useState(0);
   const [crew, setCrew] = useState(DEFAULT_CREW);
@@ -815,21 +815,32 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
   }, []);
 
   return (
-    <div className="relative mx-auto h-[80dvh] min-h-[560px] max-h-[860px] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/15 bg-sky-900 shadow-[0_22px_70px_rgba(0,0,0,.35)]">
+    <div className="absolute inset-0 overflow-hidden bg-sky-900">
       <Canvas shadows camera={{ position: [0, 11.2, -15.5], fov: 55 }} dpr={[1, 1.55]}>
         <BattleScene
           inputRef={inputRef}
           fireRef={fireRef}
           duckRef={duckRef}
-          onHud={(h, rh, s, p, rp, c, rc, zn) => {
-            setHealth(h); setRivalHealth(rh); setScore(s); setProgress(p); setRivalProgress(rp); setCrew(c); setRivalCrew(rc); setZone(zn);
+          onHud={(h, rh, _s, p, rp, c, rc, zn) => {
+            setHealth(h); setRivalHealth(rh); setProgress(p); setRivalProgress(rp); setCrew(c); setRivalCrew(rc); setZone(zn);
           }}
           onStatus={onStatus}
           onFinish={onFinish}
         />
       </Canvas>
 
-      <div className="pointer-events-none absolute left-3 right-3 top-3 z-30">
+      {onBack && (
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back"
+          className="absolute left-3 top-3 z-40 rounded-full border border-white/15 bg-slate-950/50 p-2.5 text-white backdrop-blur-md active:scale-95"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+      )}
+
+      <div className="pointer-events-none absolute left-3 right-3 top-3 z-30 pl-12">
         <div className="rounded-2xl border border-white/15 bg-slate-950/62 px-3 py-2 backdrop-blur-md">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -858,10 +869,7 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
 
       <ScreenSteering inputRef={inputRef} />
 
-      <div className="pointer-events-none absolute bottom-4 left-3 right-3 z-40 flex items-end justify-between gap-3">
-        <div className="max-w-[48%] rounded-2xl border border-white/10 bg-slate-950/38 px-3 py-2 text-[10px] font-bold text-white/80 backdrop-blur-md">
-          Swipe left/right anywhere to steer<br/><span className="text-white/45">Avoid rocks • race • knock crew overboard</span>
-        </div>
+      <div className="pointer-events-none absolute bottom-4 right-3 z-40 flex items-end justify-end gap-3">
         <div className="flex gap-2 pointer-events-auto">
           <button
             type="button"
@@ -881,10 +889,6 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
             Fire
           </button>
         </div>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-[102px] left-1/2 z-30 -translate-x-1/2 rounded-full bg-black/24 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-white/75 backdrop-blur-sm">
-        Score {score.toLocaleString()}
       </div>
     </div>
   );
