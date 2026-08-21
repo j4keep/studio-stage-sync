@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import FeedPostCard from "./FeedPostCard";
 import BattleFeedSlide from "./BattleFeedSlide";
+import LiveGameFeedSlide from "@/components/games/live/LiveGameFeedSlide";
 import {
   getFeedMountRadius,
   forceIosAudioSessionToPlayback,
@@ -235,7 +236,9 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
               style={{ scrollSnapAlign: "start" }}
             >
               {mounted ? (
-                item?.itemType === "battle" ? (
+                item?.itemType === "live_game" ? (
+                  <LiveGameFeedSlide game={item} isActive={index === currentIndex} />
+                ) : item?.itemType === "battle" ? (
                   <BattleFeedSlide
                     battle={item}
                     currentUserId={currentUserId}
