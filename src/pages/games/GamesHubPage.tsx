@@ -43,6 +43,8 @@ import treasureRushArtAsset from "@/assets/games/adventures/treasure-rush.png.as
 import towerEscapeArtAsset from "@/assets/games/adventures/tower-escape.png.asset.json";
 import survivalIslandArtAsset from "@/assets/games/adventures/survival-island.png.asset.json";
 import neighborhoodArtAsset from "@/assets/games/adventures/neighborhood.png.asset.json";
+import gamesHubHeroArtAsset from "@/assets/games/adventures/games-hub-hero.png.asset.json";
+export const gamesHubHeroArt = gamesHubHeroArtAsset.url;
 
 type Category = "Board" | "Strategy" | "Action" | "Sports" | "Arcade" | "Puzzle" | "Card" | "Adventure";
 
