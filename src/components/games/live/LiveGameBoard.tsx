@@ -1,17 +1,20 @@
 import { GameType } from "@/lib/games";
 import LivePoolBoard from "./LivePoolBoard";
+import LiveFleetClashBoard from "./LiveFleetClashBoard";
 
 /**
- * Dispatches to the real mirrored board for a game type. Pool is the first one fully wired
- * (the actual ball positions redraw live); everything else falls back to a simple live
- * face-off card until it gets its own mirror the same way.
+ * Dispatches to the real mirrored board for a game type. Pool and Fleet Clash are fully
+ * wired (the real ball positions / race progress redraw live); everything else falls back to
+ * a simple live face-off card until it gets its own mirror the same way.
  */
 export default function LiveGameBoard({
+  gameId,
   gameType,
   gameState,
   playerNames,
   playerAvatars,
 }: {
+  gameId: string;
   gameType: GameType;
   gameState: any;
   playerNames: string[];
@@ -19,6 +22,9 @@ export default function LiveGameBoard({
 }) {
   if (gameType === "pool") {
     return <LivePoolBoard pool={gameState?.pool ?? null} />;
+  }
+  if (gameType === "battleship") {
+    return <LiveFleetClashBoard gameId={gameId} />;
   }
 
   return (

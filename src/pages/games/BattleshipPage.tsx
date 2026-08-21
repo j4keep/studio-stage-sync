@@ -138,6 +138,7 @@ export default function BattleshipPage() {
         {seated && (
           <FleetClashStage
             key={game.id}
+            gameId={game.id}
             opponentName={oppLabel}
             muted={muted}
             onToggleMute={() => setMuted((v) => !v)}

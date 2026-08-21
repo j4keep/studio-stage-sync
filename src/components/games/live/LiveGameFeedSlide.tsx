@@ -25,6 +25,7 @@ export default function LiveGameFeedSlide({ game, isActive }: { game: LiveGameCa
 
       <div className="relative mx-4 mt-3 aspect-[4/3] shrink-0 overflow-hidden rounded-2xl border border-white/10">
         <LiveGameBoard
+          gameId={game.id}
           gameType={game.gameType}
           gameState={row?.game_state}
           playerNames={game.playerNames}

@@ -15,6 +15,7 @@ export default function LiveGameThumbCard({ game, onOpen }: { game: LiveGameCard
       className="group relative aspect-[4/5] w-full overflow-hidden rounded-2xl border border-white/10 text-left shadow-[0_10px_28px_rgba(0,0,0,0.35)] transition active:scale-[0.98]"
     >
       <LiveGameBoard
+        gameId={game.id}
         gameType={game.gameType}
         gameState={row?.game_state}
         playerNames={game.playerNames}
