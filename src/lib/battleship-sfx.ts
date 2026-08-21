@@ -8,6 +8,7 @@ const KEY = "yaj.games.battleship.sfx.muted";
 
 class BattleshipSfx {
   private ctx: AudioContext | null = null;
+  private bed: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
   muted = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) === "1" : false;
 
   private ensure() {
@@ -16,6 +17,51 @@ class BattleshipSfx {
       this.ctx = new Ctor();
     }
     return this.ctx!;
+  }
+
+  /** Soft looping ocean bed — filtered noise, gently swelling. Quiet under everything else. */
+  ambienceStart() {
+    if (this.muted || this.bed) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const len = Math.floor(ctx.sampleRate * 4);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.018 * white) / 1.018;
+      data[i] = last * 3;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const lp = ctx.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 650;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.05;
+    src.connect(lp).connect(gain).connect(ctx.destination);
+
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.value = 0.1;
+    lfoGain.gain.value = 0.02;
+    lfo.connect(lfoGain).connect(gain.gain);
+    lfo.start();
+
+    src.start();
+    this.bed = { src, gain };
+  }
+
+  ambienceStop() {
+    if (!this.bed) return;
+    try {
+      this.bed.src.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.bed = null;
   }
 
   async prime() {
@@ -33,6 +79,7 @@ class BattleshipSfx {
     } catch {
       /* ignore */
     }
+    if (muted) this.ambienceStop();
   }
 
   private noiseBuffer(ctx: AudioContext, len: number) {
@@ -134,6 +181,94 @@ class BattleshipSfx {
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
     this.thud(t, 0.04, 300, 0.3, 0.06);
+  }
+
+  /** A cannon/launcher firing — a low thump with a quick rising whoosh as the shot leaves. */
+  launch() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.thud(t, 0.1, 220, 0.6, 0.14);
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(340, t);
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.12);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.12, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.16);
+  }
+
+  /** Sonar Pulse — a clean sweeping tone, distinct from the splash/impact cues. */
+  sonarPulse() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(1100, t + 0.4);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.14, t + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.55);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.6);
+  }
+
+  /** A soft double-tick marking a turn changing hands. */
+  turnChange() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.thud(t, 0.03, 900, 0.18, 0.05);
+    this.thud(t + 0.09, 0.03, 700, 0.14, 0.05);
+  }
+
+  /** Match won — a bright, brief rising fanfare, not a toy jingle. */
+  victory() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    [392, 523, 659, 784].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      const at = t + i * 0.1;
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.linearRampToValueAtTime(0.16, at + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(at);
+      osc.stop(at + 0.4);
+    });
+  }
+
+  /** Match lost — a low descending tone, understated rather than harsh. */
+  defeat() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(300, t);
+    osc.frequency.exponentialRampToValueAtTime(90, t + 0.9);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 1);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 1.05);
   }
 }
 

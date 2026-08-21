@@ -5,6 +5,7 @@ import {
   Fleet,
   SHIP_LENGTHS,
   SHIP_ORDER,
+  SONAR_USES,
   alreadyShot,
   canPlaceShip,
   cellsForShip,
@@ -15,6 +16,8 @@ import {
   placeFleet,
   randomFleet,
   shipsRemaining,
+  sonarUsesLeft,
+  useSonar,
   validateFleet,
 } from "./battleship";
 
@@ -169,6 +172,55 @@ describe("battleship", () => {
     const fleet: Fleet = [{ id: "destroyer", cells: cellsForShip(0, 0, 2, "H"), hits: [false, false] }];
     expect(canPlaceShip(fleet, "submarine", 1, 0, "V")).toBe(false); // shares cell (1,0)
     expect(canPlaceShip(fleet, "submarine", 2, 0, "V")).toBe(true); // clear of the destroyer
+  });
+
+  it("starts each seat with SONAR_USES charges", () => {
+    const s = initialBattleship();
+    expect(sonarUsesLeft(s, 0)).toBe(SONAR_USES);
+    expect(sonarUsesLeft(s, 1)).toBe(SONAR_USES);
+  });
+
+  it("useSonar detects a boat in the pulsed zone without revealing the exact tile, spends a charge, and passes the turn", () => {
+    let s = initialBattleship();
+    const oppFleet: Fleet = SHIP_ORDER.map((id, i) => ({
+      id,
+      cells: Array.from({ length: SHIP_LENGTHS[id] }, (_, j) => ({ x: j, y: i * 2 })),
+      hits: Array(SHIP_LENGTHS[id]).fill(false),
+    }));
+    s = placeFleet(s, 1, oppFleet);
+    s = placeFleet(s, 0, randomFleet());
+
+    // (1,0) is a destroyer cell; pulsing its neighbor (1,1) should still detect it via the
+    // plus-shaped zone without the result naming which cell — SonarResult only carries the
+    // pulsed center and a boolean.
+    const next = useSonar(s, 0, 1, 1);
+    expect(next.lastSonar).toEqual({ seat: 0, x: 1, y: 1, found: true, turn: s.turn + 1 });
+    expect(sonarUsesLeft(next, 0)).toBe(SONAR_USES - 1);
+    expect(next.turnSeat).toBe(1);
+  });
+
+  it("useSonar reports clear water far from any boat", () => {
+    let s = initialBattleship();
+    const cornerFleet: Fleet = SHIP_ORDER.map((id, i) => ({
+      id,
+      cells: Array.from({ length: SHIP_LENGTHS[id] }, (_, j) => ({ x: j, y: i * 2 })),
+      hits: Array(SHIP_LENGTHS[id]).fill(false),
+    }));
+    s = placeFleet(s, 1, cornerFleet);
+    s = placeFleet(s, 0, randomFleet());
+    const next = useSonar(s, 0, 9, 9);
+    expect(next.lastSonar?.found).toBe(false);
+  });
+
+  it("useSonar no-ops once a seat has no charges left", () => {
+    let s = initialBattleship();
+    s = placeFleet(s, 1, randomFleet());
+    s = placeFleet(s, 0, randomFleet());
+    for (let i = 0; i < SONAR_USES; i++) s = useSonar(s, 0, 0, 0);
+    expect(sonarUsesLeft(s, 0)).toBe(0);
+    const before = s;
+    s = useSonar(s, 0, 5, 5);
+    expect(s).toBe(before); // unchanged reference — true no-op
   });
 
   it("occupiedCells reflects every ship placed so far", () => {

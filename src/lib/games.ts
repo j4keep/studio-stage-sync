@@ -69,7 +69,7 @@ export const GAME_LABELS: Record<GameType, string> = {
   yaj_dash: "YAJ Dash",
   pool: "8-Ball Pool",
   boxing: "Boxing",
-  battleship: "Battleship",
+  battleship: "YAJ Fleet Clash",
   driving: "Drive",
   poker: "Texas Hold'em",
   pop_shot: "Pop Shot",

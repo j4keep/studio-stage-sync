@@ -21,12 +21,14 @@ export const SHIP_LENGTHS: Record<ShipId, number> = {
   submarine: 3,
   destroyer: 2,
 };
+/** Original YAJ boat class names — these are the only user-facing ship names; the `ShipId`
+ *  keys above are internal identifiers left unchanged so persisted game_state never breaks. */
 export const SHIP_LABELS: Record<ShipId, string> = {
-  carrier: "Carrier",
-  battleship: "Battleship",
-  cruiser: "Cruiser",
-  submarine: "Submarine",
-  destroyer: "Destroyer",
+  carrier: "Voyager",
+  battleship: "Clipper",
+  cruiser: "Skimmer",
+  submarine: "Runner",
+  destroyer: "Skiff",
 };
 
 export type ShipPlacement = { id: ShipId; cells: Cell[]; hits: boolean[] };
@@ -37,6 +39,9 @@ export type Shot = { x: number; y: number; seat: Seat; result: ShotResult; shipI
 
 export type BattleshipPhase = "placing" | "battle" | "over";
 
+export const SONAR_USES = 2;
+export type SonarResult = { seat: Seat; x: number; y: number; found: boolean; turn: number };
+
 export type BattleshipState = {
   phase: BattleshipPhase;
   fleets: [Fleet | null, Fleet | null];
@@ -46,6 +51,9 @@ export type BattleshipState = {
   winnerSeat: Seat | null;
   turn: number;
   lastShot: Shot | null;
+  /** Sonar Pulse charges remaining per seat — starts at SONAR_USES each. */
+  sonarUses: [number, number];
+  lastSonar: SonarResult | null;
 };
 
 export function initialBattleship(): BattleshipState {
@@ -57,6 +65,8 @@ export function initialBattleship(): BattleshipState {
     winnerSeat: null,
     turn: 1,
     lastShot: null,
+    sonarUses: [SONAR_USES, SONAR_USES],
+    lastSonar: null,
   };
 }
 
@@ -185,6 +195,48 @@ export function fireShot(state: BattleshipState, seat: Seat, x: number, y: numbe
   const turnSeat: Seat = allSunk ? state.turnSeat : oppSeat;
 
   return { ...state, fleets, shotsAt, turnSeat, winnerSeat, phase, turn: state.turn + 1, lastShot: shot };
+}
+
+/** Charges left for a seat — defensive default for any game_state persisted before Sonar
+ *  Pulse existed. */
+export function sonarUsesLeft(state: BattleshipState, seat: Seat): number {
+  return (state.sonarUses ?? [SONAR_USES, SONAR_USES])[seat];
+}
+
+/**
+ * Sonar Pulse: spends one charge to check a small plus-shaped zone (the tapped cell and its
+ * 4 neighbors) against the opponent's fleet — reveals only whether a boat exists somewhere in
+ * that zone, never which exact tile. Costs the turn, same as firing, so the turn structure
+ * stays a single simple loop. No-ops if the seat has no charges left.
+ */
+export function useSonar(state: BattleshipState, seat: Seat, x: number, y: number): BattleshipState {
+  if (state.phase !== "battle") return state;
+  if (sonarUsesLeft(state, seat) <= 0) return state;
+  const oppSeat: Seat = seat === 0 ? 1 : 0;
+  const oppFleet = state.fleets[oppSeat];
+  if (!oppFleet) return state;
+
+  const zone = [
+    { x, y },
+    { x: x + 1, y },
+    { x: x - 1, y },
+    { x, y: y + 1 },
+    { x, y: y - 1 },
+  ].filter(inBounds);
+  const zoneKeys = new Set(zone.map((c) => `${c.x},${c.y}`));
+  const found = oppFleet.some((ship) => ship.cells.some((c) => zoneKeys.has(`${c.x},${c.y}`)));
+
+  const sonarUses: [number, number] = [...(state.sonarUses ?? [SONAR_USES, SONAR_USES])] as [number, number];
+  sonarUses[seat] -= 1;
+  const turn = state.turn + 1;
+
+  return {
+    ...state,
+    sonarUses,
+    lastSonar: { seat, x, y, found, turn },
+    turnSeat: oppSeat,
+    turn,
+  };
 }
 
 /** How many ships (out of five) a seat still has afloat. */

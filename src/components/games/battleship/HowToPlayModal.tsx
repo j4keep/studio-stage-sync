@@ -1,9 +1,10 @@
-import { Crosshair, Ship, Target, X } from "lucide-react";
+import { Crosshair, Radar, Ship, Target, X } from "lucide-react";
 
 const STEPS = [
-  { Icon: Ship, title: "Place your fleet", body: "Pick a ship, tap the board to drop it, tap Rotate to turn it. Tap a placed ship again to pick it back up." },
-  { Icon: Crosshair, title: "Take turns firing", body: "Once both fleets are set, tap a cell on Enemy Waters to fire. Red ✕ is a hit, a white dot is a miss." },
-  { Icon: Target, title: "Sink the whole fleet", body: "Land every hit on a ship to sink it. First to sink all five of the opponent's ships wins." },
+  { Icon: Ship, title: "Place your fleet", body: "Pick a boat, tap the water to drop it, tap Rotate to turn it. Tap a placed boat again to pick it back up." },
+  { Icon: Crosshair, title: "Find the enemy", body: "Once both fleets are set, tap a water sector in Enemy Waters, then tap FIRE. A splash means you missed; a hit shows damage." },
+  { Icon: Radar, title: "Watch for hits", body: "Successful shots reveal enemy positions. Use Sonar Pulse once or twice a match to scan a small zone for a boat without revealing the exact tile." },
+  { Icon: Target, title: "Take down the fleet", body: "Disable every enemy boat to win. First to sink all five of the opponent's boats takes the waters." },
 ];
 
 export default function HowToPlayModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -16,7 +17,7 @@ export default function HowToPlayModal({ open, onClose }: { open: boolean; onClo
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-black text-white">How to Play Battleship</h2>
+          <h2 className="text-lg font-black text-white">How to Play YAJ Fleet Clash</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded-full bg-white/10 p-1.5 text-white">
             <X className="h-4 w-4" />
           </button>
@@ -39,7 +40,7 @@ export default function HowToPlayModal({ open, onClose }: { open: boolean; onClo
           onClick={onClose}
           className="mt-5 w-full rounded-full bg-primary py-3 text-sm font-black text-primary-foreground active:scale-[0.98]"
         >
-          Got it
+          Start Battle
         </button>
       </div>
     </div>

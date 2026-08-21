@@ -31,6 +31,8 @@ type Props = {
   resultTitle?: string;
   resultDetail?: string;
   footer?: ReactNode;
+  /** Optional key art shown behind the start splash, passed straight through to GameIntro. */
+  artUrl?: string;
 };
 
 export default function GameShell({
@@ -47,6 +49,7 @@ export default function GameShell({
   them,
   myTurn,
   outcome,
+  artUrl,
   resultTitle,
   resultDetail,
   footer,
@@ -206,6 +209,7 @@ export default function GameShell({
         open={!seated && !finished}
         title={title}
         subtitle={subtitle}
+        artUrl={artUrl}
         me={{ name: myPlayer.name, avatarUrl: myPlayer.avatarUrl }}
         them={{ name: them?.name || "Opponent", avatarUrl: them?.avatarUrl, isComputer: them?.isComputer }}
         stats={stats}
