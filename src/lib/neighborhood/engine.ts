@@ -40,7 +40,9 @@ export type NpcRuntime = {
   spec: NpcSpec;
   x: number;
   y: number;
-  facing: 1 | -1;
+  /** Heading in radians (Math.atan2(dx, dy)) — the character rotates to actually face this
+   *  direction, not just mirror left/right, so turning reads like a real person walking. */
+  facing: number;
   targetIdx: 0 | 1;
   waitT: number;
   moving: boolean;
@@ -74,7 +76,9 @@ export type NeighborhoodState = {
   y: number;
   vx: number;
   vy: number;
-  facing: 1 | -1;
+  /** Heading in radians (Math.atan2(vx, vy)) — same full-rotation convention as Survival
+   *  Island's avatar, so walking any direction actually turns the character to face it. */
+  facing: number;
   pose: PlayerPose;
   poseT: number;
   npcs: NpcRuntime[];
@@ -96,7 +100,7 @@ export function initialNeighborhood(): NeighborhoodState {
     spec,
     x: spec.route[0].x,
     y: spec.route[0].y,
-    facing: 1,
+    facing: 0,
     targetIdx: 1,
     waitT: 0,
     moving: true,
@@ -108,7 +112,7 @@ export function initialNeighborhood(): NeighborhoodState {
     y: map.spawn.y,
     vx: 0,
     vy: 0,
-    facing: 1,
+    facing: 0,
     pose: null,
     poseT: 0,
     npcs,
@@ -157,7 +161,7 @@ function movePlayer(st: NeighborhoodState, input: NInput, dt: number) {
   }
   st.vx += (tx - st.vx) * Math.min(1, ACCEL * dt);
   st.vy += (ty - st.vy) * Math.min(1, ACCEL * dt);
-  if (Math.abs(st.vx) > 6) st.facing = st.vx > 0 ? 1 : -1;
+  if (Math.hypot(st.vx, st.vy) > 6) st.facing = Math.atan2(st.vx, st.vy);
 
   const blockedX = slide(st, st.vx * dt, 0);
   const blockedY = slide(st, 0, st.vy * dt);
@@ -194,10 +198,9 @@ function tickNpcs(st: NeighborhoodState, dt: number) {
 
     const distToPlayer = Math.hypot(st.x - npc.x, st.y - npc.y);
     if (distToPlayer < NPC_AWARE_R) {
-      npc.facing = st.x >= npc.x ? 1 : -1;
+      npc.facing = Math.atan2(st.x - npc.x, st.y - npc.y);
     } else if (npc.moving) {
-      const dx = target.x - npc.x;
-      npc.facing = dx >= 0 ? 1 : -1;
+      npc.facing = Math.atan2(target.x - npc.x, target.y - npc.y);
     }
   }
 }

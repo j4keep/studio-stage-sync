@@ -34,7 +34,7 @@ function PlayerActor({ stateRef, cameraRef }: Props) {
     const screenX = (st.x - camera.x) * camera.scale;
     const screenY = (st.y - camera.y) * camera.scale * SQUASH;
     g.position.set(screenX - size.width / 2, size.height / 2 - screenY, 0);
-    g.rotation.y = st.facing > 0 ? 0 : Math.PI;
+    g.rotation.y = st.facing;
 
     const isMoving = !st.pose && Math.hypot(st.vx, st.vy) > 12;
     if (isMoving !== movingRef.current) {
@@ -73,7 +73,7 @@ function NpcActor({ stateRef, cameraRef, index, color }: Props & { index: number
     const screenX = (npc.x - camera.x) * camera.scale;
     const screenY = (npc.y - camera.y) * camera.scale * SQUASH;
     g.position.set(screenX - size.width / 2, size.height / 2 - screenY, 0);
-    g.rotation.y = npc.facing > 0 ? 0 : Math.PI;
+    g.rotation.y = npc.facing;
 
     if (npc.moving !== movingRef.current) {
       movingRef.current = npc.moving;
