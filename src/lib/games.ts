@@ -137,6 +137,16 @@ export async function updateGameState(
   if (error) throw error;
 }
 
+/** Abandon a match that's sitting active/waiting with nobody actually playing it, so it
+ *  drops off "Your Active Games" instead of lingering forever. */
+export async function endGame(gameId: string) {
+  const { error } = await db
+    .from("games")
+    .update({ status: "cancelled", finished_at: new Date().toISOString() })
+    .eq("id", gameId);
+  if (error) throw error;
+}
+
 export async function respondToInvite(inviteId: string, accept: boolean) {
   const { data: invite, error } = await db
     .from("game_invites")

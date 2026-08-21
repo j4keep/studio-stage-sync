@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Loader2, Sparkles, Trophy } from "lucide-react";
+import { ArrowLeft, ChevronDown, Gamepad2, Loader2, Sparkles, Trophy, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   GAME_LABELS,
@@ -9,6 +9,7 @@ import {
   GameStatsRow,
   GameType,
   createSoloGame,
+  endGame,
   getMyStats,
   leaderboard,
   listMyGames,
@@ -104,7 +105,22 @@ export default function GamesHubPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [filter, setFilter] = useState<Category | "All">("All");
+  const [activeGamesOpen, setActiveGamesOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [endingId, setEndingId] = useState<string | null>(null);
+
+  const endMyGame = async (gameId: string) => {
+    if (!window.confirm("End this game? It will disappear from your active games.")) return;
+    setEndingId(gameId);
+    try {
+      await endGame(gameId);
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Could not end the game", description: e.message, variant: "destructive" });
+    } finally {
+      setEndingId(null);
+    }
+  };
 
   const refresh = async () => {
     if (!user) {
@@ -266,6 +282,20 @@ export default function GamesHubPage() {
         </div>
       </header>
 
+      <div className="relative h-36 w-full overflow-hidden sm:h-44">
+        <img src={gamesHubHeroArt} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-black/10" />
+        <div className="absolute inset-x-0 bottom-0 p-4">
+          <h2
+            className="text-3xl font-black italic uppercase leading-none tracking-tight text-white"
+            style={{ textShadow: "0 2px 0 rgba(0,0,0,0.55), 0 6px 16px rgba(0,0,0,0.7)" }}
+          >
+            YAJ Games
+          </h2>
+          <p className="mt-1 text-xs font-bold text-white/80">Every board, arcade, and adventure title in one place</p>
+        </div>
+      </div>
+
       <main className="space-y-6 px-4 pt-4">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -304,27 +334,125 @@ export default function GamesHubPage() {
               </section>
             )}
 
-            {activeGames.length > 0 && (
-              <section>
-                <h2 className="mb-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">Your Active Games</h2>
-                <ul className="space-y-2">
-                  {activeGames.map((g) => (
-                    <li key={g.id}>
-                      <button
-                        type="button"
-                        onClick={() => navigate(gameRoute(g.game_type, g.id))}
-                        className="flex w-full items-center justify-between rounded-2xl border border-border bg-card p-3 text-left"
-                      >
-                        <span className="text-sm font-bold">{GAME_LABELS[g.game_type]}</span>
-                        <span className="text-xs font-bold text-primary">
-                          {g.status === "waiting" ? "Waiting for opponent" : g.current_turn_user_id === user?.id ? "Your turn" : "Opponent's turn"}
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
-            )}
+            <section className="overflow-hidden rounded-2xl border border-border bg-card">
+              {activeGames.length > 0 && (
+                <div className="border-b border-border">
+                  <button
+                    type="button"
+                    onClick={() => setActiveGamesOpen((o) => !o)}
+                    className="flex w-full items-center justify-between px-4 py-3"
+                  >
+                    <span className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                      <Gamepad2 className="h-4 w-4 text-primary" /> Your Active Games ({activeGames.length})
+                    </span>
+                    <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${activeGamesOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {activeGamesOpen && (
+                    <ul className="space-y-2 border-t border-border px-4 py-3">
+                      {activeGames.map((g) => (
+                        <li key={g.id} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => navigate(gameRoute(g.game_type, g.id))}
+                            className="flex flex-1 items-center justify-between rounded-2xl border border-border bg-background p-3 text-left"
+                          >
+                            <span className="text-sm font-bold">{GAME_LABELS[g.game_type]}</span>
+                            <span className="text-xs font-bold text-primary">
+                              {g.status === "waiting" ? "Waiting for opponent" : g.current_turn_user_id === user?.id ? "Your turn" : "Opponent's turn"}
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void endMyGame(g.id)}
+                            disabled={endingId === g.id}
+                            aria-label="End game"
+                            className="shrink-0 rounded-full border border-border p-2.5 text-muted-foreground transition active:scale-95 disabled:opacity-50"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setActivityOpen((o) => !o)}
+                  className="flex w-full items-center justify-between px-4 py-3"
+                >
+                  <span className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                    <Trophy className="h-4 w-4 text-primary" /> Your Activity &amp; Stats
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${activityOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {activityOpen && (
+                  <div className="space-y-5 border-t border-border px-4 py-4">
+                    <div>
+                      <h3 className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Your Stats</h3>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          ["Played", totals.played],
+                          ["Wins", totals.wins],
+                          ["Losses", totals.losses],
+                          ["Win rate", totals.played ? `${Math.round((totals.wins / totals.played) * 100)}%` : "—"],
+                          ["Streak", totals.streak],
+                          ["Best", totals.best],
+                        ].map(([label, value]) => (
+                          <div key={String(label)} className="rounded-xl border border-border bg-background p-2.5 text-center">
+                            <p className="text-base font-black">{value as any}</p>
+                            <p className="text-[10px] text-muted-foreground">{label as string}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {recentGames.length > 0 && (
+                      <div>
+                        <h3 className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Recently Played</h3>
+                        <ul className="space-y-1.5">
+                          {recentGames.map((g) => (
+                            <li key={g.id} className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
+                              <span className="text-xs font-bold">{GAME_LABELS[g.game_type]}</span>
+                              <span className="text-[11px] font-bold text-muted-foreground">
+                                {g.is_draw ? "Draw" : g.winner_user_id === user?.id ? "You won" : "You lost"}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
+                        <Sparkles className="h-3.5 w-3.5 text-primary" /> Leaderboard · All-Time XP
+                      </h3>
+                      {board.length ? (
+                        <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
+                          {board.map((row, i) => (
+                            <li key={`${row.user_id}-${row.game_type}`} className="flex items-center gap-3 p-2.5">
+                              <span className="w-5 text-sm font-black text-muted-foreground">{i + 1}</span>
+                              <span className="min-w-0 flex-1 truncate text-xs font-bold">
+                                {inviteNames[row.user_id] || (row.user_id === user?.id ? "You" : "YAJ player")}
+                              </span>
+                              <span className="text-xs font-bold text-primary">{row.xp} XP</span>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center text-xs text-muted-foreground">
+                          Play a game to get on the board.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
 
             {/* YAJ Adventures — original YAJ arcade/adventure titles, City Run first. */}
             <section>
@@ -385,81 +513,6 @@ export default function GamesHubPage() {
               </div>
 
               <div className="mt-3 grid grid-cols-2 gap-3">{visibleCards.map(renderCard)}</div>
-            </section>
-
-            <section className="overflow-hidden rounded-2xl border border-border bg-card">
-              <button
-                type="button"
-                onClick={() => setActivityOpen((o) => !o)}
-                className="flex w-full items-center justify-between px-4 py-3"
-              >
-                <span className="flex items-center gap-2 text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-                  <Trophy className="h-4 w-4 text-primary" /> Your Activity &amp; Stats
-                </span>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${activityOpen ? "rotate-180" : ""}`} />
-              </button>
-
-              {activityOpen && (
-                <div className="space-y-5 border-t border-border px-4 py-4">
-                  <div>
-                    <h3 className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Your Stats</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                      {[
-                        ["Played", totals.played],
-                        ["Wins", totals.wins],
-                        ["Losses", totals.losses],
-                        ["Win rate", totals.played ? `${Math.round((totals.wins / totals.played) * 100)}%` : "—"],
-                        ["Streak", totals.streak],
-                        ["Best", totals.best],
-                      ].map(([label, value]) => (
-                        <div key={String(label)} className="rounded-xl border border-border bg-background p-2.5 text-center">
-                          <p className="text-base font-black">{value as any}</p>
-                          <p className="text-[10px] text-muted-foreground">{label as string}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {recentGames.length > 0 && (
-                    <div>
-                      <h3 className="mb-2 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">Recently Played</h3>
-                      <ul className="space-y-1.5">
-                        {recentGames.map((g) => (
-                          <li key={g.id} className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
-                            <span className="text-xs font-bold">{GAME_LABELS[g.game_type]}</span>
-                            <span className="text-[11px] font-bold text-muted-foreground">
-                              {g.is_draw ? "Draw" : g.winner_user_id === user?.id ? "You won" : "You lost"}
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div>
-                    <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-                      <Sparkles className="h-3.5 w-3.5 text-primary" /> Leaderboard · All-Time XP
-                    </h3>
-                    {board.length ? (
-                      <ol className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-background">
-                        {board.map((row, i) => (
-                          <li key={`${row.user_id}-${row.game_type}`} className="flex items-center gap-3 p-2.5">
-                            <span className="w-5 text-sm font-black text-muted-foreground">{i + 1}</span>
-                            <span className="min-w-0 flex-1 truncate text-xs font-bold">
-                              {inviteNames[row.user_id] || (row.user_id === user?.id ? "You" : "YAJ player")}
-                            </span>
-                            <span className="text-xs font-bold text-primary">{row.xp} XP</span>
-                          </li>
-                        ))}
-                      </ol>
-                    ) : (
-                      <p className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-center text-xs text-muted-foreground">
-                        Play a game to get on the board.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
             </section>
           </>
         )}
