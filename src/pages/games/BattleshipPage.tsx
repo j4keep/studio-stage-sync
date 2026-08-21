@@ -6,7 +6,7 @@ import { toast } from "@/hooks/use-toast";
 import GameShell from "@/components/games/GameShell";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
-import OceanBoard from "@/components/games/battleship/OceanBoard";
+import OceanBattlefield from "@/components/games/battleship/OceanBattlefield";
 import BoatStatusStrip from "@/components/games/battleship/BoatStatusStrip";
 import SonarButton from "@/components/games/battleship/SonarButton";
 import HowToPlayModal from "@/components/games/battleship/HowToPlayModal";
@@ -56,6 +56,8 @@ export default function BattleshipPage() {
   const [howTo, setHowTo] = useState(() => typeof localStorage !== "undefined" && localStorage.getItem(HOWTO_KEY) !== "1");
   const [banner, setBanner] = useState<string | null>(null);
   const [sonarMode, setSonarMode] = useState(false);
+  const [computerAim, setComputerAim] = useState<{ x: number; y: number } | null>(null);
+  const [hitFlashAt, setHitFlashAt] = useState<{ x: number; y: number; start: number } | null>(null);
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [leaderboardRows, setLeaderboardRows] = useState<GameStatsRow[]>([]);
   const seenSonarTurn = useRef<number | null>(null);
@@ -159,6 +161,7 @@ export default function BattleshipPage() {
     void battleshipSfx.prime();
     battleshipSfx.launch();
     const next = fireShot(battleship, mySeat, x, y);
+    if (next.lastShot && next.lastShot.result !== "miss") setHitFlashAt({ x, y, start: performance.now() / 1000 });
     const n = moveNumber + 1;
     await recordMove(game.id, user.id, n, { x, y, seat: mySeat });
     const nextTurnUserId = game.mode === "solo" ? user.id : next.turnSeat === mySeat ? user.id : (opponent?.user_id ?? null);
@@ -176,20 +179,30 @@ export default function BattleshipPage() {
     setSonarMode(false);
   };
 
-  // Drive the computer's shot in solo mode.
+  // Drive the computer's shot in solo mode — telegraphed in two beats (aim, then fire) so the
+  // player can actually watch it happen instead of the turn just silently resolving. The target
+  // cell is computed once and reused for both beats — computerShot() draws from Math.random()
+  // internally, so calling it twice could aim and fire at two different cells.
   useEffect(() => {
     if (!game || game.mode !== "solo" || finished) return;
     if (battleship.phase !== "battle" || battleship.turnSeat !== oppSeat) return;
     battleshipSfx.turnChange();
-    const t = window.setTimeout(() => {
+    const chosen = computerShot(stateRef.current, oppSeat);
+    const aimTimer = window.setTimeout(() => {
+      setComputerAim(chosen);
+    }, 700);
+    const fireTimer = window.setTimeout(() => {
       if (!user) return;
-      const state = stateRef.current;
-      const shot = computerShot(state, oppSeat);
       battleshipSfx.launch();
-      const next = fireShot(state, oppSeat, shot.x, shot.y);
+      const next = fireShot(stateRef.current, oppSeat, chosen.x, chosen.y);
+      setComputerAim(null);
       void commit(next, moveNumber + 1, user.id);
-    }, 850);
-    return () => window.clearTimeout(t);
+    }, 1550);
+    return () => {
+      window.clearTimeout(aimTimer);
+      window.clearTimeout(fireTimer);
+      setComputerAim(null);
+    };
   }, [game?.id, battleship.phase, battleship.turnSeat, finished, moveNumber]);
 
   // ---- Placement interactions ----
@@ -392,7 +405,14 @@ export default function BattleshipPage() {
             })}
           </div>
 
-          <OceanBoard fleet={placedShips} shots={[]} showShips interactive onTap={tryPlace} variant="a" />
+          <OceanBattlefield
+            myFleet={placedShips}
+            shotsOnEnemy={[]}
+            shotsOnMe={[]}
+            enemyInteractive={false}
+            placementInteractive
+            onPlaceTap={tryPlace}
+          />
 
           <p className="mt-2 text-center text-[11px] text-white/50">
             {selectedShip
@@ -429,27 +449,31 @@ export default function BattleshipPage() {
         </div>
       ) : battleship.phase === "placing" ? (
         <div className="mx-auto max-w-[380px]">
-          <p className="mb-2 text-center text-xs font-bold text-white/60">Your fleet</p>
-          <OceanBoard fleet={battleship.fleets[mySeat]} shots={battleship.shotsAt[oppSeat]} showShips interactive={false} variant="a" />
+          <p className="mb-2 text-center text-xs font-bold text-white/60">Your fleet, ready and waiting</p>
+          <OceanBattlefield
+            myFleet={battleship.fleets[mySeat]}
+            shotsOnEnemy={[]}
+            shotsOnMe={[]}
+            enemyInteractive={false}
+            placementInteractive={false}
+          />
         </div>
       ) : (
-        <div className="mx-auto max-w-[380px] space-y-4">
-          <div>
-            <p className="mb-2 text-center text-xs font-bold text-white/60">Enemy waters</p>
-            <OceanBoard
-              fleet={null}
-              shots={battleship.shotsAt[mySeat]}
-              showShips={false}
-              interactive={Boolean(myTurn)}
-              twoStep
-              confirmMode={sonarMode ? "sonar" : "fire"}
-              onTap={(x, y) => void (sonarMode ? pulseSonar(x, y) : fire(x, y))}
-              variant="a"
-              dim
-              prompt={sonarMode ? "CHOOSE A ZONE TO PULSE" : "YOUR TURN — CHOOSE A TARGET"}
-              sonarResult={battleship.lastSonar?.seat === mySeat ? battleship.lastSonar : null}
-            />
-          </div>
+        <div className="mx-auto max-w-[380px] space-y-3">
+          <OceanBattlefield
+            myFleet={battleship.fleets[mySeat]}
+            shotsOnEnemy={battleship.shotsAt[mySeat]}
+            shotsOnMe={battleship.shotsAt[oppSeat]}
+            enemyInteractive={Boolean(myTurn)}
+            placementInteractive={false}
+            confirmMode={sonarMode ? "sonar" : "fire"}
+            onTargetConfirm={(x, y) => void (sonarMode ? pulseSonar(x, y) : fire(x, y))}
+            prompt={sonarMode ? "CHOOSE A ZONE TO PULSE" : myTurn ? "YOUR TURN — CHOOSE A TARGET" : `${oppLabel.toUpperCase()}'S TURN`}
+            sonarResult={battleship.lastSonar?.seat === mySeat ? battleship.lastSonar : null}
+            sonarResultOnMe={battleship.lastSonar?.seat === oppSeat ? battleship.lastSonar : null}
+            computerAim={computerAim}
+            hitFlashAt={hitFlashAt}
+          />
 
           {myTurn && (
             <div className="flex items-center justify-center gap-2">
@@ -462,20 +486,7 @@ export default function BattleshipPage() {
             </div>
           )}
 
-          <div>
-            <p className="mb-2 text-center text-xs font-bold text-white/60">Your waters</p>
-            <OceanBoard
-              fleet={battleship.fleets[mySeat]}
-              shots={battleship.shotsAt[oppSeat]}
-              showShips
-              interactive={false}
-              variant="b"
-              sonarResult={battleship.lastSonar?.seat === oppSeat ? battleship.lastSonar : null}
-            />
-            <div className="mt-2">
-              <BoatStatusStrip fleet={battleship.fleets[mySeat]} />
-            </div>
-          </div>
+          <BoatStatusStrip fleet={battleship.fleets[mySeat]} />
         </div>
       )}
 

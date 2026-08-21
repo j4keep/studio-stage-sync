@@ -1,18 +1,28 @@
 /**
- * YAJ Fleet Clash — hand-drawn 2D canvas art for one water zone (either "enemy waters" or
- * "your waters"). Deliberately flat 2D rather than a 3D engine: the battle screen shows two
- * zones on-screen at once, so this keeps the whole board light on mobile.
+ * YAJ Fleet Clash — ONE continuous ocean battlefield, not two stacked boards. A hazy enemy
+ * horizon at the top and your own clear home waters at the bottom share a single canvas, with
+ * open water and reef in between where shots physically travel between the two fleets. The
+ * hidden 10x10 grids from src/lib/battleship.ts still back both halves — this module only maps
+ * each side's grid cells onto its own band of one continuous scene and back again for taps.
  *
- * The 10x10 logical grid from src/lib/battleship.ts is untouched — this module only maps
- * grid cells onto pixel positions inside a themed ocean scene and draws boats/crew/effects at
- * those positions. Tapping the canvas maps a pixel back to a grid cell the same way.
+ * Flat 2D canvas throughout (no 3D engine): two zones need to render live at once, and characters
+ * are drawn as small blocky sprites in the same visual language as the rest of YAJ Adventures.
  */
 
 import { BOARD_SIZE, Fleet, ShipId } from "@/lib/battleship";
 
-export const VIEW = 340;
-export const CELL = VIEW / BOARD_SIZE;
+export const VIEW_W = 340;
+export const ENEMY_H = 230;
+export const DMZ_H = 66;
+export const PLAYER_TOP = ENEMY_H + DMZ_H;
+export const PLAYER_H = 316;
+export const VIEW_H = PLAYER_TOP + PLAYER_H;
 
+const CELL_X = VIEW_W / BOARD_SIZE;
+const ENEMY_CELL_Y = ENEMY_H / BOARD_SIZE;
+const PLAYER_CELL_Y = PLAYER_H / BOARD_SIZE;
+
+export type Band = "enemy" | "player";
 export type DamageTier = "healthy" | "damaged" | "critical" | "disabled";
 
 export function damageTier(hits: boolean[]): DamageTier {
@@ -23,6 +33,22 @@ export function damageTier(hits: boolean[]): DamageTier {
   return "damaged";
 }
 
+export function toPx(band: Band, gx: number, gy: number) {
+  if (band === "enemy") return { x: gx * CELL_X + CELL_X / 2, y: gy * ENEMY_CELL_Y + ENEMY_CELL_Y / 2 };
+  return { x: gx * CELL_X + CELL_X / 2, y: PLAYER_TOP + gy * PLAYER_CELL_Y + PLAYER_CELL_Y / 2 };
+}
+
+export function cellFromPoint(px: number, py: number): { band: Band; x: number; y: number } | null {
+  if (px < 0 || px >= VIEW_W) return null;
+  if (py >= 0 && py < ENEMY_H) {
+    return { band: "enemy", x: Math.floor(px / CELL_X), y: Math.floor(py / ENEMY_CELL_Y) };
+  }
+  if (py >= PLAYER_TOP && py < VIEW_H) {
+    return { band: "player", x: Math.floor(px / CELL_X), y: Math.floor((py - PLAYER_TOP) / PLAYER_CELL_Y) };
+  }
+  return null;
+}
+
 const BOAT_COLOR: Record<ShipId, { hull: string; deck: string }> = {
   carrier: { hull: "#2FB6C4", deck: "#1c7d87" }, // Voyager
   battleship: { hull: "#6B3FA0", deck: "#472a6b" }, // Clipper
@@ -31,184 +57,156 @@ const BOAT_COLOR: Record<ShipId, { hull: string; deck: string }> = {
   destroyer: { hull: "#7dd3a0", deck: "#4f9a6d" }, // Skiff
 };
 
-/** Fixed decorative terrain per zone — same every game, purely visual (the invisible grid
- *  underneath doesn't care what's drawn where). Two slightly different layouts so the two
- *  zones on screen don't look identical. */
-const ISLANDS_A = [
-  { cx: 0.5, cy: 0.6, r: 1.1 },
-  { cx: 8.7, cy: 1.3, r: 0.75 },
+const ENEMY_ISLANDS = [
+  { cx: 1.2, cy: 1.4, r: 0.85 },
+  { cx: 8.5, cy: 2.2, r: 0.6 },
 ];
-const ISLANDS_B = [
-  { cx: 9.2, cy: 8.6, r: 1.15 },
-  { cx: 0.6, cy: 8.2, r: 0.7 },
+const PLAYER_ISLANDS = [
+  { cx: 9, cy: 1.1, r: 0.95 },
+  { cx: 0.5, cy: 8.3, r: 0.6 },
 ];
-const ROCKS = [
-  { cx: 3.4, cy: 0.4, r: 0.3 },
-  { cx: 6.1, cy: 9.5, r: 0.32 },
-  { cx: 9.5, cy: 4.6, r: 0.26 },
+const REEF = [
+  { x: 0.18, r: 16 },
+  { x: 0.62, r: 12 },
+  { x: 0.85, r: 14 },
 ];
-const BUOYS = [
-  { cx: 4.6, cy: 4.4 },
-  { cx: 1.8, cy: 6.6 },
-];
-
-function toPx(gx: number, gy: number) {
-  return { x: gx * CELL, y: gy * CELL };
-}
-
-export function cellFromPoint(px: number, py: number): { x: number; y: number } | null {
-  const x = Math.floor(px / CELL);
-  const y = Math.floor(py / CELL);
-  if (x < 0 || y < 0 || x >= BOARD_SIZE || y >= BOARD_SIZE) return null;
-  return { x, y };
-}
 
 function palm(g: CanvasRenderingContext2D, x: number, y: number, s: number, sway: number) {
   g.save();
   g.strokeStyle = "#8a5a2b";
-  g.lineWidth = 2.5 * s;
+  g.lineWidth = 2.2 * s;
   g.beginPath();
   g.moveTo(x, y);
-  g.quadraticCurveTo(x + 6 * s * sway, y - 14 * s, x + 9 * s * sway, y - 24 * s);
+  g.quadraticCurveTo(x + 5 * s * sway, y - 12 * s, x + 8 * s * sway, y - 20 * s);
   g.stroke();
-  const topX = x + 9 * s * sway;
-  const topY = y - 24 * s;
+  const topX = x + 8 * s * sway;
+  const topY = y - 20 * s;
   for (let i = 0; i < 5; i++) {
     const a = (Math.PI / 2.6) * i - Math.PI * 0.85;
     g.strokeStyle = i % 2 ? "#2f8f4d" : "#3fae5c";
-    g.lineWidth = 3.5 * s;
+    g.lineWidth = 3 * s;
     g.beginPath();
     g.moveTo(topX, topY);
-    g.quadraticCurveTo(topX + Math.cos(a) * 10 * s, topY + Math.sin(a) * 6 * s - 4 * s, topX + Math.cos(a) * 16 * s, topY + Math.sin(a) * 10 * s + 2 * s);
+    g.quadraticCurveTo(topX + Math.cos(a) * 8 * s, topY + Math.sin(a) * 5 * s - 3 * s, topX + Math.cos(a) * 13 * s, topY + Math.sin(a) * 8 * s + 2 * s);
     g.stroke();
   }
   g.restore();
 }
 
-function island(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, t: number) {
-  const { x, y } = toPx(cx, cy);
-  const px = r * CELL;
+function island(g: CanvasRenderingContext2D, band: Band, cx: number, cy: number, r: number, t: number, hazy: boolean) {
+  const { x, y } = toPx(band, cx, cy);
+  const cellY = band === "enemy" ? ENEMY_CELL_Y : PLAYER_CELL_Y;
+  const px = r * Math.min(CELL_X, cellY) * 2.2;
   g.save();
-  // shallow water halo
-  const halo = g.createRadialGradient(x, y, px * 0.6, x, y, px * 1.7);
-  halo.addColorStop(0, "rgba(255,255,255,0.28)");
+  if (hazy) g.globalAlpha = 0.72;
+  const halo = g.createRadialGradient(x, y, px * 0.6, x, y, px * 1.6);
+  halo.addColorStop(0, "rgba(255,255,255,0.24)");
   halo.addColorStop(1, "rgba(255,255,255,0)");
   g.fillStyle = halo;
   g.beginPath();
-  g.arc(x, y, px * 1.7, 0, Math.PI * 2);
+  g.arc(x, y, px * 1.6, 0, Math.PI * 2);
   g.fill();
-  // sand
   g.fillStyle = "#e8d4a0";
   g.beginPath();
   g.arc(x, y, px, 0, Math.PI * 2);
   g.fill();
-  // grass cap
   g.fillStyle = "#6fbf6f";
   g.beginPath();
-  g.arc(x - px * 0.1, y - px * 0.15, px * 0.72, 0, Math.PI * 2);
+  g.arc(x - px * 0.1, y - px * 0.15, px * 0.7, 0, Math.PI * 2);
   g.fill();
-  palm(g, x - px * 0.15, y - px * 0.05, Math.max(0.55, px * 0.045), Math.sin(t * 1.1) * 0.4);
-  if (px > 16) palm(g, x + px * 0.35, y + px * 0.2, Math.max(0.45, px * 0.035), Math.sin(t * 1.1 + 1) * 0.4);
+  palm(g, x - px * 0.12, y - px * 0.05, Math.max(0.5, px * 0.05), Math.sin(t * 1.1) * 0.4);
   g.restore();
 }
 
-function rock(g: CanvasRenderingContext2D, cx: number, cy: number, r: number) {
-  const { x, y } = toPx(cx, cy);
-  const px = r * CELL;
+function reef(g: CanvasRenderingContext2D, xFrac: number, r: number, t: number) {
+  const x = xFrac * VIEW_W;
+  const y = ENEMY_H + DMZ_H / 2 + Math.sin(t * 0.6 + xFrac * 8) * 4;
   g.save();
-  g.fillStyle = "rgba(255,255,255,0.14)";
+  g.fillStyle = "rgba(255,255,255,0.12)";
   g.beginPath();
-  g.arc(x, y, px * 1.5, 0, Math.PI * 2);
+  g.arc(x, y, r * 1.5, 0, Math.PI * 2);
   g.fill();
   g.fillStyle = "#8a94a3";
   g.beginPath();
-  g.moveTo(x - px, y + px * 0.4);
-  g.lineTo(x - px * 0.5, y - px);
-  g.lineTo(x + px * 0.3, y - px * 0.8);
-  g.lineTo(x + px, y + px * 0.2);
-  g.lineTo(x + px * 0.5, y + px * 0.5);
+  g.moveTo(x - r, y + r * 0.4);
+  g.lineTo(x - r * 0.5, y - r);
+  g.lineTo(x + r * 0.3, y - r * 0.8);
+  g.lineTo(x + r, y + r * 0.2);
+  g.lineTo(x + r * 0.5, y + r * 0.5);
   g.closePath();
   g.fill();
   g.restore();
 }
 
-function buoy(g: CanvasRenderingContext2D, cx: number, cy: number, t: number) {
-  const { x, y } = toPx(cx, cy);
-  const bob = Math.sin(t * 2 + cx) * 2;
-  g.save();
-  g.fillStyle = "rgba(0,0,0,0.15)";
-  g.beginPath();
-  g.ellipse(x, y + 5, 7, 2.4, 0, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = "#FF7A59";
-  g.beginPath();
-  g.arc(x, y + bob, 5, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = "#fff";
-  g.fillRect(x - 5, y + bob - 1.2, 10, 2.4);
-  g.restore();
-}
-
-/** Base water + waves + fixed decorative terrain for one zone. Draw first, every frame. */
-export function drawWater(g: CanvasRenderingContext2D, t: number, variant: "a" | "b", dim: boolean) {
-  const sky = g.createLinearGradient(0, 0, 0, VIEW);
-  sky.addColorStop(0, dim ? "hsl(205 45% 22%)" : "hsl(198 62% 46%)");
-  sky.addColorStop(1, dim ? "hsl(210 50% 14%)" : "hsl(206 60% 30%)");
+/** The whole ocean scene, one continuous surface — draw first, every frame. */
+export function drawScene(g: CanvasRenderingContext2D, t: number) {
+  const sky = g.createLinearGradient(0, 0, 0, VIEW_H);
+  sky.addColorStop(0, "hsl(204 55% 20%)");
+  sky.addColorStop(0.36, "hsl(200 60% 32%)");
+  sky.addColorStop(0.42, "hsl(198 62% 40%)");
+  sky.addColorStop(1, "hsl(204 58% 26%)");
   g.fillStyle = sky;
-  g.fillRect(0, 0, VIEW, VIEW);
+  g.fillRect(0, 0, VIEW_W, VIEW_H);
 
+  // waves — continuous across the whole scene, not per-band
   g.save();
-  g.globalAlpha = dim ? 0.08 : 0.14;
+  g.globalAlpha = 0.1;
   g.strokeStyle = "#ffffff";
-  g.lineWidth = 1.4;
-  for (let i = 0; i < 7; i++) {
-    const yy = ((t * 22 + i * 52) % (VIEW + 60)) - 30;
+  g.lineWidth = 1.3;
+  for (let i = 0; i < 11; i++) {
+    const yy = ((t * 20 + i * 46) % (VIEW_H + 60)) - 30;
     g.beginPath();
     g.moveTo(0, yy);
-    for (let x = 0; x <= VIEW; x += 14) g.lineTo(x, yy + Math.sin(x * 0.06 + t * 1.6 + i) * 4);
+    for (let x = 0; x <= VIEW_W; x += 14) g.lineTo(x, yy + Math.sin(x * 0.06 + t * 1.5 + i) * 3.5);
     g.stroke();
   }
   g.restore();
 
-  const islands = variant === "a" ? ISLANDS_A : ISLANDS_B;
-  islands.forEach((isl) => island(g, isl.cx, isl.cy, isl.r, t));
-  ROCKS.forEach((r) => rock(g, r.cx, r.cy, r.r));
-  BUOYS.forEach((b) => buoy(g, b.cx, b.cy, t));
+  // haze over the far/enemy horizon — depth cue, not a border
+  const haze = g.createLinearGradient(0, 0, 0, ENEMY_H + 40);
+  haze.addColorStop(0, "rgba(180,210,230,0.16)");
+  haze.addColorStop(1, "rgba(180,210,230,0)");
+  g.fillStyle = haze;
+  g.fillRect(0, 0, VIEW_W, ENEMY_H + 40);
 
-  // grid line hints — sector seams, not a spreadsheet: very faint, only every other line
+  ENEMY_ISLANDS.forEach((isl) => island(g, "enemy", isl.cx, isl.cy, isl.r, t, true));
+  REEF.forEach((r) => reef(g, r.x, r.r, t));
+  PLAYER_ISLANDS.forEach((isl) => island(g, "player", isl.cx, isl.cy, isl.r, t, false));
+
+  // very faint sector seams — present for orientation, never the focal element
   g.save();
-  g.globalAlpha = 0.05;
+  g.globalAlpha = 0.045;
   g.strokeStyle = "#ffffff";
   g.lineWidth = 1;
   for (let i = 2; i < BOARD_SIZE; i += 2) {
+    const x = i * CELL_X;
     g.beginPath();
-    g.moveTo(i * CELL, 0);
-    g.lineTo(i * CELL, VIEW);
-    g.stroke();
-    g.beginPath();
-    g.moveTo(0, i * CELL);
-    g.lineTo(VIEW, i * CELL);
+    g.moveTo(x, 0);
+    g.lineTo(x, VIEW_H);
     g.stroke();
   }
   g.restore();
 }
 
-/** A small flat crew figure standing on deck — same blocky proportions as the YAJ character
- *  family, drawn flat since this scene doesn't carry a 3D rig. */
+/** A standalone crew reaction at a specific grid cell, unattached to any boat — used for the
+ *  brief "enemy crew reacts" flash at a hit cell without revealing the rest of their boat. */
+export function drawCrewFlash(g: CanvasRenderingContext2D, band: Band, x: number, y: number, t: number, seed: number) {
+  const { x: px, y: py } = toPx(band, x + 0.5, y + 0.5);
+  const s = Math.min(CELL_X, band === "enemy" ? ENEMY_CELL_Y : PLAYER_CELL_Y) * 0.11;
+  crew(g, px, py, s, "duck", t, seed);
+}
+
 function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose: "idle" | "duck" | "wave" | "celebrate", t: number, seed: number) {
   g.save();
   g.translate(x, y);
   const bob = Math.sin(t * 2.4 + seed) * 0.6;
   g.translate(0, pose === "duck" ? 2.5 * s : bob);
   const crouch = pose === "duck" ? 0.6 : 1;
-  // legs
   g.fillStyle = "#2c3350";
   g.fillRect(-3 * s, 3 * s * crouch, 2.4 * s, 4 * s * crouch);
   g.fillRect(0.6 * s, 3 * s * crouch, 2.4 * s, 4 * s * crouch);
-  // torso
   g.fillStyle = "#6B3FA0";
   g.fillRect(-3.4 * s, -2 * s * crouch, 6.8 * s, 5.5 * s * crouch);
-  // arms
   g.strokeStyle = "#f2c396";
   g.lineWidth = 2 * s;
   g.lineCap = "round";
@@ -220,11 +218,11 @@ function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose
   } else if (pose === "celebrate") {
     g.beginPath();
     g.moveTo(-3.2 * s, -1 * s);
-    g.lineTo(-5.5 * s, -7 * s);
+    g.lineTo(-5.5 * s, -7 * s + Math.sin(t * 10) * 1.2 * s);
     g.stroke();
     g.beginPath();
     g.moveTo(3.2 * s, -1 * s);
-    g.lineTo(5.5 * s, -7 * s);
+    g.lineTo(5.5 * s, -7 * s - Math.sin(t * 10) * 1.2 * s);
     g.stroke();
   } else {
     g.beginPath();
@@ -236,7 +234,6 @@ function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose
     g.lineTo(4 * s, 2 * s * crouch);
     g.stroke();
   }
-  // head
   g.fillStyle = "#f2c396";
   g.fillRect(-2.6 * s, -6.5 * s * crouch, 5.2 * s, 5 * s * crouch);
   g.restore();
@@ -254,24 +251,21 @@ function hullPath(g: CanvasRenderingContext2D, w: number, h: number) {
   g.closePath();
 }
 
-export type BoatDraw = {
-  shipId: ShipId;
-  cells: { x: number; y: number }[];
-  tier: DamageTier;
-};
+export type BoatDraw = { shipId: ShipId; cells: { x: number; y: number }[]; tier: DamageTier };
 
-/** One boat, oriented along its cells, with a crew figure and damage state. */
-export function drawBoat(g: CanvasRenderingContext2D, boat: BoatDraw, t: number, showCrew: boolean) {
+/** One boat, oriented along its cells, in a given band, with a crew figure and damage state. */
+export function drawBoat(g: CanvasRenderingContext2D, band: Band, boat: BoatDraw, t: number, showCrew: boolean, pose: "idle" | "duck" | "celebrate" = "idle") {
   const xs = boat.cells.map((c) => c.x);
   const ys = boat.cells.map((c) => c.y);
   const horizontal = Math.max(...xs) > Math.min(...xs);
   const minX = Math.min(...xs);
   const minY = Math.min(...ys);
   const len = boat.cells.length;
-  const cx = (minX + (horizontal ? len : 1) / 2) * CELL;
-  const cy = (minY + (horizontal ? 1 : len) / 2) * CELL;
-  const w = (horizontal ? len : 1) * CELL - 6;
-  const h = (horizontal ? 1 : len) * CELL - 6;
+  const cellY = band === "enemy" ? ENEMY_CELL_Y : PLAYER_CELL_Y;
+  const cx = toPx(band, minX + (horizontal ? len : 1) / 2, 0).x;
+  const cy = toPx(band, 0, minY + (horizontal ? 1 : len) / 2).y;
+  const w = (horizontal ? len : 1) * CELL_X - 5;
+  const h = (horizontal ? 1 : len) * cellY - 5;
   const long = Math.max(w, h);
   const short = Math.min(w, h);
 
@@ -286,13 +280,12 @@ export function drawBoat(g: CanvasRenderingContext2D, boat: BoatDraw, t: number,
   g.rotate(tilt);
   g.translate(0, sit);
 
-  // wake
   if (!disabled) {
     g.save();
-    g.globalAlpha = 0.18;
+    g.globalAlpha = 0.16;
     g.fillStyle = "#ffffff";
     g.beginPath();
-    g.ellipse(0, short * 0.5, long * 0.42, short * 0.28, 0, 0, Math.PI * 2);
+    g.ellipse(0, short * 0.5, long * 0.4, short * 0.26, 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
   }
@@ -301,23 +294,21 @@ export function drawBoat(g: CanvasRenderingContext2D, boat: BoatDraw, t: number,
   g.fillStyle = disabled ? "rgba(90,95,105,0.7)" : palette.hull;
   g.fill();
   g.strokeStyle = "rgba(0,0,0,0.35)";
-  g.lineWidth = 1.4;
+  g.lineWidth = 1.2;
   g.stroke();
 
-  // deckhouse
   g.fillStyle = disabled ? "rgba(60,64,72,0.8)" : palette.deck;
   g.fillRect(-long * 0.14, -short * 0.28, long * 0.28, short * 0.56);
 
-  // smoke on damaged/critical/disabled
   if (boat.tier !== "healthy") {
-    const puffs = boat.tier === "disabled" ? 4 : boat.tier === "critical" ? 3 : 1;
+    const puffs = boat.tier === "disabled" ? 3 : boat.tier === "critical" ? 2 : 1;
     for (let i = 0; i < puffs; i++) {
       const life = (t * 0.6 + i * 0.35) % 1;
       g.save();
-      g.globalAlpha = 0.28 * (1 - life);
+      g.globalAlpha = 0.26 * (1 - life);
       g.fillStyle = "#5b5f68";
       g.beginPath();
-      g.arc(0, -short * 0.4 - life * 16, 3 + life * 6, 0, Math.PI * 2);
+      g.arc(0, -short * 0.4 - life * 14, 2.6 + life * 5, 0, Math.PI * 2);
       g.fill();
       g.restore();
     }
@@ -325,56 +316,50 @@ export function drawBoat(g: CanvasRenderingContext2D, boat: BoatDraw, t: number,
   g.restore();
 
   if (showCrew && !disabled) {
-    const pose = boat.tier === "critical" ? "duck" : "idle";
-    crew(g, cx, cy - short * 0.05, Math.max(1.1, CELL * 0.09), pose, t, minX + minY);
+    crew(g, cx, cy - short * 0.05, Math.max(1, Math.min(CELL_X, cellY) * 0.09), pose, t, minX + minY);
   }
 }
 
-export type FxKind = "splash" | "hit" | "sonarClear" | "sonarFound";
-export type Fx = { kind: FxKind; x: number; y: number; start: number };
+export type FxKind = "splash" | "hit" | "sonarClear" | "sonarFound" | "muzzle";
+export type Fx = { kind: FxKind; band: Band; x: number; y: number; start: number };
 
 export function drawFx(g: CanvasRenderingContext2D, fx: Fx, now: number) {
   const age = now - fx.start;
-  const { x, y } = toPx(fx.x + 0.5, fx.y + 0.5);
+  const { x, y } = toPx(fx.band, fx.x + 0.5, fx.y + 0.5);
   if (fx.kind === "splash") {
+    const life = Math.min(1, age / 0.55);
+    g.save();
+    g.globalAlpha = (1 - life) * 0.8;
+    g.strokeStyle = "#e8f6ff";
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.arc(x, y, 3 + life * 13, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  } else if (fx.kind === "hit") {
     const life = Math.min(1, age / 0.6);
     g.save();
-    g.globalAlpha = 1 - life;
-    g.strokeStyle = "#e8f6ff";
+    g.globalAlpha = (1 - life) * 0.9;
+    g.strokeStyle = "#ffe1c9";
     g.lineWidth = 2;
-    for (let r = 0; r < 2; r++) {
+    g.beginPath();
+    g.arc(x, y, 4 + life * 15, 0, Math.PI * 2);
+    g.stroke();
+    g.fillStyle = "rgba(90,95,105,0.6)";
+    for (let i = 0; i < 3; i++) {
       g.beginPath();
-      g.arc(x, y, 4 + life * (14 + r * 8), 0, Math.PI * 2);
-      g.stroke();
-    }
-    g.fillStyle = "rgba(255,255,255,0.85)";
-    for (let i = 0; i < 5; i++) {
-      const a = (i / 5) * Math.PI * 2;
-      const d = life * 12;
-      g.beginPath();
-      g.arc(x + Math.cos(a) * d, y + Math.sin(a) * d - life * 10, 1.6, 0, Math.PI * 2);
+      g.arc(x - 3 + i * 3, y - 5 - life * 12, 2.4, 0, Math.PI * 2);
       g.fill();
     }
     g.restore();
-  } else if (fx.kind === "hit") {
-    const life = Math.min(1, age / 0.7);
+  } else if (fx.kind === "muzzle") {
+    const life = Math.min(1, age / 0.35);
     g.save();
     g.globalAlpha = 1 - life;
-    g.strokeStyle = "#ffe1c9";
-    g.lineWidth = 2.5;
+    g.fillStyle = "#ffd9a0";
     g.beginPath();
-    g.arc(x, y, 5 + life * 18, 0, Math.PI * 2);
-    g.stroke();
-    g.fillStyle = "#c0492e";
-    g.beginPath();
-    g.arc(x, y, 6, 0, Math.PI * 2);
+    g.arc(x, y, 5 + life * 3, 0, Math.PI * 2);
     g.fill();
-    g.fillStyle = "rgba(90,95,105,0.7)";
-    for (let i = 0; i < 3; i++) {
-      g.beginPath();
-      g.arc(x - 4 + i * 4, y - 6 - life * 14, 3, 0, Math.PI * 2);
-      g.fill();
-    }
     g.restore();
   } else {
     const life = Math.min(1, age / 1.1);
@@ -385,51 +370,83 @@ export function drawFx(g: CanvasRenderingContext2D, fx: Fx, now: number) {
     g.lineWidth = 2;
     for (let r = 0; r < 3; r++) {
       g.beginPath();
-      g.arc(x, y, CELL * 0.7 + life * 20 + r * 6, 0, Math.PI * 2);
+      g.arc(x, y, 14 + life * 20 + r * 6, 0, Math.PI * 2);
       g.stroke();
     }
     g.restore();
   }
 }
 
-export function drawProjectile(g: CanvasRenderingContext2D, x: number, y: number, progress: number) {
-  const { x: tx, y: ty } = toPx(x + 0.5, y + 0.5);
-  const startY = -20;
-  const py = startY + (ty - startY) * progress;
-  const px = tx;
-  const arc = Math.sin(progress * Math.PI) * -26;
+/** A permanent-but-quiet record of a resolved shot — small and organic, deliberately NOT a
+ *  crisp uniform icon, so a long game doesn't visually reconstitute a grid of markers. */
+export function drawMark(g: CanvasRenderingContext2D, band: Band, x: number, y: number, kind: "hit" | "miss", seed: number) {
+  const { x: cx, y: cy } = toPx(band, x + 0.5, y + 0.5);
+  const wobble = Math.sin(seed * 12.9) * 2;
   g.save();
-  g.fillStyle = "#2b2140";
+  if (kind === "miss") {
+    g.globalAlpha = 0.22;
+    g.fillStyle = "#0f2a3a";
+    g.beginPath();
+    g.ellipse(cx + wobble, cy, 5.5, 3.4, seed, 0, Math.PI * 2);
+    g.fill();
+  } else {
+    g.globalAlpha = 0.75;
+    g.fillStyle = "#b3492e";
+    g.beginPath();
+    g.arc(cx, cy, 3.4, 0, Math.PI * 2);
+    g.fill();
+    g.globalAlpha = 0.5;
+    g.strokeStyle = "#2c1a12";
+    g.lineWidth = 1.1;
+    g.beginPath();
+    g.moveTo(cx - 3, cy - 3 + wobble * 0.3);
+    g.lineTo(cx + 3, cy + 3 - wobble * 0.3);
+    g.stroke();
+  }
+  g.restore();
+}
+
+export function drawReticle(g: CanvasRenderingContext2D, band: Band, x: number, y: number, t: number, color = "#FFD166") {
+  const { x: px, y: py } = toPx(band, x + 0.5, y + 0.5);
+  const pulse = 1 + Math.sin(t * 6) * 0.08;
+  const r = Math.min(CELL_X, band === "enemy" ? ENEMY_CELL_Y : PLAYER_CELL_Y) * 0.42;
+  g.save();
+  g.strokeStyle = color;
+  g.lineWidth = 2;
   g.beginPath();
-  g.arc(px, py + arc, 3.6, 0, Math.PI * 2);
-  g.fill();
-  g.strokeStyle = "rgba(255,255,255,0.5)";
-  g.lineWidth = 1.5;
+  g.arc(px, py, r * pulse, 0, Math.PI * 2);
+  g.stroke();
   g.beginPath();
-  g.moveTo(px, py + arc);
-  g.lineTo(px - 2, py + arc + 8);
+  g.moveTo(px - r * 1.3, py);
+  g.lineTo(px - r * 0.7, py);
+  g.moveTo(px + r * 0.7, py);
+  g.lineTo(px + r * 1.3, py);
+  g.moveTo(px, py - r * 1.3);
+  g.lineTo(px, py - r * 0.7);
+  g.moveTo(px, py + r * 0.7);
+  g.lineTo(px, py + r * 1.3);
   g.stroke();
   g.restore();
 }
 
-export function drawReticle(g: CanvasRenderingContext2D, x: number, y: number, t: number) {
-  const { x: px, y: py } = toPx(x + 0.5, y + 0.5);
-  const pulse = 1 + Math.sin(t * 6) * 0.08;
+/** A shot physically crossing the open water between the two fleets. */
+export function drawProjectile(g: CanvasRenderingContext2D, from: { x: number; y: number }, to: { x: number; y: number }, progress: number) {
+  const x = from.x + (to.x - from.x) * progress;
+  const y = from.y + (to.y - from.y) * progress;
+  const arc = -Math.sin(progress * Math.PI) * 30;
   g.save();
-  g.strokeStyle = "#FFD166";
-  g.lineWidth = 2;
+  g.fillStyle = "#2b2140";
   g.beginPath();
-  g.arc(px, py, CELL * 0.42 * pulse, 0, Math.PI * 2);
-  g.stroke();
+  g.arc(x, y + arc, 3.6, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = "rgba(255,255,255,0.55)";
+  g.lineWidth = 1.5;
+  const trail = 10;
+  const px = from.x + (to.x - from.x) * Math.max(0, progress - 0.06);
+  const py = from.y + (to.y - from.y) * Math.max(0, progress - 0.06) - Math.sin(Math.max(0, progress - 0.06) * Math.PI) * 30;
   g.beginPath();
-  g.moveTo(px - CELL * 0.55, py);
-  g.lineTo(px - CELL * 0.3, py);
-  g.moveTo(px + CELL * 0.3, py);
-  g.lineTo(px + CELL * 0.55, py);
-  g.moveTo(px, py - CELL * 0.55);
-  g.lineTo(px, py - CELL * 0.3);
-  g.moveTo(px, py + CELL * 0.3);
-  g.lineTo(px, py + CELL * 0.55);
+  g.moveTo(x, y + arc);
+  g.lineTo(px, py);
   g.stroke();
   g.restore();
 }
