@@ -40,6 +40,7 @@ export const GAME_PATHS: Record<GameType, string> = {
   treasure_rush: "treasure-rush",
   tower_escape: "tower-escape",
   survival_island: "survival-island",
+  neighborhood: "neighborhood",
 };
 
 export function gameRoute(type: GameType, id?: string) {
@@ -85,6 +86,7 @@ export function initialStateFor(type: GameType): any {
     case "treasure_rush":
     case "tower_escape":
     case "survival_island":
+    case "neighborhood":
       return { moveNumber: 0 };
     case "obby":
     case "city_run":

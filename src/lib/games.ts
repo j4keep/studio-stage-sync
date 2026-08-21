@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot" | "knock_hockey" | "bingo" | "word_link" | "mini_golf" | "snake_royale" | "obby" | "city_run" | "treasure_rush" | "tower_escape" | "survival_island";
+export type GameType = "tic_tac_toe" | "connect_four" | "dominoes" | "checkers" | "trivia" | "yaj_dash" | "pool" | "boxing" | "battleship" | "driving" | "poker" | "pop_shot" | "knock_hockey" | "bingo" | "word_link" | "mini_golf" | "snake_royale" | "obby" | "city_run" | "treasure_rush" | "tower_escape" | "survival_island" | "neighborhood";
 export type GameMode = "solo" | "multiplayer";
 export type GameStatus = "waiting" | "active" | "completed" | "cancelled";
 
@@ -83,6 +83,7 @@ export const GAME_LABELS: Record<GameType, string> = {
   treasure_rush: "YAJ Treasure Rush",
   tower_escape: "YAJ Tower Escape",
   survival_island: "YAJ Survival Island",
+  neighborhood: "YAJ Neighborhood Adventure",
 };
 
 /** Create a solo game vs the computer. */
