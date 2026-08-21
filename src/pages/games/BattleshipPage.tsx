@@ -103,6 +103,7 @@ export default function BattleshipPage() {
       subtitle="River race • crew battle • survival run"
       artUrl={fleetClashArt}
       status={finished ? `${status} · ${score.toLocaleString()} pts` : status}
+      hideStatusBanner
       finished={finished}
       shareText={`I just scored ${score.toLocaleString()} in YAJ Fleet Clash 🌊`}
       onRematch={rematch}
@@ -115,6 +116,7 @@ export default function BattleshipPage() {
       resultDetail={won ? `Your crew crossed the final cove first with ${score.toLocaleString()} points.` : `The rival crossed first. You scored ${score.toLocaleString()} points — run the river again.`}
     >
       <FleetClashStage
+        key={game.id}
         opponentName={oppLabel}
         muted={muted}
         onToggleMute={() => setMuted((v) => !v)}

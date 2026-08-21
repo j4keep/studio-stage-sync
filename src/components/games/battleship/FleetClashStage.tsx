@@ -736,7 +736,7 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
     dx = Math.max(-STEER_STICK_MAX, Math.min(STEER_STICK_MAX, dx));
     setKnob({ ox: o.x, oy: o.y, dx });
     const dead = 0.12;
-    let nx = dx / STEER_STICK_MAX;
+    let nx = -dx / STEER_STICK_MAX;
     if (Math.abs(nx) < dead) nx = 0;
     inputRef.current.x = nx;
   };
@@ -815,7 +815,7 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
   }, []);
 
   return (
-    <div className="relative mx-auto h-[72dvh] min-h-[560px] max-h-[780px] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/15 bg-sky-900 shadow-[0_22px_70px_rgba(0,0,0,.35)]">
+    <div className="relative mx-auto h-[80dvh] min-h-[560px] max-h-[860px] w-full max-w-[560px] overflow-hidden rounded-[28px] border border-white/15 bg-sky-900 shadow-[0_22px_70px_rgba(0,0,0,.35)]">
       <Canvas shadows camera={{ position: [0, 11.2, -15.5], fov: 55 }} dpr={[1, 1.55]}>
         <BattleScene
           inputRef={inputRef}

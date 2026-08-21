@@ -33,6 +33,8 @@ type Props = {
   footer?: ReactNode;
   /** Optional key art shown behind the start splash, passed straight through to GameIntro. */
   artUrl?: string;
+  /** Hide the instructional status banner above the game area, letting the game fill that space. */
+  hideStatusBanner?: boolean;
 };
 
 export default function GameShell({
@@ -53,6 +55,7 @@ export default function GameShell({
   resultTitle,
   resultDetail,
   footer,
+  hideStatusBanner,
 }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -141,17 +144,19 @@ export default function GameShell({
           </div>
         )}
 
-        <div
-          className="mx-auto mt-3 max-w-[420px] rounded-2xl border border-primary/25 px-3 py-2.5 text-center"
-          style={{
-            background: "linear-gradient(180deg, hsl(var(--primary) / 0.18), hsl(var(--primary) / 0.05))",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
-          }}
-        >
-          <p key={status} className="animate-fade-in text-sm font-black">
-            {status}
-          </p>
-        </div>
+        {!hideStatusBanner && (
+          <div
+            className="mx-auto mt-3 max-w-[420px] rounded-2xl border border-primary/25 px-3 py-2.5 text-center"
+            style={{
+              background: "linear-gradient(180deg, hsl(var(--primary) / 0.18), hsl(var(--primary) / 0.05))",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08)",
+            }}
+          >
+            <p key={status} className="animate-fade-in text-sm font-black">
+              {status}
+            </p>
+          </div>
+        )}
 
         <div className="mt-5">{children}</div>
 
