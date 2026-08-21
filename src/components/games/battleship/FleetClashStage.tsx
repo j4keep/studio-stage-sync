@@ -4,8 +4,12 @@ import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
 import { battleshipSfx } from "@/lib/battleship-sfx";
 
-const COURSE_LENGTH = 920;
+const COURSE_LENGTH = 1450;
 const RIVER_HALF = 11.5;
+const STORM_START = 825;
+const STORM_END = 1050;
+const SHARK_START = 1050;
+const SHARK_END = 1280;
 const PLAYER_SPEED = 13.4;
 const RIVAL_SPEED = 13.0;
 const STEER_SPEED = 11.2;
@@ -24,7 +28,7 @@ type Shot = {
   vx: number;
   vz: number;
 };
-type Obstacle = { id: number; x: number; z: number; r: number; kind: "rock" | "island" | "buoy" | "log" };
+type Obstacle = { id: number; x: number; z: number; r: number; kind: "rock" | "island" | "buoy" | "log" | "shark" };
 type CrewState = { knockedUntil: number; side: -1 | 1 };
 
 type Runtime = {
@@ -72,8 +76,10 @@ const zones: Zone[] = [
   { name: "Rock Canyon", start: 170, end: 340, water: "#148ab7", bank: "#78654e", accent: "#ff9a55" },
   { name: "Tunnel Run", start: 340, end: 505, water: "#1179a4", bank: "#485361", accent: "#7ce8ff" },
   { name: "Wild Rapids", start: 505, end: 690, water: "#18a5cf", bank: "#4f8b58", accent: "#ffffff" },
-  { name: "Falls Gorge", start: 690, end: 825, water: "#0f7ca7", bank: "#594d43", accent: "#77e9ff" },
-  { name: "Final Cove", start: 825, end: COURSE_LENGTH, water: "#1598bd", bank: "#3e7d50", accent: "#ffd84a" },
+  { name: "Falls Gorge", start: 690, end: STORM_START, water: "#0f7ca7", bank: "#594d43", accent: "#77e9ff" },
+  { name: "Storm Reach", start: STORM_START, end: STORM_END, water: "#1a4f72", bank: "#3d4a4a", accent: "#c7e3ff" },
+  { name: "Shark Shallows", start: STORM_END, end: SHARK_END, water: "#0e8f8a", bank: "#8a7a4e", accent: "#ff5a5a" },
+  { name: "Final Cove", start: SHARK_END, end: COURSE_LENGTH, water: "#1598bd", bank: "#3e7d50", accent: "#ffd84a" },
 ];
 
 function zoneAt(z: number) {
@@ -94,6 +100,24 @@ function seededNoise(n: number) {
   return x - Math.floor(x);
 }
 
+function smoothstep(a: number, b: number, x: number) {
+  const t = Math.max(0, Math.min(1, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+/** How much the river bends at this point in the course — 0 while running through the
+ *  tunnel/rapids/falls (those hazards are fixed structures, so that stretch stays straight),
+ *  a smooth S-curve everywhere else so the channel genuinely turns rather than running dead
+ *  straight the whole race. */
+function curveEnvelope(z: number) {
+  if (z < 340) return smoothstep(0, 60, z) * (1 - smoothstep(280, 340, z));
+  return smoothstep(765, STORM_START, z);
+}
+
+function riverCenterX(z: number) {
+  return curveEnvelope(z) * (Math.sin(z * 0.0065) * 5.5 + Math.sin(z * 0.0021 + 1.4) * 3.0);
+}
+
 const obstacles: Obstacle[] = (() => {
   const out: Obstacle[] = [];
   let id = 1;
@@ -102,11 +126,13 @@ const obstacles: Obstacle[] = (() => {
     const count = z < 170 ? 1 : difficulty < 0.55 ? 2 : 2 + (id % 3 === 0 ? 1 : 0);
     for (let j = 0; j < count; j++) {
       const n = seededNoise(id * 7.13 + j * 3.7);
-      const x = -8.5 + n * 17;
+      const zPos = z + j * 5.2;
+      const x = riverCenterX(zPos) + (-8.5 + n * 17);
+      const inSharks = zPos >= SHARK_START + 15 && zPos < SHARK_END - 15;
       const kinds: Obstacle["kind"][] = z > 500 ? ["rock", "rock", "log", "buoy", "island"] : ["rock", "buoy", "island"];
-      const kind = kinds[(id + j) % kinds.length];
-      const r = kind === "island" ? 2.25 + difficulty * 0.9 : kind === "log" ? 1.55 : kind === "buoy" ? 0.8 : 1.3 + difficulty * 0.9;
-      out.push({ id: id++, x, z: z + j * 5.2, r, kind });
+      const kind: Obstacle["kind"] = inSharks && (id + j) % 4 === 0 ? "shark" : kinds[(id + j) % kinds.length];
+      const r = kind === "island" ? 2.25 + difficulty * 0.9 : kind === "log" ? 1.55 : kind === "buoy" ? 0.8 : kind === "shark" ? 1.4 : 1.3 + difficulty * 0.9;
+      out.push({ id: id++, x: kind === "shark" ? riverCenterX(zPos) + (n - 0.5) * 6 : x, z: zPos, r, kind });
     }
   }
   return out;
@@ -173,37 +199,49 @@ function Rapids() {
   );
 }
 
+const RIVER_SEG = 20;
+
 function RiverWorld() {
   return (
     <group>
       {zones.map((zone) => {
-        const len = zone.end - zone.start;
-        const mid = zone.start + len / 2;
-        const y = riverY(mid);
+        const segCount = Math.ceil((zone.end - zone.start) / RIVER_SEG);
         return (
           <group key={zone.name}>
-            <mesh position={[0, y - 0.25, mid]} receiveShadow>
-              <boxGeometry args={[RIVER_HALF * 2, 0.45, len + 2]} />
-              <meshStandardMaterial color={zone.water} roughness={0.26} metalness={0.04} />
-            </mesh>
-            <mesh position={[-18, y, mid]} receiveShadow>
-              <boxGeometry args={[13.4, 0.9, len + 4]} />
-              <meshStandardMaterial color={zone.bank} roughness={0.95} />
-            </mesh>
-            <mesh position={[18, y, mid]} receiveShadow>
-              <boxGeometry args={[13.4, 0.9, len + 4]} />
-              <meshStandardMaterial color={zone.bank} roughness={0.95} />
-            </mesh>
+            {Array.from({ length: segCount }, (_, i) => {
+              const segStart = zone.start + i * RIVER_SEG;
+              const segLen = Math.min(RIVER_SEG, zone.end - segStart);
+              const mid = segStart + segLen / 2;
+              const y = riverY(mid);
+              const cx = riverCenterX(mid);
+              return (
+                <group key={i}>
+                  <mesh position={[cx, y - 0.25, mid]} receiveShadow>
+                    <boxGeometry args={[RIVER_HALF * 2, 0.45, segLen + 1]} />
+                    <meshStandardMaterial color={zone.water} roughness={0.26} metalness={0.04} />
+                  </mesh>
+                  <mesh position={[cx - 18, y, mid]} receiveShadow>
+                    <boxGeometry args={[13.4, 0.9, segLen + 1.5]} />
+                    <meshStandardMaterial color={zone.bank} roughness={0.95} />
+                  </mesh>
+                  <mesh position={[cx + 18, y, mid]} receiveShadow>
+                    <boxGeometry args={[13.4, 0.9, segLen + 1.5]} />
+                    <meshStandardMaterial color={zone.bank} roughness={0.95} />
+                  </mesh>
+                </group>
+              );
+            })}
           </group>
         );
       })}
 
-      {Array.from({ length: 30 }).map((_, i) => {
+      {Array.from({ length: 48 }).map((_, i) => {
         const z = 18 + i * 31;
+        const z2 = z + 11;
         return (
           <group key={i}>
-            <Palm x={-13.3 - (i % 2) * 1.8} z={z} y={riverY(z)} s={0.72 + (i % 3) * 0.08} />
-            <Palm x={13.2 + (i % 2) * 1.7} z={z + 11} y={riverY(z + 11)} s={0.72 + ((i + 1) % 3) * 0.08} />
+            <Palm x={riverCenterX(z) - 13.3 - (i % 2) * 1.8} z={z} y={riverY(z)} s={0.72 + (i % 3) * 0.08} />
+            <Palm x={riverCenterX(z2) + 13.2 + (i % 2) * 1.7} z={z2} y={riverY(z2)} s={0.72 + ((i + 1) % 3) * 0.08} />
           </group>
         );
       })}
@@ -264,6 +302,9 @@ function RiverWorld() {
             </mesh>
           );
         }
+        if (o.kind === "shark") {
+          return <SharkMesh key={o.id} x={o.x} z={o.z} y={y} />;
+        }
         return (
           <mesh key={o.id} position={[o.x, y + 0.45, o.z]} castShadow>
             <dodecahedronGeometry args={[o.r, 0]} />
@@ -272,9 +313,45 @@ function RiverWorld() {
         );
       })}
 
-      <mesh position={[0, riverY(COURSE_LENGTH) + 0.04, COURSE_LENGTH]} receiveShadow>
+      <mesh position={[riverCenterX(COURSE_LENGTH), riverY(COURSE_LENGTH) + 0.04, COURSE_LENGTH]} receiveShadow>
         <boxGeometry args={[22, 0.12, 1.5]} />
         <meshStandardMaterial color="#ffd84a" emissive="#ffb300" emissiveIntensity={0.7} />
+      </mesh>
+    </group>
+  );
+}
+
+/** A shark that patrols just under the surface and periodically leaps clear across the
+ *  river — the fin telegraphs it, then it arcs up out of the water forcing a duck. */
+function SharkMesh({ x, z, y }: { x: number; z: number; y: number }) {
+  const group = useRef<any>(null);
+  const phase = useRef(seededNoise(x * 3.1 + z * 1.7) * Math.PI * 2);
+
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    const t = clock.elapsedTime + phase.current;
+    const cycle = 3.2;
+    const p = (t % cycle) / cycle;
+    const leap = Math.max(0, Math.sin(p * Math.PI * 2.4));
+    const arcHeight = leap > 0 ? leap * 2.6 : 0;
+    group.current.position.set(x, y + 0.15 + arcHeight, z);
+    group.current.rotation.x = -leap * 0.9;
+    group.current.rotation.z = Math.sin(t * 4) * 0.12;
+  });
+
+  return (
+    <group ref={group} position={[x, y + 0.15, z]}>
+      <mesh rotation={[0, 0, 0]} castShadow>
+        <coneGeometry args={[0.42, 2.1, 8]} />
+        <meshStandardMaterial color="#5a6b78" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.55, -0.3]} rotation={[Math.PI, 0, 0]} castShadow>
+        <coneGeometry args={[0.32, 0.6, 6]} />
+        <meshStandardMaterial color="#5a6b78" roughness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.55, 0.5]} castShadow>
+        <coneGeometry args={[0.16, 0.5, 5]} />
+        <meshStandardMaterial color="#3f4b55" roughness={0.6} />
       </mesh>
     </group>
   );
@@ -372,6 +449,45 @@ function Swimmer({ color, x, z, y }: { color: string; x: number; z: number; y: n
   );
 }
 
+/** Rain that follows the player boat through Storm Reach — a small pool of falling streaks
+ *  recycled overhead so it always reads as rain right around the action. */
+function Rain({ originRef }: { originRef: MutableRefObject<Runtime> }) {
+  const drops = useMemo(
+    () =>
+      Array.from({ length: 55 }, () => ({
+        ox: (Math.random() - 0.5) * 26,
+        oz: (Math.random() - 0.5) * 26,
+        oy: Math.random() * 10,
+        speed: 15 + Math.random() * 7,
+      })),
+    [],
+  );
+  const refs = useRef<any[]>([]);
+
+  useFrame((_, dt) => {
+    const s = originRef.current;
+    const baseY = riverY(s.z);
+    drops.forEach((d, i) => {
+      const m = refs.current[i];
+      if (!m) return;
+      d.oy -= d.speed * dt;
+      if (d.oy < 0) d.oy = 10 + Math.random() * 4;
+      m.position.set(s.x + d.ox, baseY + d.oy, s.z + d.oz);
+    });
+  });
+
+  return (
+    <group>
+      {drops.map((_, i) => (
+        <mesh key={i} ref={(el) => { refs.current[i] = el; }}>
+          <cylinderGeometry args={[0.02, 0.02, 0.55, 4]} />
+          <meshBasicMaterial color="#cfe9ff" transparent opacity={0.55} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
 function ProjectileMesh({ shot }: { shot: Shot }) {
   return (
     <group position={[shot.x, shot.y, shot.z]}>
@@ -443,6 +559,13 @@ function BattleScene({
   const runtime = useRef<Runtime>(resetRuntime());
   const lastHud = useRef(0);
   const lastStatus = useRef(0);
+  const ambientRef = useRef<any>(null);
+  const dirRef = useRef<any>(null);
+  const stormActiveRef = useRef(false);
+  const lightningTimer = useRef(3);
+  const lightningBoost = useRef(0);
+
+  useEffect(() => () => battleshipSfx.rainStop(), []);
   const [shots, setShots] = useState<Shot[]>([]);
   const [playerPose, setPlayerPose] = useState<AvatarPose | null>(null);
   const [rivalPose, setRivalPose] = useState<AvatarPose | null>(null);
@@ -501,20 +624,22 @@ function BattleScene({
 
     // Screen gestures steer only; the river provides forward motion.
     s.x += inputRef.current.x * STEER_SPEED * dt;
-    s.x = Math.max(-RIVER_HALF + 2.0, Math.min(RIVER_HALF - 2.0, s.x));
+    const playerChannel = riverCenterX(s.z);
+    s.x = Math.max(playerChannel - RIVER_HALF + 2.0, Math.min(playerChannel + RIVER_HALF - 2.0, s.x));
     s.z += PLAYER_SPEED * crewSpeedMul * dt;
 
     // AI rival races alongside the user and gradually becomes more aggressive.
     const currentZone = Math.max(0, zoneAt(s.rivalZ));
     const difficulty = 1 + currentZone * 0.055;
+    const rivalChannel = riverCenterX(s.rivalZ);
     const avoid = obstacles
       .filter((o) => o.z > s.rivalZ && o.z < s.rivalZ + 18)
       .sort((a, b) => a.z - b.z)[0];
     const desiredX = avoid && Math.abs(avoid.x - s.rivalX) < avoid.r + 2.3
-      ? (avoid.x > 0 ? -5.3 : 5.3)
-      : Math.sin(t * 0.45 + s.rivalZ * 0.015) * 5.0;
+      ? (avoid.x > 0 ? avoid.x - 5.3 : avoid.x + 5.3)
+      : rivalChannel + Math.sin(t * 0.45 + s.rivalZ * 0.015) * 5.0;
     s.rivalX += Math.max(-1, Math.min(1, desiredX - s.rivalX)) * 4.5 * dt;
-    s.rivalX = Math.max(-RIVER_HALF + 2.0, Math.min(RIVER_HALF - 2.0, s.rivalX));
+    s.rivalX = Math.max(rivalChannel - RIVER_HALF + 2.0, Math.min(rivalChannel + RIVER_HALF - 2.0, s.rivalX));
     const catchup = s.rivalZ < s.z - 18 ? 1.16 : s.rivalZ > s.z + 18 ? 0.9 : 1;
     s.rivalZ += RIVAL_SPEED * rivalCrewSpeedMul * difficulty * catchup * dt;
 
@@ -535,7 +660,31 @@ function BattleScene({
     }
 
     // Collision hazards become denser as the race progresses.
+    const playerDucking = t < s.duckUntil;
     for (const o of obstacles) {
+      if (o.kind === "shark") {
+        if (Math.abs(o.z - s.z) < 3.2) {
+          const d = Math.hypot(o.x - s.x, o.z - s.z);
+          if (d < o.r + 1.6 && s.hitCooldown <= 0) {
+            if (playerDucking) {
+              s.score += 60;
+              onStatus("Ducked under the shark!");
+            } else {
+              s.hitCooldown = 1.05;
+              s.health -= 1;
+              s.score = Math.max(0, s.score - 90);
+              setPlayerPose("stumble");
+              window.setTimeout(() => setPlayerPose(null), 520);
+              onStatus("Shark strike — DUCK next time!");
+              battleshipSfx.hit();
+              for (const c of s.playerCrew) {
+                if (c.knockedUntil > t) c.knockedUntil += 2.5;
+              }
+            }
+          }
+        }
+        continue;
+      }
       if (Math.abs(o.z - s.z) < 3.8) {
         const d = Math.hypot(o.x - s.x, o.z - s.z);
         if (d < o.r + 1.25 && s.hitCooldown <= 0) {
@@ -655,6 +804,26 @@ function BattleScene({
       onStatus(`${zones[zi].name} — the river gets harder from here`);
     }
 
+    // Storm Reach: rolling rain ambience plus the occasional lightning strike that briefly
+    // brightens the whole scene and cracks with thunder.
+    const inStorm = s.z >= STORM_START && s.z < STORM_END;
+    if (inStorm !== stormActiveRef.current) {
+      stormActiveRef.current = inStorm;
+      if (inStorm) battleshipSfx.rainStart();
+      else battleshipSfx.rainStop();
+    }
+    if (inStorm) {
+      lightningTimer.current -= dt;
+      if (lightningTimer.current <= 0) {
+        lightningTimer.current = 2.5 + Math.random() * 4;
+        lightningBoost.current = 1;
+        battleshipSfx.thunder();
+      }
+    }
+    lightningBoost.current = Math.max(0, lightningBoost.current - dt * 2.2);
+    if (ambientRef.current) ambientRef.current.intensity = 1.15 + lightningBoost.current * 2.4;
+    if (dirRef.current) dirRef.current.intensity = 1.8 + lightningBoost.current * 1.6;
+
     if (t - lastHud.current > 0.12) {
       lastHud.current = t;
       onHud(
@@ -695,12 +864,14 @@ function BattleScene({
   });
 
   const t = animT;
+  const inStorm = runtime.current.z >= STORM_START && runtime.current.z < STORM_END;
   return (
     <>
-      <ambientLight intensity={1.15} />
-      <directionalLight position={[8, 20, -6]} intensity={1.8} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <ambientLight ref={ambientRef} intensity={1.15} />
+      <directionalLight ref={dirRef} position={[8, 20, -6]} intensity={1.8} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
       <hemisphereLight args={["#dff5ff", "#446b3b", 0.85]} />
       <RiverWorld />
+      {inStorm && <Rain originRef={runtime} />}
 
       <group ref={playerGroup}>
         <TeamBoat color="#7f4be8" pose={duckRef.current ? "stumble" : playerPose} crew={crewSnapshot.player} t={t} />

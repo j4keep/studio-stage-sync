@@ -64,6 +64,50 @@ class BattleshipSfx {
     this.bed = null;
   }
 
+  private rainBed: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
+
+  /** Steady rain hiss — brighter/higher-passed than the ocean bed so it reads as rain, not waves. */
+  rainStart() {
+    if (this.muted || this.rainBed) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const len = Math.floor(ctx.sampleRate * 2);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.value = 1400;
+    const gain = ctx.createGain();
+    gain.gain.value = 0.07;
+    src.connect(hp).connect(gain).connect(ctx.destination);
+    src.start();
+    this.rainBed = { src, gain };
+  }
+
+  rainStop() {
+    if (!this.rainBed) return;
+    try {
+      this.rainBed.src.stop();
+    } catch {
+      /* already stopped */
+    }
+    this.rainBed = null;
+  }
+
+  /** A lightning strike — a bright crack followed by a low rolling rumble. */
+  thunder() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.crack(t, 0.05, 2600, 0.9, 0.5, 0.1);
+    this.thud(t + 0.05, 1.4, 90, 0.5, 1.6);
+  }
+
   async prime() {
     try {
       await this.ensure().resume();
@@ -79,7 +123,10 @@ class BattleshipSfx {
     } catch {
       /* ignore */
     }
-    if (muted) this.ambienceStop();
+    if (muted) {
+      this.ambienceStop();
+      this.rainStop();
+    }
   }
 
   private noiseBuffer(ctx: AudioContext, len: number) {
