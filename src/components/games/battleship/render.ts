@@ -196,7 +196,7 @@ export function drawCrewFlash(g: CanvasRenderingContext2D, band: Band, x: number
   crew(g, px, py, s, "duck", t, seed);
 }
 
-function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose: "idle" | "duck" | "wave" | "celebrate", t: number, seed: number) {
+function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose: "idle" | "duck" | "wave" | "celebrate" | "aim", t: number, seed: number) {
   g.save();
   g.translate(x, y);
   const bob = Math.sin(t * 2.4 + seed) * 0.6;
@@ -214,6 +214,22 @@ function crew(g: CanvasRenderingContext2D, x: number, y: number, s: number, pose
     g.beginPath();
     g.moveTo(3.2 * s, -1 * s);
     g.lineTo(6 * s, -6 * s + Math.sin(t * 8) * 1.5 * s);
+    g.stroke();
+  } else if (pose === "aim") {
+    // Two-handed aiming pose toward the enemy horizon.
+    g.beginPath();
+    g.moveTo(-3.2 * s, -1 * s);
+    g.lineTo(0.6 * s, -4.4 * s);
+    g.stroke();
+    g.beginPath();
+    g.moveTo(3.2 * s, -1 * s);
+    g.lineTo(1.4 * s, -4.8 * s);
+    g.stroke();
+    g.strokeStyle = "#2b2140";
+    g.lineWidth = 1.25 * s;
+    g.beginPath();
+    g.moveTo(0.8 * s, -4.6 * s);
+    g.lineTo(0.8 * s, -9.2 * s);
     g.stroke();
   } else if (pose === "celebrate") {
     g.beginPath();
@@ -254,7 +270,7 @@ function hullPath(g: CanvasRenderingContext2D, w: number, h: number) {
 export type BoatDraw = { shipId: ShipId; cells: { x: number; y: number }[]; tier: DamageTier };
 
 /** One boat, oriented along its cells, in a given band, with a crew figure and damage state. */
-export function drawBoat(g: CanvasRenderingContext2D, band: Band, boat: BoatDraw, t: number, showCrew: boolean, pose: "idle" | "duck" | "celebrate" = "idle") {
+export function drawBoat(g: CanvasRenderingContext2D, band: Band, boat: BoatDraw, t: number, showCrew: boolean, pose: "idle" | "duck" | "celebrate" | "aim" = "idle") {
   const xs = boat.cells.map((c) => c.x);
   const ys = boat.cells.map((c) => c.y);
   const horizontal = Math.max(...xs) > Math.min(...xs);
@@ -318,6 +334,45 @@ export function drawBoat(g: CanvasRenderingContext2D, band: Band, boat: BoatDraw
   if (showCrew && !disabled) {
     crew(g, cx, cy - short * 0.05, Math.max(1, Math.min(CELL_X, cellY) * 0.09), pose, t, minX + minY);
   }
+}
+
+
+/** A small visible attack boat used at the enemy horizon without revealing the hidden enemy fleet.
+ * It gives the computer a real on-screen crew/launcher for its shot animation while preserving
+ * the hidden-grid strategy underneath. */
+export function drawAttackBoat(
+  g: CanvasRenderingContext2D,
+  side: "enemy" | "player",
+  t: number,
+  pose: "idle" | "aim" | "duck" | "celebrate" = "idle",
+) {
+  const cx = VIEW_W / 2;
+  const cy = side === "enemy" ? 62 : PLAYER_TOP + PLAYER_H - 54;
+  const long = 58;
+  const short = 18;
+  const enemy = side === "enemy";
+  const bob = Math.sin(t * 1.8 + (enemy ? 1.7 : 0)) * 1.4;
+  g.save();
+  g.translate(cx, cy + bob);
+  if (enemy) g.rotate(Math.PI);
+  hullPath(g, long, short);
+  g.fillStyle = enemy ? "#42536b" : "#6B3FA0";
+  g.fill();
+  g.strokeStyle = "rgba(0,0,0,.35)";
+  g.lineWidth = 1.2;
+  g.stroke();
+  g.fillStyle = enemy ? "#2b3545" : "#472a6b";
+  g.fillRect(-8, -5, 16, 10);
+  // launcher barrel
+  g.strokeStyle = enemy ? "#d4d8df" : "#f0d7ff";
+  g.lineWidth = 2.2;
+  g.lineCap = "round";
+  g.beginPath();
+  g.moveTo(0, -2);
+  g.lineTo(0, -19);
+  g.stroke();
+  g.restore();
+  crew(g, cx, cy + bob - 1, 1.25, pose, t, enemy ? 91 : 19);
 }
 
 export type FxKind = "splash" | "hit" | "sonarClear" | "sonarFound" | "muzzle";
