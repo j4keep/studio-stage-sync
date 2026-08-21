@@ -19,7 +19,7 @@ export default function BattleshipPage() {
   const { user } = useAuth();
   const { game, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const [muted, setMuted] = useState(false);
-  const [status, setStatus] = useState("Steer the boat, clear the river, and reach the cove");
+  const [status, setStatus] = useState("Race the river, dodge hazards, and knock the rival crew overboard");
   const [finished, setFinished] = useState(false);
   const [won, setWon] = useState(false);
   const [score, setScore] = useState(0);
@@ -29,7 +29,7 @@ export default function BattleshipPage() {
     setFinished(false);
     setWon(false);
     setScore(0);
-    setStatus("Steer the boat, clear the river, and reach the cove");
+    setStatus("Race the river, dodge hazards, and knock the rival crew overboard");
     saved.current = false;
   }, [game?.id]);
 
@@ -37,7 +37,7 @@ export default function BattleshipPage() {
     setFinished(true);
     setWon(didWin);
     setScore(finalScore);
-    setStatus(didWin ? "Fleet Victory — you cleared Tropical Cove!" : "Your boat was disabled — run it back");
+    setStatus(didWin ? "Fleet Victory — your crew crossed the final cove first!" : "Rival fleet crossed first — run it back");
     if (!game || !user || saved.current) return;
     saved.current = true;
     try {
@@ -100,7 +100,7 @@ export default function BattleshipPage() {
     <GameShell
       gameType="battleship"
       title="YAJ Fleet Clash"
-      subtitle="Tropical Cove action run"
+      subtitle="River race • crew battle • survival run"
       artUrl={fleetClashArt}
       status={finished ? `${status} · ${score.toLocaleString()} pts` : status}
       finished={finished}
@@ -112,7 +112,7 @@ export default function BattleshipPage() {
       myTurn={undefined}
       outcome={finished ? (won ? "win" : "loss") : undefined}
       resultTitle={won ? "Fleet Victory!" : "Boat Disabled"}
-      resultDetail={won ? `You cleared Tropical Cove with ${score.toLocaleString()} points.` : `You scored ${score.toLocaleString()} points. Try a cleaner run.`}
+      resultDetail={won ? `Your crew crossed the final cove first with ${score.toLocaleString()} points.` : `The rival crossed first. You scored ${score.toLocaleString()} points — run the river again.`}
     >
       <FleetClashStage
         opponentName={oppLabel}
