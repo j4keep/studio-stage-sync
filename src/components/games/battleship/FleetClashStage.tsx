@@ -1,3 +1,125 @@
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Volume2, VolumeX } from "lucide-react";
+import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
+import { battleshipSfx } from "@/lib/battleship-sfx";
+
+const COURSE_LENGTH = 920;
+const RIVER_HALF = 11.5;
+const PLAYER_SPEED = 13.4;
+const RIVAL_SPEED = 13.0;
+const STEER_SPEED = 11.2;
+const PROJECTILE_SPEED = 42;
+const MAX_CREW = 4;
+const DEFAULT_CREW = 2;
+
+type Input = { x: number; z: number };
+type Vec = { x: number; y: number; z: number };
+type Shot = {
+  id: number;
+  owner: "player" | "rival";
+  x: number;
+  y: number;
+  z: number;
+  vx: number;
+  vz: number;
+};
+type Obstacle = { id: number; x: number; z: number; r: number; kind: "rock" | "island" | "buoy" | "log" };
+type CrewState = { knockedUntil: number; side: -1 | 1 };
+
+type Runtime = {
+  x: number;
+  z: number;
+  rivalX: number;
+  rivalZ: number;
+  health: number;
+  rivalHealth: number;
+  score: number;
+  shots: Shot[];
+  playerCrew: CrewState[];
+  rivalCrew: CrewState[];
+  hitCooldown: number;
+  rivalHitCooldown: number;
+  duckUntil: number;
+  fireCooldown: number;
+  rivalFireCooldown: number;
+  finished: boolean;
+  nextShotId: number;
+  zoneIndex: number;
+};
+
+type Props = {
+  playerColor?: string;
+  opponentName?: string;
+  muted: boolean;
+  onToggleMute: () => void;
+  onStatus: (status: string) => void;
+  onFinish: (won: boolean, score: number) => void;
+};
+
+type Zone = {
+  name: string;
+  start: number;
+  end: number;
+  water: string;
+  bank: string;
+  accent: string;
+};
+
+const zones: Zone[] = [
+  { name: "Tropical Run", start: 0, end: 170, water: "#169bc9", bank: "#6ea34c", accent: "#ffd95a" },
+  { name: "Rock Canyon", start: 170, end: 340, water: "#148ab7", bank: "#78654e", accent: "#ff9a55" },
+  { name: "Tunnel Run", start: 340, end: 505, water: "#1179a4", bank: "#485361", accent: "#7ce8ff" },
+  { name: "Wild Rapids", start: 505, end: 690, water: "#18a5cf", bank: "#4f8b58", accent: "#ffffff" },
+  { name: "Falls Gorge", start: 690, end: 825, water: "#0f7ca7", bank: "#594d43", accent: "#77e9ff" },
+  { name: "Final Cove", start: 825, end: COURSE_LENGTH, water: "#1598bd", bank: "#3e7d50", accent: "#ffd84a" },
+];
+
+function zoneAt(z: number) {
+  return zones.findIndex((zone) => z >= zone.start && z < zone.end);
+}
+
+function riverY(z: number) {
+  if (z < 700) return 0;
+  if (z < 755) {
+    const t = (z - 700) / 55;
+    return -1.8 * (t * t * (3 - 2 * t));
+  }
+  return -1.8;
+}
+
+function seededNoise(n: number) {
+  const x = Math.sin(n * 9283.1337) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+const obstacles: Obstacle[] = (() => {
+  const out: Obstacle[] = [];
+  let id = 1;
+  for (let z = 55; z < COURSE_LENGTH - 40; z += 20) {
+    const difficulty = z / COURSE_LENGTH;
+    const count = z < 170 ? 1 : difficulty < 0.55 ? 2 : 2 + (id % 3 === 0 ? 1 : 0);
+    for (let j = 0; j < count; j++) {
+      const n = seededNoise(id * 7.13 + j * 3.7);
+      const x = -8.5 + n * 17;
+      const kinds: Obstacle["kind"][] = z > 500 ? ["rock", "rock", "log", "buoy", "island"] : ["rock", "buoy", "island"];
+      const kind = kinds[(id + j) % kinds.length];
+      const r = kind === "island" ? 2.25 + difficulty * 0.9 : kind === "log" ? 1.55 : kind === "buoy" ? 0.8 : 1.3 + difficulty * 0.9;
+      out.push({ id: id++, x, z: z + j * 5.2, r, kind });
+    }
+  }
+  return out;
+})();
+
+function Palm({ x, z, y = 0, s = 1 }: { x: number; z: number; y?: number; s?: number }) {
+  return (
+    <group position={[x, y + 0.2, z]} scale={s}>
+      <mesh position={[0, 1.8, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.24, 3.6, 7]} />
+        <meshStandardMaterial color="#81572e" roughness={0.8} />
+      </mesh>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <mesh key={i} position={[0, 3.6, 0]} rotation={[0, (Math.PI * 2 * i) / 6, Math.PI / 2.7]} castShadow>
           <boxGeometry args={[0.24, 2.3, 0.5]} />
           <meshStandardMaterial color={i % 2 ? "#3a9d57" : "#53bb66"} roughness={0.75} />
         </mesh>
@@ -181,29 +303,33 @@ function TeamBoat({
   const hull = enemy ? "#ff785f" : color;
   const trim = enemy ? "#ffb357" : "#61d3c2";
   const slots: Vec[] = [
-    { x: -1.25, y: 0, z: 0.9 },
-    { x: 1.25, y: 0, z: 0.9 },
-    { x: -1.05, y: 0, z: -1.0 },
-    { x: 1.05, y: 0, z: -1.0 },
+    { x: -0.94, y: 0, z: 0.9 },
+    { x: 0.94, y: 0, z: 0.9 },
+    { x: -0.79, y: 0, z: -1.0 },
+    { x: 0.79, y: 0, z: -1.0 },
   ];
 
   return (
     <group>
-      {/* Wider arcade river boat with a pointed bow and visible deck. */}
+      {/* Narrow arcade river boat with a pointed bow and visible deck. */}
       <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[4.8, 0.48, 6.4]} />
+        <boxGeometry args={[3.6, 0.48, 6.4]} />
+        <meshStandardMaterial color={hull} roughness={0.42} />
+      </mesh>
+      <mesh position={[0, 0.22, 3.5]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <coneGeometry args={[1.8, 1.5, 4]} />
         <meshStandardMaterial color={hull} roughness={0.42} />
       </mesh>
       <mesh position={[0, 0.45, -0.35]} castShadow>
-        <boxGeometry args={[4.25, 0.2, 5.6]} />
+        <boxGeometry args={[3.05, 0.2, 5.6]} />
         <meshStandardMaterial color={trim} roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.72, 2.65]} rotation={[0.12, 0, 0]} castShadow>
-        <boxGeometry args={[3.4, 0.26, 0.85]} />
+        <boxGeometry args={[2.55, 0.26, 0.85]} />
         <meshStandardMaterial color="#e7f1f4" roughness={0.55} />
       </mesh>
       <mesh position={[0, 0.82, -2.25]} castShadow>
-        <boxGeometry args={[2.2, 0.25, 0.65]} />
+        <boxGeometry args={[1.65, 0.25, 0.65]} />
         <meshStandardMaterial color="#5d3f27" roughness={0.8} />
       </mesh>
       {/* Cannon / launcher. */}
@@ -322,9 +448,10 @@ function BattleScene({
   const [crewSnapshot, setCrewSnapshot] = useState({ player: runtime.current.playerCrew.map((c) => ({ ...c })), rival: runtime.current.rivalCrew.map((c) => ({ ...c })) });
   const [animT, setAnimT] = useState(0);
 
-  const shoot = (owner: "player" | "rival", s: Runtime) => {
+  const shoot = (owner: "player" | "rival", s: Runtime, t: number) => {
     if (owner === "player") {
       if (s.fireCooldown > 0) return;
+      if (activeCrew(s.playerCrew, t) <= 0) return;
       s.fireCooldown = 0.72;
       const dx = s.rivalX - s.x;
       const dz = s.rivalZ - s.z;
@@ -336,8 +463,10 @@ function BattleScene({
       setPlayerPose("interact");
       window.setTimeout(() => setPlayerPose(null), 240);
       onStatus("FIRE! Knock their crew overboard");
+      battleshipSfx.launch();
     } else {
       if (s.rivalFireCooldown > 0) return;
+      if (activeCrew(s.rivalCrew, t) <= 0) return;
       s.rivalFireCooldown = 0.95;
       const dx = s.x - s.rivalX;
       const dz = s.z - s.rivalZ;
@@ -348,6 +477,7 @@ function BattleScene({
       });
       setRivalPose("interact");
       window.setTimeout(() => setRivalPose(null), 240);
+      battleshipSfx.launch();
     }
   };
 
@@ -370,7 +500,7 @@ function BattleScene({
 
     // Screen gestures steer only; the river provides forward motion.
     s.x += inputRef.current.x * STEER_SPEED * dt;
-    s.x = Math.max(-RIVER_HALF + 2.6, Math.min(RIVER_HALF - 2.6, s.x));
+    s.x = Math.max(-RIVER_HALF + 2.0, Math.min(RIVER_HALF - 2.0, s.x));
     s.z += PLAYER_SPEED * crewSpeedMul * dt;
 
     // AI rival races alongside the user and gradually becomes more aggressive.
@@ -383,19 +513,19 @@ function BattleScene({
       ? (avoid.x > 0 ? -5.3 : 5.3)
       : Math.sin(t * 0.45 + s.rivalZ * 0.015) * 5.0;
     s.rivalX += Math.max(-1, Math.min(1, desiredX - s.rivalX)) * 4.5 * dt;
-    s.rivalX = Math.max(-RIVER_HALF + 2.6, Math.min(RIVER_HALF - 2.6, s.rivalX));
+    s.rivalX = Math.max(-RIVER_HALF + 2.0, Math.min(RIVER_HALF - 2.0, s.rivalX));
     const catchup = s.rivalZ < s.z - 18 ? 1.16 : s.rivalZ > s.z + 18 ? 0.9 : 1;
     s.rivalZ += RIVAL_SPEED * rivalCrewSpeedMul * difficulty * catchup * dt;
 
     if (fireRef.current) {
       fireRef.current = false;
-      shoot("player", s);
+      shoot("player", s, t);
     }
 
     // Rival crew takes turns shooting at the player whenever close enough.
     const separation = Math.hypot(s.rivalX - s.x, s.rivalZ - s.z);
     if (separation < 38 && activeCrew(s.rivalCrew, t) > 0 && s.rivalFireCooldown <= 0) {
-      shoot("rival", s);
+      shoot("rival", s, t);
       s.rivalFireCooldown = Math.max(0.8, 2.3 - currentZone * 0.16);
       if (t - lastStatus.current > 0.8) {
         lastStatus.current = t;
@@ -407,24 +537,26 @@ function BattleScene({
     for (const o of obstacles) {
       if (Math.abs(o.z - s.z) < 3.8) {
         const d = Math.hypot(o.x - s.x, o.z - s.z);
-        if (d < o.r + 1.65 && s.hitCooldown <= 0) {
+        if (d < o.r + 1.25 && s.hitCooldown <= 0) {
           s.hitCooldown = 1.05;
           s.health -= 1;
           s.score = Math.max(0, s.score - 80);
-          s.x += s.x <= o.x ? -2.6 : 2.6;
+          s.x += s.x <= o.x ? -2.0 : 2.0;
           setPlayerPose("stumble");
           window.setTimeout(() => setPlayerPose(null), 520);
           onStatus("Obstacle hit — recover and keep racing");
+          battleshipSfx.hit();
         }
       }
       if (Math.abs(o.z - s.rivalZ) < 3.8) {
         const d = Math.hypot(o.x - s.rivalX, o.z - s.rivalZ);
-        if (d < o.r + 1.65 && s.rivalHitCooldown <= 0) {
+        if (d < o.r + 1.25 && s.rivalHitCooldown <= 0) {
           s.rivalHitCooldown = 1.0;
           s.rivalHealth -= 1;
-          s.rivalX += s.rivalX <= o.x ? -2.6 : 2.6;
+          s.rivalX += s.rivalX <= o.x ? -2.0 : 2.0;
           setRivalPose("stumble");
           window.setTimeout(() => setRivalPose(null), 500);
+          battleshipSfx.hit();
         }
       }
     }
@@ -453,6 +585,7 @@ function BattleScene({
             }
             setRivalPose("stumble");
             window.setTimeout(() => setRivalPose(null), 450);
+            battleshipSfx.hit();
           }
           continue;
         }
@@ -475,6 +608,7 @@ function BattleScene({
           }
           setPlayerPose("stumble");
           window.setTimeout(() => setPlayerPose(null), 450);
+          battleshipSfx.hit();
         }
         continue;
       }
@@ -549,9 +683,11 @@ function BattleScene({
         setPlayerPose("celebrate");
         s.score += 1600 + activeCrew(s.playerCrew, t) * 250;
         onStatus("Fleet Victory — first across the finish!");
+        battleshipSfx.victory();
       } else {
         setRivalPose("celebrate");
         onStatus("Rival fleet crossed first — run it back");
+        battleshipSfx.defeat();
       }
       onFinish(won, s.score);
     }
@@ -584,38 +720,64 @@ function BattleScene({
   );
 }
 
-function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
-  const start = useRef<{ x: number; y: number } | null>(null);
-  const last = useRef<{ x: number; y: number } | null>(null);
+const STEER_STICK_MAX = 58;
 
-  const reset = () => {
-    start.current = null;
-    last.current = null;
+/** Same invisible-until-touched, origin-anchored drag pattern as YAJ Obby's Joystick —
+ *  no fixed visible controller, a transparent knob only appears at the point you touch,
+ *  and steering is a single left/right axis since the river carries the boat forward. */
+function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
+  const origin = useRef<{ x: number; y: number } | null>(null);
+  const [knob, setKnob] = useState<{ ox: number; oy: number; dx: number } | null>(null);
+
+  const update = (clientX: number) => {
+    const o = origin.current;
+    if (!o) return;
+    let dx = clientX - o.x;
+    dx = Math.max(-STEER_STICK_MAX, Math.min(STEER_STICK_MAX, dx));
+    setKnob({ ox: o.x, oy: o.y, dx });
+    const dead = 0.12;
+    let nx = dx / STEER_STICK_MAX;
+    if (Math.abs(nx) < dead) nx = 0;
+    inputRef.current.x = nx;
+  };
+
+  const release = () => {
+    origin.current = null;
+    setKnob(null);
     inputRef.current = { x: 0, z: 0 };
   };
 
   return (
     <div
-      className="absolute inset-0 z-20 touch-none"
+      className="absolute inset-0 z-20 touch-none select-none"
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest("button")) return;
-        start.current = { x: e.clientX, y: e.clientY };
-        last.current = { x: e.clientX, y: e.clientY };
+        void battleshipSfx.prime();
+        origin.current = { x: e.clientX, y: e.clientY };
+        setKnob({ ox: e.clientX, oy: e.clientY, dx: 0 });
         inputRef.current = { x: 0, z: 0 };
         (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
       }}
       onPointerMove={(e) => {
-        if (!start.current || !last.current) return;
-        const dx = e.clientX - last.current.x;
-        last.current = { x: e.clientX, y: e.clientY };
-        // Relative movement prevents the steering from getting "stuck" at full left/right.
-        const target = Math.max(-1, Math.min(1, dx / 16));
-        inputRef.current.x = inputRef.current.x * 0.35 + target * 0.65;
+        if (!origin.current) return;
+        update(e.clientX);
       }}
-      onPointerUp={reset}
-      onPointerCancel={reset}
-      onLostPointerCapture={reset}
-    />
+      onPointerUp={release}
+      onPointerCancel={release}
+      onLostPointerCapture={release}
+    >
+      {knob && (
+        <div
+          className="pointer-events-none absolute h-24 w-24 rounded-full border border-white/15 bg-white/5"
+          style={{ left: knob.ox, top: knob.oy, transform: "translate(-50%, -50%)" }}
+        >
+          <div
+            className="absolute left-1/2 top-1/2 h-10 w-10 rounded-full border border-white/25 bg-white/25"
+            style={{ transform: `translate(calc(-50% + ${knob.dx}px), -50%)` }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -631,6 +793,10 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
   const [crew, setCrew] = useState(DEFAULT_CREW);
   const [rivalCrew, setRivalCrew] = useState(DEFAULT_CREW);
   const [zone, setZone] = useState(zones[0].name);
+
+  useEffect(() => {
+    battleshipSfx.setMuted(muted);
+  }, [muted]);
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -699,7 +865,7 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
         <div className="flex gap-2 pointer-events-auto">
           <button
             type="button"
-            onPointerDown={() => { duckRef.current = true; }}
+            onPointerDown={() => { void battleshipSfx.prime(); duckRef.current = true; }}
             onPointerUp={() => { duckRef.current = false; }}
             onPointerLeave={() => { duckRef.current = false; }}
             onPointerCancel={() => { duckRef.current = false; }}
@@ -709,7 +875,7 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
           </button>
           <button
             type="button"
-            onClick={() => { fireRef.current = true; }}
+            onClick={() => { void battleshipSfx.prime(); fireRef.current = true; }}
             className="h-20 w-20 rounded-full border-2 border-yellow-200/60 bg-gradient-to-br from-orange-400/95 to-red-500/95 text-sm font-black uppercase text-white shadow-[0_0_28px_rgba(255,138,0,.35)] active:scale-95"
           >
             Fire
