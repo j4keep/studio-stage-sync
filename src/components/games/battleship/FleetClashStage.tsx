@@ -1,39 +1,3 @@
-  }
-  return -1.8;
-}
-
-function seededNoise(n: number) {
-  const x = Math.sin(n * 9283.1337) * 43758.5453;
-  return x - Math.floor(x);
-}
-
-const obstacles: Obstacle[] = (() => {
-  const out: Obstacle[] = [];
-  let id = 1;
-  for (let z = 55; z < COURSE_LENGTH - 40; z += 20) {
-    const difficulty = z / COURSE_LENGTH;
-    const count = z < 170 ? 1 : difficulty < 0.55 ? 2 : 2 + (id % 3 === 0 ? 1 : 0);
-    for (let j = 0; j < count; j++) {
-      const n = seededNoise(id * 7.13 + j * 3.7);
-      const x = -8.5 + n * 17;
-      const kinds: Obstacle["kind"][] = z > 500 ? ["rock", "rock", "log", "buoy", "island"] : ["rock", "buoy", "island"];
-      const kind = kinds[(id + j) % kinds.length];
-      const r = kind === "island" ? 2.25 + difficulty * 0.9 : kind === "log" ? 1.55 : kind === "buoy" ? 0.8 : 1.3 + difficulty * 0.9;
-      out.push({ id: id++, x, z: z + j * 5.2, r, kind });
-    }
-  }
-  return out;
-})();
-
-function Palm({ x, z, y = 0, s = 1 }: { x: number; z: number; y?: number; s?: number }) {
-  return (
-    <group position={[x, y + 0.2, z]} scale={s}>
-      <mesh position={[0, 1.8, 0]} castShadow>
-        <cylinderGeometry args={[0.16, 0.24, 3.6, 7]} />
-        <meshStandardMaterial color="#81572e" roughness={0.8} />
-      </mesh>
-      {[0, 1, 2, 3, 4, 5].map((i) => (
-        <mesh key={i} position={[0, 3.6, 0]} rotation={[0, (Math.PI * 2 * i) / 6, Math.PI / 2.7]} castShadow>
           <boxGeometry args={[0.24, 2.3, 0.5]} />
           <meshStandardMaterial color={i % 2 ? "#3a9d57" : "#53bb66"} roughness={0.75} />
         </mesh>
