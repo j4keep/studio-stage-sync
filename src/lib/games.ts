@@ -133,16 +133,22 @@ export async function updateGameState(
   gameId: string,
   patch: Partial<Pick<GameRow, "game_state" | "current_turn_user_id" | "status" | "winner_user_id" | "is_draw" | "finished_at">>,
 ) {
-  const { error } = await db.from("games").update(patch).eq("id", gameId);
+  // A match going completed/cancelled always takes itself off the air — otherwise a game
+  // someone went live on keeps showing as "Live" in the feed forever after it's actually over.
+  const full = patch.status === "completed" || patch.status === "cancelled"
+    ? { ...patch, is_live: false, live_ended_at: new Date().toISOString() }
+    : patch;
+  const { error } = await db.from("games").update(full).eq("id", gameId);
   if (error) throw error;
 }
 
 /** Abandon a match that's sitting active/waiting with nobody actually playing it, so it
  *  drops off "Your Active Games" instead of lingering forever. */
 export async function endGame(gameId: string) {
+  const now = new Date().toISOString();
   const { error } = await db
     .from("games")
-    .update({ status: "cancelled", finished_at: new Date().toISOString() })
+    .update({ status: "cancelled", finished_at: now, is_live: false, live_ended_at: now })
     .eq("id", gameId);
   if (error) throw error;
 }

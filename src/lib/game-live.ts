@@ -44,12 +44,15 @@ export async function setGameLive(gameId: string, live: boolean) {
   if (error) throw error;
 }
 
-/** Every match currently on air, newest first, with player names for the card. */
+/** Every match currently on air, newest first, with player names for the card. Filters on
+ *  status as well as is_live so a match that finished or was ended can never show as live —
+ *  belt and suspenders against a row whose is_live flag didn't get cleared. */
 export async function listLiveGames(limit = 12): Promise<LiveGameCard[]> {
   const { data: games } = await db
     .from("games")
     .select("id, game_type, is_live, live_started_at, live_title, status")
     .eq("is_live", true)
+    .in("status", ["active", "waiting"])
     .order("live_started_at", { ascending: false })
     .limit(limit);
 
