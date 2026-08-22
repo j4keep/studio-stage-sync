@@ -1,35 +1,52 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Loader2, Map } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
+import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import SurvivalIslandStage, { IslandOutcome } from "@/components/games/survival-island/SurvivalIslandStage";
+import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
+import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
+import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { islandMuted, islandSetMuted, islandSfx } from "@/lib/survival-island-sfx";
-import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
+import { RoundResult, Seat, SugarRushState, applyRoundResult, initialSugarRush } from "@/lib/sugar-rush-run";
+import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
-import islandArt from "@/assets/games/adventures/survival-island.png.asset.json";
+import sugarRushArt from "@/assets/games/sugar-rush.svg";
 
-export default function SurvivalIslandPage() {
+const HOW_TO_PLAY = [
+  "Drag a candy into a neighbor to swap them — or tap one candy, then tap the one next to it.",
+  "Line up 3+ of the same candy in a row or column to clear them.",
+  "Match 4 in a line for a striped candy (clears a row/column). Match 5 for a color bomb (clears every candy of that color).",
+  "60 seconds per round, 2 rounds each, alternating with your opponent — highest total score wins.",
+];
+
+export default function SugarRushPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, loading } = useTurnGame(id, user?.id);
+  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
+  const statsWritten = useRef<string | null>(null);
 
   const [seated, setSeated] = useState(false);
-  const [muted, setMuted] = useState(islandMuted());
+  const [picker, setPicker] = useState(false);
+  const [muted, setMuted] = useState(sugarRushSfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
-  const [runKey, setRunKey] = useState(1);
-  const [result, setResult] = useState<IslandOutcome | null>(null);
-  const saved = useRef<number | null>(null);
 
-  const { stats, matchups } = useGameRecord("survival_island", user?.id, result?.total ?? null);
-  const best = stats?.highScore ?? null;
+  const run: SugarRushState = (game?.game_state?.sugarRush as SugarRushState) || initialSugarRush();
+  const moveNumber: number = game?.game_state?.moveNumber ?? 0;
+  const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
+  const oppSeat: Seat = mySeat === 0 ? 1 : 0;
+  const finished = run.phase === "over";
+  const myTurn = game?.status === "active" && !finished && run.possession === mySeat;
+  const computersTurn = game?.mode === "solo" && !finished && run.possession === oppSeat;
+
+  const { stats, matchups } = useGameRecord("sugar_rush", user?.id, finished);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -44,55 +61,80 @@ export default function SurvivalIslandPage() {
       });
   }, [user?.id]);
 
-  const onEnd = (outcome: IslandOutcome) => {
-    setResult(outcome);
+  useEffect(() => {
+    if (!game || !user || !finished || statsWritten.current === game.id) return;
+    if (game.status === "completed") {
+      statsWritten.current = game.id;
+      return;
+    }
+    statsWritten.current = game.id;
+    const draw = run.winnerSeat === null;
+    const iWon = run.winnerSeat === mySeat;
+    if (iWon) sugarRushSfx.win();
+    const outcome = draw ? "draw" : iWon ? "win" : "loss";
     void (async () => {
-      if (!user || !game) return;
-      if (saved.current === runKey) return;
-      saved.current = runKey;
-      try {
-        await bumpStats(user.id, "survival_island", outcome.survived ? "win" : "loss", outcome.total);
-        await updateGameState(game.id, {
-          game_state: {
-            ...(game.game_state || {}),
-            survivalIsland: {
-              total: outcome.total,
-              stars: outcome.stars,
-              hearts: outcome.hearts,
-              wave: outcome.wave,
-              survivedMs: outcome.survivedMs,
-              survived: outcome.survived,
-            },
-          },
-          status: "completed",
-          is_draw: false,
-          winner_user_id: outcome.survived ? user.id : null,
-          finished_at: new Date().toISOString(),
-        });
-      } catch {
-        /* score keeping is non-critical */
-      }
+      await updateGameState(game.id, {
+        status: "completed",
+        is_draw: draw,
+        winner_user_id: draw ? null : iWon ? user.id : (opponent?.user_id ?? null),
+        finished_at: new Date().toISOString(),
+      });
+      await bumpStats(user.id, "sugar_rush", outcome);
+      await refresh();
     })();
+  }, [finished, game?.id, game?.status]);
+
+  const commit = async (state: SugarRushState, n: number, nextTurnUserId: string | null) => {
+    if (!game || !user) return;
+    setGame({ ...game, game_state: { sugarRush: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
+    await updateGameState(game.id, { game_state: { sugarRush: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
+    await refresh();
   };
 
-  const runAgain = async () => {
+  const finishRound = async (seat: Seat, outcome: SugarRushOutcome) => {
+    if (!game || !user) return;
+    const result: RoundResult = { score: outcome.score, bestCascade: outcome.bestCascade, candiesCleared: outcome.candiesCleared };
+    const next = applyRoundResult(run, seat, result);
+    const n = moveNumber + 1;
+    await recordMove(game.id, seat === mySeat ? user.id : null, n, { result, seat });
+    const nextTurnUserId = game.mode === "solo" ? user.id : next.possession === mySeat ? user.id : (opponent?.user_id ?? null);
+    await commit(next, n, nextTurnUserId);
+  };
+
+  const rematch = async () => {
+    if (!user || !game) return;
+    try {
+      const state = { sugarRush: initialSugarRush(), moveNumber: 0 };
+      const g =
+        game.mode === "solo"
+          ? await createSoloGame("sugar_rush", user.id, state)
+          : opponent?.user_id
+            ? await createMultiplayerGame("sugar_rush", user.id, opponent.user_id, state)
+            : null;
+      if (g) {
+        statsWritten.current = null;
+        navigate(gameRoute("sugar_rush", g.id), { replace: true });
+      }
+    } catch (e: any) {
+      toast({ title: "Could not start a rematch", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const challengeOther = async (opponentId: string, name: string) => {
     if (!user) return;
     try {
-      const g = await createSoloGame("survival_island", user.id, { moveNumber: 0 });
-      setResult(null);
-      saved.current = null;
-      setRunKey((k) => k + 1);
-      navigate(gameRoute("survival_island", g.id), { replace: true });
-      setSeated(true);
+      const g = await createMultiplayerGame("sugar_rush", user.id, opponentId, { sugarRush: initialSugarRush(), moveNumber: 0 });
+      toast({ title: `Challenge sent to ${name}` });
+      navigate(gameRoute("sugar_rush", g.id), { replace: true });
     } catch (e: any) {
-      toast({ title: "Could not start a new run", description: e.message, variant: "destructive" });
+      toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
     }
   };
 
   const shareResult = async () => {
-    const text = result
-      ? `I scored ${result.total.toLocaleString()} surviving YAJ Survival Island (${Math.floor(result.survivedMs / 1000)}s, wave ${result.wave}) 🏝️`
-      : "YAJ Survival Island";
+    const draw = run.winnerSeat === null;
+    const iWon = run.winnerSeat === mySeat;
+    const text = `I just ${draw ? "tied" : iWon ? "won" : "lost"} a game of YAJ Sugar Rush 🍬`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -102,12 +144,6 @@ export default function SurvivalIslandPage() {
     } catch {
       /* cancelled */
     }
-  };
-
-  const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    islandSetMuted(next);
   };
 
   if (loading) {
@@ -121,70 +157,145 @@ export default function SurvivalIslandPage() {
   if (!game) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-bold">This island run is no longer available.</p>
-        <button
-          type="button"
-          onClick={() => navigate("/games")}
-          className="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground"
-        >
+        <p className="font-bold">This game is no longer available.</p>
+        <button type="button" onClick={() => navigate("/games")} className="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">
           Back to Games
         </button>
       </div>
     );
   }
 
-  const detail = result
-    ? result.lines.map((l) => `${l.label}: ${l.value.toLocaleString()}`).join(" · ")
+  const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
+  const draw = finished && run.winnerSeat === null;
+  const iWon = finished && run.winnerSeat === mySeat;
+  const outcome: "win" | "loss" | "draw" = draw ? "draw" : iWon ? "win" : "loss";
+
+  const myRoundNumber = run.roundsPlayed[mySeat] + 1;
+  const oppRoundNumber = run.roundsPlayed[oppSeat] + 1;
+  const roundLabel = myTurn
+    ? `Your round — ${Math.min(myRoundNumber, run.maxRounds)} of ${run.maxRounds}`
+    : `${oppLabel}'s round — ${Math.min(oppRoundNumber, run.maxRounds)} of ${run.maxRounds}`;
+
+  const resultTitle = draw ? "Ends in a tie" : iWon ? "You win!" : `${oppLabel} wins`;
+  const resultDetail = finished
+    ? `Final score — you ${run.scores[mySeat].toLocaleString()} · ${oppLabel} ${run.scores[oppSeat].toLocaleString()}`
     : undefined;
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    sugarRushSfx.setMuted(next);
+  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
-        {seated && (
-          <SurvivalIslandStage
-            runKey={runKey}
-            best={best}
+        {seated && !finished && (myTurn || computersTurn) && (
+          <SugarRushBoard
+            key={`${run.possession}-${run.roundNumber}`}
+            mode={{ kind: "timed", gridSize: 8, seconds: 60 }}
+            active
+            auto={!myTurn}
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
-            onEnd={onEnd}
+            howToPlay={HOW_TO_PLAY}
+            headerLeft={roundLabel}
+            scoreLine={`You ${run.scores[mySeat]} · ${oppLabel} ${run.scores[oppSeat]}`}
+            onComplete={(o) => void finishRound(run.possession, o)}
           />
         )}
 
-        <GameIntro
-          open={!seated}
-          title="YAJ Survival Island"
-          subtitle="Sunset Island — dodge falling coconuts, rising water, wild winds and crates. Survive 2:30."
-          artUrl={islandArt.url}
+        {seated && !finished && !myTurn && !computersTurn && (
+          <div
+            className="flex h-full w-full flex-col items-center justify-center gap-3 bg-cover bg-center text-white"
+            style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.25), rgba(20,8,40,.55)), url(${sugarRushBg})` }}
+          >
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <p className="text-sm font-bold">Waiting on {oppLabel}'s round…</p>
+          </div>
+        )}
+
+        <PendingChallengeGate
+          gameId={game.id}
+          userId={user?.id}
+          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+          challengerName={opponentName}
+          onAccepted={refresh}
+        />
+
+        <GameLiveDock
+          gameId={game.id}
+          userId={user?.id}
+          isPlayer={!!me}
+          isLive={Boolean((game as any).is_live)}
+          hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+          placement="rail"
+          onChanged={refresh}
+        />
+
+        <SugarRushIntro
+          open={!seated && !finished}
+          subtitle={game.mode === "solo" ? "60-second candy dash — solo vs Computer" : `60-second candy dash — you vs ${opponentName}`}
           me={{ name: myName, avatarUrl: myAvatar }}
-          them={{ name: "The Island", avatarUrl: null, isComputer: true }}
+          them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
           matchups={matchups}
           onStart={() => {
             setSeated(true);
-            islandSfx.unlock();
+            void sugarRushSfx.prime().then(() => sugarRushSfx.startMusic());
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
-            setSeated(true);
-            islandSfx.unlock();
+            if (game.mode === "solo" && game.status === "active") {
+              setSeated(true);
+              void sugarRushSfx.prime().then(() => sugarRushSfx.startMusic());
+              return;
+            }
+            void (async () => {
+              if (!user) return;
+              try {
+                const g = await createSoloGame("sugar_rush", user.id, { sugarRush: initialSugarRush(), moveNumber: 0 });
+                statsWritten.current = null;
+                navigate(gameRoute("sugar_rush", g.id), { replace: true });
+              } catch (e: any) {
+                toast({ title: "Could not start a solo game", description: e.message, variant: "destructive" });
+              }
+            })();
           }}
+          onQuickMatch={() => setPicker(true)}
         />
+
+        {!seated && !finished && (
+          <button
+            type="button"
+            onClick={() => navigate("/games/sugar-rush-levels")}
+            className="absolute inset-x-0 z-[75] mx-auto flex w-fit items-center gap-2 rounded-full bg-black/55 px-4 py-2.5 text-xs font-black text-white backdrop-blur-md active:scale-95"
+            style={{ bottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
+          >
+            <Map className="h-4 w-4" /> Play the Level Map instead
+          </button>
+        )}
       </div>
 
       <GameResultCard
-        open={Boolean(result)}
-        outcome={result?.survived ? "win" : "loss"}
-        title={
-          result?.survived
-            ? best && result.total >= best
-              ? "You survived — new island record!"
-              : "You survived Sunset Island!"
-            : "You didn't make it"
-        }
-        detail={detail}
-        onRematch={runAgain}
+        open={finished}
+        outcome={outcome}
+        title={resultTitle}
+        detail={resultDetail}
+        onRematch={rematch}
+        onChallenge={() => setPicker(true)}
         onShare={shareResult}
+      />
+
+      <OpponentPickerSheet
+        open={picker}
+        onClose={() => setPicker(false)}
+        onPick={(p) => {
+          setPicker(false);
+          void challengeOther(p.user_id, p.display_name || "your opponent");
+        }}
+        title="Challenge to YAJ Sugar Rush"
       />
     </div>
   );
