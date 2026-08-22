@@ -3,7 +3,6 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
 import { battleshipSfx } from "@/lib/battleship-sfx";
-import { useFleetClashBroadcast } from "@/hooks/use-fleetclash-live";
 
 const COURSE_LENGTH = 1450;
 const RIVER_HALF = 11.5;
@@ -62,7 +61,6 @@ type Props = {
   onFinish: (won: boolean, score: number) => void;
   onBack?: () => void;
   liveDock?: ReactNode;
-  gameId?: string;
 };
 
 type Zone = {
@@ -548,7 +546,6 @@ function BattleScene({
   onHud,
   onStatus,
   onFinish,
-  onSample,
 }: {
   inputRef: MutableRefObject<Input>;
   fireRef: MutableRefObject<boolean>;
@@ -556,7 +553,6 @@ function BattleScene({
   onHud: (health: number, rivalHealth: number, score: number, progress: number, rivalProgress: number, crew: number, rivalCrew: number, zone: string) => void;
   onStatus: (status: string) => void;
   onFinish: (won: boolean, score: number) => void;
-  onSample?: (s: { x: number; z: number; rivalX: number; rivalZ: number; health: number; rivalHealth: number; crew: number; rivalCrew: number; progress: number; rivalProgress: number }) => void;
 }) {
   const playerGroup = useRef<any>(null);
   const rivalGroup = useRef<any>(null);
@@ -831,16 +827,11 @@ function BattleScene({
 
     if (t - lastHud.current > 0.12) {
       lastHud.current = t;
-      const progress = Math.min(1, s.z / COURSE_LENGTH);
-      const rivalProgress = Math.min(1, s.rivalZ / COURSE_LENGTH);
-      const crew = activeCrew(s.playerCrew, t);
-      const rivalCrew = activeCrew(s.rivalCrew, t);
-      onHud(Math.max(0, s.health), Math.max(0, s.rivalHealth), s.score, progress, rivalProgress, crew, rivalCrew, zones[zi]?.name ?? "Final Cove");
-      onSample?.({
-        x: s.x, z: s.z, rivalX: s.rivalX, rivalZ: s.rivalZ,
-        health: Math.max(0, s.health), rivalHealth: Math.max(0, s.rivalHealth),
-        crew, rivalCrew, progress, rivalProgress,
-      });
+      onHud(
+        Math.max(0, s.health), Math.max(0, s.rivalHealth), s.score,
+        Math.min(1, s.z / COURSE_LENGTH), Math.min(1, s.rivalZ / COURSE_LENGTH),
+        activeCrew(s.playerCrew, t), activeCrew(s.rivalCrew, t), zones[zi]?.name ?? "Final Cove",
+      );
     }
 
     // Running out of hull does not immediately end the race: it slows you and restores one hull point.
@@ -963,8 +954,7 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
   );
 }
 
-export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, liveDock, gameId }: Props) {
-  const broadcastSample = useFleetClashBroadcast(gameId);
+export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, liveDock }: Props) {
   const inputRef = useRef<Input>({ x: 0, z: 0 });
   const fireRef = useRef(false);
   const duckRef = useRef(false);
@@ -1008,7 +998,6 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
           }}
           onStatus={onStatus}
           onFinish={onFinish}
-          onSample={broadcastSample}
         />
       </Canvas>
 
