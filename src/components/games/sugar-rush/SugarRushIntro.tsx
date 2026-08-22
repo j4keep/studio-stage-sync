@@ -73,6 +73,17 @@ export default function SugarRushIntro({ open, subtitle, onStart, onBack, me, th
   };
 
   return (
+    <>
+
+      <style>{`
+@keyframes sugarFloatIntro{0%{transform:translate3d(0,112vh,0) rotate(-8deg) scale(.82);opacity:0}10%{opacity:.9}50%{transform:translate3d(var(--sugar-drift,18px),45vh,0) rotate(10deg) scale(1.05)}90%{opacity:.88}100%{transform:translate3d(calc(var(--sugar-drift,18px)*-.6),-18vh,0) rotate(-8deg) scale(.88);opacity:0}}
+@keyframes sugarIntroBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.045)}}
+@keyframes sugarIntroSpark{0%,100%{transform:scale(.8) rotate(-10deg);opacity:.55}50%{transform:scale(1.22) rotate(12deg);opacity:1}}
+@keyframes sugarIntroSky{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes sugarIntroGlow{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(18px,-24px,0) scale(1.16)}}
+@keyframes sugarIntroPlay{0%,100%{box-shadow:0 12px 35px rgba(224,55,190,.48),inset 0 2px 0 rgba(255,255,255,.55)}50%{box-shadow:0 14px 48px rgba(255,91,210,.76),0 0 0 7px rgba(255,255,255,.08),inset 0 2px 0 rgba(255,255,255,.62)}}
+.sugar-intro{isolation:isolate}.sugar-intro-sky{z-index:0;background:linear-gradient(125deg,rgba(255,136,226,.18),rgba(89,211,255,.12),rgba(255,213,91,.14));background-size:220% 220%;animation:sugarIntroSky 12s ease-in-out infinite;mix-blend-mode:screen}.sugar-intro-glow{position:absolute;z-index:0;width:44vw;height:44vw;max-width:310px;max-height:310px;border-radius:999px;filter:blur(45px);opacity:.28;animation:sugarIntroGlow 7s ease-in-out infinite}.sugar-intro-glow-a{left:-10%;top:18%;background:#ff6fcf}.sugar-intro-glow-b{right:-10%;bottom:12%;background:#58d7ff;animation-delay:-3s}.sugar-intro-candy{bottom:-18vh;animation-name:sugarFloatIntro;animation-timing-function:linear;animation-iteration-count:infinite}.sugar-intro-logo{animation:sugarIntroBreath 3.2s ease-in-out infinite}.sugar-intro-title{background:linear-gradient(180deg,#fff7d2 0%,#ffd06c 38%,#ff76cf 70%,#b44cff 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 0 rgba(94,25,111,.6)) drop-shadow(0 12px 20px rgba(71,5,89,.35));letter-spacing:-.055em}.sugar-intro-spark{animation:sugarIntroSpark 1.8s ease-in-out infinite}.sugar-intro-spark-right{animation-delay:-.9s}.sugar-intro-play{animation:sugarIntroPlay 2.1s ease-in-out infinite}.sugar-volume{accent-color:#ff72d2}
+`}</style>
     <div
       className="sugar-intro fixed inset-0 z-[70] overflow-hidden text-white"
       onPointerDown={unlockAudio}
@@ -154,5 +165,6 @@ export default function SugarRushIntro({ open, subtitle, onStart, onBack, me, th
         </div>
       )}
     </div>
+    </>
   );
 }
