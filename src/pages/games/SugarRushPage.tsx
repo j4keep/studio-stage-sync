@@ -16,6 +16,7 @@ import { useTurnGame } from "@/hooks/use-turn-game";
 import { RoundResult, Seat, SugarRushState, applyRoundResult, initialSugarRush } from "@/lib/sugar-rush-run";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
+import sugarRushArt from "@/assets/games/sugar-rush.svg";
 
 const HOW_TO_PLAY = [
   "Drag a candy into a neighbor to swap them — or tap one candy, then tap the one next to it.",
@@ -234,6 +235,7 @@ export default function SugarRushPage() {
           open={!seated && !finished}
           title="YAJ Sugar Rush"
           subtitle={game.mode === "solo" ? "60-second candy dash — solo vs Computer" : `60-second candy dash — you vs ${opponentName}`}
+          artUrl={sugarRushArt}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
