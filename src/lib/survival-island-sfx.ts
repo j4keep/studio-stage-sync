@@ -1,193 +1,124 @@
-/**
- * AudioManager for YAJ Survival Island.
- *
- * Everything is synthesised with WebAudio (no files, nothing to download): a looping
- * ocean/wind bed plus playful one-shots. If recorded audio is added later these are the
- * cues to swap: waves, wind, coconut, crate, warning, star, power, heart, waveStart,
- * timerWarning, victory, failed.
- */
+const KEY = "yaj.games.sugarrush.sfx.muted";
+const MUSIC_KEY = "yaj.games.sugarrush.music.volume";
+const SFX_KEY = "yaj.games.sugarrush.sfx.volume";
 
-const KEY = "wheuat.survival-island.muted";
+type SfxName = "swap" | "pop" | "drop" | "special" | "invalid" | "shuffle" | "cascade";
 
-let muted = false;
-try {
-  muted = localStorage.getItem(KEY) === "1";
-} catch {
-  /* storage unavailable */
-}
-
-let ctx: AudioContext | null = null;
-let bed: { src: AudioBufferSourceNode; gain: GainNode; wind: GainNode } | null = null;
-
-function ac() {
-  if (muted) return null;
-  if (!ctx) {
-    const Ctor = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext;
-    if (!Ctor) return null;
-    ctx = new Ctor();
-  }
-  if (ctx.state === "suspended") void ctx.resume();
-  return ctx;
-}
-
-export function islandMuted() {
-  return muted;
-}
-
-export function islandSetMuted(next: boolean) {
-  muted = next;
-  try {
-    localStorage.setItem(KEY, next ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
-  if (next) islandAmbienceStop();
-}
-
-function tone(freq: number, dur: number, type: OscillatorType = "triangle", gain = 0.07, slideTo?: number, delay = 0) {
-  const c = ac();
-  if (!c) return;
-  const at = c.currentTime + delay;
-  const o = c.createOscillator();
-  const g = c.createGain();
-  o.type = type;
-  o.frequency.setValueAtTime(freq, at);
-  if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(30, slideTo), at + dur);
-  g.gain.setValueAtTime(gain, at);
-  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
-  o.connect(g).connect(c.destination);
-  o.start(at);
-  o.stop(at + dur + 0.04);
-}
-
-function noise(dur: number, gain = 0.06, hp = 400, delay = 0) {
-  const c = ac();
-  if (!c) return;
-  const len = Math.max(1, Math.floor(c.sampleRate * dur));
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
-  const src = c.createBufferSource();
-  src.buffer = buf;
-  const f = c.createBiquadFilter();
-  f.type = "highpass";
-  f.frequency.value = hp;
-  const g = c.createGain();
-  g.gain.value = gain;
-  src.connect(f).connect(g).connect(c.destination);
-  src.start(c.currentTime + delay);
-}
-
-/** Soft ocean bed: filtered pink-ish noise, gently modulated. */
-export function islandAmbienceStart() {
-  const c = ac();
-  if (!c || bed) return;
-  const len = Math.floor(c.sampleRate * 4);
-  const buf = c.createBuffer(1, len, c.sampleRate);
-  const data = buf.getChannelData(0);
-  let last = 0;
-  for (let i = 0; i < len; i++) {
-    const white = Math.random() * 2 - 1;
-    last = (last + 0.02 * white) / 1.02;
-    data[i] = last * 3.2;
-  }
-  const src = c.createBufferSource();
-  src.buffer = buf;
-  src.loop = true;
-  const lp = c.createBiquadFilter();
-  lp.type = "lowpass";
-  lp.frequency.value = 720;
-  const gain = c.createGain();
-  gain.gain.value = 0.075;
-  const wind = c.createGain();
-  wind.gain.value = 0;
-  const windFilter = c.createBiquadFilter();
-  windFilter.type = "bandpass";
-  windFilter.frequency.value = 1400;
-
-  src.connect(lp).connect(gain).connect(c.destination);
-  src.connect(windFilter).connect(wind).connect(c.destination);
-
-  // slow swell so the waves breathe instead of hissing
-  const lfo = c.createOscillator();
-  const lfoGain = c.createGain();
-  lfo.frequency.value = 0.12;
-  lfoGain.gain.value = 0.03;
-  lfo.connect(lfoGain).connect(gain.gain);
-  lfo.start();
-
-  src.start();
-  bed = { src, gain, wind };
-}
-
-export function islandAmbienceStop() {
-  if (!bed) return;
-  try {
-    bed.src.stop();
-  } catch {
-    /* already stopped */
-  }
-  bed = null;
-}
-
-/** Fade the wind layer in during gust waves. */
-export function islandWindLevel(level: number) {
-  if (!bed || !ctx) return;
-  bed.wind.gain.setTargetAtTime(Math.max(0, Math.min(0.09, level * 0.09)), ctx.currentTime, 0.4);
-}
-
-export const islandSfx = {
-  unlock() {
-    const c = ac();
-    if (c && c.state === "suspended") void c.resume();
-  },
-  star() {
-    tone(1180, 0.09, "square", 0.045, 1560);
-  },
-  power() {
-    tone(660, 0.14, "triangle", 0.06, 1320);
-  },
-  heart() {
-    [523, 659, 880].forEach((f, i) => tone(f, 0.18, "triangle", 0.06, undefined, i * 0.07));
-  },
-  warn() {
-    tone(520, 0.1, "sine", 0.035, 700);
-  },
-  coconut() {
-    noise(0.1, 0.05, 700);
-    tone(180, 0.16, "triangle", 0.06, 90);
-  },
-  crate() {
-    noise(0.18, 0.06, 240);
-    tone(120, 0.24, "square", 0.055, 70);
-  },
-  splash() {
-    noise(0.4, 0.06, 260);
-    tone(320, 0.3, "sine", 0.035, 140);
-  },
-  wind() {
-    noise(0.9, 0.05, 900);
-  },
-  collapse() {
-    noise(0.35, 0.07, 180);
-    [200, 150, 110].forEach((f, i) => tone(f, 0.22, "sawtooth", 0.05, undefined, i * 0.08));
-  },
-  hit() {
-    tone(420, 0.32, "sine", 0.08, 150);
-  },
-  waveStart() {
-    [392, 523, 659].forEach((f, i) => tone(f, 0.24, "triangle", 0.06, undefined, i * 0.1));
-  },
-  objective() {
-    [784, 988, 1318].forEach((f, i) => tone(f, 0.2, "square", 0.05, undefined, i * 0.08));
-  },
-  timerWarning() {
-    tone(880, 0.11, "square", 0.045);
-  },
-  victory() {
-    [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, 0.3, "triangle", 0.08, undefined, i * 0.11));
-  },
-  failed() {
-    [440, 330, 262].forEach((f, i) => tone(f, 0.32, "sawtooth", 0.06, undefined, i * 0.14));
-  },
+const SFX_FILES: Record<SfxName, string> = {
+  swap: "/audio/sugar-rush/swap.wav",
+  pop: "/audio/sugar-rush/pop.wav",
+  drop: "/audio/sugar-rush/drop.wav",
+  special: "/audio/sugar-rush/special.wav",
+  invalid: "/audio/sugar-rush/invalid.wav",
+  shuffle: "/audio/sugar-rush/shuffle.wav",
+  cascade: "/audio/sugar-rush/cascade.wav",
 };
+
+const savedNumber = (key: string, fallback: number) => {
+  if (typeof localStorage === "undefined") return fallback;
+  const n = Number(localStorage.getItem(key));
+  return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : fallback;
+};
+
+class SugarRushSfx {
+  muted = typeof localStorage !== "undefined" ? localStorage.getItem(KEY) === "1" : false;
+  musicVolume = savedNumber(MUSIC_KEY, 0.32);
+  sfxVolume = savedNumber(SFX_KEY, 0.82);
+  private sounds = new Map<SfxName, HTMLAudioElement>();
+  private music: HTMLAudioElement | null = null;
+  private primed = false;
+
+  private getSound(name: SfxName) {
+    let audio = this.sounds.get(name);
+    if (!audio) {
+      audio = new Audio(SFX_FILES[name]);
+      audio.preload = "auto";
+      this.sounds.set(name, audio);
+    }
+    return audio;
+  }
+
+  private getMusic() {
+    if (!this.music) {
+      this.music = new Audio("/audio/sugar-rush/music-loop.wav");
+      this.music.loop = true;
+      this.music.preload = "auto";
+      this.music.volume = this.musicVolume;
+    }
+    return this.music;
+  }
+
+  async prime() {
+    if (typeof window === "undefined") return;
+    try {
+      const music = this.getMusic();
+      music.volume = 0;
+      music.muted = false;
+      await music.play();
+      music.pause();
+      music.currentTime = 0;
+      music.volume = this.musicVolume;
+      music.muted = this.muted;
+      this.primed = true;
+    } catch {
+      this.primed = false;
+    }
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    try { localStorage.setItem(KEY, muted ? "1" : "0"); } catch { /* ignore */ }
+    for (const audio of this.sounds.values()) audio.muted = muted;
+    if (this.music) {
+      this.music.muted = muted;
+      if (!muted && this.primed) void this.music.play().catch(() => undefined);
+    }
+  }
+
+  setMusicVolume(volume: number) {
+    this.musicVolume = Math.max(0, Math.min(1, volume));
+    try { localStorage.setItem(MUSIC_KEY, String(this.musicVolume)); } catch { /* ignore */ }
+    if (this.music) this.music.volume = this.musicVolume;
+  }
+
+  setSfxVolume(volume: number) {
+    this.sfxVolume = Math.max(0, Math.min(1, volume));
+    try { localStorage.setItem(SFX_KEY, String(this.sfxVolume)); } catch { /* ignore */ }
+  }
+
+  async startMusic() {
+    if (this.muted || this.musicVolume <= 0 || typeof window === "undefined") return;
+    const music = this.getMusic();
+    music.muted = false;
+    music.volume = this.musicVolume;
+    try { await music.play(); this.primed = true; } catch { /* iOS waits for a user gesture; intro pointer-down retries */ }
+  }
+
+  stopMusic() {
+    if (!this.music) return;
+    this.music.pause();
+    this.music.currentTime = 0;
+  }
+
+  private play(name: SfxName, volume = 0.7, rate = 1) {
+    if (this.muted || this.sfxVolume <= 0 || typeof window === "undefined") return;
+    const base = this.getSound(name);
+    const audio = base.cloneNode(true) as HTMLAudioElement;
+    audio.volume = Math.min(1, volume * this.sfxVolume);
+    audio.playbackRate = rate;
+    void audio.play().catch(() => undefined);
+  }
+
+  swap() { this.play("swap", 0.55, 1); }
+  invalid() { this.play("invalid", 0.48, 1); }
+  pop(cascadeDepth = 1) { this.play("pop", 0.72, 1 + Math.min(5, cascadeDepth - 1) * 0.055); }
+  drop(strength = 1) { this.play("drop", Math.min(0.72, 0.32 + strength * 0.09), 0.96 + Math.random() * 0.08); }
+  special() { this.play("special", 0.86, 1); }
+  cascade(depth = 2) { this.play("cascade", 0.64, 0.98 + Math.min(depth, 5) * 0.04); }
+  shuffle() { this.play("shuffle", 0.62, 1); }
+  buzzer() { this.play("invalid", 0.65, 0.72); }
+  win() { this.play("cascade", 0.9, 1.22); }
+  lose() { this.play("invalid", 0.7, 0.65); }
+}
+
+export const sugarRushSfx = new SugarRushSfx();
