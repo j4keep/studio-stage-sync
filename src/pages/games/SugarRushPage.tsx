@@ -48,6 +48,12 @@ export default function SugarRushPage() {
 
   const { stats, matchups } = useGameRecord("sugar_rush", user?.id, finished);
 
+  // Safety guard: this page must never render a non-Sugar-Rush game record.
+  useEffect(() => {
+    if (!game || game.game_type === "sugar_rush") return;
+    navigate(gameRoute(game.game_type, game.id), { replace: true });
+  }, [game?.id, game?.game_type, navigate]);
+
   useEffect(() => {
     if (!user?.id) return;
     void (supabase as any)
@@ -147,6 +153,14 @@ export default function SugarRushPage() {
   };
 
   if (loading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (game && game.game_type !== "sugar_rush") {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
