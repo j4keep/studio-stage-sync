@@ -835,3 +835,36 @@
   to { transform:translateY(-18px) scale(1.05); opacity:0; }
 }
 .sugar-score-float { animation:sugar-score-rise 700ms ease-out both; }
+
+/* YAJ Sugar Rush v3 â€” heavier match-3 game feel */
+@keyframes sugar-board-burst {
+  0% { transform: scale(1); }
+  35% { transform: scale(1.012); filter: brightness(1.08); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+.sugar-board-burst { animation: sugar-board-burst 220ms ease-out both; }
+
+@keyframes candy-gravity-drop {
+  0% { transform: translateY(calc(var(--fall-rows, 1) * -100%)) scale(.96); }
+  68% { transform: translateY(5%) scale(1.035); }
+  84% { transform: translateY(-2%) scale(.995); }
+  100% { transform: translateY(0) scale(1); }
+}
+.candy-gravity-drop { animation: candy-gravity-drop 360ms cubic-bezier(.22,.95,.3,1.18) both; z-index:4; }
+
+@keyframes candy-spawn-drop {
+  0% { transform: translateY(-360%) scale(.76); opacity:0; }
+  18% { opacity:1; }
+  72% { transform: translateY(7%) scale(1.045); }
+  88% { transform: translateY(-2%) scale(.995); }
+  100% { transform: translateY(0) scale(1); opacity:1; }
+}
+.candy-spawn-drop {
+  animation: candy-spawn-drop 390ms cubic-bezier(.2,.95,.28,1.15) both;
+  animation-delay: var(--spawn-delay, 0ms);
+  z-index:5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sugar-board-burst, .candy-gravity-drop, .candy-spawn-drop { animation: none !important; }
+}
