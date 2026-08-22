@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import {
   CityRunState,
   CityRunWorld,
@@ -175,6 +176,7 @@ function Runner({
 }) {
   const group = useRef<any>(null);
   const { camera } = useThree();
+  const { skinTone } = useCharacterAppearance();
   const stateRef = useRef<CityRunState>(initialRun());
   const worldRef = useRef(new CityRunWorld());
   const [entities, setEntities] = useState<Entity[]>([]);
@@ -242,7 +244,7 @@ function Runner({
         <EntityMesh key={e.id} e={e} />
       ))}
       <group ref={group}>
-        <ObbyAvatar color={color} moving airborne={s.y > 0.6} />
+        <ObbyAvatar color={color} skin={skinTone} moving airborne={s.y > 0.6} />
         {s.powers.shield > 0 && (
           <mesh position={[0, 1.05, 0]}>
             <sphereGeometry args={[1.25, 20, 20]} />

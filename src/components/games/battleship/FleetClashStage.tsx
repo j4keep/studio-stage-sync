@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type MutableRefObject, type React
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import { battleshipSfx } from "@/lib/battleship-sfx";
 
 const COURSE_LENGTH = 1450;
@@ -358,10 +359,24 @@ function SharkMesh({ x, z, y }: { x: number; z: number; y: number }) {
   );
 }
 
-function CrewFigure({ color, pose, x, z, knocked = false }: { color: string; pose: AvatarPose | null; x: number; z: number; knocked?: boolean }) {
+function CrewFigure({
+  color,
+  skin,
+  pose,
+  x,
+  z,
+  knocked = false,
+}: {
+  color: string;
+  skin?: string;
+  pose: AvatarPose | null;
+  x: number;
+  z: number;
+  knocked?: boolean;
+}) {
   return (
     <group position={[x, 0.75, z]} scale={0.58} rotation={[0, knocked ? Math.PI / 2 : 0, knocked ? -0.4 : 0]}>
-      <ObbyAvatar color={color} moving pose={pose} speedMul={0.7} />
+      <ObbyAvatar color={color} skin={skin} moving pose={pose} speedMul={0.7} />
     </group>
   );
 }
@@ -379,6 +394,7 @@ function TeamBoat({
   crew: CrewState[];
   t: number;
 }) {
+  const { skinTone } = useCharacterAppearance();
   const hull = enemy ? "#ff785f" : color;
   const trim = enemy ? "#ffb357" : "#61d3c2";
   const slots: Vec[] = [
@@ -426,6 +442,7 @@ function TeamBoat({
           <CrewFigure
             key={i}
             color={enemy ? (i % 2 ? "#ffb14a" : "#f06f57") : (i % 2 ? "#7e57c2" : color)}
+            skin={enemy ? undefined : skinTone}
             pose={pose}
             x={slot.x + shift}
             z={slot.z}

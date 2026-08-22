@@ -14,6 +14,7 @@ import { towerAmbienceStart, towerAmbienceStop, towerSetMuted, towerSfx } from "
 import { Camera, drawTower, makeCamera } from "./render";
 import TowerHud from "./TowerHud";
 import TowerControls from "./TowerControls";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 
 export type TowerOutcome = TowerScore & {
   escaped: boolean;
@@ -41,6 +42,11 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
   const rafRef = useRef<number | null>(null);
   const lastRef = useRef<number>(0);
   const endedRef = useRef(false);
+  const { skinTone } = useCharacterAppearance();
+  const skinRef = useRef(skinTone);
+  useEffect(() => {
+    skinRef.current = skinTone;
+  }, [skinTone]);
   const [paused, setPaused] = useState(false);
   const [, setTick] = useState(0);
   const [downed, setDowned] = useState(false);
@@ -119,7 +125,7 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
       }
 
       camRef.current = makeCamera(stRef.current, rect.width, rect.height, camRef.current);
-      drawTower(g, stRef.current, camRef.current, rect.width, rect.height);
+      drawTower(g, stRef.current, camRef.current, rect.width, rect.height, skinRef.current);
       setTick((t) => (t + 1) % 1_000_000);
     };
     rafRef.current = requestAnimationFrame(loop);

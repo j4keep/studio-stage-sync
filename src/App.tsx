@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { CharacterAppearanceProvider } from "@/contexts/CharacterAppearanceContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CartProvider } from "@/contexts/CartContext";
 import { RadioProvider } from "@/contexts/RadioContext";
@@ -571,23 +572,25 @@ const ScrollLockGuard = () => {
         <HashRouter>
           <AuthProvider>
             <ThemeProvider>
-              <CartProvider>
-                <PlaylistProvider>
-                  <RadioProvider>
-                    <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
-                      <ScrollLockGuard />
-                      <IncomingCallListener />
+              <CharacterAppearanceProvider>
+                <CartProvider>
+                  <PlaylistProvider>
+                    <RadioProvider>
+                      <div id="app-bg-layer" className="min-h-screen bg-background text-foreground">
+                        <ScrollLockGuard />
+                        <IncomingCallListener />
 
-                      <Routes>
-                        <Route path="/auth" element={<AuthPage />} />
+                        <Routes>
+                          <Route path="/auth" element={<AuthPage />} />
 
-                        <Route path="/index" element={<Navigate to="/" replace />} />
-                        <Route path="/*" element={<ProtectedRoutes />} />
-                      </Routes>
-                    </div>
-                  </RadioProvider>
-                </PlaylistProvider>
-              </CartProvider>
+                          <Route path="/index" element={<Navigate to="/" replace />} />
+                          <Route path="/*" element={<ProtectedRoutes />} />
+                        </Routes>
+                      </div>
+                    </RadioProvider>
+                  </PlaylistProvider>
+                </CartProvider>
+              </CharacterAppearanceProvider>
             </ThemeProvider>
           </AuthProvider>
         </HashRouter>

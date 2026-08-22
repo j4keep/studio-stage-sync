@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import type { Group } from "three";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import { ELEVATION, GRID_H, GRID_W, TILE, idx } from "@/lib/survival-island/map";
 import type { IslandState } from "@/lib/survival-island/engine";
 import type { Camera } from "./render";
@@ -17,6 +18,7 @@ const LIFT = 7;
 function Avatar({ stateRef, cameraRef }: Props) {
   const group = useRef<Group>(null);
   const { size } = useThree();
+  const { skinTone } = useCharacterAppearance();
   const [moving, setMoving] = useState(false);
   const movingRef = useRef(false);
 
@@ -46,7 +48,7 @@ function Avatar({ stateRef, cameraRef }: Props) {
 
   return (
     <group ref={group} scale={36}>
-      <ObbyAvatar color="#5b8cff" moving={moving} airborne={false} />
+      <ObbyAvatar color="#5b8cff" skin={skinTone} moving={moving} airborne={false} />
     </group>
   );
 }

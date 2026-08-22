@@ -2,6 +2,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useRef, useState } from "react";
 import type { Group } from "three";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import { BASE_SPEED, NeighborhoodState } from "@/lib/neighborhood/engine";
 import type { Camera } from "./render";
 
@@ -19,6 +20,7 @@ const SQUASH = 0.78;
 function PlayerActor({ stateRef, cameraRef }: Props) {
   const group = useRef<Group>(null);
   const { size } = useThree();
+  const { skinTone } = useCharacterAppearance();
   const [moving, setMoving] = useState(false);
   const [pose, setPose] = useState<AvatarPose | null>(null);
   const [speedMul, setSpeedMul] = useState(1);
@@ -50,7 +52,7 @@ function PlayerActor({ stateRef, cameraRef }: Props) {
 
   return (
     <group ref={group} scale={34}>
-      <ObbyAvatar color="#6B3FA0" moving={moving} pose={pose ?? undefined} speedMul={speedMul} />
+      <ObbyAvatar color="#6B3FA0" skin={skinTone} moving={moving} pose={pose ?? undefined} speedMul={speedMul} />
     </group>
   );
 }

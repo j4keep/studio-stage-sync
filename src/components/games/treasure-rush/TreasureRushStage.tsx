@@ -3,6 +3,7 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import type { Group } from "three";
 import { Hand, Play, X } from "lucide-react";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import LostCityScene from "@/components/games/treasure-rush/LostCityScene";
 import TreasureRushHud, { HudSnapshot } from "@/components/games/treasure-rush/TreasureRushHud";
 import TreasureStick from "@/components/games/treasure-rush/TreasureStick";
@@ -45,6 +46,7 @@ function Explorer({
 }) {
   const rig = useRef<Group>(null);
   const { camera } = useThree();
+  const { skinTone } = useCharacterAppearance();
 
   useFrame((_, dt) => {
     const s = state.current;
@@ -74,7 +76,7 @@ function Explorer({
 
   return (
     <group ref={rig}>
-      <ObbyAvatar color={color} moving={s.moving} ghost={flashing} />
+      <ObbyAvatar color={color} skin={skinTone} moving={s.moving} ghost={flashing} />
       {s.powers.shield > 0 && (
         <mesh position={[0, 1.1, 0]}>
           <sphereGeometry args={[1.25, 18, 18]} />

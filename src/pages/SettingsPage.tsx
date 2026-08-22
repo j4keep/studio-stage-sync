@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
+import CharacterSkinPickerSheet from "@/components/CharacterSkinPickerSheet";
 import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useAuth } from "@/contexts/AuthContext";
@@ -22,6 +23,7 @@ const SettingsPage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, deactivatePro } = useProGate();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -83,6 +85,12 @@ const SettingsPage = () => {
         {showThemePicker && (
           <div className="mt-1.5 p-4 rounded-xl bg-card border border-border">
             <ThemePickerSheet onComplete={() => setShowThemePicker(false)} />
+          </div>
+        )}
+        <ActionRow icon={<UserRound className="w-4 h-4" />} label="Character Skin Tone" onClick={() => setShowSkinPicker(!showSkinPicker)} />
+        {showSkinPicker && (
+          <div className="mt-1.5 p-4 rounded-xl bg-card border border-border">
+            <CharacterSkinPickerSheet />
           </div>
         )}
       </Section>

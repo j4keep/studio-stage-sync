@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
+import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import {
   AIR_CONTROL,
   Course,
@@ -115,6 +116,7 @@ function LocalRacer({
 }) {
   const group = useRef<any>(null);
   const { camera } = useThree();
+  const { skinTone } = useCharacterAppearance();
   const st = useRef({
     x: 0,
     y: 0,
@@ -245,7 +247,7 @@ function LocalRacer({
 
   return (
     <group ref={group}>
-      <ObbyAvatar color={color} moving={moving} airborne={airborne} />
+      <ObbyAvatar color={color} skin={skinTone} moving={moving} airborne={airborne} />
     </group>
   );
 }

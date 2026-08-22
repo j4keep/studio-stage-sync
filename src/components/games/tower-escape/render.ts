@@ -51,7 +51,7 @@ export function makeCamera(st: TowerState, w: number, h: number, prev?: Camera):
   };
 }
 
-export function drawTower(g: CanvasRenderingContext2D, st: TowerState, cam: Camera, w: number, h: number) {
+export function drawTower(g: CanvasRenderingContext2D, st: TowerState, cam: Camera, w: number, h: number, skinColor?: string) {
   g.save();
   g.clearRect(0, 0, w, h);
 
@@ -319,7 +319,7 @@ export function drawTower(g: CanvasRenderingContext2D, st: TowerState, cam: Came
   }
 
   // ── Player ────────────────────────────────────────────────────────────────
-  drawPlayer(g, st, toScreenX(st.x), toScreenY(st.y + PLAYER_H), cam);
+  drawPlayer(g, st, toScreenX(st.x), toScreenY(st.y + PLAYER_H), cam, skinColor);
 
   g.restore();
 }
@@ -428,7 +428,8 @@ function drawStar(g: CanvasRenderingContext2D, cx: number, cy: number, r: number
 }
 
 /** The blocky YAJ Adventure character, side-on, with limb animation. */
-function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTopRaw: number, cam: Camera) {
+function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTopRaw: number, cam: Camera, skinColor?: string) {
+  const skin = skinColor || "#f2c396";
   // Art-only upscale so the shared YAJ Adventure character reads as big as in Obby.
   const ART = 1.45;
   const s = cam.scale * ART;
@@ -478,7 +479,7 @@ function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTop
   g.fillRect(cx - w * 0.42, bodyY, w * 0.84, bodyH);
 
   // arms
-  g.fillStyle = "#f2c396";
+  g.fillStyle = skin;
   const armW = w * 0.22;
   const armH = bodyH * 0.78;
   const armY = bodyY + 2 * s + (anim === "climb" || anim === "hang" ? -8 * s : 0);
@@ -488,7 +489,7 @@ function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTop
   // head — cube head, two eyes and a mouth bar like the 3D avatar
   const headSize = w * 0.72;
   const headY = bodyY - headSize - 1 * s;
-  g.fillStyle = "#f2c396";
+  g.fillStyle = skin;
   g.fillRect(cx - headSize / 2, headY, headSize, headSize);
   g.fillStyle = "#241a12";
   const eyeW = headSize * 0.14;
