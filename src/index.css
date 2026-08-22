@@ -350,7 +350,7 @@
     min-width: 0;
   }
 
-  /* Horizontal chip/story rows: scroll inside strip only — don't pan the page */
+  /* Horizontal chip/story rows: scroll inside strip only â€” don't pan the page */
   .h-scroll-isolate {
     max-width: 100%;
     min-width: 0;
@@ -375,7 +375,7 @@
     bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   }
 
-  /* Fullscreen feed viewer has no bottom tab bar — park chrome at the real bottom. */
+  /* Fullscreen feed viewer has no bottom tab bar â€” park chrome at the real bottom. */
   .feed-viewer-root .feed-bottom-offset {
     bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
   }
@@ -409,7 +409,7 @@
   }
 }
 
-/* W.Studio web shell — same palette family as the JUCE plugin (cyan / charcoal) */
+/* W.Studio web shell â€” same palette family as the JUCE plugin (cyan / charcoal) */
 [data-wstudio-app="true"] {
   --primary: 176 74% 53%;
   --primary-foreground: 222 25% 8%;
@@ -442,7 +442,7 @@
   padding-bottom: 0 !important;
 }
 
-/* W.Studio DAW – light mode overrides.
+/* W.Studio DAW â€“ light mode overrides.
    Premium pro look: warm light gray base, bolder labels, subtle elevation. */
 .daw-light {
   background:
@@ -485,7 +485,7 @@
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.6), 0 1px 2px rgba(15,23,42,0.04);
 }
 
-/* ─── 3D waving flags (settings picker + feed background) ─── */
+/* â”€â”€â”€ 3D waving flags (settings picker + feed background) â”€â”€â”€ */
 .flag-3d {
   position: relative;
   width: 100%;
@@ -655,7 +655,7 @@
   }
 }
 
-/* YAJ Deals — soft depth motion */
+/* YAJ Deals â€” soft depth motion */
 @keyframes deal-badge-pulse {
   0%,
   100% {
@@ -794,4 +794,58 @@
 @media (prefers-reduced-motion: reduce) {
   .ttt-stroke, .ttt-shake, .c4-drop, .game-piece-pop, .win-glow, .candy-fall { animation: none !important; }
   .ttt-stroke { stroke-dashoffset: 0 !important; }
+}
+
+/* YAJ Sugar Rush â€” tactile swap / pop / cascade feedback. */
+.candy-piece {
+  transition: transform 155ms cubic-bezier(0.2, 0.85, 0.25, 1), opacity 180ms ease, filter 180ms ease;
+  will-change: transform, opacity;
+}
+
+@keyframes candy-pop {
+  0% { transform: scale(1); opacity: 1; filter: brightness(1); }
+  38% { transform: scale(1.22) rotate(-4deg); opacity: 1; filter: brightness(1.35); }
+  100% { transform: scale(0.18) rotate(8deg); opacity: 0; filter: brightness(1.8); }
+}
+.candy-pop { animation: candy-pop 0.23s cubic-bezier(0.2, 0.8, 0.2, 1) forwards !important; }
+
+@keyframes candy-hint {
+  0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
+  35% { transform: translateY(-6%) scale(1.08); filter: brightness(1.22); }
+  65% { transform: translateY(4%) scale(1.03); filter: brightness(1.12); }
+}
+.candy-hint { animation: candy-hint 0.72s ease-in-out 2; }
+
+@keyframes sugar-spark {
+  0% { opacity: 0; transform: scale(0.4); box-shadow: 0 0 0 0 rgba(255,255,255,0.9); }
+  35% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 18px 8px rgba(255,255,255,0.72); }
+  100% { opacity: 0; transform: scale(1.7); box-shadow: 0 0 30px 14px rgba(255,222,120,0); }
+}
+.sugar-spark { animation: sugar-spark 0.24s ease-out forwards; }
+
+@keyframes sugar-combo {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.7); }
+  55% { opacity: 1; transform: translate(-50%, -3px) scale(1.08); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.sugar-combo { animation: sugar-combo 0.28s cubic-bezier(0.2, 0.85, 0.25, 1) both; }
+
+@keyframes sugar-score-burst {
+  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+  30% { opacity: 1; transform: translateY(-2px) scale(1.08); }
+  100% { opacity: 0; transform: translateY(-22px) scale(1); }
+}
+.sugar-score-burst { animation: sugar-score-burst 0.65s ease-out both; }
+
+@keyframes sugar-board-shuffle {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-1.5deg) scale(0.985); }
+  50% { transform: rotate(1.5deg) scale(0.985); }
+  75% { transform: rotate(-0.8deg) scale(0.995); }
+}
+.sugar-board-shuffle { animation: sugar-board-shuffle 0.5s ease-in-out; }
+
+@media (prefers-reduced-motion: reduce) {
+  .candy-piece { transition: none !important; }
+  .candy-pop, .candy-hint, .sugar-spark, .sugar-combo, .sugar-score-burst, .sugar-board-shuffle { animation: none !important; }
 }
