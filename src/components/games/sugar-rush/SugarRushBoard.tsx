@@ -1,20 +1,17 @@
-{ useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import {
-  BASE_POINTS,
   Board,
   Cell,
   Pos,
-  activateSpimportecial,
-  applyGravity,
   areAdjacent,
-  findLegalSwap,
-  findMatches,
   generateBoard,
-  hasLegalMove,
-  refill,
-  resolveCascadeStep,
   swapCells,
+  findMatches,
+  findLegalMoves,
+  clearOneMatchStep,
+  applyGravity,
+  refill,
 } from "@/lib/sugar-rush";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import sugarRushBgAsset from "@/assets/games/sugar-rush/sugar-rush-bg.jpg.asset.json";
@@ -69,16 +66,8 @@ type Props = {
   onComplete: (outcome: SugarRushOutcome) => void;
 };
 
-type SwapAnimation = {
-  a: Pos;
-  b: Pos;
-  phase: "forward" | "back";
-};
-
-const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-const posKey = ({ r, c }: Pos) => `${r}-${c}`;
-
-/** The real illustrated treat for each color — a painterly sprite instead of a CSS shape. */
+/** The real illustrated treat for each color — a painterly sprite instead of a CSS shape, so
+ *  the board reads as an actual pile of candy/cookies rather than colored dots. */
 function CandyFace({ cell }: { cell: Cell }) {
   const sprite = CANDY_SPRITES[cell.color];
 
@@ -127,7 +116,7 @@ export default function SugarRushBoard({
   scoreLine,
   onComplete,
 }: Props) {
-  const [board, setBoardState] = useState<Board>(() => generateBoard(mode.gridSize));
+  const [board, setBoard] = useState<Board>(() => generateBoard(mode.gridSize));
   const [selected, setSelected] = useState<Pos | null>(null);
   const [score, setScore] = useState(0);
   const [movesLeft, setMovesLeft] = useState(mode.kind === "moves" ? mode.moveLimit : 0);
@@ -135,34 +124,26 @@ export default function SugarRushBoard({
   const [help, setHelp] = useState(false);
   const [shake, setShake] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [swapAnimation, setSwapAnimation] = useState<SwapAnimation | null>(null);
-  const [popping, setPopping] = useState<Set<string>>(new Set());
-  const [hinting, setHinting] = useState<Set<string>>(new Set());
+  const [matchedKeys, setMatchedKeys] = useState<Set<string>>(new Set());
+  const [swapAnim, setSwapAnim] = useState<{ a: Pos; b: Pos } | null>(null);
   const [comboText, setComboText] = useState<string | null>(null);
-  const [scoreBurst, setScoreBurst] = useState<string | null>(null);
-  const [reshuffling, setReshuffling] = useState(false);
+  const [floatingScore, setFloatingScore] = useState<number | null>(null);
+  const [hint, setHint] = useState<{ a: Pos; b: Pos } | null>(null);
 
-  const boardRef = useRef(board);
   const bestCascadeRef = useRef(0);
   const clearedRef = useRef(0);
   const scoreRef = useRef(0);
   const doneRef = useRef(false);
-  const dragStart = useRef<{ pos: Pos; x: number; y: number; pointerId: number } | null>(null);
+  const dragStart = useRef<{ pos: Pos; x: number; y: number } | null>(null);
   const autoTimer = useRef<number | null>(null);
   const hintTimer = useRef<number | null>(null);
+  const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
 
-  const setBoard = useCallback((next: Board) => {
-    boardRef.current = next;
-    setBoardState(next);
-  }, []);
-
-  const addScore = useCallback((points: number) => {
-    if (points <= 0) return;
-    scoreRef.current += points;
-    setScore(scoreRef.current);
-    setScoreBurst(`+${points.toLocaleString()}`);
-    window.setTimeout(() => setScoreBurst(null), 650);
-  }, []);
+  // A ref mirrors score so the delayed "finish" callbacks below always report the true
+  // final total, never a value captured before the last swap's points landed.
+  useEffect(() => {
+    scoreRef.current = score;
+  }, [score]);
 
   const finish = useCallback((won?: boolean) => {
     if (doneRef.current) return;
@@ -171,11 +152,7 @@ export default function SugarRushBoard({
     onComplete({ score: scoreRef.current, bestCascade: bestCascadeRef.current, candiesCleared: clearedRef.current, won });
   }, [onComplete]);
 
-  useEffect(() => {
-    boardRef.current = board;
-  }, [board]);
-
-  // Timed rounds count down while the board is live.
+  // Timed rounds (versus mode) count down; move-limited levels don't use a clock.
   useEffect(() => {
     if (mode.kind !== "timed" || !active) return;
     setTimeLeft(mode.seconds);
@@ -193,258 +170,159 @@ export default function SugarRushBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
-  const animateGravityAndRefill = useCallback(async (clearedBoard: Board) => {
-    setBoard(clearedBoard);
-    await sleep(70);
-
-    const fallen = applyGravity(clearedBoard);
-    setBoard(fallen);
-    await sleep(240);
-
-    const filled = refill(fallen);
-    setBoard(filled);
-    await sleep(330);
-    return filled;
-  }, [setBoard]);
-
-  const runVisibleCascades = useCallback(async (startBoard: Board, startDepth = 1) => {
-    let current = startBoard;
-    let depth = startDepth;
+  const resolveAnimatedCascades = useCallback(async (startingBoard: Board) => {
+    let working = startingBoard;
+    let depth = 0;
+    let totalGained = 0;
     let totalCleared = 0;
-    let deepest = 0;
 
-    while (!doneRef.current) {
-      const step = resolveCascadeStep(current, depth);
-      if (!step) break;
+    while (findMatches(working).length > 0 && !doneRef.current) {
+      depth += 1;
+      const step = clearOneMatchStep(working, depth);
+      const keys = new Set(step.matched.map(({ r, c }) => `${r}-${c}`));
+      setMatchedKeys(keys);
+      if (depth >= 2) {
+        const labels = ["Sweet!", "Sugar Rush!", "Amazing!", "Mega Mix!"];
+        setComboText(labels[Math.min(depth - 2, labels.length - 1)]);
+        sugarRushSfx.special();
+      } else {
+        sugarRushSfx.pop(depth);
+      }
+      setFloatingScore(step.scoreGained);
+      await sleep(240);
 
-      deepest = Math.max(deepest, depth);
+      working = step.board;
+      setBoard(working);
+      setMatchedKeys(new Set());
+      totalGained += step.scoreGained;
       totalCleared += step.cleared;
-      setPopping(new Set(step.matched.map(posKey)));
-      setComboText(depth === 1 ? null : depth === 2 ? "Sweet!" : depth === 3 ? "Sugar Rush!" : "Amazing!" );
-      if (depth >= 2) sugarRushSfx.special();
-      else sugarRushSfx.pop(depth);
-      addScore(step.scoreGained);
+      setScore((v) => v + step.scoreGained);
+      await sleep(100);
 
-      await sleep(230);
-      setPopping(new Set());
-      current = await animateGravityAndRefill(step.board);
-      depth++;
+      working = applyGravity(working);
+      setBoard(working);
+      await sleep(300);
+
+      working = refill(working);
+      setBoard(working);
+      await sleep(360);
+      setFloatingScore(null);
     }
 
-    if (deepest >= 2) {
-      await sleep(120);
+    bestCascadeRef.current = Math.max(bestCascadeRef.current, depth);
+    clearedRef.current += totalCleared;
+    setComboText(null);
+
+    if (!findLegalMoves(working).length) {
+      setComboText("Shuffle!");
+      await sleep(450);
+      working = generateBoard(mode.gridSize);
+      setBoard(working);
+      sugarRushSfx.special();
+      await sleep(420);
       setComboText(null);
     }
-
-    return { board: current, cascades: deepest, cleared: totalCleared };
-  }, [addScore, animateGravityAndRefill]);
+    return { board: working, gained: totalGained, cascades: depth };
+  }, [mode.gridSize]);
 
   const performSwap = useCallback(async (a: Pos, b: Pos) => {
     if (busy || doneRef.current) return;
-    const currentBoard = boardRef.current;
     setBusy(true);
-    setSelected(null);
-    setHinting(new Set());
+    setHint(null);
+    const swapped = swapCells(board, a, b);
+    const valid = Boolean(board[a.r][a.c]?.special || board[b.r][b.c]?.special || findMatches(swapped).length);
 
-    // First animate the two candies physically crossing into one another's cells.
-    setSwapAnimation({ a, b, phase: "forward" });
+    setSwapAnim({ a, b });
+    setBoard(swapped);
     sugarRushSfx.swap();
-    await sleep(155);
+    await sleep(190);
+    setSwapAnim(null);
 
-    const swapped = swapCells(currentBoard, a, b);
-    const atA = swapped[a.r][a.c];
-    const atB = swapped[b.r][b.c];
-    const hasSpecial = Boolean(atA?.special || atB?.special);
-    const createsMatch = findMatches(swapped).length > 0;
-
-    if (!hasSpecial && !createsMatch) {
+    if (!valid) {
       sugarRushSfx.invalid();
-      setSwapAnimation({ a, b, phase: "back" });
-      setShake(posKey(a));
-      await sleep(170);
-      setSwapAnimation(null);
+      setShake(`${b.r}-${b.c}`);
+      setSwapAnim({ a: b, b: a });
+      setBoard(board);
+      await sleep(210);
+      setSwapAnim(null);
       setShake(null);
       setBusy(false);
       return;
     }
 
-    setBoard(swapped);
-    setSwapAnimation(null);
-    await sleep(45);
-
-    let working = swapped;
-    let specialCleared = 0;
-    let cascadeStartDepth = 1;
-
-    if (hasSpecial) {
-      // Specials clear visibly first, then gravity/refill can trigger normal automatic cascades.
-      const before = working;
-      if (atA?.special) {
-        const result = activateSpecial(working, a, atA);
-        working = result.board;
-        specialCleared += result.cleared;
-      }
-      if (atB?.special) {
-        const result = activateSpecial(working, b, atB);
-        working = result.board;
-        specialCleared += result.cleared;
-      }
-
-      const clearedPositions: Pos[] = [];
-      for (let r = 0; r < before.length; r++) {
-        for (let c = 0; c < before[r].length; c++) {
-          if (before[r][c] && !working[r][c]) clearedPositions.push({ r, c });
-        }
-      }
-      setPopping(new Set(clearedPositions.map(posKey)));
-      sugarRushSfx.special();
-      addScore(specialCleared * BASE_POINTS);
-      await sleep(260);
-      setPopping(new Set());
-      working = await animateGravityAndRefill(working);
-      cascadeStartDepth = 2;
-    }
-
-    const cascaded = await runVisibleCascades(working, cascadeStartDepth);
-    working = cascaded.board;
-    const totalCleared = specialCleared + cascaded.cleared;
-    const cascadeCount = hasSpecial ? Math.max(1, cascaded.cascades) : cascaded.cascades;
-
-    bestCascadeRef.current = Math.max(bestCascadeRef.current, cascadeCount);
-    clearedRef.current += totalCleared;
-
-    // If a cascade leaves the board with no possible move, automatically mix it up rather
-    // than leaving the user staring at a dead board.
-    if (!doneRef.current && !hasLegalMove(working)) {
-      setReshuffling(true);
-      setComboText("Mixing it up!");
-      await sleep(500);
-      working = generateBoard(mode.gridSize);
-      setBoard(working);
-      await sleep(360);
-      setReshuffling(false);
-      setComboText(null);
-    }
-
+    const resolved = await resolveAnimatedCascades(swapped);
     if (mode.kind === "moves") {
       setMovesLeft((m) => {
         const next = m - 1;
-        if (next <= 0) {
-          window.setTimeout(() => finish(scoreRef.current >= mode.targetScore), 350);
-        }
+        if (next <= 0) window.setTimeout(() => finish(scoreRef.current >= mode.targetScore), 450);
         return next;
       });
     }
-
     setBusy(false);
-  }, [animateGravityAndRefill, busy, finish, mode, runVisibleCascades, setBoard]);
+  }, [board, busy, finish, mode, resolveAnimatedCascades]);
 
   const attemptSwap = useCallback((a: Pos, b: Pos) => {
     if (!areAdjacent(a, b)) return;
-    void performSwap(a, b);
+    performSwap(a, b);
   }, [performSwap]);
 
-  // Computer auto-play for versus AI: choose legal-looking adjacent pairs continuously.
+  // Computer turn visibly chooses a REAL legal move, then runs the exact same swap/pop/fall/refill chain.
   useEffect(() => {
     if (!auto || !active) return;
-    const tryRandomSwap = () => {
+    const tryComputerMove = () => {
       if (busy || doneRef.current) return;
-      const current = boardRef.current;
-      const legal = findLegalSwap(current);
-      if (legal && Math.random() < 0.75) {
-        attemptSwap(legal.a, legal.b);
+      const moves = findLegalMoves(board);
+      if (!moves.length) {
+        setBoard(generateBoard(mode.gridSize));
         return;
       }
-      const size = current.length;
-      const r = Math.floor(Math.random() * size);
-      const c = Math.floor(Math.random() * size);
-      const dir = Math.random() < 0.5 ? { r, c: c + 1 } : { r: r + 1, c };
-      if (dir.r < size && dir.c < size) attemptSwap({ r, c }, dir);
+      const move = moves[Math.floor(Math.random() * moves.length)];
+      setHint(move);
+      window.setTimeout(() => { setHint(null); attemptSwap(move.a, move.b); }, 420);
     };
-    autoTimer.current = window.setInterval(tryRandomSwap, 900);
-    return () => {
-      if (autoTimer.current) window.clearInterval(autoTimer.current);
-    };
-  }, [auto, active, busy, attemptSwap]);
+    autoTimer.current = window.setInterval(tryComputerMove, 1150);
+    return () => { if (autoTimer.current) window.clearInterval(autoTimer.current); };
+  }, [auto, active, board, busy, attemptSwap, mode.gridSize]);
+
+  // After idle time, pulse one legal move as a hint instead of leaving the board lifeless.
+  useEffect(() => {
+    if (!active || auto || busy || doneRef.current) return;
+    if (hintTimer.current) window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => {
+      const moves = findLegalMoves(board);
+      if (moves.length) setHint(moves[Math.floor(Math.random() * moves.length)]);
+    }, 4200);
+    return () => { if (hintTimer.current) window.clearTimeout(hintTimer.current); };
+  }, [active, auto, busy, board]);
 
   const canInput = active && !auto && !busy && !doneRef.current;
 
-  // Candy-game style idle hint: after a few seconds of no input, gently pulse one legal move.
-  useEffect(() => {
-    if (!canInput) {
-      setHinting(new Set());
-      return;
-    }
-    if (hintTimer.current) window.clearTimeout(hintTimer.current);
-    hintTimer.current = window.setTimeout(() => {
-      const legal = findLegalSwap(boardRef.current);
-      if (legal) setHinting(new Set([posKey(legal.a), posKey(legal.b)]));
-    }, 4200);
-    return () => {
-      if (hintTimer.current) window.clearTimeout(hintTimer.current);
-    };
-  }, [board, canInput]);
-
-  const targetFromDrag = useCallback((start: { pos: Pos; x: number; y: number }, x: number, y: number) => {
-    const dx = x - start.x;
-    const dy = y - start.y;
-    if (Math.hypot(dx, dy) < 12) return null;
-    return Math.abs(dx) > Math.abs(dy)
-      ? { r: start.pos.r, c: start.pos.c + (dx > 0 ? 1 : -1) }
-      : { r: start.pos.r + (dy > 0 ? 1 : -1), c: start.pos.c };
-  }, []);
-
-  const cellDown = (r: number, c: number, e: React.PointerEvent<HTMLDivElement>) => {
+  const cellDown = (r: number, c: number, e: React.PointerEvent) => {
     if (!canInput) return;
-    setHinting(new Set());
-    void sugarRushSfx.prime();
-    dragStart.current = { pos: { r, c }, x: e.clientX, y: e.clientY, pointerId: e.pointerId };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* mobile browser fallback */ }
+    dragStart.current = { pos: { r, c }, x: e.clientX, y: e.clientY };
   };
 
-  const cellMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!canInput || !dragStart.current) return;
-    const start = dragStart.current;
-    const target = targetFromDrag(start, e.clientX, e.clientY);
-    if (!target) return;
-    dragStart.current = null;
-    const current = boardRef.current;
-    if (target.r >= 0 && target.r < current.length && target.c >= 0 && target.c < current[0].length) {
-      attemptSwap(start.pos, target);
-    }
-  };
-
-  const cellUp = (r: number, c: number, e: React.PointerEvent<HTMLDivElement>) => {
+  const cellUp = (r: number, c: number, e: React.PointerEvent) => {
     if (!canInput || !dragStart.current) return;
     const start = dragStart.current;
     dragStart.current = null;
-    const target = targetFromDrag(start, e.clientX, e.clientY);
-    if (target) {
-      const current = boardRef.current;
-      if (target.r >= 0 && target.r < current.length && target.c >= 0 && target.c < current[0].length) attemptSwap(start.pos, target);
-      return;
-    }
-    if (selected && areAdjacent(selected, { r, c })) {
+    const dx = e.clientX - start.x;
+    const dy = e.clientY - start.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 18) {
+      const target: Pos = Math.abs(dx) > Math.abs(dy)
+        ? { r: start.pos.r, c: start.pos.c + (dx > 0 ? 1 : -1) }
+        : { r: start.pos.r + (dy > 0 ? 1 : -1), c: start.pos.c };
+      if (target.r >= 0 && target.r < board.length && target.c >= 0 && target.c < board[0].length) {
+        attemptSwap(start.pos, target);
+      }
+      setSelected(null);
+    } else if (selected && areAdjacent(selected, { r, c })) {
       attemptSwap(selected, { r, c });
       setSelected(null);
     } else {
       setSelected({ r, c });
     }
-  };
-
-  const swapStyle = (r: number, c: number): React.CSSProperties | undefined => {
-    if (!swapAnimation) return undefined;
-    const here = { r, c };
-    const isA = here.r === swapAnimation.a.r && here.c === swapAnimation.a.c;
-    const isB = here.r === swapAnimation.b.r && here.c === swapAnimation.b.c;
-    if (!isA && !isB) return undefined;
-    if (swapAnimation.phase === "back") return { transform: "translate3d(0,0,0)", zIndex: 20 };
-    const from = isA ? swapAnimation.a : swapAnimation.b;
-    const to = isA ? swapAnimation.b : swapAnimation.a;
-    return {
-      transform: `translate3d(${(to.c - from.c) * 108}%, ${(to.r - from.r) * 108}%, 0)`,
-      zIndex: 20,
-    };
   };
 
   const size = board.length;
@@ -465,10 +343,9 @@ export default function SugarRushBoard({
         <button type="button" onClick={onBack} aria-label="Back" className="shrink-0 rounded-full bg-black/30 p-2 text-white active:scale-95">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <div className="relative min-w-0 flex-1 rounded-2xl bg-black/25 px-3 py-1.5 text-center">
+        <div className="min-w-0 flex-1 rounded-2xl bg-black/25 px-3 py-1.5 text-center">
           {headerLeft && <p className="truncate text-[10px] font-black uppercase tracking-wide text-white/70">{headerLeft}</p>}
           <p className="text-lg font-black text-white">{score.toLocaleString()}</p>
-          {scoreBurst && <span className="sugar-score-burst pointer-events-none absolute -right-1 top-1 text-sm font-black text-yellow-200">{scoreBurst}</span>}
           {scoreLine && <p className="text-[10px] font-bold text-white/60">{scoreLine}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -488,14 +365,16 @@ export default function SugarRushBoard({
         </ul>
       )}
 
-      <div className="relative flex flex-1 items-center justify-center p-3">
-        {comboText && (
-          <div className="sugar-combo pointer-events-none absolute left-1/2 top-[7%] z-40 -translate-x-1/2 whitespace-nowrap rounded-full bg-fuchsia-600/90 px-5 py-2 text-xl font-black text-white shadow-[0_6px_20px_rgba(0,0,0,.35)]">
-            {comboText}
-          </div>
-        )}
+      {(comboText || floatingScore) && (
+        <div className="pointer-events-none absolute left-1/2 top-[18%] z-30 -translate-x-1/2 text-center">
+          {comboText && <div className="sugar-combo text-3xl font-black text-white drop-shadow-[0_3px_8px_rgba(130,35,190,.8)]">{comboText}</div>}
+          {floatingScore && <div className="sugar-score-float text-xl font-black text-yellow-200">+{floatingScore}</div>}
+        </div>
+      )}
+
+      <div className="flex flex-1 items-center justify-center p-3">
         <div
-          className={`w-full max-w-[420px] rounded-[26px] p-2 ${reshuffling ? "sugar-board-shuffle" : ""}`}
+          className="w-full max-w-[420px] rounded-[26px] p-2"
           style={{
             background: "linear-gradient(160deg, #ffd9a8 0%, #f0a94e 55%, #c97a1f 100%)",
             boxShadow: "0 14px 30px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.6)",
@@ -511,32 +390,42 @@ export default function SugarRushBoard({
           >
             {board.map((row, r) =>
               row.map((cell, c) => {
-                const key = `${r}-${c}`;
                 const isSelected = selected?.r === r && selected?.c === c;
-                const isShaking = shake === key;
-                const isPopping = popping.has(key);
-                const isHinting = hinting.has(key);
+                const isShaking = shake === `${r}-${c}`;
                 const checker = (r + c) % 2 === 0;
                 return (
                   <div
-                    key={key}
+                    key={`${r}-${c}`}
                     onPointerDown={(e) => cellDown(r, c, e)}
-                    onPointerMove={cellMove}
                     onPointerUp={(e) => cellUp(r, c, e)}
-                    onPointerCancel={() => { dragStart.current = null; }}
                     className={`relative aspect-square rounded-md ${isSelected ? "ring-2 ring-white/90" : ""} ${isShaking ? "ttt-shake" : ""}`}
                     style={{ background: checker ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.12)" }}
                   >
-                    {cell && (
-                      <div
-                        key={cell.id}
-                        className={`absolute inset-[7%] candy-piece candy-fall ${isPopping ? "candy-pop" : ""} ${isHinting ? "candy-hint" : ""}`}
-                        style={swapStyle(r, c)}
-                      >
-                        <CandyFace cell={cell} />
-                      </div>
-                    )}
-                    {isPopping && <div className="sugar-spark pointer-events-none absolute inset-[18%] rounded-full" />}
+                    {cell && (() => {
+                      const key = `${r}-${c}`;
+                      const popping = matchedKeys.has(key);
+                      const hinted = hint && ((hint.a.r === r && hint.a.c === c) || (hint.b.r === r && hint.b.c === c));
+                      let swapClass = "";
+                      if (swapAnim) {
+                        if (swapAnim.a.r === r && swapAnim.a.c === c) {
+                          const dx = (swapAnim.a.c - swapAnim.b.c) * 100;
+                          const dy = (swapAnim.a.r - swapAnim.b.r) * 100;
+                          swapClass = ` candy-swap`;
+                          return <div key={cell.id} className={`absolute inset-[7%]${swapClass} ${hinted ? "candy-hint" : ""}`} style={{ ['--swap-x' as any]: `${dx}%`, ['--swap-y' as any]: `${dy}%` }}><CandyFace cell={cell} /></div>;
+                        }
+                        if (swapAnim.b.r === r && swapAnim.b.c === c) {
+                          const dx = (swapAnim.b.c - swapAnim.a.c) * 100;
+                          const dy = (swapAnim.b.r - swapAnim.a.r) * 100;
+                          return <div key={cell.id} className={`absolute inset-[7%] candy-swap ${hinted ? "candy-hint" : ""}`} style={{ ['--swap-x' as any]: `${dx}%`, ['--swap-y' as any]: `${dy}%` }}><CandyFace cell={cell} /></div>;
+                        }
+                      }
+                      return (
+                        <div key={cell.id} className={`absolute inset-[7%] candy-fall ${popping ? "candy-pop" : ""} ${hinted ? "candy-hint" : ""}`}>
+                          <CandyFace cell={cell} />
+                          {popping && <span className="candy-sparkle" />}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               }),
