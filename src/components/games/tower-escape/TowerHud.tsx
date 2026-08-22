@@ -1,5 +1,6 @@
-import { ArrowLeft, Flag, Heart, Pause, Star, Timer, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Flag, Heart, LogOut, Pause, Star, Timer, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import { TowerState } from "@/lib/tower-escape/engine";
 import { TOTAL_CHECKPOINTS } from "@/lib/tower-escape/level";
 import { formatClock } from "@/lib/tower-escape/score";
@@ -24,31 +25,15 @@ export default function TowerHud({ st, sectionName, best, muted, onToggleMute, o
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 select-none px-3 pt-3">
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Leave tower"
-            className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onPause}
-            aria-label="Pause"
-            className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm"
-          >
-            <Pause className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onToggleMute}
-            aria-label={muted ? "Unmute" : "Mute"}
-            className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm"
-          >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-3 py-2 text-white backdrop-blur-sm active:scale-95"
+            actions={[
+              { key: "pause", label: "Pause", icon: Pause, onClick: onPause },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Leave Tower", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
 
         <div className="flex flex-col items-end gap-1.5">

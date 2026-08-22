@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
@@ -60,6 +61,14 @@ export default function BoxingPage() {
         setMyName(data?.display_name || "You");
       });
   }, [user?.id]);
+
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
 
   const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
   const oppSeat: Seat = mySeat === 0 ? 1 : 0;
@@ -297,13 +306,7 @@ export default function BoxingPage() {
             boxingSfx.setMuted(next);
           }}
           onBack={() => navigate("/games")}
-          onQuit={() => {
-            if (!game) return;
-            void (async () => {
-              await endGame(game.id);
-              navigate("/games");
-            })();
-          }}
+          onQuit={quitGame}
           onCustomize={() => setShowCustomize(true)}
           onPunch={live.punch}
           onGuard={live.guard}
@@ -316,6 +319,12 @@ export default function BoxingPage() {
           waiting={game.status === "waiting" && game.host_user_id !== user?.id}
           challengerName={opponentName}
           onAccepted={refresh}
+        />
+
+        <WaitingForOpponentGate
+          show={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
+          opponentName={opponentName}
+          onCancel={quitGame}
         />
 
         <GameLiveDock

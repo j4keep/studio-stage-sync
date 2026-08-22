@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
@@ -130,6 +131,13 @@ export default function BattleshipPage() {
     );
   }
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
 
   return (
@@ -144,12 +152,7 @@ export default function BattleshipPage() {
             onStatus={() => {}}
             onFinish={(didWin, finalScore) => void finishRun(didWin, finalScore)}
             onBack={() => navigate("/games")}
-            onQuit={() => {
-              void (async () => {
-                await endGame(game.id);
-                navigate("/games");
-              })();
-            }}
+            onQuit={quitGame}
             liveDock={
               <GameLiveDock
                 gameId={game.id}
@@ -170,6 +173,12 @@ export default function BattleshipPage() {
           waiting={game.status === "waiting" && game.host_user_id !== user?.id}
           challengerName={opponentName}
           onAccepted={refresh}
+        />
+
+        <WaitingForOpponentGate
+          show={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
+          opponentName={opponentName}
+          onCancel={quitGame}
         />
 
         <GameIntro

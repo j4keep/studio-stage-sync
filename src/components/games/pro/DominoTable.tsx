@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ArrowLeft, HelpCircle, Layers, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, HelpCircle, Layers, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
 import DominoChain from "./DominoChain";
@@ -151,14 +152,6 @@ export default function DominoTable({
     >
       {/* Top strip */}
       <div className="flex shrink-0 items-center gap-2 px-3 py-1.5">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="rounded-full bg-white/10 p-1.5 text-white active:scale-95"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
         <span
           className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider"
           style={{
@@ -175,23 +168,15 @@ export default function DominoTable({
           {ends ? `Open ends ${ends[0]} and ${ends[1]}` : "Play any tile"}
         </span>
         <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onToggleMute}
-            aria-label={muted ? "Unmute music" : "Mute music"}
-            className="rounded-full bg-white/10 p-1.5 text-white active:scale-95"
-          >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setHelp((v) => !v)}
-            aria-label="How to play"
-            className="rounded-full bg-white/10 p-1.5 text-white active:scale-95"
-          >
-            <HelpCircle className="h-4 w-4" />
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-white/10 p-1.5 text-white active:scale-95" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1.5 text-white active:scale-95"
+            actions={[
+              { key: "help", label: "How to Play", icon: HelpCircle, onClick: () => setHelp((v) => !v) },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
       </div>
 

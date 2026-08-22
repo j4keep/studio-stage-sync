@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
 import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import { battleshipSfx } from "@/lib/battleship-sfx";
@@ -1020,18 +1021,7 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
         />
       </Canvas>
 
-      {onBack && (
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back"
-          className="absolute left-3 top-3 z-40 rounded-full border border-white/15 bg-slate-950/50 p-2.5 text-white backdrop-blur-md active:scale-95"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </button>
-      )}
-
-      <div className="pointer-events-none absolute left-3 right-3 top-3 z-30 pl-12">
+      <div className="pointer-events-none absolute left-3 right-3 top-3 z-30 pl-2">
         <div className="rounded-2xl border border-white/15 bg-slate-950/62 px-3 py-2 backdrop-blur-md">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
@@ -1055,17 +1045,15 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
       </div>
 
       <div className="absolute right-3 top-[90px] z-40 flex items-center gap-2">
-        {liveDock}
-        <button type="button" onClick={onToggleMute} className="rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md" aria-label="Toggle sound">
-          {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-        </button>
-        {onQuit && (
-          <QuitGameButton
-            onQuit={onQuit}
-            className="rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md"
-            iconClassName="h-5 w-5"
-          />
-        )}
+        <GameMenu
+          triggerClassName="flex items-center gap-1 rounded-full border border-white/15 bg-slate-950/50 px-3 py-3 text-white backdrop-blur-md active:scale-95"
+          actions={[
+            { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+            ...(onBack ? [{ key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack }] : []),
+            ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+          ]}
+          extra={liveDock}
+        />
       </div>
 
       <ScreenSteering inputRef={inputRef} />

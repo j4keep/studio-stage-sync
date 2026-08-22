@@ -151,6 +151,7 @@ export default function TriviaPage() {
     <GameShell
       gameType="trivia"
       gameId={game.id}
+      waitingForOpponent={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
       title="Trivia Battle"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}

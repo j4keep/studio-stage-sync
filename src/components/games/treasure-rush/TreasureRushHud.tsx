@@ -1,5 +1,6 @@
-import { ArrowLeft, Heart, KeyRound, Pause, Play, Timer, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Heart, KeyRound, LogOut, Pause, Play, Timer, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import MiniMap from "@/components/games/treasure-rush/MiniMap";
 import { clockLabel } from "@/lib/treasure-rush/score";
 import { MAX_HEARTS, PowerKind } from "@/lib/treasure-rush/engine";
@@ -52,14 +53,6 @@ export default function TreasureRushHud({
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back to games"
-            className="rounded-full bg-black/50 p-2 text-white backdrop-blur-md active:scale-95"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
           <div className="flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1.5 backdrop-blur-md">
             {Array.from({ length: MAX_HEARTS }).map((_, i) => (
               <Heart
@@ -85,23 +78,15 @@ export default function TreasureRushHud({
             <p className="text-sm font-black leading-none text-amber-300">{hud.score.toLocaleString()}</p>
             {best ? <p className="text-[9px] font-bold text-white/60">best {best.toLocaleString()}</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={onTogglePause}
-            aria-label={paused ? "Resume" : "Pause"}
-            className="rounded-full bg-black/50 p-2 text-white backdrop-blur-md active:scale-95"
-          >
-            {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
-          </button>
-          <button
-            type="button"
-            onClick={onToggleMute}
-            aria-label={muted ? "Unmute" : "Mute"}
-            className="rounded-full bg-black/50 p-2 text-white backdrop-blur-md active:scale-95"
-          >
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/50 p-2 text-white backdrop-blur-md active:scale-95" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/50 px-3 py-2 text-white backdrop-blur-md active:scale-95"
+            actions={[
+              { key: "pause", label: paused ? "Resume" : "Pause", icon: paused ? Play : Pause, onClick: onTogglePause },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
       </div>
 

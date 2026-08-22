@@ -168,6 +168,7 @@ export default function CheckersPage() {
     <GameShell
       gameType="checkers"
       gameId={game.id}
+      waitingForOpponent={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
       title="Checkers"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}

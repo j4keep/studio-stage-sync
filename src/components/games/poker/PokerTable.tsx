@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
-import { ArrowLeft, Bot, HelpCircle, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Bot, HelpCircle, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import { Card, PokerAction, PokerState, RANK_LABEL, Seat, legalActions, liveHandInfo } from "@/lib/poker";
 
 const SUIT_SYMBOL: Record<Card["suit"], string> = { s: "♠", h: "♥", d: "♦", c: "♣" };
@@ -451,13 +452,16 @@ export default function PokerTable({
         {/* Right rail */}
         <div className="flex h-full shrink-0 flex-col items-end gap-1 py-1.5">
           <div className="flex shrink-0 items-center gap-1">
-            <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute sound" : "Mute sound"} className="rounded-full bg-black/55 p-1 text-white active:scale-95">
-              {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
-            </button>
-            <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1 text-white active:scale-95">
-              <HelpCircle className="h-3.5 w-3.5" />
-            </button>
-            {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1 text-white active:scale-95" iconClassName="h-3.5 w-3.5" />}
+            <GameMenu
+              triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-white active:scale-95"
+              actions={[
+                { key: "help", label: "How to Play", icon: HelpCircle, onClick: () => setHelp((v) => !v) },
+                { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+                { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+                ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+              ]}
+              extra={sideDock}
+            />
           </div>
           <PokerPod
             name={oppName}
@@ -500,14 +504,10 @@ export default function PokerTable({
               </div>
             )}
           </div>
-          {sideDock ? <div className="flex shrink-0 justify-center pb-0.5">{sideDock}</div> : null}
         </div>
       </div>
 
       <div className="pointer-events-none absolute left-0 top-0 z-30 flex items-start gap-1.5 px-2 pt-1.5">
-        <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-1 text-white active:scale-95">
-          <ArrowLeft className="h-3.5 w-3.5" />
-        </button>
         <PokerPod
           name={myName}
           avatarUrl={myAvatar}

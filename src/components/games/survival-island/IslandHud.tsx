@@ -1,5 +1,6 @@
-import { ArrowLeft, Heart, Pause, Sparkles, Volume2, VolumeX, Waves } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Heart, LogOut, Pause, Sparkles, Volume2, VolumeX, Waves } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import { IslandState, MAX_HEARTS, safeZoneActive, waveLabel, waveProgress } from "@/lib/survival-island/engine";
 import { formatClock } from "@/lib/survival-island/score";
 import IslandMiniMap from "./IslandMiniMap";
@@ -24,14 +25,6 @@ export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBa
       <div className="flex items-start justify-between gap-2 p-3">
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
-              aria-label="Leave the island"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
             <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/45 px-2.5 py-1.5 backdrop-blur">
               {Array.from({ length: MAX_HEARTS }).map((_, i) => (
                 <Heart
@@ -62,28 +55,15 @@ export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBa
 
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={onToggleMute}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
-              aria-label={muted ? "Unmute" : "Mute"}
-            >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={onPause}
-              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
-              aria-label="Pause"
-            >
-              <Pause className="h-4 w-4" />
-            </button>
-            {onQuit && (
-              <QuitGameButton
-                onQuit={onQuit}
-                className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
-              />
-            )}
+            <GameMenu
+              triggerClassName="pointer-events-auto flex items-center gap-1 rounded-full border border-white/20 bg-black/45 px-3 py-2 text-white backdrop-blur active:scale-95"
+              actions={[
+                { key: "pause", label: "Pause", icon: Pause, onClick: onPause },
+                { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+                { key: "back", label: "Leave the Island", icon: ArrowLeft, onClick: onBack },
+                ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+              ]}
+            />
           </div>
 
           <div

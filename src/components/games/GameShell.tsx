@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, RotateCcw, Share2, Users } from "lucide-react";
+import { ArrowLeft, LogOut, RotateCcw, Share2, Users } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
@@ -10,7 +11,8 @@ import { GameType, createSoloGame, endGame } from "@/lib/games";
 import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import PlayerBadge, { ArenaPlayer } from "@/components/games/PlayerBadge";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
+import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import { toast } from "@/hooks/use-toast";
 
 type Props = {
@@ -18,6 +20,9 @@ type Props = {
   gameType: GameType;
   /** The live game row's id — shows a quit/end-game button in the header when present. */
   gameId?: string;
+  /** True when this is a multiplayer challenge the invited player hasn't accepted yet and
+   *  the current user is the one who sent it — blocks Play until they join. */
+  waitingForOpponent?: boolean;
   title: string;
   subtitle: string;
   status: string;
@@ -43,6 +48,7 @@ type Props = {
 export default function GameShell({
   gameType,
   gameId,
+  waitingForOpponent,
   title,
   subtitle,
   status,
@@ -130,21 +136,17 @@ export default function GameShell({
     >
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[hsl(234_45%_7%_/_0.85)] px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => navigate("/games")}
-            aria-label="Back"
-            className="rounded-full p-1.5 text-white/80 transition hover:bg-white/10 active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-black tracking-tight">{title}</h1>
             <p className="truncate text-[11px] text-white/55">{subtitle}</p>
           </div>
-          {gameId && !finished && (
-            <QuitGameButton onQuit={quitGame} className="rounded-full p-1.5 text-white/80 transition hover:bg-white/10 active:scale-95" />
-          )}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full p-1.5 text-white/80 transition hover:bg-white/10 active:scale-95"
+            actions={[
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: () => navigate("/games") },
+              ...(gameId && !finished ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(quitGame), destructive: true }] : []),
+            ]}
+          />
         </div>
       </header>
 
@@ -239,6 +241,8 @@ export default function GameShell({
         onQuickMatch={() => setPicker(true)}
         onBack={() => navigate("/games")}
       />
+
+      <WaitingForOpponentGate show={Boolean(waitingForOpponent)} opponentName={them?.name || "your opponent"} onCancel={quitGame} />
 
       <OpponentPickerSheet
         open={picker}

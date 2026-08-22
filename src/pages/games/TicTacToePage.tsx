@@ -165,6 +165,7 @@ export default function TicTacToePage() {
     <GameShell
       gameType="tic_tac_toe"
       gameId={game.id}
+      waitingForOpponent={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
       title="Tic-Tac-Toe"
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}

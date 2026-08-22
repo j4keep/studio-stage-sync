@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { HelpCircle, Volume2, VolumeX, X } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, HelpCircle, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import {
   COURSE_H,
   COURSE_W,
@@ -556,11 +557,7 @@ export default function MiniGolfBoard({
 
       {/* Scoreboard HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-2 pt-2">
-        <button type="button" onClick={onBack} aria-label="Back" className="pointer-events-auto shrink-0 rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-          <X className="h-4 w-4" />
-        </button>
-
-        <div
+                <div
           className="flex items-center rounded-2xl border-2 px-1 py-1"
           style={{ borderColor: "rgba(240,216,76,0.35)", background: "rgba(6,10,6,0.88)", boxShadow: "0 4px 14px rgba(0,0,0,0.5)" }}
         >
@@ -585,13 +582,15 @@ export default function MiniGolfBoard({
         </div>
 
         <div className="pointer-events-auto flex shrink-0 items-center gap-1">
-          <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            <HelpCircle className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-white active:scale-95"
+            actions={[
+              { key: "help", label: "How to Play", icon: HelpCircle, onClick: () => setHelp((v) => !v) },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
       </div>
       <p className="pointer-events-none absolute left-1/2 top-[3.1rem] z-30 -translate-x-1/2 text-[8px] font-bold text-white/35">

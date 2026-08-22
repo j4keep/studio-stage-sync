@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Volume2, VolumeX, X } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import { LANE_COUNT, TRACK_LENGTH, TrackItem, spawnTrack } from "@/lib/driving-run";
 import { drivingSfx } from "@/lib/driving-sfx";
 import type { RunResult } from "@/lib/driving-run";
@@ -363,9 +364,6 @@ export default function DrivingRace({
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-2">
         <div className="pointer-events-auto flex items-center gap-2">
-          <button type="button" onClick={onBack} aria-label="Back" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            <X className="h-4 w-4" />
-          </button>
           <div className="rounded-xl bg-black/45 px-2 py-1">
             <p className="text-[9px] font-black uppercase text-white/50">You</p>
             <p className="text-base font-black leading-none text-white">{myScore}</p>
@@ -380,10 +378,14 @@ export default function DrivingRace({
             <p className="text-[9px] font-black uppercase text-white/50">Rival</p>
             <p className="text-base font-black leading-none text-white">{oppScore}</p>
           </div>
-          <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-white active:scale-95"
+            actions={[
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
       </div>
 

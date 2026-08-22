@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, ChevronLeft, ChevronRight, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Bot, ChevronLeft, ChevronRight, LogOut, Palette, Shield, Volume2, VolumeX, Wind, Zap } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import type { Appearance } from "@/lib/boxing";
 import { Guard, MoveDir, PUNCHES, Punch } from "@/lib/boxing-live";
 import FighterArt, { SKIN_TONES, type FighterAnim } from "./FighterArt";
@@ -354,9 +355,6 @@ export default function BoxingRing({
       {/* Top HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-2">
         <div className="pointer-events-auto flex items-center gap-2">
-          <button type="button" onClick={onBack} aria-label="Back" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            <X className="h-4 w-4" />
-          </button>
           <div className="w-32 rounded-xl bg-black/45 p-1.5">
             <p className="mb-1 flex items-center gap-1 truncate text-[10px] font-black text-white">
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: myAccent }} />
@@ -385,13 +383,15 @@ export default function BoxingRing({
               <StatBar label="STA" value={oppStamina} max={100} tone="stamina" />
             </div>
           </div>
-          <button type="button" onClick={onCustomize} aria-label="Customize fighter" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            <span className="block h-4 w-4 rounded-full" style={{ background: myAppearance.skin }} />
-          </button>
-          <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-white active:scale-95"
+            actions={[
+              { key: "customize", label: "Customize Fighter", icon: Palette, onClick: onCustomize },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
       </div>
 

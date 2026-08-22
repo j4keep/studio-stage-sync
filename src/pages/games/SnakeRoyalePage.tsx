@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
@@ -233,6 +234,12 @@ export default function SnakeRoyalePage() {
           waiting={game.status === "waiting" && game.host_user_id !== user?.id}
           challengerName={opponentName}
           onAccepted={refresh}
+        />
+
+        <WaitingForOpponentGate
+          show={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
+          opponentName={opponentName}
+          onCancel={quitGame}
         />
 
         <GameLiveDock

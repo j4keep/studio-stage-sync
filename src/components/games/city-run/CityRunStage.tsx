@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, HelpCircle, LogOut, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
 import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import {
@@ -417,14 +418,6 @@ export default function CityRunStage({
       {/* HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 p-3">
         <div className="pointer-events-auto flex items-start gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            aria-label="Back"
-            className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
           <div className="min-w-0 flex-1 rounded-2xl bg-black/45 px-3 py-2 backdrop-blur-md">
             <p className="truncate text-xs font-black text-primary-foreground">{headline}</p>
             <p className="truncate text-[10px] text-primary-foreground/70">{subline}</p>
@@ -436,25 +429,15 @@ export default function CityRunStage({
             </div>
             {best ? <p className="text-[10px] text-primary-foreground/60">Best — {best.toLocaleString()} pts</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={onToggleMute}
-            aria-label={muted ? "Unmute" : "Mute"}
-            className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
-          </button>
-          <button
-            type="button"
-            onClick={() => setHelp((v) => !v)}
-            aria-label="How to play"
-            className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </button>
-          {onQuit && (
-            <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95" iconClassName="h-5 w-5" />
-          )}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/45 px-3 py-2 text-primary-foreground backdrop-blur-md active:scale-95"
+            actions={[
+              { key: "help", label: "How to Play", icon: HelpCircle, onClick: () => setHelp((v) => !v) },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
 
         {activePowers.length > 0 && (

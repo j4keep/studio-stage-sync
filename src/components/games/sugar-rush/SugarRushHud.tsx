@@ -1,5 +1,6 @@
-import { ArrowLeft, Heart, Pause, Volume2, VolumeX } from "lucide-react";
-import QuitGameButton from "@/components/games/QuitGameButton";
+import { ArrowLeft, Heart, LogOut, Pause, Volume2, VolumeX } from "lucide-react";
+import GameMenu from "@/components/games/GameMenu";
+import { confirmQuitGame } from "@/components/games/QuitGameButton";
 import { MAX_HEARTS, SugarRushMazeState } from "@/lib/sugar-rush-maze";
 import "./sugar-rush.css";
 
@@ -44,16 +45,15 @@ export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, o
 
       <div className="mt-2 flex items-center gap-2">
         <div className="pointer-events-auto flex items-center gap-1">
-          <button type="button" onClick={onBack} aria-label="Leave Candy City" className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={onPause} aria-label="Pause" className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm">
-            <Pause className="h-4 w-4" />
-          </button>
-          <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm">
-            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
-          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm" />}
+          <GameMenu
+            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-3 py-2 text-white backdrop-blur-sm active:scale-95"
+            actions={[
+              { key: "pause", label: "Pause", icon: Pause, onClick: onPause },
+              { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
+              { key: "back", label: "Leave Candy City", icon: ArrowLeft, onClick: onBack },
+              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+            ]}
+          />
         </div>
 
         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
