@@ -14,8 +14,7 @@ import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
 import BattleCard from "@/components/BattleCard";
-import LiveGameThumbCard from "@/components/games/live/LiveGameThumbCard";
-import { listLiveGames } from "@/lib/game-live";
+import LiveGamesRail from "@/components/games/live/LiveGamesRail";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
@@ -66,28 +65,9 @@ const FeedPage = () => {
     },
   });
 
-  const { data: liveGames = [], refetch: refetchLiveGames } = useQuery({
-    queryKey: ["live-games"],
-    queryFn: () => listLiveGames(12),
-    refetchInterval: 20_000,
-  });
-
-  // Any match going on/off air (or finishing) refreshes the list right away instead of
-  // waiting out the poll, so a post that just ended doesn't linger in the feed.
-  useEffect(() => {
-    const channel = supabase
-      .channel("feed-live-games")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "games" }, () => void refetchLiveGames())
-      .subscribe();
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [refetchLiveGames]);
-
-  // Posts rail: live games first, then every regular post + battle (create flow no longer
-  // splits reels).
+  // Posts rail: every regular post + battles (create flow no longer splits reels).
   const posts = useMemo(() => {
-    const nextPosts: any[] = liveGames.map((g) => ({ ...g, itemType: "live_game" }));
+    const nextPosts: any[] = [];
     items.forEach((it: any) => {
       if (it.itemType === "battle" || it.itemType === "post") nextPosts.push(it);
     });
@@ -245,6 +225,7 @@ const FeedPage = () => {
 
   const postsColumn = () => (
     <>
+      <LiveGamesRail />
       {posts.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
           <p className="text-xs text-muted-foreground">No posts yet</p>
@@ -257,13 +238,7 @@ const FeedPage = () => {
         </div>
       ) : (
         posts.map((item: any, i: number) =>
-          item.itemType === "live_game" ? (
-            <LiveGameThumbCard
-              key={`live-${item.id}`}
-              game={item}
-              onOpen={() => openPostItem(i)}
-            />
-          ) : item.itemType === "battle" ? (
+          item.itemType === "battle" ? (
             <BattleCard
               key={`battle-${item.id}`}
               battle={item}

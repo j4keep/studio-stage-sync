@@ -20,7 +20,6 @@ import yajLogo from "@/assets/yaj-logo.png";
 import DesktopPostVideoPlayer from "@/components/feed/DesktopPostVideoPlayer";
 import PostCommentsPanel from "@/components/feed/PostCommentsPanel";
 import BattleFeedSlide from "@/components/feed/BattleFeedSlide";
-import LiveGameFeedSlide from "@/components/games/live/LiveGameFeedSlide";
 import useFloatingEmojis, { FloatingEmojiLayer } from "@/components/feed/FloatingEmojis";
 import { forceIosAudioSessionToPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
@@ -123,58 +122,6 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
 
           <div className="feed-viewer-root relative h-[min(92vh,920px)] w-[min(520px,56vw)] overflow-hidden rounded-2xl bg-black shadow-2xl">
             <BattleFeedSlide battle={post} currentUserId={user?.id} isActive />
-          </div>
-
-          {index < items.length - 1 && (
-            <button
-              type="button"
-              onClick={() => setIndex((i) => i + 1)}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur"
-              aria-label="Next"
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (post.itemType === "live_game") {
-    return (
-      <div className="fixed inset-0 z-[80] bg-black/95" onClick={onClose}>
-        <div
-          className="absolute left-4 top-4 z-[90] flex items-center gap-3"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <img src={yajLogo} alt="YAJ" className="h-12 w-auto object-contain drop-shadow-lg sm:h-14" />
-        </div>
-
-        <div
-          className="flex h-full items-center justify-center gap-3 px-4"
-          onClick={(e) => e.stopPropagation()}
-        >
-          {index > 0 && (
-            <button
-              type="button"
-              onClick={() => setIndex((i) => i - 1)}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur"
-              aria-label="Previous"
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-          )}
-
-          <div className="feed-viewer-root relative h-[min(92vh,920px)] w-[min(520px,56vw)] overflow-hidden rounded-2xl bg-black shadow-2xl">
-            <LiveGameFeedSlide game={post} isActive />
           </div>
 
           {index < items.length - 1 && (
