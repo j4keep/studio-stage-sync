@@ -10,7 +10,7 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import TreasureRushStage, { TrOutcome } from "@/components/games/treasure-rush/TreasureRushStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { trSfx } from "@/lib/treasure-rush-sfx";
-import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import treasureArt from "@/assets/games/adventures/treasure-rush.png.asset.json";
 
@@ -111,6 +111,14 @@ export default function TreasureRushPage() {
     trSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -149,6 +157,7 @@ export default function TreasureRushPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onEnd={onEnd}
           />
         )}

@@ -28,6 +28,7 @@ import {
   bumpStats,
   createMultiplayerGame,
   createSoloGame,
+  endGame,
   getMyStats,
   listMyGames,
   recordMove,
@@ -297,6 +298,14 @@ export default function PoolPage() {
     poolSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -366,6 +375,7 @@ export default function PoolPage() {
           muted={muted}
           onToggleMute={toggleMute}
           onBack={() => navigate("/games")}
+          onQuit={quitGame}
           howToPlay={HOW_TO_PLAY}
           sideDock={
             <GameLiveDock

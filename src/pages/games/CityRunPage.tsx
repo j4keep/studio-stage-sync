@@ -10,7 +10,7 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import CityRunStage from "@/components/games/city-run/CityRunStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { obbySfx } from "@/lib/obby-sfx";
-import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import cityArt from "@/assets/games/adventures/city-run.png.asset.json";
 
@@ -131,6 +131,13 @@ export default function CityRunPage() {
     obbySfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
@@ -139,6 +146,7 @@ export default function CityRunPage() {
             runKey={runKey}
             myColor={MY_COLOR}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onEnd={onEnd}
             headline="YAJ City Run"
             subline="Endless sprint through the city — dodge, jump, slide"

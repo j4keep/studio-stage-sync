@@ -15,7 +15,7 @@ import { useObbyLive } from "@/hooks/use-obby-live";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { ObbyState, formatMs, initialObby } from "@/lib/obby";
 import { obbySfx } from "@/lib/obby-sfx";
-import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import obbyArt from "@/assets/games/yaj-obby-intro.png";
 
@@ -192,6 +192,13 @@ export default function ObbyPage() {
     obbySfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
@@ -202,6 +209,7 @@ export default function ObbyPage() {
             onSample={isMultiplayer ? sample : undefined}
             onFinish={onFinish}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             raceStartedAt={startedAt}
             headline={game.mode === "solo" ? "YAJ Obby — time trial" : `YAJ Obby — you vs ${opponentName}`}
             subline={

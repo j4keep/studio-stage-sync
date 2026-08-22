@@ -1,4 +1,5 @@
 import { ArrowLeft, Heart, KeyRound, Pause, Play, Timer, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import MiniMap from "@/components/games/treasure-rush/MiniMap";
 import { clockLabel } from "@/lib/treasure-rush/score";
 import { MAX_HEARTS, PowerKind } from "@/lib/treasure-rush/engine";
@@ -31,6 +32,7 @@ export default function TreasureRushHud({
   muted,
   paused,
   onBack,
+  onQuit,
   onToggleMute,
   onTogglePause,
 }: {
@@ -39,6 +41,7 @@ export default function TreasureRushHud({
   muted: boolean;
   paused: boolean;
   onBack: () => void;
+  onQuit?: () => void;
   onToggleMute: () => void;
   onTogglePause: () => void;
 }) {
@@ -98,6 +101,7 @@ export default function TreasureRushHud({
           >
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/50 p-2 text-white backdrop-blur-md active:scale-95" />}
         </div>
       </div>
 

@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Bot, HelpCircle, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import {
   BALL_COLORS,
   BALL_R,
@@ -47,6 +48,7 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   howToPlay: string[];
   /** Live controls (go live / talk / viewers / chat) rendered in the side rail, never over the felt. */
   sideDock?: ReactNode;
@@ -304,6 +306,7 @@ export default function PoolTable({
   muted,
   onToggleMute,
   onBack,
+  onQuit,
   howToPlay,
   sideDock,
 }: Props) {
@@ -780,6 +783,7 @@ export default function PoolTable({
             <button type="button" onClick={() => setHelp((v) => !v)} aria-label="How to play" className="rounded-full bg-black/55 p-1 text-white active:scale-95">
               <HelpCircle className="h-3.5 w-3.5" />
             </button>
+            {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1 text-white active:scale-95" iconClassName="h-3.5 w-3.5" />}
           </div>
           <PoolPod
             name={oppName}

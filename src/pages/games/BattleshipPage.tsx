@@ -12,7 +12,7 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import FleetClashStage from "@/components/games/battleship/FleetClashStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { initialBattleship } from "@/lib/battleship";
 import { gameRoute } from "@/lib/game-routes";
 import fleetClashArtAsset from "@/assets/games/adventures/fleet-clash.png.asset.json";
@@ -144,6 +144,12 @@ export default function BattleshipPage() {
             onStatus={() => {}}
             onFinish={(didWin, finalScore) => void finishRun(didWin, finalScore)}
             onBack={() => navigate("/games")}
+            onQuit={() => {
+              void (async () => {
+                await endGame(game.id);
+                navigate("/games");
+              })();
+            }}
             liveDock={
               <GameLiveDock
                 gameId={game.id}

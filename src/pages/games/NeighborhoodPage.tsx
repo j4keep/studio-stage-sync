@@ -14,7 +14,7 @@ import { neighborhoodMuted, neighborhoodSetMuted, neighborhoodSfx } from "@/lib/
 import { NeighborhoodEvent, NeighborhoodState, fromSave, toSave } from "@/lib/neighborhood/engine";
 import { MISSIONS, initialMissionsState, missionsCompleteCount } from "@/lib/neighborhood/missions";
 import { NeighborhoodScore, scoreNeighborhood } from "@/lib/neighborhood/score";
-import { bumpStats, updateGameState } from "@/lib/games";
+import { bumpStats, endGame, updateGameState } from "@/lib/games";
 import neighborhoodArt from "@/assets/games/adventures/neighborhood.png.asset.json";
 
 const TUTORIAL_KEY = "wheuat.neighborhood.tutorialSeen";
@@ -114,6 +114,14 @@ export default function NeighborhoodPage() {
     neighborhoodSetMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   const shareProgress = async () => {
     const text = completeSummary
       ? `I just finished all 5 missions in YAJ Central — ${completeSummary.starsFound}/${completeSummary.starsTotal} stars, ${completeSummary.xp} XP! 🏙️`
@@ -161,6 +169,7 @@ export default function NeighborhoodPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onCheckpoint={onCheckpoint}
           />
         )}

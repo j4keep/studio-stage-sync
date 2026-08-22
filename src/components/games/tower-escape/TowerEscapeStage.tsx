@@ -30,11 +30,12 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onEnd: (outcome: TowerOutcome) => void;
 };
 
 /** The live tower: fixed-step physics, canvas render, HUD and controls. */
-export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, onBack, onEnd }: Props) {
+export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stRef = useRef<TowerState>(initialTower());
   const camRef = useRef<Camera | undefined>(undefined);
@@ -168,6 +169,7 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
         onToggleMute={onToggleMute}
         onPause={() => setPaused((p) => !p)}
         onBack={onBack}
+        onQuit={onQuit}
       />
 
       {!paused && !downed && <TowerControls input={inputRef} onJump={() => { /* engine reads the held flag */ }} />}

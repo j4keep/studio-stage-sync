@@ -1,4 +1,5 @@
 import { ArrowLeft, Heart, Pause, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { MAX_HEARTS, SugarRushMazeState } from "@/lib/sugar-rush-maze";
 import "./sugar-rush.css";
 
@@ -9,11 +10,12 @@ type Props = {
   onToggleMute: () => void;
   onPause: () => void;
   onBack: () => void;
+  onQuit?: () => void;
 };
 
 /** Hearts (left) · Objective (center) · Score (right), Sugar Meter below — kept compact
  *  and out of the maze's own play area, mirrors TowerHud.tsx's layout conventions. */
-export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, onBack }: Props) {
+export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, onBack, onQuit }: Props) {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-20 select-none px-3 pt-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
       <div className="flex items-start justify-between gap-2">
@@ -51,6 +53,7 @@ export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, o
           <button type="button" onClick={onToggleMute} aria-label={muted ? "Unmute" : "Mute"} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm" />}
         </div>
 
         <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">

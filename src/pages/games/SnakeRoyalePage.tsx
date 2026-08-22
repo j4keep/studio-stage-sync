@@ -14,7 +14,7 @@ import SnakeRoyaleBoard from "@/components/games/snake-royale/SnakeRoyaleBoard";
 import { snakeRoyaleSfx } from "@/lib/snake-royale-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { RoundResult, Seat, SnakeRoyaleState, applyRoundResult, initialSnakeRoyale } from "@/lib/snake-royale-run";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
@@ -185,6 +185,13 @@ export default function SnakeRoyalePage() {
     snakeRoyaleSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
@@ -199,6 +206,7 @@ export default function SnakeRoyalePage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={(result) => void finishRound(run.possession, result)}
           />
@@ -213,6 +221,7 @@ export default function SnakeRoyalePage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={() => {}}
           />

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
 import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import {
@@ -31,6 +32,7 @@ type Hud = {
 type Props = {
   myColor: string;
   onBack: () => void;
+  onQuit?: () => void;
   onEnd: (score: number, coins: number, distance: number) => void;
   headline: string;
   subline: string;
@@ -352,6 +354,7 @@ function RunJoystick({
 export default function CityRunStage({
   myColor,
   onBack,
+  onQuit,
   onEnd,
   headline,
   subline,
@@ -449,6 +452,9 @@ export default function CityRunStage({
           >
             <HelpCircle className="h-5 w-5" />
           </button>
+          {onQuit && (
+            <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95" iconClassName="h-5 w-5" />
+          )}
         </div>
 
         {activePowers.length > 0 && (

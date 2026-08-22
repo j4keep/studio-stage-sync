@@ -31,12 +31,13 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   /** Fired right after a meaningful progress event (mission accepted/completed, star, discovery,
    *  item pickup) so the page can checkpoint-save immediately, plus on pause (event undefined). */
   onCheckpoint: (st: NeighborhoodState, event?: NeighborhoodEvent) => void;
 };
 
-export default function NeighborhoodStage({ initial, muted, onToggleMute, onBack, onCheckpoint }: Props) {
+export default function NeighborhoodStage({ initial, muted, onToggleMute, onBack, onQuit, onCheckpoint }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stRef = useRef<NeighborhoodState>(initial);
   const camRef = useRef<Camera | undefined>(undefined);
@@ -170,6 +171,7 @@ export default function NeighborhoodStage({ initial, muted, onToggleMute, onBack
           onCheckpoint(stRef.current);
         }}
         onBack={onBack}
+        onQuit={onQuit}
         onInteract={doInteract}
         onOpenMissions={() => setMissionsOpen(true)}
       />

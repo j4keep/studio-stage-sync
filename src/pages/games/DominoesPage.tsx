@@ -22,7 +22,7 @@ import {
   playTile,
   playableTiles,
 } from "@/lib/dominoes";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
@@ -185,6 +185,14 @@ export default function DominoesPage() {
     if (!next) void casinoMusic.start();
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -251,6 +259,7 @@ export default function DominoesPage() {
           muted={muted}
           onToggleMute={toggleMute}
           onBack={() => navigate("/games")}
+          onQuit={quitGame}
           onPlay={(i, side) => void play(i, side)}
           onDraw={() => void draw()}
           howToPlay={HOW_TO_PLAY}

@@ -9,7 +9,7 @@ import SugarRushMazeStage, { SugarRushOutcome } from "@/components/games/sugar-r
 import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 export default function SugarRushPage() {
@@ -105,6 +105,14 @@ export default function SugarRushPage() {
     sugarRushSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -138,6 +146,7 @@ export default function SugarRushPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onEnd={onEnd}
           />
         )}

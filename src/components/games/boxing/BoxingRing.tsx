@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Bot, ChevronLeft, ChevronRight, Shield, Volume2, VolumeX, Wind, X, Zap } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import type { Appearance } from "@/lib/boxing";
 import { Guard, MoveDir, PUNCHES, Punch } from "@/lib/boxing-live";
 import FighterArt, { SKIN_TONES, type FighterAnim } from "./FighterArt";
@@ -132,6 +133,7 @@ export default function BoxingRing({
   muted,
   onToggleMute,
   onBack,
+  onQuit,
   onCustomize,
   onPunch,
   onGuard,
@@ -169,6 +171,7 @@ export default function BoxingRing({
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onCustomize: () => void;
   onPunch: (p: Punch) => void;
   onGuard: (g: Guard) => void;
@@ -388,6 +391,7 @@ export default function BoxingRing({
           <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { ArrowLeft, Hand, ListChecks, Pause, Sparkles, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { NeighborhoodState, nearestInteractable, waypointTarget } from "@/lib/neighborhood/engine";
 import { activeMainMission, missionsCompleteCount, trackerProgressLabel, MISSIONS } from "@/lib/neighborhood/missions";
 import NeighborhoodMiniMap from "./NeighborhoodMiniMap";
@@ -9,11 +10,12 @@ type Props = {
   onToggleMute: () => void;
   onPause: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onInteract: () => void;
   onOpenMissions: () => void;
 };
 
-export default function NeighborhoodHud({ st, muted, onToggleMute, onPause, onBack, onInteract, onOpenMissions }: Props) {
+export default function NeighborhoodHud({ st, muted, onToggleMute, onPause, onBack, onQuit, onInteract, onOpenMissions }: Props) {
   const mission = activeMainMission(st.missions);
   const progress = mission ? st.missions[mission.id] : null;
   const done = missionsCompleteCount(st.missions);
@@ -96,6 +98,12 @@ export default function NeighborhoodHud({ st, muted, onToggleMute, onPause, onBa
             >
               <Pause className="h-4 w-4" />
             </button>
+            {onQuit && (
+              <QuitGameButton
+                onQuit={onQuit}
+                className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
+              />
+            )}
           </div>
 
           <NeighborhoodMiniMap st={st} />

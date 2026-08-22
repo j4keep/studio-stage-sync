@@ -10,7 +10,7 @@ import GameResultCard from "@/components/games/pro/GameResultCard";
 import TowerEscapeStage, { TowerOutcome } from "@/components/games/tower-escape/TowerEscapeStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { towerMuted, towerSetMuted, towerSfx } from "@/lib/tower-escape-sfx";
-import { bumpStats, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 import towerArt from "@/assets/games/adventures/tower-escape.png.asset.json";
 
@@ -110,6 +110,14 @@ export default function TowerEscapePage() {
     towerSetMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -147,6 +155,7 @@ export default function TowerEscapePage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onEnd={onEnd}
           />
         )}

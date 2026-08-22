@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import ObbyAvatar from "@/components/games/obby/ObbyAvatar";
 import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import {
@@ -33,6 +34,7 @@ type StageProps = {
   onSample?: (x: number, y: number, z: number, ry: number) => void;
   onFinish?: (ms: number) => void;
   onBack: () => void;
+  onQuit?: () => void;
   raceStartedAt: number | null;
   headline: string;
   subline: string;
@@ -375,6 +377,7 @@ export default function ObbyStage({
   onSample,
   onFinish,
   onBack,
+  onQuit,
   raceStartedAt,
   headline,
   subline,
@@ -516,6 +519,9 @@ export default function ObbyStage({
           >
             <HelpCircle className="h-5 w-5" />
           </button>
+          {onQuit && (
+            <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/45 p-2 text-primary-foreground backdrop-blur-md active:scale-95" iconClassName="h-5 w-5" />
+          )}
         </div>
 
         {help && (

@@ -28,11 +28,12 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onEnd: (outcome: IslandOutcome) => void;
 };
 
 /** The live island: fixed-step survival engine, canvas render, HUD and one stick. */
-export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute, onBack, onEnd }: Props) {
+export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stRef = useRef<IslandState>(initialIsland());
   const camRef = useRef<Camera | undefined>(undefined);
@@ -140,6 +141,7 @@ export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute,
         onToggleMute={onToggleMute}
         onPause={() => setPaused((p) => !p)}
         onBack={onBack}
+        onQuit={onQuit}
       />
 
       {!paused && st.status === "alive" && <IslandControls input={inputRef} />}

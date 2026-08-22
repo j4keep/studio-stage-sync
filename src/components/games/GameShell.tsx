@@ -6,15 +6,18 @@ import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { GameType, createSoloGame } from "@/lib/games";
+import { GameType, createSoloGame, endGame } from "@/lib/games";
 import { gameRoute, initialStateFor } from "@/lib/game-routes";
 import PlayerBadge, { ArenaPlayer } from "@/components/games/PlayerBadge";
 import GameResultCard from "@/components/games/pro/GameResultCard";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { toast } from "@/hooks/use-toast";
 
 type Props = {
   /** Which game this is — powers the shared intro (solo / quick match / record). */
   gameType: GameType;
+  /** The live game row's id — shows a quit/end-game button in the header when present. */
+  gameId?: string;
   title: string;
   subtitle: string;
   status: string;
@@ -39,6 +42,7 @@ type Props = {
 
 export default function GameShell({
   gameType,
+  gameId,
   title,
   subtitle,
   status,
@@ -108,6 +112,14 @@ export default function GameShell({
 
   const showResult = Boolean(finished && outcome) && !resultDismissed;
 
+  const quitGame = () => {
+    if (!gameId) return;
+    void (async () => {
+      await endGame(gameId);
+      navigate("/games");
+    })();
+  };
+
   return (
     <div
       className="min-h-[100dvh] pb-28 text-white"
@@ -126,10 +138,13 @@ export default function GameShell({
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="text-lg font-black tracking-tight">{title}</h1>
             <p className="truncate text-[11px] text-white/55">{subtitle}</p>
           </div>
+          {gameId && !finished && (
+            <QuitGameButton onQuit={quitGame} className="rounded-full p-1.5 text-white/80 transition hover:bg-white/10 active:scale-95" />
+          )}
         </div>
       </header>
 

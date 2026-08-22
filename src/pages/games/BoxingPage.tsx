@@ -18,7 +18,7 @@ import { boxingSfx } from "@/lib/boxing-sfx";
 import boxingIntroArt from "@/assets/games/yaj-boxing-intro.png";
 
 import { Appearance, DEFAULT_APPEARANCE, Seat } from "@/lib/boxing";
-import { bumpStats, createMultiplayerGame, createSoloGame, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const OPP_DEFAULT_APPEARANCE: Appearance = { skin: SKIN_TONES[3], build: "athletic", fem: true, character: "woman" };
@@ -297,6 +297,13 @@ export default function BoxingPage() {
             boxingSfx.setMuted(next);
           }}
           onBack={() => navigate("/games")}
+          onQuit={() => {
+            if (!game) return;
+            void (async () => {
+              await endGame(game.id);
+              navigate("/games");
+            })();
+          }}
           onCustomize={() => setShowCustomize(true)}
           onPunch={live.punch}
           onGuard={live.guard}

@@ -1,4 +1,5 @@
 import { ArrowLeft, Heart, Pause, Sparkles, Volume2, VolumeX, Waves } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { IslandState, MAX_HEARTS, safeZoneActive, waveLabel, waveProgress } from "@/lib/survival-island/engine";
 import { formatClock } from "@/lib/survival-island/score";
 import IslandMiniMap from "./IslandMiniMap";
@@ -10,10 +11,11 @@ type Props = {
   onToggleMute: () => void;
   onPause: () => void;
   onBack: () => void;
+  onQuit?: () => void;
 };
 
 /** Hearts, survival timer, score, stars, wave banner, objectives and mini-map. */
-export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBack }: Props) {
+export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBack, onQuit }: Props) {
   const wave = waveLabel(st);
   const urgent = st.timeLeft <= 10_000;
 
@@ -76,6 +78,12 @@ export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBa
             >
               <Pause className="h-4 w-4" />
             </button>
+            {onQuit && (
+              <QuitGameButton
+                onQuit={onQuit}
+                className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border border-white/20 bg-black/45 text-white backdrop-blur"
+              />
+            )}
           </div>
 
           <div

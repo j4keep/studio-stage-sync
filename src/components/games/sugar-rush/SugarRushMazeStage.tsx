@@ -31,6 +31,7 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onEnd: (outcome: SugarRushOutcome) => void;
 };
 
@@ -38,7 +39,7 @@ const TUTORIAL_KEY = "yaj.games.sugarrush.tutorialSeen";
 
 /** The live maze: fixed-step engine, canvas render, a 3D actor overlay, HUD and controls —
  *  mirrors TowerEscapeStage.tsx's structure. */
-export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, onBack, onEnd }: Props) {
+export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const stRef = useRef<SugarRushMazeState>(initialSugarRushMaze());
   const camRef = useRef<Camera | undefined>(undefined);
@@ -176,7 +177,7 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       <SugarRushActors stateRef={stRef} camRef={camRef} />
 
-      <SugarRushHud st={st} best={best} muted={muted} onToggleMute={onToggleMute} onPause={() => setPaused((p) => !p)} onBack={onBack} />
+      <SugarRushHud st={st} best={best} muted={muted} onToggleMute={onToggleMute} onPause={() => setPaused((p) => !p)} onBack={onBack} onQuit={onQuit} />
 
       {checkpointFlash > 0 && (
         <p

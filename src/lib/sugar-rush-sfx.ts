@@ -31,7 +31,9 @@ class SugarRushSfx {
   private musicRunning = false;
 
   muted = typeof localStorage !== "undefined" ? localStorage.getItem(MUTE_KEY) === "1" : false;
-  musicVolume = readNum(MUSIC_VOL_KEY, 0.5);
+  // Music defaults low (not full mute — that would also silence gameplay sound effects,
+  // which should stay audible by default). Players can always raise it in Settings.
+  musicVolume = readNum(MUSIC_VOL_KEY, 0.1);
   sfxVolume = readNum(SFX_VOL_KEY, 0.8);
 
   private ensure() {

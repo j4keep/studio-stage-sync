@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ArrowLeft, HelpCircle, Layers, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import type { Tile } from "@/lib/dominoes";
 import DominoTile from "./DominoTile";
 import DominoChain from "./DominoChain";
@@ -25,6 +26,7 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onPlay: (handIndex: number, side: "left" | "right") => void;
   onDraw: () => void;
   howToPlay: string[];
@@ -48,6 +50,7 @@ export default function DominoTable({
   muted,
   onToggleMute,
   onBack,
+  onQuit,
   onPlay,
   onDraw,
   howToPlay,
@@ -188,6 +191,7 @@ export default function DominoTable({
           >
             <HelpCircle className="h-4 w-4" />
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-white/10 p-1.5 text-white active:scale-95" />}
         </div>
       </div>
 

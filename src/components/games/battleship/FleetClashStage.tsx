@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject, type ReactNode } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import ObbyAvatar, { AvatarPose } from "@/components/games/obby/ObbyAvatar";
 import { useCharacterAppearance } from "@/contexts/CharacterAppearanceContext";
 import { battleshipSfx } from "@/lib/battleship-sfx";
@@ -61,6 +62,7 @@ type Props = {
   onStatus: (status: string) => void;
   onFinish: (won: boolean, score: number) => void;
   onBack?: () => void;
+  onQuit?: () => void;
   liveDock?: ReactNode;
 };
 
@@ -971,7 +973,7 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
   );
 }
 
-export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, liveDock }: Props) {
+export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, onQuit, liveDock }: Props) {
   const inputRef = useRef<Input>({ x: 0, z: 0 });
   const fireRef = useRef(false);
   const duckRef = useRef(false);
@@ -1057,6 +1059,13 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
         <button type="button" onClick={onToggleMute} className="rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md" aria-label="Toggle sound">
           {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
         </button>
+        {onQuit && (
+          <QuitGameButton
+            onQuit={onQuit}
+            className="rounded-full border border-white/15 bg-slate-950/50 p-3 text-white backdrop-blur-md"
+            iconClassName="h-5 w-5"
+          />
+        )}
       </div>
 
       <ScreenSteering inputRef={inputRef} />

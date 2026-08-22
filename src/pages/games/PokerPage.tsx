@@ -15,7 +15,7 @@ import PokerTable from "@/components/games/poker/PokerTable";
 import { pokerSfx } from "@/lib/poker-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { PokerAction, PokerState, Seat, applyAction, computerAction, initialPoker, legalActions, nextHand } from "@/lib/poker";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
@@ -217,6 +217,14 @@ export default function PokerPage() {
     pokerSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    if (!game) return;
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-background">
@@ -260,6 +268,7 @@ export default function PokerPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onAction={(action, amount) => void act(mySeat, action, amount ?? 0)}
             onNextHand={() => void dealNext()}

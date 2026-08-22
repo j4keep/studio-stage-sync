@@ -1,4 +1,5 @@
 import { ArrowLeft, Flag, Heart, Pause, Star, Timer, Volume2, VolumeX } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { TowerState } from "@/lib/tower-escape/engine";
 import { TOTAL_CHECKPOINTS } from "@/lib/tower-escape/level";
 import { formatClock } from "@/lib/tower-escape/score";
@@ -11,10 +12,11 @@ type Props = {
   onToggleMute: () => void;
   onPause: () => void;
   onBack: () => void;
+  onQuit?: () => void;
 };
 
 /** Hearts · Time · Stars · Checkpoint counter — the four things the run lives on. */
-export default function TowerHud({ st, sectionName, best, muted, onToggleMute, onPause, onBack }: Props) {
+export default function TowerHud({ st, sectionName, best, muted, onToggleMute, onPause, onBack, onQuit }: Props) {
   const low = st.timeLeft <= 30_000;
   const climbed = Math.min(100, Math.round((st.highest / st.level.top) * 100));
 
@@ -46,6 +48,7 @@ export default function TowerHud({ st, sectionName, best, muted, onToggleMute, o
           >
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-2 text-white backdrop-blur-sm" />}
         </div>
 
         <div className="flex flex-col items-end gap-1.5">

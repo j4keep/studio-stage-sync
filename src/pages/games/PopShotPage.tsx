@@ -15,7 +15,7 @@ import PopShotCourt from "@/components/games/pop-shot/PopShotCourt";
 import { popShotSfx } from "@/lib/pop-shot-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { PopShotState, RoundResult, Seat, applyRoundResult, initialPopShot } from "@/lib/pop-shot-run";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
@@ -186,6 +186,13 @@ export default function PopShotPage() {
     popShotSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <LandscapeStage auto>
       <div className="relative h-full w-full">
@@ -200,6 +207,7 @@ export default function PopShotPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={(result) => void finishRound(run.possession, result)}
           />
@@ -214,6 +222,7 @@ export default function PopShotPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={() => {}}
           />

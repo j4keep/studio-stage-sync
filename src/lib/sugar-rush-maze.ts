@@ -551,11 +551,14 @@ function moveCavity(st: SugarRushMazeState, dt: number, speed: number, playerCel
   }
 }
 
+// Kept well clear of the player's start cell (1,1) so a fresh run never opens with Dr.
+// Cavity beelining toward a point right next to the player before they've had a chance
+// to move — every waypoint here is comfortably outside CHASE_RADIUS from spawn.
 const PATROL_WAYPOINTS: Cell[] = [
-  { c: 3, r: 2 },
   { c: 11, r: 3 },
   { c: 12, r: 15 },
   { c: 3, r: 16 },
+  { c: 9, r: 9 },
 ];
 
 function patrolTarget(map: CandyCityMap, index: number): Cell {

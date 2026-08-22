@@ -14,7 +14,7 @@ import MiniGolfBoard from "@/components/games/mini-golf/MiniGolfBoard";
 import { miniGolfSfx } from "@/lib/mini-golf-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { MiniGolfState, RoundResult, Seat, applyRoundResult, initialMiniGolf } from "@/lib/mini-golf-run";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const HOW_TO_PLAY = [
@@ -185,6 +185,13 @@ export default function MiniGolfPage() {
     miniGolfSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
@@ -199,6 +206,7 @@ export default function MiniGolfPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={(result) => void finishRound(run.possession, result)}
           />
@@ -213,6 +221,7 @@ export default function MiniGolfPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             howToPlay={HOW_TO_PLAY}
             onComplete={() => {}}
           />

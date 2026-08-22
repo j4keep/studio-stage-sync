@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { HelpCircle, Volume2, VolumeX, X } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { ROUND_SECONDS, RoundResult, WordPuzzle, scoreWord, shufflePuzzles, ALL_FOUND_BONUS } from "@/lib/word-link-run";
 import { wordLinkSfx } from "@/lib/word-link-sfx";
 
@@ -23,6 +24,7 @@ export default function WordLinkBoard({
   muted,
   onToggleMute,
   onBack,
+  onQuit,
   howToPlay,
   onComplete,
 }: {
@@ -35,6 +37,7 @@ export default function WordLinkBoard({
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   howToPlay: string[];
   onComplete: (result: RoundResult) => void;
 }) {
@@ -384,6 +387,7 @@ export default function WordLinkBoard({
           <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
         </div>
       </div>
       <p className="pointer-events-none absolute left-1/2 top-[3.1rem] z-30 -translate-x-1/2 text-[8px] font-bold text-white/35">{roundLabel}</p>

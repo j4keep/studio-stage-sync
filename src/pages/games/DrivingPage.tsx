@@ -15,7 +15,7 @@ import DrivingRace from "@/components/games/driving/DrivingRace";
 import { drivingSfx } from "@/lib/driving-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { DrivingRunState, RunResult, Seat, applyRunResult, initialDrivingRun } from "@/lib/driving-run";
-import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
+import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
 const SEAT_COLORS = ["#2563eb", "#e0453f"];
@@ -180,6 +180,13 @@ export default function DrivingPage() {
     drivingSfx.setMuted(next);
   };
 
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
   return (
     <LandscapeStage auto>
       <div className="relative h-full w-full">
@@ -195,6 +202,7 @@ export default function DrivingPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onComplete={(result) => void finishRun(run.possession, result)}
           />
         )}
@@ -209,6 +217,7 @@ export default function DrivingPage() {
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
+            onQuit={quitGame}
             onComplete={() => {}}
           />
         )}

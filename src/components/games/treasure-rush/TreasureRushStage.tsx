@@ -27,6 +27,7 @@ type Props = {
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onEnd: (outcome: TrOutcome) => void;
 };
 
@@ -109,7 +110,7 @@ const HOW_TO = [
   "Grab the treasure, then reach the green exit arch before the timer hits 0:00.",
 ];
 
-export default function TreasureRushStage({ runKey, myColor, best, muted, onToggleMute, onBack, onEnd }: Props) {
+export default function TreasureRushStage({ runKey, myColor, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
   const state = useRef<TrState>(initialTreasureRush());
   const inputRef = useRef({ ax: 0, az: 0, interact: false });
   const pausedRef = useRef(false);
@@ -262,6 +263,7 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
         muted={muted}
         paused={paused}
         onBack={onBack}
+        onQuit={onQuit}
         onToggleMute={onToggleMute}
         onTogglePause={togglePause}
       />

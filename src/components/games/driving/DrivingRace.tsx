@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Volume2, VolumeX, X } from "lucide-react";
+import QuitGameButton from "@/components/games/QuitGameButton";
 import { LANE_COUNT, TRACK_LENGTH, TrackItem, spawnTrack } from "@/lib/driving-run";
 import { drivingSfx } from "@/lib/driving-sfx";
 import type { RunResult } from "@/lib/driving-run";
@@ -73,6 +74,7 @@ export default function DrivingRace({
   muted,
   onToggleMute,
   onBack,
+  onQuit,
   onComplete,
 }: {
   active: boolean;
@@ -85,6 +87,7 @@ export default function DrivingRace({
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
+  onQuit?: () => void;
   onComplete: (result: RunResult) => void;
 }) {
   const [, force] = useState(0);
@@ -380,6 +383,7 @@ export default function DrivingRace({
           <button type="button" onClick={onToggleMute} aria-label="Mute" className="rounded-full bg-black/55 p-1.5 text-white active:scale-95">
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </button>
+          {onQuit && <QuitGameButton onQuit={onQuit} className="rounded-full bg-black/55 p-1.5 text-white active:scale-95" />}
         </div>
       </div>
 
