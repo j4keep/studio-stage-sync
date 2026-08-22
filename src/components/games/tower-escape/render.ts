@@ -429,7 +429,7 @@ function drawStar(g: CanvasRenderingContext2D, cx: number, cy: number, r: number
 
 /** The blocky YAJ Adventure character, side-on, with limb animation. */
 function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTopRaw: number, cam: Camera, skinColor?: string) {
-  const skin = skinColor || "#f2c396";
+  const skin = skinColor || "#FFCC4D";
   // Art-only upscale so the shared YAJ Adventure character reads as big as in Obby.
   const ART = 1.45;
   const s = cam.scale * ART;

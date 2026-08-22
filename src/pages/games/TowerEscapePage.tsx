@@ -152,6 +152,7 @@ export default function TowerEscapePage() {
         )}
 
         <GameIntro
+          showCharacterCustomize
           open={!seated}
           title="YAJ Tower Escape"
           subtitle="Climb the YAJ tower floor by floor and reach the rooftop before the clock runs out"

@@ -4,9 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export type SkinTone = { id: string; label: string; hex: string };
 
-/** A realistic spectrum from fair to deep, shared with Boxing's own picker so the same
- *  swatches mean the same thing everywhere in the app. */
+/** Gold, the default until a player picks something else, plus a realistic spectrum from
+ *  fair to deep shared with Boxing's own picker so the same swatches mean the same thing
+ *  everywhere in the app. */
 export const SKIN_TONES: SkinTone[] = [
+  { id: "gold", label: "Gold", hex: "#FFCC4D" },
   { id: "fair", label: "Fair", hex: "#f3d3b3" },
   { id: "light", label: "Light", hex: "#e8c39e" },
   { id: "tan", label: "Tan", hex: "#c58c58" },
@@ -15,9 +17,9 @@ export const SKIN_TONES: SkinTone[] = [
   { id: "deep", label: "Deep", hex: "#3a2418" },
 ];
 
-/** Matches ObbyAvatar's existing built-in default so nobody who hasn't picked a tone yet
- *  sees any visual change. */
-export const DEFAULT_SKIN_TONE = "#f2c396";
+/** The classic emoji-yellow/gold tone — the default for every illustrated character until
+ *  a player picks a different one. */
+export const DEFAULT_SKIN_TONE = "#FFCC4D";
 
 const STORAGE_KEY = "yaj_character_skin_tone";
 

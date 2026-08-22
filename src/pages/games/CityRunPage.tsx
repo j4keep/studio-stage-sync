@@ -150,6 +150,7 @@ export default function CityRunPage() {
         )}
 
         <GameIntro
+          showCharacterCustomize
           open={!seated}
           title="YAJ City Run"
           subtitle="Endless runner — how far can you get before you crash?"

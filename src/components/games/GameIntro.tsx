@@ -1,5 +1,7 @@
-import { Bot, Gamepad2, Play, Trophy, X } from "lucide-react";
+import { useState } from "react";
+import { Bot, Gamepad2, Play, Trophy, UserRound, X } from "lucide-react";
 import GameQuickActions, { GameMatchup, GameRecordStats } from "@/components/games/GameQuickActions";
+import CharacterSkinPickerSheet from "@/components/CharacterSkinPickerSheet";
 
 type Player = { name: string; avatarUrl?: string | null; isComputer?: boolean };
 
@@ -17,7 +19,9 @@ type Props = {
   onQuickMatch?: () => void;
   /** Optional key art shown behind the splash, like the pool table's billiards poster. */
   artUrl?: string;
-
+  /** Shows a "Customize Character" button that opens the shared skin-tone picker — only
+   *  meaningful for games that render the illustrated ObbyAvatar-based character. */
+  showCharacterCustomize?: boolean;
 };
 
 const ACCENT = "hsl(275 85% 68%)";
@@ -60,7 +64,10 @@ export default function GameIntro({
   onPlaySolo,
   onQuickMatch,
   artUrl,
+  showCharacterCustomize,
 }: Props) {
+  const [showSkinPicker, setShowSkinPicker] = useState(false);
+
   if (!open) return null;
 
   return (
@@ -98,18 +105,58 @@ export default function GameIntro({
           <Gamepad2 className="h-3.5 w-3.5" style={{ color: ACCENT }} /> YAJ Game
           <X className="ml-1 h-3 w-3 opacity-70" />
         </button>
-        <div
-          className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-white"
-          style={{ borderColor: ACCENT, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${ACCENT}55` }}
-        >
-          <Trophy className="h-3.5 w-3.5" style={{ color: ACCENT }} />
-          <span className="text-[9px] font-black leading-tight">
-            Wins
-            <br />
-            <span className="text-[11px]">{stats?.wins ?? 0}</span>
-          </span>
+        <div className="flex items-center gap-2">
+          {showCharacterCustomize && (
+            <button
+              type="button"
+              onClick={() => setShowSkinPicker(true)}
+              aria-label="Customize character"
+              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-white active:scale-95"
+              style={{ borderColor: ACCENT, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${ACCENT}55` }}
+            >
+              <UserRound className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+              <span className="text-[9px] font-black leading-tight">Character</span>
+            </button>
+          )}
+          <div
+            className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-white"
+            style={{ borderColor: ACCENT, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${ACCENT}55` }}
+          >
+            <Trophy className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+            <span className="text-[9px] font-black leading-tight">
+              Wins
+              <br />
+              <span className="text-[11px]">{stats?.wins ?? 0}</span>
+            </span>
+          </div>
         </div>
       </div>
+
+      {showCharacterCustomize && showSkinPicker && (
+        <div
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 px-6"
+          onClick={() => setShowSkinPicker(false)}
+        >
+          <div
+            className="w-full max-w-xs rounded-2xl border p-4"
+            style={{ borderColor: ACCENT, background: "hsl(255 40% 12%)", boxShadow: `0 0 30px ${ACCENT}55` }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-sm font-black text-white">Customize Character</p>
+              <button
+                type="button"
+                onClick={() => setShowSkinPicker(false)}
+                aria-label="Close"
+                className="rounded-full bg-white/10 p-1.5 text-white active:scale-95"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+            <CharacterSkinPickerSheet />
+          </div>
+        </div>
+      )}
 
       <div className="relative z-10 flex flex-col items-center gap-4">
         {!artUrl && <h1 className="text-center text-3xl font-black text-white drop-shadow">{title}</h1>}

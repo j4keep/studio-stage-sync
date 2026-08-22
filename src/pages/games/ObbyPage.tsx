@@ -238,6 +238,7 @@ export default function ObbyPage() {
         />
 
         <GameIntro
+          showCharacterCustomize
           open={!seated && !finished}
           title="YAJ Obby"
           subtitle={game.mode === "solo" ? "Beat the course — solo time trial" : `Race the course — you vs ${opponentName}`}

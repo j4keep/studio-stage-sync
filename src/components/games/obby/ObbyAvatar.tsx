@@ -26,7 +26,7 @@ type Props = {
  * Chunky block-figure racer: cube head, boxy torso, swinging arms and legs.
  * Deliberately toy-like — the same visual language as classic obby avatars.
  */
-export default function ObbyAvatar({ color, skin = "#f2c396", moving, airborne, ghost, pose, speedMul = 1 }: Props) {
+export default function ObbyAvatar({ color, skin = "#FFCC4D", moving, airborne, ghost, pose, speedMul = 1 }: Props) {
   const lLeg = useRef<Group>(null);
   const rLeg = useRef<Group>(null);
   const lArm = useRef<Group>(null);

@@ -152,6 +152,7 @@ export default function SurvivalIslandPage() {
         )}
 
         <GameIntro
+          showCharacterCustomize
           open={!seated}
           title="YAJ Survival Island"
           subtitle="Sunset Island — dodge falling coconuts, rising water, wild winds and crates. Survive 2:30."

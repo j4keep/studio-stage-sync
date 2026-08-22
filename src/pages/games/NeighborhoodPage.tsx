@@ -166,6 +166,7 @@ export default function NeighborhoodPage() {
         )}
 
         <GameIntro
+          showCharacterCustomize
           open={!seated}
           title="YAJ Neighborhood Adventure"
           subtitle="Explore. Help out. Discover your block."

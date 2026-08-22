@@ -154,6 +154,7 @@ export default function TreasureRushPage() {
         )}
 
         <GameIntro
+          showCharacterCustomize
           open={!seated}
           title="YAJ Treasure Rush"
           subtitle="Lost City Market — loot the ruins and escape before the timer runs out"

@@ -167,6 +167,7 @@ export default function BattleshipPage() {
         />
 
         <GameIntro
+          showCharacterCustomize
           open={!seated && !finished}
           title="YAJ Fleet Clash"
           subtitle={game.mode === "solo" ? "River race — solo run" : `River race — you vs ${opponentName}`}
