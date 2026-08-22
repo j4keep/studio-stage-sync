@@ -10,6 +10,7 @@ import {
   findMatches,
   findLegalMoves,
   clearOneMatchStep,
+  clearSpecialSwapStep,
   applyGravity,
   refill,
 } from "@/lib/sugar-rush";
@@ -129,6 +130,9 @@ export default function SugarRushBoard({
   const [comboText, setComboText] = useState<string | null>(null);
   const [floatingScore, setFloatingScore] = useState<number | null>(null);
   const [hint, setHint] = useState<{ a: Pos; b: Pos } | null>(null);
+  const [fallRows, setFallRows] = useState<Map<number, number>>(new Map());
+  const [spawnIds, setSpawnIds] = useState<Set<number>>(new Set());
+  const [boardBurst, setBoardBurst] = useState(false);
 
   const bestCascadeRef = useRef(0);
   const clearedRef = useRef(0);
@@ -144,6 +148,12 @@ export default function SugarRushBoard({
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
+
+  useEffect(() => {
+    if (!active) return;
+    void sugarRushSfx.startMusic();
+    return () => sugarRushSfx.stopMusic();
+  }, [active]);
 
   const finish = useCallback((won?: boolean) => {
     if (doneRef.current) return;
@@ -169,6 +179,36 @@ export default function SugarRushBoard({
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
+
+  const animateFallAndRefill = useCallback(async (source: Board) => {
+    const beforeRows = new Map<number, number>();
+    source.forEach((row, r) => row.forEach((cell) => { if (cell) beforeRows.set(cell.id, r); }));
+
+    const fallen = applyGravity(source);
+    const deltas = new Map<number, number>();
+    fallen.forEach((row, r) => row.forEach((cell) => {
+      if (!cell) return;
+      const old = beforeRows.get(cell.id);
+      if (old !== undefined && r > old) deltas.set(cell.id, r - old);
+    }));
+    setFallRows(deltas);
+    setBoard(fallen);
+    if (deltas.size) sugarRushSfx.drop(Math.min(4, Math.max(...Array.from(deltas.values()))));
+    await sleep(360);
+    setFallRows(new Map());
+
+    const existing = new Set<number>();
+    fallen.forEach((row) => row.forEach((cell) => { if (cell) existing.add(cell.id); }));
+    const filled = refill(fallen);
+    const fresh = new Set<number>();
+    filled.forEach((row) => row.forEach((cell) => { if (cell && !existing.has(cell.id)) fresh.add(cell.id); }));
+    setSpawnIds(fresh);
+    setBoard(filled);
+    if (fresh.size) sugarRushSfx.drop(1.4);
+    await sleep(390);
+    setSpawnIds(new Set());
+    return filled;
+  }, []);
 
   const resolveAnimatedCascades = useCallback(async (startingBoard: Board) => {
     let working = startingBoard;
@@ -199,14 +239,12 @@ export default function SugarRushBoard({
       setScore((v) => v + step.scoreGained);
       await sleep(100);
 
-      working = applyGravity(working);
-      setBoard(working);
-      await sleep(300);
-
-      working = refill(working);
-      setBoard(working);
-      await sleep(360);
+      setBoardBurst(true);
+      window.setTimeout(() => setBoardBurst(false), 220);
+      working = await animateFallAndRefill(working);
       setFloatingScore(null);
+      if (depth >= 2) sugarRushSfx.cascade(depth);
+      await sleep(depth >= 2 ? 130 : 80);
     }
 
     bestCascadeRef.current = Math.max(bestCascadeRef.current, depth);
@@ -218,19 +256,20 @@ export default function SugarRushBoard({
       await sleep(450);
       working = generateBoard(mode.gridSize);
       setBoard(working);
-      sugarRushSfx.special();
+      sugarRushSfx.shuffle();
       await sleep(420);
       setComboText(null);
     }
     return { board: working, gained: totalGained, cascades: depth };
-  }, [mode.gridSize]);
+  }, [animateFallAndRefill, mode.gridSize]);
 
   const performSwap = useCallback(async (a: Pos, b: Pos) => {
     if (busy || doneRef.current) return;
     setBusy(true);
     setHint(null);
     const swapped = swapCells(board, a, b);
-    const valid = Boolean(board[a.r][a.c]?.special || board[b.r][b.c]?.special || findMatches(swapped).length);
+    const hasSpecial = Boolean(board[a.r][a.c]?.special || board[b.r][b.c]?.special);
+    const valid = Boolean(hasSpecial || findMatches(swapped).length);
 
     setSwapAnim({ a, b });
     setBoard(swapped);
@@ -250,7 +289,27 @@ export default function SugarRushBoard({
       return;
     }
 
-    const resolved = await resolveAnimatedCascades(swapped);
+    let cascadeStart = swapped;
+    if (hasSpecial) {
+      const specialStep = clearSpecialSwapStep(swapped, a, b);
+      if (specialStep) {
+        setMatchedKeys(new Set(specialStep.matched.map(({ r, c }) => `${r}-${c}`)));
+        setBoardBurst(true);
+        sugarRushSfx.special();
+        setFloatingScore(specialStep.scoreGained);
+        await sleep(300);
+        cascadeStart = specialStep.board;
+        setBoard(cascadeStart);
+        setMatchedKeys(new Set());
+        setBoardBurst(false);
+        setScore((v) => v + specialStep.scoreGained);
+        clearedRef.current += specialStep.cleared;
+        cascadeStart = await animateFallAndRefill(cascadeStart);
+        setFloatingScore(null);
+      }
+    }
+
+    const resolved = await resolveAnimatedCascades(cascadeStart);
     if (mode.kind === "moves") {
       setMovesLeft((m) => {
         const next = m - 1;
@@ -259,7 +318,7 @@ export default function SugarRushBoard({
       });
     }
     setBusy(false);
-  }, [board, busy, finish, mode, resolveAnimatedCascades]);
+  }, [animateFallAndRefill, board, busy, finish, mode, resolveAnimatedCascades]);
 
   const attemptSwap = useCallback((a: Pos, b: Pos) => {
     if (!areAdjacent(a, b)) return;
@@ -374,7 +433,7 @@ export default function SugarRushBoard({
 
       <div className="flex flex-1 items-center justify-center p-3">
         <div
-          className="w-full max-w-[420px] rounded-[26px] p-2"
+          className={`w-full max-w-[420px] rounded-[26px] p-2 ${boardBurst ? "sugar-board-burst" : ""}`}
           style={{
             background: "linear-gradient(160deg, #ffd9a8 0%, #f0a94e 55%, #c97a1f 100%)",
             boxShadow: "0 14px 30px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.6)",
@@ -420,7 +479,14 @@ export default function SugarRushBoard({
                         }
                       }
                       return (
-                        <div key={cell.id} className={`absolute inset-[7%] candy-fall ${popping ? "candy-pop" : ""} ${hinted ? "candy-hint" : ""}`}>
+                        <div
+                          key={cell.id}
+                          className={`absolute inset-[7%] ${fallRows.has(cell.id) ? "candy-gravity-drop" : spawnIds.has(cell.id) ? "candy-spawn-drop" : ""} ${popping ? "candy-pop" : ""} ${hinted ? "candy-hint" : ""}`}
+                          style={{
+                            ['--fall-rows' as any]: fallRows.get(cell.id) ?? 0,
+                            ['--spawn-delay' as any]: `${(r * 18 + c * 11)}ms`,
+                          }}
+                        >
                           <CandyFace cell={cell} />
                           {popping && <span className="candy-sparkle" />}
                         </div>
