@@ -4,13 +4,13 @@ import { Loader2, Map } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { RoundResult, Seat, SugarRushState, applyRoundResult, initialSugarRush } from "@/lib/sugar-rush-run";
@@ -234,24 +234,22 @@ export default function SugarRushPage() {
           onChanged={refresh}
         />
 
-        <GameIntro
+        <SugarRushIntro
           open={!seated && !finished}
-          title="YAJ Sugar Rush"
           subtitle={game.mode === "solo" ? "60-second candy dash — solo vs Computer" : `60-second candy dash — you vs ${opponentName}`}
-          artUrl={sugarRushArt}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
           matchups={matchups}
           onStart={() => {
             setSeated(true);
-            void sugarRushSfx.prime();
+            void sugarRushSfx.prime().then(() => sugarRushSfx.startMusic());
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
             if (game.mode === "solo" && game.status === "active") {
               setSeated(true);
-              void sugarRushSfx.prime();
+              void sugarRushSfx.prime().then(() => sugarRushSfx.startMusic());
               return;
             }
             void (async () => {
