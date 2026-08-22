@@ -151,7 +151,7 @@ export function hasLegalMove(board: Board): boolean {
   return false;
 }
 
-function applyGravity(board: Board): Board {
+export function applyGravity(board: Board): Board {
   const rows = board.length;
   const cols = board[0].length;
   const next: Board = board.map((row) => row.slice());
@@ -171,7 +171,7 @@ function applyGravity(board: Board): Board {
   return next;
 }
 
-function refill(board: Board): Board {
+export function refill(board: Board): Board {
   const rows = board.length;
   const cols = board[0].length;
   const next: Board = board.map((row) => row.slice());
@@ -185,6 +185,74 @@ function refill(board: Board): Board {
 
 export const BASE_POINTS = 10;
 export const CASCADE_MULTIPLIER = 1.5;
+
+export type CascadeStep = {
+  board: Board;
+  matched: Pos[];
+  scoreGained: number;
+  cleared: number;
+};
+
+/** Resolve exactly one visible cascade step. Unlike resolveCascades, this deliberately leaves
+ * empty spaces in the returned board so the UI can animate: pop -> gravity -> refill -> next
+ * automatic match. Special candies created by 4/5-runs are placed before the drop. */
+export function resolveCascadeStep(board: Board, cascadeDepth = 1): CascadeStep | null {
+  const matches = findMatches(board);
+  if (matches.length === 0) return null;
+
+  const current = board.map((row) => row.slice());
+  const clearSet = new Set<string>();
+  const specialsToPlace: { r: number; c: number; special: Special; color: CandyColor }[] = [];
+
+  for (const m of matches) {
+    m.cells.forEach(({ r, c }) => clearSet.add(`${r},${c}`));
+    const pivot = m.cells[Math.floor(m.cells.length / 2)];
+    if (m.cells.length >= 5) {
+      specialsToPlace.push({ r: pivot.r, c: pivot.c, special: "bomb", color: m.color });
+    } else if (m.cells.length === 4) {
+      specialsToPlace.push({ r: pivot.r, c: pivot.c, special: m.horizontal ? "striped-h" : "striped-v", color: m.color });
+    }
+  }
+
+  let cleared = 0;
+  const matched: Pos[] = [];
+  for (const key of clearSet) {
+    const [r, c] = key.split(",").map(Number);
+    if (current[r][c]) {
+      cleared++;
+      matched.push({ r, c });
+    }
+    current[r][c] = null;
+  }
+
+  for (const sp of specialsToPlace) current[sp.r][sp.c] = makeCell(sp.color, sp.special);
+
+  return {
+    board: current,
+    matched,
+    cleared,
+    scoreGained: Math.round(cleared * BASE_POINTS * Math.pow(CASCADE_MULTIPLIER, Math.max(0, cascadeDepth - 1))),
+  };
+}
+
+/** First legal adjacent swap, used by the board's idle hint animation. */
+export function findLegalSwap(board: Board): { a: Pos; b: Pos } | null {
+  const rows = board.length;
+  const cols = board[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const a = { r, c };
+      for (const b of [{ r, c: c + 1 }, { r: r + 1, c }]) {
+        if (!inBounds(board, b.r, b.c)) continue;
+        const swapped = swapCells(board, a, b);
+        const atA = swapped[a.r][a.c];
+        const atB = swapped[b.r][b.c];
+        if (atA?.special || atB?.special || findMatches(swapped).length > 0) return { a, b };
+      }
+    }
+  }
+  return null;
+}
 
 export type CascadeResult = { board: Board; scoreGained: number; cascades: number; cleared: number };
 
@@ -237,7 +305,7 @@ export function resolveCascades(board: Board): CascadeResult {
 
 /** Clears whatever a special candy hits when it's swapped (not matched) — the candy itself
  *  is consumed too. Returns the board with those cells emptied and how many were cleared. */
-function activateSpecial(board: Board, pos: Pos, cell: Cell): { board: Board; cleared: number } {
+export function activateSpecial(board: Board, pos: Pos, cell: Cell): { board: Board; cleared: number } {
   const rows = board.length;
   const cols = board[0].length;
   const next = board.map((row) => row.slice());
