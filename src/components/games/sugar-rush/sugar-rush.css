@@ -3,51 +3,6 @@
  * never by src/index.css, so nothing here can affect any other game.
  */
 
-@keyframes sr-candy-fall {
-  0% { transform: translateY(-220%) scale(0.8); opacity: 0.5; }
-  55% { transform: translateY(8%) scale(1.04); opacity: 1; }
-  75% { transform: translateY(-3%) scale(0.99); }
-  100% { transform: translateY(0) scale(1); opacity: 1; }
-}
-.sr-candy-fall { animation: sr-candy-fall 0.42s cubic-bezier(0.32, 1.6, 0.5, 1) both; }
-
-@keyframes sr-pop {
-  0% { transform: scale(1); opacity: 1; }
-  40% { transform: scale(1.35); opacity: 1; }
-  100% { transform: scale(0); opacity: 0; }
-}
-.sr-pop { animation: sr-pop 0.26s ease-in both; }
-
-@keyframes sr-shake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-6px); }
-  40% { transform: translateX(6px); }
-  60% { transform: translateX(-4px); }
-  80% { transform: translateX(4px); }
-}
-.sr-shake { animation: sr-shake 0.3s ease-in-out; }
-
-@keyframes sr-hint-pulse {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.12); filter: brightness(1.35); }
-}
-.sr-hint-pulse { animation: sr-hint-pulse 0.7s ease-in-out infinite; }
-
-@keyframes sr-float-up {
-  0% { transform: translateY(0) scale(0.9); opacity: 0; }
-  15% { opacity: 1; }
-  100% { transform: translateY(-60px) scale(1.05); opacity: 0; }
-}
-.sr-float-up { animation: sr-float-up 1s ease-out both; }
-
-@keyframes sr-combo-pop {
-  0% { transform: scale(0.4) rotate(-4deg); opacity: 0; }
-  30% { transform: scale(1.15) rotate(2deg); opacity: 1; }
-  60% { transform: scale(1) rotate(0deg); }
-  100% { transform: scale(1) rotate(0deg); opacity: 0; }
-}
-.sr-combo-pop { animation: sr-combo-pop 1.1s ease-out both; }
-
 @keyframes sr-bob {
   0%, 100% { transform: translateY(0) rotate(-3deg); }
   50% { transform: translateY(-14px) rotate(3deg); }
@@ -78,25 +33,19 @@
 }
 .sr-play-pulse { animation: sr-play-pulse 1.6s ease-in-out infinite; }
 
-@keyframes sr-shuffle-spin {
-  0% { transform: rotate(0deg) scale(1); opacity: 1; }
-  50% { transform: rotate(180deg) scale(0.4); opacity: 0.4; }
-  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+@keyframes sr-rush-pulse {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 210, 90, .8); transform: scale(1); }
+  50% { text-shadow: 0 0 20px rgba(255, 94, 203, .95); transform: scale(1.06); }
 }
-.sr-shuffle-spin { animation: sr-shuffle-spin 0.6s ease-in-out; }
+.sr-rush-pulse { animation: sr-rush-pulse 0.55s ease-in-out infinite; }
 
-@keyframes sr-pop-sparkle {
-  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
-  55% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
-  100% { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+@keyframes sr-checkpoint-flash {
+  0% { opacity: 0; transform: translateY(6px) scale(0.9); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-6px) scale(0.96); }
 }
-.sr-pop-sparkle {
-  width: 34px;
-  height: 34px;
-  background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,246,210,.85) 35%, rgba(255,246,210,0) 70%);
-  border-radius: 999px;
-  animation: sr-pop-sparkle 0.42s ease-out both;
-}
+.sr-checkpoint-flash { animation: sr-checkpoint-flash 1.4s ease-out both; }
 
 /* The little candy-hungry mascot that occasionally scoots across the intro screen. */
 @keyframes sr-mascot-walk {
@@ -118,9 +67,8 @@
 .sr-mascot-chomp { animation: sr-mascot-chomp 0.3s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .sr-candy-fall, .sr-pop, .sr-shake, .sr-hint-pulse, .sr-float-up, .sr-combo-pop,
-  .sr-bob, .sr-drift, .sr-twinkle, .sr-glow-title, .sr-play-pulse, .sr-shuffle-spin,
-  .sr-pop-sparkle, .sr-mascot-walk, .sr-mascot-bob, .sr-mascot-chomp {
+  .sr-bob, .sr-drift, .sr-twinkle, .sr-glow-title, .sr-play-pulse,
+  .sr-mascot-walk, .sr-mascot-bob, .sr-mascot-chomp, .sr-rush-pulse, .sr-checkpoint-flash {
     animation: none !important;
   }
 }

@@ -16,7 +16,6 @@ import { initialWordLink } from "@/lib/word-link-run";
 import { initialMiniGolf } from "@/lib/mini-golf-run";
 import { initialSnakeRoyale } from "@/lib/snake-royale-run";
 import { initialObby } from "@/lib/obby";
-import { initialSugarRush } from "@/lib/sugar-rush-run";
 
 export const GAME_PATHS: Record<GameType, string> = {
   tic_tac_toe: "tic-tac-toe",
@@ -86,7 +85,6 @@ export function initialStateFor(type: GameType): any {
     case "snake_royale":
       return { snakeRoyale: initialSnakeRoyale(), moveNumber: 0 };
     case "sugar_rush":
-      return { sugarRush: initialSugarRush(), moveNumber: 0 };
     case "treasure_rush":
     case "tower_escape":
     case "survival_island":

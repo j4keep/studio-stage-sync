@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, Music, Play, Settings, Users, Volume2, VolumeX, X } from "lucide-react";
+import { ArrowLeft, HelpCircle, Music, Play, Settings, Trophy, Volume2, VolumeX, X } from "lucide-react";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
-import { CANDY_SPRITES, sugarRushBg } from "./SugarRushBoard";
+import { leaderboard } from "@/lib/games";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { CANDY_SPRITES, sugarRushBg } from "./assets";
+import SugarRushTutorial from "./SugarRushTutorial";
 import "./sugar-rush.css";
 
 type Props = {
-  opponentLabel: string;
-  isComputer: boolean;
-  subtitle?: string;
   bestScore?: number | null;
   onPlaySolo: () => void;
-  onQuickMatch?: () => void;
-  onPlayLevels?: () => void;
   onBack: () => void;
 };
 
@@ -78,21 +77,34 @@ function SugarRushMascot() {
   );
 }
 
+type LeaderRow = { user_id: string; score: number; xp: number; name: string };
+
+/** A small, blurred Dr. Cavity silhouette drifting in the distance — a cameo, not a full
+ *  character render, so the intro stays lightweight. */
+function DistantCavity() {
+  return (
+    <div
+      className="pointer-events-none absolute bottom-[14%] left-[12%] opacity-70 sr-bob"
+      style={{ width: 40, height: 52, animationDuration: "4.5s" }}
+    >
+      <div className="absolute inset-x-0 top-0 h-[62%] rounded-t-full" style={{ background: "#f4f6f8", boxShadow: "0 4px 10px rgba(0,0,0,.35)" }} />
+      <div className="absolute inset-x-[18%] top-[8%] h-[30%] rounded-full bg-[#f1e3d3]" />
+      <div className="absolute inset-x-0 bottom-0 h-[42%] rounded-b-md bg-[#3a3f52]" />
+    </div>
+  );
+}
+
 /** Sugar Rush's own full-screen intro — visually isolated from the rest of the app (no
- *  GameShell/GameIntro chrome), with floating candy, sparkles, a glowing title, and a
- *  settings sheet for music/sfx volume. Music starts on the first tap anywhere here, since
- *  mobile Safari blocks autoplay until a real user gesture unlocks the AudioContext. */
-export default function SugarRushIntro({
-  opponentLabel,
-  isComputer,
-  subtitle,
-  bestScore,
-  onPlaySolo,
-  onQuickMatch,
-  onPlayLevels,
-  onBack,
-}: Props) {
+ *  GameShell/GameIntro chrome), with floating candy, sparkles, a glowing title, a distant
+ *  Dr. Cavity cameo, and sheets for settings/how-to-play/leaderboard. Music starts on the
+ *  first tap anywhere here, since mobile Safari blocks autoplay until a real user gesture
+ *  unlocks the AudioContext. */
+export default function SugarRushIntro({ bestScore, onPlaySolo, onBack }: Props) {
+  const { user } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [tutorialOpen, setTutorialOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [leaders, setLeaders] = useState<LeaderRow[] | null>(null);
   const [muted, setMuted] = useState(sugarRushSfx.muted);
   const [musicVol, setMusicVol] = useState(sugarRushSfx.musicVolume);
   const [sfxVol, setSfxVol] = useState(sugarRushSfx.sfxVolume);
@@ -112,6 +124,21 @@ export default function SugarRushIntro({
     const next = !muted;
     setMuted(next);
     sugarRushSfx.setMuted(next);
+  };
+
+  const openLeaderboard = () => {
+    unlockAudio();
+    setLeaderboardOpen(true);
+    if (leaders) return;
+    void (async () => {
+      const rows = await leaderboard("sugar_rush", 10);
+      const ids = rows.map((r) => r.user_id);
+      const { data: profiles } = ids.length
+        ? await (supabase as any).from("profiles").select("user_id, display_name").in("user_id", ids)
+        : { data: [] as any[] };
+      const nameFor = (id: string) => profiles?.find((p: any) => p.user_id === id)?.display_name || "Player";
+      setLeaders(rows.map((r) => ({ user_id: r.user_id, score: r.high_score, xp: r.xp, name: nameFor(r.user_id) })));
+    })();
   };
 
   return (
@@ -139,20 +166,31 @@ export default function SugarRushIntro({
           />
         ))}
         <SugarRushMascot />
+        <DistantCavity />
       </div>
 
       <div className="relative z-10 flex items-center justify-between px-4 pt-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>
         <button type="button" onClick={onBack} aria-label="Back" className="rounded-full bg-black/30 p-2.5 text-white active:scale-95">
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <button
-          type="button"
-          onClick={() => { unlockAudio(); setSettingsOpen(true); }}
-          aria-label="Settings"
-          className="rounded-full bg-black/30 p-2.5 text-white active:scale-95"
-        >
-          <Settings className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { unlockAudio(); setTutorialOpen(true); }}
+            aria-label="How to play"
+            className="rounded-full bg-black/30 p-2.5 text-white active:scale-95"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { unlockAudio(); setSettingsOpen(true); }}
+            aria-label="Settings"
+            className="rounded-full bg-black/30 p-2.5 text-white active:scale-95"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
@@ -162,9 +200,7 @@ export default function SugarRushIntro({
         <p className="sr-glow-title text-5xl font-black uppercase italic text-pink-300" style={{ WebkitTextStroke: "1.5px rgba(120,10,60,.6)" }}>
           Rush
         </p>
-        <p className="mt-2 text-sm font-bold text-white/80">
-          {subtitle ?? (isComputer ? "Match candy against the computer" : `Match candy against ${opponentLabel}`)}
-        </p>
+        <p className="mt-2 text-sm font-bold text-white/80">Collect. Escape. Beat the rush.</p>
         {typeof bestScore === "number" && bestScore > 0 && (
           <p className="text-[11px] font-black uppercase tracking-wide text-yellow-200/90">Best score {bestScore.toLocaleString()}</p>
         )}
@@ -183,26 +219,59 @@ export default function SugarRushIntro({
         <p className="text-xs font-black uppercase tracking-widest text-white/90">Play</p>
 
         <div className="mt-2 flex w-full max-w-xs flex-col gap-2">
-          {onQuickMatch && (
-            <button
-              type="button"
-              onClick={() => { unlockAudio(); onQuickMatch(); }}
-              className="flex items-center justify-center gap-2 rounded-full border border-white/25 bg-black/30 px-4 py-2.5 text-xs font-black text-white active:scale-95"
-            >
-              <Users className="h-4 w-4" /> Challenge a Friend
-            </button>
-          )}
-          {onPlayLevels && (
-            <button
-              type="button"
-              onClick={() => { unlockAudio(); onPlayLevels(); }}
-              className="flex items-center justify-center gap-2 rounded-full border border-white/25 bg-black/30 px-4 py-2.5 text-xs font-black text-white active:scale-95"
-            >
-              🍬 Level Map
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => { unlockAudio(); setTutorialOpen(true); }}
+            className="flex items-center justify-center gap-2 rounded-full border border-white/25 bg-black/30 px-4 py-2.5 text-xs font-black text-white active:scale-95"
+          >
+            <HelpCircle className="h-4 w-4" /> How to Play
+          </button>
+          <button
+            type="button"
+            onClick={openLeaderboard}
+            className="flex items-center justify-center gap-2 rounded-full border border-white/25 bg-black/30 px-4 py-2.5 text-xs font-black text-white active:scale-95"
+          >
+            <Trophy className="h-4 w-4" /> Leaderboard
+          </button>
         </div>
       </div>
+
+      <SugarRushTutorial open={tutorialOpen} onClose={() => setTutorialOpen(false)} />
+
+      {leaderboardOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 px-6" onClick={() => setLeaderboardOpen(false)}>
+          <div
+            className="w-full max-w-xs rounded-[26px] border-4 border-white/70 p-5"
+            style={{ background: "linear-gradient(165deg, #3a1f5c, #2a1447)", boxShadow: "0 18px 40px rgba(0,0,0,.55)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-lg font-black text-white">Leaderboard</p>
+              <button type="button" onClick={() => setLeaderboardOpen(false)} aria-label="Close" className="rounded-full bg-white/10 p-1.5 text-white active:scale-95">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            {!leaders ? (
+              <p className="py-6 text-center text-xs text-white/60">Loading…</p>
+            ) : leaders.length === 0 ? (
+              <p className="py-6 text-center text-xs text-white/60">No runs yet — be the first!</p>
+            ) : (
+              <div className="max-h-[50vh] space-y-1.5 overflow-y-auto">
+                {leaders.map((row, i) => (
+                  <div
+                    key={row.user_id}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-2 ${row.user_id === user?.id ? "bg-white/15" : "bg-white/5"}`}
+                  >
+                    <span className="w-5 text-xs font-black text-yellow-200">{i + 1}</span>
+                    <span className="flex-1 truncate text-xs font-bold text-white">{row.name}</span>
+                    <span className="text-xs font-black tabular-nums text-white">{row.score.toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {settingsOpen && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 px-6" onClick={() => setSettingsOpen(false)}>

@@ -411,6 +411,199 @@ class SugarRushSfx {
     });
   }
 
+  /** A candy treat picked up in the maze — quick bright pop. */
+  treatPickup() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(720, t);
+    osc.frequency.exponentialRampToValueAtTime(1080, t + 0.07);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.15, t + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.15);
+  }
+
+  /** A Sugar Star — a little three-note twinkle, worth noticing over a plain treat. */
+  sugarStarPickup() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    [1046.5, 1318.5, 1568].forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.05;
+      const osc = ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(0.15, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      osc.connect(gain).connect(this.sfxBus!);
+      osc.start(t);
+      osc.stop(t + 0.2);
+    });
+  }
+
+  /** A power-up picked up — bright ascending arpeggio. */
+  powerUpPickup() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    [523.25, 659.25, 880].forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.04;
+      const osc = ctx.createOscillator();
+      osc.type = "square";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(0.1, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      osc.connect(gain).connect(this.sfxBus!);
+      osc.start(t);
+      osc.stop(t + 0.16);
+    });
+  }
+
+  /** Sugar Rush Mode kicking in — an energetic rising sweep. */
+  rushStart() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(220, t);
+    osc.frequency.exponentialRampToValueAtTime(1400, t + 0.4);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.22, t + 0.06);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.46);
+  }
+
+  /** Sugar Rush Mode ending — a soft settle. */
+  rushEnd() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(330, t + 0.3);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.14, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.36);
+  }
+
+  /** Warping through a chocolate tunnel — quick pitch-bend whoosh. */
+  tunnelWarp() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(300, t);
+    osc.frequency.exponentialRampToValueAtTime(900, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(150, t + 0.26);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.16, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  }
+
+  /** A subtle tension pulse when Dr. Cavity is closing in — deliberately understated so it
+   *  doesn't wear thin if it triggers repeatedly. */
+  cavityAlert() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = 190;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.05, t + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.24);
+  }
+
+  /** The player getting caught — a short descending buzz, distinct from the match-3 buzzer. */
+  playerHit() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(260, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.35);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.18, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+    osc.connect(gain).connect(this.sfxBus!);
+    osc.start(t);
+    osc.stop(t + 0.42);
+  }
+
+  /** Checkpoint reached. */
+  checkpointReached() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    [659.25, 987.77].forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.07;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(0.16, t + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+      osc.connect(gain).connect(this.sfxBus!);
+      osc.start(t);
+      osc.stop(t + 0.24);
+    });
+  }
+
+  /** Level complete fanfare. */
+  levelComplete() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    [523.25, 659.25, 783.99, 1046.5, 1318.5].forEach((f, i) => {
+      const t = ctx.currentTime + i * 0.09;
+      const osc = ctx.createOscillator();
+      osc.type = "triangle";
+      osc.frequency.value = f;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.22, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      osc.connect(gain).connect(this.sfxBus!);
+      osc.start(t);
+      osc.stop(t + 0.55);
+    });
+  }
+
   /** Match loss / level failed — a soft descending tone. */
   lose() {
     if (this.muted) return;
