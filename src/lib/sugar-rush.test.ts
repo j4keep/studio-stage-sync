@@ -7,7 +7,10 @@ import {
   generateBoard,
   hasLegalMove,
   makeCell,
+  findHintMove,
+  reshuffleBoard,
   resolveCascades,
+  swapCells,
   trySwap,
 } from "./sugar-rush";
 
@@ -82,6 +85,20 @@ describe("resolveCascades", () => {
     for (const row of result.board) {
       for (const cell of row) expect(cell).not.toBeNull();
     }
+  });
+
+  it("records one step per cascade link, matching the totals", () => {
+    const board = boardFrom([
+      [0, 0, 0, 1],
+      [2, 2, 2, 1],
+    ]);
+    const result = resolveCascades(board);
+    expect(result.steps.length).toBe(result.cascades);
+    expect(result.steps.reduce((n, s) => n + s.scoreGained, 0)).toBe(result.scoreGained);
+    expect(result.steps[0].matchedCells.length).toBeGreaterThanOrEqual(3);
+    // The board settles into the same final state the step sequence ends on.
+    const last = result.steps[result.steps.length - 1];
+    expect(last.boardAfterSettle).toEqual(result.board);
   });
 
   it("leaves a striped candy behind for a match of exactly 4", () => {
@@ -162,5 +179,69 @@ describe("areAdjacent", () => {
   it("treats diagonals and far cells as not adjacent", () => {
     expect(areAdjacent({ r: 0, c: 0 }, { r: 1, c: 1 })).toBe(false);
     expect(areAdjacent({ r: 0, c: 0 }, { r: 0, c: 2 })).toBe(false);
+  });
+});
+
+describe("findHintMove", () => {
+  it("finds a real legal move that actually forms a match when swapped", () => {
+    const board = boardFrom([
+      [1, 0, 0],
+      [0, 3, 4],
+    ]);
+    const hint = findHintMove(board);
+    expect(hint).not.toBeNull();
+    const [a, b] = hint!;
+    const swapped = swapCells(board, a, b);
+    expect(findMatches(swapped).length).toBeGreaterThan(0);
+  });
+
+  it("returns null when generateBoard's own legal-move guarantee is intentionally bypassed", () => {
+    // Every generated board has a move by construction, so exercise the "no move" branch
+    // directly against a board with only one color everywhere (already fully matched, no
+    // valid adjacent swap changes anything since every cell is identical).
+    const board = boardFrom([
+      [0, 0],
+      [0, 0],
+    ]);
+    // A uniform board already matches everywhere at generation, which findHintMove doesn't
+    // care about (it only checks whether a swap *would* create one) — any swap here is a
+    // same-color no-op, never forming a NEW match, so hint should be null.
+    expect(findHintMove(board)).toBeNull();
+  });
+});
+
+describe("reshuffleBoard", () => {
+  it("always produces a board with no pre-existing match and a legal move", () => {
+    for (let i = 0; i < 10; i++) {
+      const board = generateBoard(8);
+      const reshuffled = reshuffleBoard(board);
+      expect(findMatches(reshuffled)).toHaveLength(0);
+      expect(hasLegalMove(reshuffled)).toBe(true);
+    }
+  });
+
+  it("keeps the same size board", () => {
+    const board = generateBoard(7);
+    const reshuffled = reshuffleBoard(board);
+    expect(reshuffled.length).toBe(7);
+    expect(reshuffled[0].length).toBe(7);
+  });
+
+  it("always rescues a stress-tested batch of boards, dead or not", () => {
+    // Rather than hand-craft a "dead" board (easy to get subtly wrong — a swap can create a
+    // match through a column even when a row looks safe), stress-test across many freshly
+    // generated boards each with several random swaps applied first, so some end up in
+    // genuinely awkward states. reshuffleBoard must always recover a playable board.
+    for (let i = 0; i < 20; i++) {
+      let board = generateBoard(6);
+      for (let s = 0; s < 5; s++) {
+        const r = Math.floor(Math.random() * 6);
+        const c = Math.floor(Math.random() * 5);
+        board = swapCells(board, { r, c }, { r, c: c + 1 });
+      }
+      const reshuffled = reshuffleBoard(board);
+      expect(findMatches(reshuffled)).toHaveLength(0);
+      expect(hasLegalMove(reshuffled)).toBe(true);
+    }
   });
 });

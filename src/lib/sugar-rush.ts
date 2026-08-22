@@ -151,6 +151,62 @@ export function hasLegalMove(board: Board): boolean {
   return false;
 }
 
+/** The first adjacent pair whose swap would form a match, or null if the board is dead —
+ *  used to show the player a hint after a few idle seconds. */
+export function findHintMove(board: Board): [Pos, Pos] | null {
+  const rows = board.length;
+  const cols = board[0].length;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (c + 1 < cols) {
+        const swapped = swapCells(board, { r, c }, { r, c: c + 1 });
+        if (findMatches(swapped).length > 0) return [{ r, c }, { r, c: c + 1 }];
+      }
+      if (r + 1 < rows) {
+        const swapped = swapCells(board, { r, c }, { r: r + 1, c });
+        if (findMatches(swapped).length > 0) return [{ r, c }, { r: r + 1, c }];
+      }
+    }
+  }
+  return null;
+}
+
+/** Reshuffles the board's existing candies in place (same pieces, new positions) until the
+ *  result has no pre-existing match and at least one legal move — the same "shake the board"
+ *  recovery every match-3 needs once a cascade leaves nobody able to move. Specials don't
+ *  survive a reshuffle (their position no longer means anything), same as most match-3 games. */
+export function reshuffleBoard(board: Board): Board {
+  const rows = board.length;
+  const cols = board[0].length;
+  const colors: CandyColor[] = [];
+  for (const row of board) for (const cell of row) colors.push(cell ? cell.color : randomColor());
+
+  for (let attempt = 0; attempt < 40; attempt++) {
+    for (let i = colors.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [colors[i], colors[j]] = [colors[j], colors[i]];
+    }
+    const next: Board = [];
+    let ok = true;
+    for (let r = 0; r < rows; r++) {
+      const row: (Cell | null)[] = [];
+      for (let c = 0; c < cols; c++) {
+        const color = colors[r * cols + c];
+        if ((c >= 2 && row[c - 1]?.color === color && row[c - 2]?.color === color) ||
+          (r >= 2 && next[r - 1][c]?.color === color && next[r - 2][c]?.color === color)) {
+          ok = false;
+        }
+        row.push(makeCell(color));
+      }
+      next.push(row);
+    }
+    if (ok && hasLegalMove(next)) return next;
+  }
+  // Fallback: a brand-new board is always safe, even if reshuffling the same pieces
+  // couldn't find a playable arrangement in the attempt budget above.
+  return generateBoard(rows);
+}
+
 function applyGravity(board: Board): Board {
   const rows = board.length;
   const cols = board[0].length;
@@ -186,7 +242,16 @@ function refill(board: Board): Board {
 export const BASE_POINTS = 10;
 export const CASCADE_MULTIPLIER = 1.5;
 
-export type CascadeResult = { board: Board; scoreGained: number; cascades: number; cleared: number };
+/** One link of a cascade chain, captured so the UI can animate through match → pop → fall
+ *  one step at a time instead of jumping straight to the final settled board. */
+export type CascadeStep = {
+  matchedCells: Pos[];
+  scoreGained: number;
+  boardAfterClear: Board;
+  boardAfterSettle: Board;
+};
+
+export type CascadeResult = { board: Board; scoreGained: number; cascades: number; cleared: number; steps: CascadeStep[] };
 
 /** Repeatedly clears whatever matches exist, drops candies down, refills from the top, and
  *  clears again — a cascade — awarding more per candy the deeper the chain goes. Matches of
@@ -197,6 +262,7 @@ export function resolveCascades(board: Board): CascadeResult {
   let scoreGained = 0;
   let cascades = 0;
   let clearedTotal = 0;
+  const steps: CascadeStep[] = [];
 
   while (true) {
     const matches = findMatches(current);
@@ -222,17 +288,30 @@ export function resolveCascades(board: Board): CascadeResult {
       if (current[r][c]) clearedThisStep++;
       current[r][c] = null;
     }
+    const stepScore = Math.round(clearedThisStep * BASE_POINTS * Math.pow(CASCADE_MULTIPLIER, cascades - 1));
     clearedTotal += clearedThisStep;
-    scoreGained += Math.round(clearedThisStep * BASE_POINTS * Math.pow(CASCADE_MULTIPLIER, cascades - 1));
+    scoreGained += stepScore;
+
+    const boardAfterClear = current.map((row) => row.slice());
 
     for (const sp of specialsToPlace) {
       current[sp.r][sp.c] = makeCell(sp.color, sp.special);
     }
 
     current = refill(applyGravity(current));
+
+    steps.push({
+      matchedCells: Array.from(clearSet, (key) => {
+        const [r, c] = key.split(",").map(Number);
+        return { r, c };
+      }),
+      scoreGained: stepScore,
+      boardAfterClear,
+      boardAfterSettle: current.map((row) => row.slice()),
+    });
   }
 
-  return { board: current, scoreGained, cascades, cleared: clearedTotal };
+  return { board: current, scoreGained, cascades, cleared: clearedTotal, steps };
 }
 
 /** Clears whatever a special candy hits when it's swapped (not matched) — the candy itself
@@ -279,6 +358,8 @@ export function trySwap(board: Board, a: Pos, b: Pos): SwapOutcome {
   if (atB?.special || atA?.special) {
     let working = swapped;
     let cleared = 0;
+    const activatedCells: Pos[] = [];
+    const before = swapped.map((row) => row.slice());
     if (atB?.special) {
       const r = activateSpecial(working, b, atB);
       working = r.board;
@@ -289,8 +370,18 @@ export function trySwap(board: Board, a: Pos, b: Pos): SwapOutcome {
       working = r.board;
       cleared += r.cleared;
     }
-    working = refill(applyGravity(working));
-    const cascade = resolveCascades(working);
+    for (let r = 0; r < before.length; r++) {
+      for (let c = 0; c < before[0].length; c++) {
+        if (before[r][c] && !working[r][c]) activatedCells.push({ r, c });
+      }
+    }
+    const activationStep: CascadeStep = {
+      matchedCells: activatedCells,
+      scoreGained: cleared * BASE_POINTS,
+      boardAfterClear: working.map((row) => row.slice()),
+      boardAfterSettle: refill(applyGravity(working)),
+    };
+    const cascade = resolveCascades(activationStep.boardAfterSettle);
     return {
       valid: true,
       board: cascade.board,
@@ -299,6 +390,7 @@ export function trySwap(board: Board, a: Pos, b: Pos): SwapOutcome {
         scoreGained: cleared * BASE_POINTS + cascade.scoreGained,
         cascades: cascade.cascades + 1,
         cleared: cleared + cascade.cleared,
+        steps: [activationStep, ...cascade.steps],
       },
     };
   }

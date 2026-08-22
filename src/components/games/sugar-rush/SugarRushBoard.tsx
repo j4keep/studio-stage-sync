@@ -2,13 +2,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import {
   Board,
+  CascadeResult,
   Cell,
   Pos,
   areAdjacent,
+  findHintMove,
   generateBoard,
+  hasLegalMove,
+  reshuffleBoard,
+  swapCells,
   trySwap,
 } from "@/lib/sugar-rush";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
+import "./sugar-rush.css";
 import sugarRushBgAsset from "@/assets/games/sugar-rush/sugar-rush-bg.jpg.asset.json";
 import candySprite0Asset from "@/assets/games/sugar-rush/candy-0.png.asset.json";
 import candySprite1Asset from "@/assets/games/sugar-rush/candy-1.png.asset.json";
@@ -61,6 +67,10 @@ type Props = {
   onComplete: (outcome: SugarRushOutcome) => void;
 };
 
+const delay = (ms: number) => new Promise((res) => window.setTimeout(res, ms));
+const cellKey = (p: Pos) => `${p.r}-${p.c}`;
+const IDLE_HINT_MS = 6500;
+
 /** The real illustrated treat for each color — a painterly sprite instead of a CSS shape, so
  *  the board reads as an actual pile of candy/cookies rather than colored dots. */
 function CandyFace({ cell }: { cell: Cell }) {
@@ -99,6 +109,8 @@ function CandyFace({ cell }: { cell: Cell }) {
   return <img src={sprite} alt="" className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,.45)]" draggable={false} />;
 }
 
+const COMBO_LABELS = ["", "", "Sweet!", "Tasty Combo!", "Sugar Rush!", "Candy Storm!", "Incredible!"];
+
 export default function SugarRushBoard({
   mode,
   active,
@@ -117,8 +129,14 @@ export default function SugarRushBoard({
   const [movesLeft, setMovesLeft] = useState(mode.kind === "moves" ? mode.moveLimit : 0);
   const [timeLeft, setTimeLeft] = useState(mode.kind === "timed" ? mode.seconds : 0);
   const [help, setHelp] = useState(false);
-  const [shake, setShake] = useState<string | null>(null);
+  const [shaking, setShaking] = useState<Set<string>>(new Set());
+  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
+  const [popping, setPopping] = useState<Set<string>>(new Set());
+  const [hintCells, setHintCells] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
+  const [comboMsg, setComboMsg] = useState<string | null>(null);
+  const [shuffling, setShuffling] = useState(false);
+  const [floaters, setFloaters] = useState<{ id: number; text: string; r: number; c: number }[]>([]);
 
   const bestCascadeRef = useRef(0);
   const clearedRef = useRef(0);
@@ -126,21 +144,34 @@ export default function SugarRushBoard({
   const doneRef = useRef(false);
   const dragStart = useRef<{ pos: Pos; x: number; y: number } | null>(null);
   const autoTimer = useRef<number | null>(null);
+  const floaterId = useRef(0);
+  const idleTimer = useRef<number | null>(null);
 
-  // A ref mirrors score so the delayed "finish" callbacks below always report the true
-  // final total, never a value captured before the last swap's points landed.
   useEffect(() => {
     scoreRef.current = score;
   }, [score]);
 
+  // Background music plays through the round, muted by the same control as sfx.
+  useEffect(() => {
+    if (!active) return;
+    sugarRushSfx.startMusic();
+    return () => sugarRushSfx.stopMusic();
+  }, [active]);
+
+  const addFloater = useCallback((text: string, pos: Pos) => {
+    const id = floaterId.current++;
+    setFloaters((f) => [...f, { id, text, r: pos.r, c: pos.c }]);
+    window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 950);
+  }, []);
+
   const finish = useCallback((won?: boolean) => {
     if (doneRef.current) return;
     doneRef.current = true;
+    sugarRushSfx.stopMusic();
     sugarRushSfx.buzzer();
     onComplete({ score: scoreRef.current, bestCascade: bestCascadeRef.current, candiesCleared: clearedRef.current, won });
   }, [onComplete]);
 
-  // Timed rounds (versus mode) count down; move-limited levels don't use a clock.
   useEffect(() => {
     if (mode.kind !== "timed" || !active) return;
     setTimeLeft(mode.seconds);
@@ -158,44 +189,119 @@ export default function SugarRushBoard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active]);
 
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimer.current) {
+      window.clearTimeout(idleTimer.current);
+      idleTimer.current = null;
+    }
+    setHintCells(new Set());
+  }, []);
+
+  const armIdleTimer = useCallback((currentBoard: Board) => {
+    clearIdleTimer();
+    if (auto || doneRef.current) return;
+    idleTimer.current = window.setTimeout(() => {
+      const hint = findHintMove(currentBoard);
+      if (hint) setHintCells(new Set([cellKey(hint[0]), cellKey(hint[1])]));
+    }, IDLE_HINT_MS);
+  }, [auto, clearIdleTimer]);
+
+  /** Runs a whole cascade chain step by step — highlight the match, pop it, let candies fall
+   *  and refill, then check for the next link — instead of jumping straight to the settled
+   *  board. This is the visible sequence the board must always show after a valid swap. */
+  const playCascade = useCallback(async (result: CascadeResult) => {
+    let comboDepth = 0;
+    for (const step of result.steps) {
+      comboDepth++;
+      const keys = new Set(step.matchedCells.map(cellKey));
+      setHighlighted(keys);
+      await delay(140);
+
+      setPopping(keys);
+      sugarRushSfx.pop(comboDepth);
+      if (comboDepth >= 2) sugarRushSfx.combo(comboDepth);
+      if (step.matchedCells[0]) addFloater(`+${step.scoreGained}`, step.matchedCells[0]);
+      setScore((s) => s + step.scoreGained);
+      await delay(190);
+
+      setBoard(step.boardAfterClear);
+      setPopping(new Set());
+      setHighlighted(new Set());
+      await delay(70);
+
+      setBoard(step.boardAfterSettle);
+      sugarRushSfx.drop();
+      await delay(340);
+    }
+
+    if (comboDepth >= 2) {
+      const label = COMBO_LABELS[Math.min(comboDepth, COMBO_LABELS.length - 1)];
+      if (label) {
+        setComboMsg(label);
+        window.setTimeout(() => setComboMsg(null), 900);
+      }
+    }
+
+    bestCascadeRef.current = Math.max(bestCascadeRef.current, result.cascades);
+    clearedRef.current += result.cleared;
+  }, [addFloater]);
+
+  const maybeReshuffle = useCallback(async (currentBoard: Board) => {
+    if (hasLegalMove(currentBoard)) return currentBoard;
+    setShuffling(true);
+    sugarRushSfx.shuffle();
+    await delay(500);
+    const reshuffled = reshuffleBoard(currentBoard);
+    setBoard(reshuffled);
+    await delay(120);
+    setShuffling(false);
+    return reshuffled;
+  }, []);
+
   const performSwap = useCallback((a: Pos, b: Pos) => {
     if (busy || doneRef.current) return;
     setBusy(true);
-    const outcome = trySwap(board, a, b);
-    if (!outcome.valid) {
-      sugarRushSfx.invalid();
-      setShake(`${a.r}-${a.c}`);
-      window.setTimeout(() => {
-        setShake(null);
-        setBusy(false);
-      }, 260);
-      return;
-    }
+    clearIdleTimer();
+    setSelected(null);
 
+    const preSwapBoard = board;
+    const visualSwap = swapCells(board, a, b);
+    setBoard(visualSwap);
     sugarRushSfx.swap();
-    window.setTimeout(() => {
-      setBoard(outcome.board);
-      const gained = outcome.result?.scoreGained ?? 0;
-      const cascades = outcome.result?.cascades ?? 1;
-      const cleared = outcome.result?.cleared ?? 0;
-      bestCascadeRef.current = Math.max(bestCascadeRef.current, cascades);
-      clearedRef.current += cleared;
-      setScore((s) => s + gained);
-      if (cascades >= 2) sugarRushSfx.special();
-      else sugarRushSfx.pop(cascades);
 
-      if (mode.kind === "moves") {
-        setMovesLeft((m) => {
-          const next = m - 1;
-          if (next <= 0) {
-            window.setTimeout(() => finish(scoreRef.current + gained >= mode.targetScore), 350);
-          }
-          return next;
-        });
-      }
-      setBusy(false);
-    }, 160);
-  }, [board, busy, finish, mode, score]);
+    window.setTimeout(() => {
+      void (async () => {
+        const outcome = trySwap(preSwapBoard, a, b);
+        if (!outcome.valid) {
+          sugarRushSfx.invalid();
+          setShaking(new Set([cellKey(a), cellKey(b)]));
+          await delay(220);
+          setBoard(preSwapBoard);
+          setShaking(new Set());
+          setBusy(false);
+          armIdleTimer(preSwapBoard);
+          return;
+        }
+
+        await playCascade(outcome.result!);
+
+        let settled = outcome.board;
+        settled = await maybeReshuffle(settled);
+
+        if (mode.kind === "moves") {
+          setMovesLeft((m) => {
+            const next = m - 1;
+            if (next <= 0) {
+              window.setTimeout(() => finish(scoreRef.current >= mode.targetScore), 300);
+            }
+            return next;
+          });
+        }
+        setBusy(false);
+        armIdleTimer(settled);
+      })();
+    }, 170);
+  }, [board, busy, clearIdleTimer, armIdleTimer, playCascade, maybeReshuffle, finish, mode]);
 
   const attemptSwap = useCallback((a: Pos, b: Pos) => {
     if (!areAdjacent(a, b)) return;
@@ -220,10 +326,19 @@ export default function SugarRushBoard({
     };
   }, [auto, active, board, busy, attemptSwap]);
 
+  // Start the idle-hint clock once the board is first playable.
+  useEffect(() => {
+    if (!active || auto) return;
+    armIdleTimer(board);
+    return clearIdleTimer;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, auto]);
+
   const canInput = active && !auto && !busy && !doneRef.current;
 
   const cellDown = (r: number, c: number, e: React.PointerEvent) => {
     if (!canInput) return;
+    clearIdleTimer();
     dragStart.current = { pos: { r, c }, x: e.clientX, y: e.clientY };
   };
 
@@ -240,6 +355,8 @@ export default function SugarRushBoard({
         : { r: start.pos.r + (dy > 0 ? 1 : -1), c: start.pos.c };
       if (target.r >= 0 && target.r < board.length && target.c >= 0 && target.c < board[0].length) {
         attemptSwap(start.pos, target);
+      } else {
+        armIdleTimer(board);
       }
       setSelected(null);
     } else if (selected && areAdjacent(selected, { r, c })) {
@@ -247,6 +364,7 @@ export default function SugarRushBoard({
       setSelected(null);
     } else {
       setSelected({ r, c });
+      armIdleTimer(board);
     }
   };
 
@@ -290,16 +408,27 @@ export default function SugarRushBoard({
         </ul>
       )}
 
-      <div className="flex flex-1 items-center justify-center p-3">
+      <div className="relative flex flex-1 items-center justify-center p-3">
+        {comboMsg && (
+          <div className="pointer-events-none absolute top-[18%] z-20 sr-combo-pop">
+            <p
+              className="text-2xl font-black uppercase tracking-wide text-white"
+              style={{ textShadow: "0 0 16px rgba(255,150,60,.9), 0 3px 0 rgba(0,0,0,.4)" }}
+            >
+              {comboMsg}
+            </p>
+          </div>
+        )}
+
         <div
-          className="w-full max-w-[420px] rounded-[26px] p-2"
+          className="relative w-full max-w-[420px] rounded-[26px] p-2"
           style={{
             background: "linear-gradient(160deg, #ffd9a8 0%, #f0a94e 55%, #c97a1f 100%)",
             boxShadow: "0 14px 30px rgba(0,0,0,.45), inset 0 2px 3px rgba(255,255,255,.6)",
           }}
         >
           <div
-            className="grid aspect-square gap-[3px] overflow-hidden rounded-[20px] p-2 touch-none select-none"
+            className={`grid aspect-square gap-[3px] overflow-hidden rounded-[20px] p-2 touch-none select-none ${shuffling ? "sr-shuffle-spin" : ""}`}
             style={{
               gridTemplateColumns: `repeat(${size}, 1fr)`,
               background: "linear-gradient(160deg, #241247 0%, #170b30 100%)",
@@ -308,19 +437,23 @@ export default function SugarRushBoard({
           >
             {board.map((row, r) =>
               row.map((cell, c) => {
+                const key = cellKey({ r, c });
                 const isSelected = selected?.r === r && selected?.c === c;
-                const isShaking = shake === `${r}-${c}`;
+                const isShaking = shaking.has(key);
+                const isHighlighted = highlighted.has(key);
+                const isPopping = popping.has(key);
+                const isHinted = hintCells.has(key);
                 const checker = (r + c) % 2 === 0;
                 return (
                   <div
-                    key={`${r}-${c}`}
+                    key={key}
                     onPointerDown={(e) => cellDown(r, c, e)}
                     onPointerUp={(e) => cellUp(r, c, e)}
-                    className={`relative aspect-square rounded-md ${isSelected ? "ring-2 ring-white/90" : ""} ${isShaking ? "ttt-shake" : ""}`}
+                    className={`relative aspect-square rounded-md ${isSelected ? "ring-2 ring-white/90" : ""} ${isShaking ? "sr-shake" : ""} ${isHighlighted ? "ring-2 ring-yellow-200" : ""} ${isHinted ? "sr-hint-pulse" : ""}`}
                     style={{ background: checker ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.12)" }}
                   >
                     {cell && (
-                      <div key={cell.id} className="absolute inset-[7%] candy-fall">
+                      <div key={cell.id} className={`absolute inset-[7%] sr-candy-fall ${isPopping ? "sr-pop" : ""}`}>
                         <CandyFace cell={cell} />
                       </div>
                     )}
@@ -329,6 +462,20 @@ export default function SugarRushBoard({
               }),
             )}
           </div>
+
+          {floaters.map((f) => (
+            <div
+              key={f.id}
+              className="pointer-events-none absolute z-30 sr-float-up text-sm font-black text-yellow-200"
+              style={{
+                left: `${((f.c + 0.5) / size) * 100}%`,
+                top: `${((f.r + 0.5) / size) * 100}%`,
+                textShadow: "0 2px 4px rgba(0,0,0,.6)",
+              }}
+            >
+              {f.text}
+            </div>
+          ))}
         </div>
       </div>
     </div>

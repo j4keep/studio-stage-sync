@@ -1,22 +1,21 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Map } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import GameIntro from "@/components/games/GameIntro";
 import { useGameRecord } from "@/components/games/GameQuickActions";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { RoundResult, Seat, SugarRushState, applyRoundResult, initialSugarRush } from "@/lib/sugar-rush-run";
 import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGameState } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
-import sugarRushArt from "@/assets/games/sugar-rush.svg";
 
 const HOW_TO_PLAY = [
   "Drag a candy into a neighbor to swap them — or tap one candy, then tap the one next to it.",
@@ -234,49 +233,31 @@ export default function SugarRushPage() {
           onChanged={refresh}
         />
 
-        <GameIntro
-          open={!seated && !finished}
-          title="YAJ Sugar Rush"
-          subtitle={game.mode === "solo" ? "60-second candy dash — solo vs Computer" : `60-second candy dash — you vs ${opponentName}`}
-          artUrl={sugarRushArt}
-          me={{ name: myName, avatarUrl: myAvatar }}
-          them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
-          stats={stats}
-          matchups={matchups}
-          onStart={() => {
-            setSeated(true);
-            void sugarRushSfx.prime();
-          }}
-          onBack={() => navigate("/games")}
-          onPlaySolo={() => {
-            if (game.mode === "solo" && game.status === "active") {
-              setSeated(true);
-              void sugarRushSfx.prime();
-              return;
-            }
-            void (async () => {
-              if (!user) return;
-              try {
-                const g = await createSoloGame("sugar_rush", user.id, { sugarRush: initialSugarRush(), moveNumber: 0 });
-                statsWritten.current = null;
-                navigate(gameRoute("sugar_rush", g.id), { replace: true });
-              } catch (e: any) {
-                toast({ title: "Could not start a solo game", description: e.message, variant: "destructive" });
-              }
-            })();
-          }}
-          onQuickMatch={() => setPicker(true)}
-        />
-
         {!seated && !finished && (
-          <button
-            type="button"
-            onClick={() => navigate("/games/sugar-rush-levels")}
-            className="absolute inset-x-0 z-[75] mx-auto flex w-fit items-center gap-2 rounded-full bg-black/55 px-4 py-2.5 text-xs font-black text-white backdrop-blur-md active:scale-95"
-            style={{ bottom: "max(1.25rem, env(safe-area-inset-bottom))" }}
-          >
-            <Map className="h-4 w-4" /> Play the Level Map instead
-          </button>
+          <SugarRushIntro
+            opponentLabel={oppLabel}
+            isComputer={game.mode === "solo"}
+            bestScore={stats?.highScore}
+            onBack={() => navigate("/games")}
+            onPlaySolo={() => {
+              if (game.status === "active") {
+                setSeated(true);
+                return;
+              }
+              void (async () => {
+                if (!user) return;
+                try {
+                  const g = await createSoloGame("sugar_rush", user.id, { sugarRush: initialSugarRush(), moveNumber: 0 });
+                  statsWritten.current = null;
+                  navigate(gameRoute("sugar_rush", g.id), { replace: true });
+                } catch (e: any) {
+                  toast({ title: "Could not start a solo game", description: e.message, variant: "destructive" });
+                }
+              })();
+            }}
+            onQuickMatch={() => setPicker(true)}
+            onPlayLevels={() => navigate("/games/sugar-rush-levels")}
+          />
         )}
       </div>
 

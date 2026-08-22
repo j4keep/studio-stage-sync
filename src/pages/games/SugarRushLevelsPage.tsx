@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Lock, RotateCcw, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { LEVELS, Level, isLevelUnlocked, loadProgress, saveLevelStars, starsForScore } from "@/lib/sugar-rush-levels";
 
@@ -31,6 +32,7 @@ export default function SugarRushLevelsPage() {
   const [level, setLevel] = useState<Level | null>(null);
   const [result, setResult] = useState<{ score: number; stars: number } | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const [entered, setEntered] = useState(false);
 
   useEffect(() => {
     setProgress(loadProgress(user?.id));
@@ -51,6 +53,18 @@ export default function SugarRushLevelsPage() {
     else sugarRushSfx.lose();
     setResult({ score: outcome.score, stars });
   };
+
+  if (!entered) {
+    return (
+      <SugarRushIntro
+        opponentLabel="the Level Map"
+        isComputer
+        subtitle="Clear the target score before you run out of moves"
+        onBack={() => navigate("/games")}
+        onPlaySolo={() => setEntered(true)}
+      />
+    );
+  }
 
   if (level && !result) {
     return (
