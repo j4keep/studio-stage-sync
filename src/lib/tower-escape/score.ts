@@ -1,4 +1,4 @@
-import { MAX_HEARTS, RUN_MS, TowerState } from "./engine";
+import { MAX_HEARTS, TowerState } from "./engine";
 import { TOTAL_CHECKPOINTS } from "./level";
 
 export type TowerScore = {
@@ -18,7 +18,7 @@ export type TowerScore = {
 export function scoreRun(st: TowerState): TowerScore {
   const escaped = st.status === "escaped";
   const starPoints = st.stars * 120 + st.bonusStars * 100;
-  const timeBonus = escaped ? Math.round(st.timeLeft / 1000) * 12 : 0;
+  const timeBonus = escaped && !st.noTimer ? Math.round(st.timeLeft / 1000) * 12 : 0;
   const heartBonus = st.hearts * 200;
   const checkpointBonus = st.checkpoint * 250;
   const escapeBonus = escaped ? 1500 : 0;
@@ -34,7 +34,7 @@ export function scoreRun(st: TowerState): TowerScore {
     escapeBonus,
     total,
     climbedPct: Math.min(100, Math.round((st.highest / st.level.top) * 100)),
-    elapsedMs: RUN_MS - st.timeLeft,
+    elapsedMs: Math.round(st.t * 1000),
   };
 }
 

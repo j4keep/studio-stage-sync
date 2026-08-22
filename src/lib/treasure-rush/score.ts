@@ -32,7 +32,7 @@ export function breakdownOf(s: TrState): ScoreBreakdown {
   ];
 
   if (escaped) {
-    lines.push({ label: `Time Bonus (${secondsLeft}s left)`, value: secondsLeft * VALUES.timePerSecond });
+    if (!s.noTimer) lines.push({ label: `Time Bonus (${secondsLeft}s left)`, value: secondsLeft * VALUES.timePerSecond });
     lines.push({ label: "Escape Bonus", value: VALUES.escape });
     lines.push({ label: `Hearts Remaining × ${s.hearts}`, value: s.hearts * VALUES.heart });
   }

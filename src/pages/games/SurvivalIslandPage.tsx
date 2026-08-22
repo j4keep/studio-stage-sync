@@ -21,6 +21,7 @@ export default function SurvivalIslandPage() {
   const { game, loading } = useTurnGame(id, user?.id);
 
   const [seated, setSeated] = useState(false);
+  const [solo, setSolo] = useState(false);
   const [muted, setMuted] = useState(islandMuted());
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export default function SurvivalIslandPage() {
             onBack={() => navigate("/games")}
             onQuit={quitGame}
             onEnd={onEnd}
+            endless={solo}
           />
         )}
 
@@ -171,14 +173,17 @@ export default function SurvivalIslandPage() {
           stats={stats}
           matchups={matchups}
           onStart={() => {
+            setSolo(false);
             setSeated(true);
             islandSfx.unlock();
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
+            setSolo(true);
             setSeated(true);
             islandSfx.unlock();
           }}
+          soloLabel={"Solo Mode\nNo timer"}
         />
       </div>
 
@@ -190,7 +195,11 @@ export default function SurvivalIslandPage() {
             ? best && result.total >= best
               ? "You survived — new island record!"
               : "You survived Sunset Island!"
-            : "You didn't make it"
+            : solo
+              ? best && result && result.total >= best
+                ? "Solo run over — new island record!"
+                : "Solo run over"
+              : "You didn't make it"
         }
         detail={detail}
         onRematch={runAgain}

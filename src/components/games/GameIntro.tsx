@@ -17,6 +17,8 @@ type Props = {
   matchups?: GameMatchup[];
   onPlaySolo?: () => void;
   onQuickMatch?: () => void;
+  /** Overrides the solo action's label, e.g. "Solo Mode\nNo timer" for score-attack games. */
+  soloLabel?: string;
   /** Optional key art shown behind the splash, like the pool table's billiards poster. */
   artUrl?: string;
   /** Shows a "Customize Character" button that opens the shared skin-tone picker — only
@@ -63,6 +65,7 @@ export default function GameIntro({
   matchups,
   onPlaySolo,
   onQuickMatch,
+  soloLabel,
   artUrl,
   showCharacterCustomize,
 }: Props) {
@@ -194,6 +197,7 @@ export default function GameIntro({
           matchups={matchups}
           onPlaySolo={onPlaySolo}
           onQuickMatch={onQuickMatch}
+          soloLabel={soloLabel}
           accent={ACCENT}
         />
       </div>

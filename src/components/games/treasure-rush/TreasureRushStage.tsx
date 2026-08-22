@@ -29,6 +29,8 @@ type Props = {
   onBack: () => void;
   onQuit?: () => void;
   onEnd: (outcome: TrOutcome) => void;
+  /** Solo mode: no countdown or timeup fail — only hearts or a manual quit end the run. */
+  noTimer?: boolean;
 };
 
 /** Runs the engine each frame and keeps the camera trailing the explorer. */
@@ -110,8 +112,8 @@ const HOW_TO = [
   "Grab the treasure, then reach the green exit arch before the timer hits 0:00.",
 ];
 
-export default function TreasureRushStage({ runKey, myColor, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
-  const state = useRef<TrState>(initialTreasureRush());
+export default function TreasureRushStage({ runKey, myColor, best, muted, onToggleMute, onBack, onQuit, onEnd, noTimer }: Props) {
+  const state = useRef<TrState>(initialTreasureRush(noTimer));
   const inputRef = useRef({ ax: 0, az: 0, interact: false });
   const pausedRef = useRef(false);
   const ended = useRef(false);
@@ -122,7 +124,7 @@ export default function TreasureRushStage({ runKey, myColor, best, muted, onTogg
   const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    state.current = initialTreasureRush();
+    state.current = initialTreasureRush(noTimer);
     inputRef.current = { ax: 0, az: 0, interact: false };
     ended.current = false;
     pausedRef.current = false;
@@ -326,6 +328,7 @@ function snapshot(s: TrState): FullSnapshot {
   return {
     hearts: s.hearts,
     timeLeft: s.timeLeft,
+    noTimer: s.noTimer,
     score: liveScore(s),
     coins: s.coins,
     gems: s.gems,

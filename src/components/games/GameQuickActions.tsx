@@ -67,27 +67,33 @@ type Props = {
   matchups?: GameMatchup[];
   onPlaySolo?: () => void;
   onQuickMatch?: () => void;
+  /** Label for the first action, e.g. "Solo Mode\nNo timer". Defaults to the vs-computer copy. */
+  soloLabel?: string;
   /** Label for the third action, e.g. "Track Your Best Break". */
   recordLabel?: string;
   accent?: string;
 };
 
-/** Shared 3-up action row (solo · quick match · record) used by every game's intro screen. */
+/** Shared action row (solo · quick match · record) used by every game's intro screen.
+ *  Quick Match only renders when a handler is passed — score-attack games with no live
+ *  opponent (Tower Escape, Survival Island, etc.) simply omit it. */
 export default function GameQuickActions({
   stats,
   matchups = [],
   onPlaySolo,
   onQuickMatch,
+  soloLabel = "Play Solo\nvs Computer",
   recordLabel = "Track Your Record",
   accent = "hsl(275 85% 68%)",
 }: Props) {
   const [sheet, setSheet] = useState(false);
+  const [soloA, soloB] = soloLabel.split("\n");
   const [a, b] = recordLabel.split(/\s(.+)/);
 
   return (
     <>
       <div
-        className="grid w-full max-w-sm grid-cols-3 divide-x rounded-2xl border"
+        className={onQuickMatch ? "grid w-full max-w-sm grid-cols-3 divide-x rounded-2xl border" : "grid w-full max-w-sm grid-cols-2 divide-x rounded-2xl border"}
         style={{ borderColor: `${accent}88`, background: "rgba(10,6,22,0.75)", borderRightColor: `${accent}88` }}
       >
         <button
@@ -97,23 +103,25 @@ export default function GameQuickActions({
         >
           <MonitorPlay className="h-4 w-4 shrink-0" style={{ color: accent }} />
           <span className="text-[10px] font-black leading-tight">
-            Play Solo
+            {soloA}
             <br />
-            vs Computer
+            {soloB}
           </span>
         </button>
-        <button
-          type="button"
-          onClick={() => onQuickMatch?.()}
-          className="flex items-center justify-center gap-1.5 px-2 py-3 text-left text-white active:scale-95"
-        >
-          <Zap className="h-4 w-4 shrink-0" style={{ color: accent }} />
-          <span className="text-[10px] font-black leading-tight">
-            Quick
-            <br />
-            Match
-          </span>
-        </button>
+        {onQuickMatch && (
+          <button
+            type="button"
+            onClick={() => onQuickMatch?.()}
+            className="flex items-center justify-center gap-1.5 px-2 py-3 text-left text-white active:scale-95"
+          >
+            <Zap className="h-4 w-4 shrink-0" style={{ color: accent }} />
+            <span className="text-[10px] font-black leading-tight">
+              Quick
+              <br />
+              Match
+            </span>
+          </button>
+        )}
         <button
           type="button"
           onClick={() => setSheet(true)}

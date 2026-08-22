@@ -1,4 +1,4 @@
-import { IslandState, MAX_HEARTS, RUN_MS } from "./engine";
+import { IslandState, MAX_HEARTS } from "./engine";
 
 export type IslandScore = {
   survivedMs: number;
@@ -16,7 +16,7 @@ export type IslandScore = {
 
 /** Seconds survived + stars + hazards dodged + hearts left + full-survival bonus. */
 export function scoreIsland(st: IslandState): IslandScore {
-  const survivedMs = RUN_MS - st.timeLeft;
+  const survivedMs = Math.round(st.t * 1000);
   const seconds = Math.floor(survivedMs / 1000);
   const survivedPoints = seconds * 10;
   const starPoints = st.stars * 120;

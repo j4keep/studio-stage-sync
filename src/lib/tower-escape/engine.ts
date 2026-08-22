@@ -55,6 +55,8 @@ export type TowerState = {
   status: TowerStatus;
   t: number; // seconds elapsed in the run (physics clock)
   timeLeft: number; // ms
+  /** Solo mode: no countdown, no timeup fail — the run only ends on hearts or a manual quit. */
+  noTimer: boolean;
   hearts: number;
   stars: number;
   bonusStars: number;
@@ -102,13 +104,14 @@ export type TowerEvent =
   | "finish"
   | "failed";
 
-export function initialTower(): TowerState {
+export function initialTower(noTimer = false): TowerState {
   const level = buildTower();
   return {
     level,
     status: "climbing",
     t: 0,
     timeLeft: RUN_MS,
+    noTimer,
     hearts: MAX_HEARTS,
     stars: 0,
     bonusStars: 0,
@@ -221,9 +224,11 @@ export function step(state: TowerState, input: TowerInput, dtMs: number): TowerS
 
 function tick(st: TowerState, input: TowerInput, dt: number) {
   st.t += dt;
-  const prevLeft = st.timeLeft;
-  st.timeLeft = Math.max(0, st.timeLeft - dt * 1000);
-  if (prevLeft > 30_000 && st.timeLeft <= 30_000) st.events.push("warn");
+  if (!st.noTimer) {
+    const prevLeft = st.timeLeft;
+    st.timeLeft = Math.max(0, st.timeLeft - dt * 1000);
+    if (prevLeft > 30_000 && st.timeLeft <= 30_000) st.events.push("warn");
+  }
 
   for (const k of Object.keys(st.powers) as PowerKind[]) {
     if (st.powers[k] > 0) st.powers[k] = Math.max(0, st.powers[k] - dt);
@@ -247,7 +252,7 @@ function tick(st: TowerState, input: TowerInput, dt: number) {
     if (st.gone[id] <= 0) delete st.gone[id];
   }
 
-  if (st.timeLeft <= 0) {
+  if (!st.noTimer && st.timeLeft <= 0) {
     fail(st);
     return;
   }

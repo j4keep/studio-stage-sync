@@ -21,6 +21,7 @@ export default function TowerEscapePage() {
   const { game, loading } = useTurnGame(id, user?.id);
 
   const [seated, setSeated] = useState(false);
+  const [solo, setSolo] = useState(false);
   const [muted, setMuted] = useState(towerMuted());
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
@@ -157,6 +158,7 @@ export default function TowerEscapePage() {
             onBack={() => navigate("/games")}
             onQuit={quitGame}
             onEnd={onEnd}
+            noTimer={solo}
           />
         )}
 
@@ -171,14 +173,17 @@ export default function TowerEscapePage() {
           stats={stats}
           matchups={matchups}
           onStart={() => {
+            setSolo(false);
             setSeated(true);
             towerSfx.unlock();
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
+            setSolo(true);
             setSeated(true);
             towerSfx.unlock();
           }}
+          soloLabel={"Solo Mode\nNo timer"}
         />
       </div>
 

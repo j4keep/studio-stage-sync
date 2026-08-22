@@ -81,6 +81,8 @@ export type IslandState = {
   rnd: () => number;
   t: number;
   timeLeft: number;
+  /** Solo mode: endless survival — no win-by-timer, just hearts or a manual quit. */
+  endless: boolean;
   status: "alive" | "survived" | "over";
   hearts: number;
   invuln: number;
@@ -125,7 +127,7 @@ const OBJECTIVE_POOL: Omit<Objective, "progress" | "done">[] = [
   { id: "campfire", label: "Warm up at the campfire", target: 1 },
 ];
 
-export function initialIsland(seed = Math.floor(Math.random() * 1_000_000)): IslandState {
+export function initialIsland(seed = Math.floor(Math.random() * 1_000_000), endless = false): IslandState {
   const map = buildIsland(20260820);
   const rnd = mulberry32(seed);
   const pool = [...OBJECTIVE_POOL];
@@ -140,6 +142,7 @@ export function initialIsland(seed = Math.floor(Math.random() * 1_000_000)): Isl
     rnd,
     t: 0,
     timeLeft: RUN_MS,
+    endless,
     status: "alive",
     hearts: MAX_HEARTS,
     invuln: 0,
@@ -190,7 +193,7 @@ export function step(st: IslandState, input: IslandInput, dtMs: number): IslandS
   const nowSecond = Math.ceil(st.timeLeft / 1000);
   if (nowSecond !== prevSecond && nowSecond <= 10 && nowSecond > 0) st.events.push("timer");
 
-  const wave = waveFor(RUN_MS - st.timeLeft);
+  const wave = waveFor(st.t * 1000);
   if (wave !== st.wave) {
     st.wave = wave;
     st.waveFlash = 2.6;
@@ -217,14 +220,14 @@ export function step(st: IslandState, input: IslandInput, dtMs: number): IslandS
   tickObjectives(st);
 
   st.score =
-    Math.floor((RUN_MS - st.timeLeft) / 1000) * 10 +
+    Math.floor(st.t) * 10 +
     st.stars * 120 +
     st.avoided * 40 +
     st.objectives.filter((o) => o.done).length * 300;
 
   if (st.hearts <= 0) {
     st.status = "over";
-  } else if (st.timeLeft <= 0) {
+  } else if (!st.endless && st.timeLeft <= 0) {
     st.status = "survived";
     st.anim = "celebrate";
   }
@@ -551,7 +554,7 @@ export function waveLabel(st: IslandState) {
 }
 
 export function waveProgress(st: IslandState) {
-  const elapsed = RUN_MS - st.timeLeft;
+  const elapsed = st.t * 1000;
   return (elapsed % WAVE_MS) / WAVE_MS;
 }
 

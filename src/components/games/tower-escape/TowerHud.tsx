@@ -43,7 +43,9 @@ export default function TowerHud({ st, sectionName, best, muted, onToggleMute, o
             }`}
           >
             <Timer className="h-3.5 w-3.5 text-white" />
-            <span className="text-[13px] font-black tabular-nums text-white">{formatClock(st.timeLeft)}</span>
+            <span className="text-[13px] font-black tabular-nums text-white">
+              {st.noTimer ? "No Limit" : formatClock(st.timeLeft)}
+            </span>
           </div>
           <div className="flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 backdrop-blur-sm">
             <Star className="h-3.5 w-3.5 text-amber-300" />

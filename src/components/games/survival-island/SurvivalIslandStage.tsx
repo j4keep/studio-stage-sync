@@ -30,12 +30,14 @@ type Props = {
   onBack: () => void;
   onQuit?: () => void;
   onEnd: (outcome: IslandOutcome) => void;
+  /** Solo mode: endless survival — no win-by-timer, only hearts or a manual quit end it. */
+  endless?: boolean;
 };
 
 /** The live island: fixed-step survival engine, canvas render, HUD and one stick. */
-export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
+export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd, endless }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const stRef = useRef<IslandState>(initialIsland());
+  const stRef = useRef<IslandState>(initialIsland(undefined, endless));
   const camRef = useRef<Camera | undefined>(undefined);
   const inputRef = useRef<IslandInput>({ ...NO_INPUT });
   const rafRef = useRef<number | null>(null);
@@ -50,7 +52,7 @@ export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute,
   }, [muted]);
 
   useEffect(() => {
-    stRef.current = initialIsland();
+    stRef.current = initialIsland(undefined, endless);
     camRef.current = undefined;
     endedRef.current = false;
     setPaused(false);
@@ -151,7 +153,7 @@ export default function SurvivalIslandStage({ runKey, best, muted, onToggleMute,
           <p className="text-2xl font-black uppercase tracking-widest text-white">Paused</p>
           <p className="max-w-[300px] text-xs text-white/60">
             Drag anywhere to move. Watch the ground shadows, run uphill when the water rises, grab stars and
-            power-ups, and survive until the timer hits zero.
+            power-ups, and {endless ? "survive as long as you can — end the run whenever you're ready." : "survive until the timer hits zero."}
           </p>
           <button
             type="button"

@@ -74,6 +74,8 @@ export type TrInput = {
 export type TrState = {
   t: number;
   timeLeft: number;
+  /** Solo mode: no countdown or timeup fail — only hearts or a manual quit end the run. */
+  noTimer: boolean;
   x: number;
   z: number;
   vx: number;
@@ -110,7 +112,7 @@ const REACH = 2.6;
 
 const spot = (s: { x: number; z: number }) => ({ x: s.x, z: s.z });
 
-export function initialTreasureRush(): TrState {
+export function initialTreasureRush(noTimer = false): TrState {
   const items: Item[] = [
     ...LEVEL.coins.map((c, i) => ({ id: `coin-${i}`, kind: "coin" as const, ...spot(c), taken: false })),
     ...LEVEL.gems.map((c, i) => ({ id: `gem-${i}`, kind: "gem" as const, ...spot(c), taken: false })),
@@ -126,6 +128,7 @@ export function initialTreasureRush(): TrState {
   return {
     t: 0,
     timeLeft: ROUND_MS,
+    noTimer,
     x: LEVEL.start.x,
     z: LEVEL.start.z,
     vx: 0,
@@ -368,19 +371,21 @@ export function step(s: TrState, input: TrInput, dtSec: number): TrEvent[] {
   s.t += dtMs;
 
   // TimerManager
-  s.timeLeft = Math.max(0, s.timeLeft - dtMs);
-  if (s.timeLeft <= 30_000 && !s.warned.thirty) {
-    s.warned.thirty = true;
-    out.push("warn");
-  }
-  if (s.timeLeft <= 10_000 && !s.warned.ten) {
-    s.warned.ten = true;
-    out.push("warn");
-  }
-  if (s.timeLeft <= 0) {
-    s.status = "timeup";
-    out.push("timeup");
-    return out;
+  if (!s.noTimer) {
+    s.timeLeft = Math.max(0, s.timeLeft - dtMs);
+    if (s.timeLeft <= 30_000 && !s.warned.thirty) {
+      s.warned.thirty = true;
+      out.push("warn");
+    }
+    if (s.timeLeft <= 10_000 && !s.warned.ten) {
+      s.warned.ten = true;
+      out.push("warn");
+    }
+    if (s.timeLeft <= 0) {
+      s.status = "timeup";
+      out.push("timeup");
+      return out;
+    }
   }
 
   (Object.keys(s.powers) as PowerKind[]).forEach((k) => {

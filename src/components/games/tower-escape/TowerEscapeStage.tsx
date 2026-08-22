@@ -32,12 +32,14 @@ type Props = {
   onBack: () => void;
   onQuit?: () => void;
   onEnd: (outcome: TowerOutcome) => void;
+  /** Solo mode: no countdown or timeup fail — only hearts or a manual quit end the run. */
+  noTimer?: boolean;
 };
 
 /** The live tower: fixed-step physics, canvas render, HUD and controls. */
-export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd }: Props) {
+export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, onBack, onQuit, onEnd, noTimer }: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const stRef = useRef<TowerState>(initialTower());
+  const stRef = useRef<TowerState>(initialTower(noTimer));
   const camRef = useRef<Camera | undefined>(undefined);
   const inputRef = useRef<TowerInput>({ ...NO_INPUT });
   const rafRef = useRef<number | null>(null);
@@ -58,7 +60,7 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
 
   // Fresh tower whenever the run key changes.
   useEffect(() => {
-    stRef.current = initialTower();
+    stRef.current = initialTower(noTimer);
     camRef.current = undefined;
     endedRef.current = false;
     setDowned(false);
@@ -198,7 +200,7 @@ export default function TowerEscapeStage({ runKey, best, muted, onToggleMute, on
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/85 px-6 text-center backdrop-blur-sm">
           <p className="text-2xl font-black uppercase tracking-widest text-rose-300">Tower run failed</p>
           <p className="max-w-[320px] text-xs text-white/65">
-            {st.timeLeft <= 0
+            {!st.noTimer && st.timeLeft <= 0
               ? "The clock beat you to the roof."
               : "You are out of hearts — restart from checkpoint " + st.checkpoint + "."}
           </p>

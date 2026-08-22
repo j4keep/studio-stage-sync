@@ -23,6 +23,7 @@ export default function TreasureRushPage() {
   const { game, loading } = useTurnGame(id, user?.id);
 
   const [seated, setSeated] = useState(false);
+  const [solo, setSolo] = useState(false);
   const [muted, setMuted] = useState(trSfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
@@ -159,6 +160,7 @@ export default function TreasureRushPage() {
             onBack={() => navigate("/games")}
             onQuit={quitGame}
             onEnd={onEnd}
+            noTimer={solo}
           />
         )}
 
@@ -173,14 +175,17 @@ export default function TreasureRushPage() {
           stats={stats}
           matchups={matchups}
           onStart={() => {
+            setSolo(false);
             setSeated(true);
             void trSfx.prime();
           }}
           onBack={() => navigate("/games")}
           onPlaySolo={() => {
+            setSolo(true);
             setSeated(true);
             void trSfx.prime();
           }}
+          soloLabel={"Solo Mode\nNo timer"}
         />
       </div>
 

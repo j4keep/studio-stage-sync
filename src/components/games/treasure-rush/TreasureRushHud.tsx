@@ -8,6 +8,7 @@ import { MAX_HEARTS, PowerKind } from "@/lib/treasure-rush/engine";
 export type HudSnapshot = {
   hearts: number;
   timeLeft: number;
+  noTimer: boolean;
   score: number;
   coins: number;
   gems: number;
@@ -46,7 +47,7 @@ export default function TreasureRushHud({
   onToggleMute: () => void;
   onTogglePause: () => void;
 }) {
-  const low = hud.timeLeft <= 30_000;
+  const low = !hud.noTimer && hud.timeLeft <= 30_000;
   const active = (Object.keys(hud.powers) as PowerKind[]).filter((k) => hud.powers[k] > 0);
 
   return (
@@ -70,7 +71,7 @@ export default function TreasureRushHud({
           }`}
         >
           <Timer className="h-4 w-4" />
-          {clockLabel(hud.timeLeft)}
+          {hud.noTimer ? "No Limit" : clockLabel(hud.timeLeft)}
         </div>
 
         <div className="pointer-events-auto flex items-center gap-1.5">

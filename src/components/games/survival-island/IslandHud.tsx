@@ -18,7 +18,7 @@ type Props = {
 /** Hearts, survival timer, score, stars, wave banner, objectives and mini-map. */
 export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBack, onQuit }: Props) {
   const wave = waveLabel(st);
-  const urgent = st.timeLeft <= 10_000;
+  const urgent = !st.endless && st.timeLeft <= 10_000;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-20 select-none">
@@ -71,9 +71,9 @@ export default function IslandHud({ st, best, muted, onToggleMute, onPause, onBa
               urgent ? "border-rose-400/60 bg-rose-500/25" : "border-white/15 bg-black/45"
             }`}
           >
-            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50">Survive</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-white/50">{st.endless ? "Survived" : "Survive"}</p>
             <p className={`text-lg font-black tabular-nums ${urgent ? "text-rose-200" : "text-white"}`}>
-              {formatClock(st.timeLeft)}
+              {st.endless ? formatClock(st.t * 1000) : formatClock(st.timeLeft)}
             </p>
           </div>
 
