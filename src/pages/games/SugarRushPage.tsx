@@ -10,7 +10,7 @@ import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import SugarRushBoard, { SugarRushOutcome } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { RoundResult, Seat, SugarRushState, applyRoundResult, initialSugarRush } from "@/lib/sugar-rush-run";
@@ -207,7 +207,10 @@ export default function SugarRushPage() {
         )}
 
         {seated && !finished && !myTurn && !computersTurn && (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-b from-[#3a1f5c] to-[#1f1140] text-white">
+          <div
+            className="flex h-full w-full flex-col items-center justify-center gap-3 bg-cover bg-center text-white"
+            style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.25), rgba(20,8,40,.55)), url(${sugarRushBg})` }}
+          >
             <Loader2 className="h-6 w-6 animate-spin" />
             <p className="text-sm font-bold">Waiting on {oppLabel}'s round…</p>
           </div>

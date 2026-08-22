@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, HelpCircle, Volume2, VolumeX } from "lucide-react";
 import {
   Board,
-  CandyColor,
   Cell,
   Pos,
   areAdjacent,
@@ -62,100 +61,42 @@ type Props = {
   onComplete: (outcome: SugarRushOutcome) => void;
 };
 
-const CANDY_COLORS = ["#ff4d68", "#ff9c2e", "#ffd91f", "#3fd15a", "#2ea6ff", "#a259ff"];
-const CANDY_DARK = ["#8f0f27", "#8a4700", "#8a6f00", "#0d6b26", "#0a5490", "#4c1490"];
-
-/** Each color gets its own silhouette, not just a different fill — the same way real candy
- *  sets mix hard candies, gems, jellybeans and wrapped bonbons so the board reads as a pile
- *  of different treats instead of six identical dots. */
-const CANDY_SHAPES = [
-  "circle", // 0 red — classic round gumdrop
-  "diamond", // 1 orange — faceted gem
-  "star", // 2 yellow — sparkle burst
-  "bean", // 3 green — jellybean
-  "bonbon", // 4 blue — wrapped square candy
-  "drop", // 5 purple — teardrop gem
-] as const;
-
-function glossyStyle(base: string, dark: string): React.CSSProperties {
-  return {
-    background: `radial-gradient(circle at 32% 26%, #ffffff 0%, ${base} 38%, ${dark} 100%)`,
-    boxShadow: `inset 0 -4px 5px rgba(0,0,0,.35), inset 0 2px 3px rgba(255,255,255,.7), 0 2px 4px rgba(0,0,0,.35)`,
-  };
-}
-
-function CandyShape({ color }: { color: CandyColor }) {
-  const base = CANDY_COLORS[color];
-  const dark = CANDY_DARK[color];
-  const shape = CANDY_SHAPES[color];
-  const style = glossyStyle(base, dark);
-
-  if (shape === "diamond") {
-    return <div className="h-full w-full" style={{ ...style, clipPath: "polygon(50% 2%, 96% 50%, 50% 98%, 4% 50%)" }} />;
-  }
-  if (shape === "star") {
-    return (
-      <div
-        className="h-full w-full"
-        style={{
-          ...style,
-          clipPath:
-            "polygon(50% 0%, 63% 32%, 100% 38%, 74% 62%, 82% 100%, 50% 80%, 18% 100%, 26% 62%, 0% 38%, 37% 32%)",
-        }}
-      />
-    );
-  }
-  if (shape === "bean") {
-    return <div className="h-[78%] w-full translate-y-[11%] -rotate-12 rounded-[50%]" style={style} />;
-  }
-  if (shape === "bonbon") {
-    return (
-      <div className="relative h-full w-full">
-        <div className="absolute inset-[8%] rounded-md" style={style} />
-        <div className="absolute left-0 top-1/2 h-[46%] w-[16%] -translate-y-1/2 rounded-sm bg-white/85" style={{ clipPath: "polygon(100% 0%, 0% 20%, 0% 80%, 100% 100%)" }} />
-        <div className="absolute right-0 top-1/2 h-[46%] w-[16%] -translate-y-1/2 rounded-sm bg-white/85" style={{ clipPath: "polygon(0% 0%, 100% 20%, 100% 80%, 0% 100%)" }} />
-      </div>
-    );
-  }
-  if (shape === "drop") {
-    return <div className="h-full w-full rotate-45 rounded-[38%_38%_38%_0%]" style={style} />;
-  }
-  return <div className="h-full w-full rounded-full" style={style} />;
-}
-
+/** The real illustrated treat for each color — a painterly sprite instead of a CSS shape, so
+ *  the board reads as an actual pile of candy/cookies rather than colored dots. */
 function CandyFace({ cell }: { cell: Cell }) {
-  const bg = CANDY_COLORS[cell.color];
+  const sprite = CANDY_SPRITES[cell.color];
+
   if (cell.special === "bomb") {
     return (
-      <div
-        className="flex h-full w-full items-center justify-center rounded-full"
-        style={{ background: `radial-gradient(circle at 35% 30%, #fff 0%, ${bg} 45%, #1a1a1a 100%)`, boxShadow: "0 0 10px rgba(0,0,0,.5), 0 0 0 2px rgba(255,255,255,.4) inset" }}
-      />
+      <div className="relative h-full w-full">
+        <img src={sprite} alt="" className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,.5)]" draggable={false} />
+        <div className="pointer-events-none absolute inset-0 rounded-full" style={{ boxShadow: "0 0 14px 4px rgba(255,255,255,.55)" }} />
+      </div>
     );
   }
   if (cell.special === "wrapped") {
     return (
-      <div
-        className="flex h-full w-full items-center justify-center rounded-xl border-[3px] border-white/85"
-        style={{ background: `linear-gradient(135deg, #fff 0%, ${bg} 45%, ${CANDY_DARK[cell.color]} 100%)` }}
-      />
+      <div className="relative h-full w-full rounded-xl border-2 border-white/90 p-[8%]" style={{ boxShadow: "0 0 10px rgba(255,255,255,.4)" }}>
+        <img src={sprite} alt="" className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,.5)]" draggable={false} />
+      </div>
     );
   }
   if (cell.special === "striped-h" || cell.special === "striped-v") {
     return (
-      <div className="h-full w-full overflow-hidden rounded-full" style={glossyStyle(bg, CANDY_DARK[cell.color])}>
+      <div className="relative h-full w-full">
+        <img src={sprite} alt="" className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,.5)]" draggable={false} />
         <div
-          className="h-full w-full"
+          className="pointer-events-none absolute inset-[10%] rounded-full mix-blend-screen"
           style={{
             background: cell.special === "striped-h"
-              ? "repeating-linear-gradient(90deg, rgba(255,255,255,.85) 0 15%, transparent 15% 50%)"
-              : "repeating-linear-gradient(0deg, rgba(255,255,255,.85) 0 15%, transparent 15% 50%)",
+              ? "repeating-linear-gradient(90deg, rgba(255,255,255,.9) 0 12%, transparent 12% 45%)"
+              : "repeating-linear-gradient(0deg, rgba(255,255,255,.9) 0 12%, transparent 12% 45%)",
           }}
         />
       </div>
     );
   }
-  return <CandyShape color={cell.color} />;
+  return <img src={sprite} alt="" className="h-full w-full object-contain drop-shadow-[0_2px_4px_rgba(0,0,0,.45)]" draggable={false} />;
 }
 
 export default function SugarRushBoard({
@@ -315,7 +256,14 @@ export default function SugarRushBoard({
     : `${timeLeft}s`;
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-gradient-to-b from-[#3a1f5c] to-[#1f1140]" style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}>
+    <div
+      className="relative flex h-full w-full flex-col bg-cover bg-center"
+      style={{
+        backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.18), rgba(20,8,40,.55)), url(${sugarRushBg})`,
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "env(safe-area-inset-bottom)",
+      }}
+    >
       <div className="flex items-center justify-between gap-2 px-3 pt-2">
         <button type="button" onClick={onBack} aria-label="Back" className="shrink-0 rounded-full bg-black/30 p-2 text-white active:scale-95">
           <ArrowLeft className="h-5 w-5" />

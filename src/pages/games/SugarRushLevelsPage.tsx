@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Lock, RotateCcw, Star } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import SugarRushBoard, { SugarRushOutcome } from "@/components/games/sugar-rush/SugarRushBoard";
+import SugarRushBoard, { SugarRushOutcome, sugarRushBg } from "@/components/games/sugar-rush/SugarRushBoard";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { LEVELS, Level, isLevelUnlocked, loadProgress, saveLevelStars, starsForScore } from "@/lib/sugar-rush-levels";
 
@@ -73,7 +73,10 @@ export default function SugarRushLevelsPage() {
   if (level && result) {
     const passed = result.stars > 0;
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-gradient-to-b from-[#3a1f5c] to-[#1f1140] px-6 text-center">
+      <div
+        className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-cover bg-center px-6 text-center"
+        style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.2), rgba(20,8,40,.55)), url(${sugarRushBg})` }}
+      >
         <p className="text-sm font-black uppercase tracking-wide text-white/60">Level {level.id}</p>
         <h2 className="text-3xl font-black text-white">{passed ? "Level Complete!" : "Out of Moves"}</h2>
         <StarRow stars={result.stars} size="h-9 w-9" />
@@ -121,7 +124,10 @@ export default function SugarRushLevelsPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-gradient-to-b from-[#3a1f5c] to-[#1f1140] pb-10 text-white">
+    <div
+      className="min-h-[100dvh] bg-cover bg-center bg-fixed pb-10 text-white"
+      style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.35), rgba(20,8,40,.7)), url(${sugarRushBg})` }}
+    >
       <div className="sticky top-0 z-10 flex items-center gap-3 bg-black/25 px-4 py-3 backdrop-blur-md" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
         <button type="button" onClick={() => navigate("/games")} aria-label="Back" className="rounded-full bg-white/10 p-2 active:scale-95">
           <ArrowLeft className="h-5 w-5" />
