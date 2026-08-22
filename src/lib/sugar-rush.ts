@@ -239,6 +239,35 @@ export function clearOneMatchStep(board: Board, cascadeDepth = 1): ClearStep {
   return { board: current, cleared, scoreGained, matched };
 }
 
+export type SpecialClearStep = { board: Board; cleared: number; scoreGained: number; matched: Pos[] };
+
+/** Clears special candies involved in an already-animated swap without also resolving gravity/refill.
+ * This lets the UI show the blast first, then the falling/refill phases separately. */
+export function clearSpecialSwapStep(swapped: Board, a: Pos, b: Pos): SpecialClearStep | null {
+  const before = swapped.map((row) => row.slice());
+  let working = swapped.map((row) => row.slice());
+  let cleared = 0;
+  let triggered = false;
+
+  for (const pos of [a, b]) {
+    const cell = working[pos.r]?.[pos.c];
+    if (!cell?.special) continue;
+    triggered = true;
+    const result = activateSpecial(working, pos, cell);
+    working = result.board;
+    cleared += result.cleared;
+  }
+  if (!triggered) return null;
+
+  const matched: Pos[] = [];
+  for (let r = 0; r < before.length; r++) {
+    for (let c = 0; c < before[r].length; c++) {
+      if (before[r][c] && !working[r][c]) matched.push({ r, c });
+    }
+  }
+  return { board: working, cleared, scoreGained: cleared * BASE_POINTS, matched };
+}
+
 export type CascadeResult = { board: Board; scoreGained: number; cascades: number; cleared: number };
 
 /** Repeatedly clears whatever matches exist, drops candies down, refills from the top, and
