@@ -10,6 +10,33 @@ import {
   trySwap,
 } from "@/lib/sugar-rush";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
+import sugarRushBgAsset from "@/assets/games/sugar-rush/sugar-rush-bg.jpg.asset.json";
+import candySprite0Asset from "@/assets/games/sugar-rush/candy-0.png.asset.json";
+import candySprite1Asset from "@/assets/games/sugar-rush/candy-1.png.asset.json";
+import candySprite2Asset from "@/assets/games/sugar-rush/candy-2.png.asset.json";
+import candySprite3Asset from "@/assets/games/sugar-rush/candy-3.png.asset.json";
+import candySprite4Asset from "@/assets/games/sugar-rush/candy-4.png.asset.json";
+import candySprite5Asset from "@/assets/games/sugar-rush/candy-5.png.asset.json";
+
+/** Painterly candy-land backdrop for the game screen. */
+export const sugarRushBg = sugarRushBgAsset.url;
+
+const candySprite0 = candySprite0Asset.url;
+const candySprite1 = candySprite1Asset.url;
+const candySprite2 = candySprite2Asset.url;
+const candySprite3 = candySprite3Asset.url;
+const candySprite4 = candySprite4Asset.url;
+const candySprite5 = candySprite5Asset.url;
+
+/** Illustrated candy sprites, indexed by CandyColor (0 red … 5 purple). */
+export const CANDY_SPRITES = [
+  candySprite0,
+  candySprite1,
+  candySprite2,
+  candySprite3,
+  candySprite4,
+  candySprite5,
+];
 
 export type SugarRushOutcome = {
   score: number;
