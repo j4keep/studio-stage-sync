@@ -30,6 +30,54 @@ const SPARKLES = Array.from({ length: 14 }, (_, i) => ({
   delay: (i % 7) * 0.25,
 }));
 
+/** A little candy-hungry mascot that scoots across the bottom of the intro every so often,
+ *  chasing a piece of candy — purely decorative and self-drawn (no external art), a nod to
+ *  the "something walks on screen and looks like it's biting candy" ask. */
+function SugarRushMascot() {
+  const [visible, setVisible] = useState(false);
+  const [runId, setRunId] = useState(0);
+
+  useEffect(() => {
+    let hideTimer: number;
+    const cycle = () => {
+      setRunId((n) => n + 1);
+      setVisible(true);
+      hideTimer = window.setTimeout(() => setVisible(false), 6500);
+    };
+    const first = window.setTimeout(cycle, 2200);
+    const repeat = window.setInterval(cycle, 9000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(repeat);
+      window.clearTimeout(hideTimer);
+    };
+  }, []);
+
+  if (!visible) return null;
+
+  return (
+    <div key={runId} className="pointer-events-none absolute bottom-[8%] z-[5] sr-mascot-walk" style={{ width: 48, height: 48 }}>
+      <div className="sr-mascot-bob relative h-full w-full">
+        <div
+          className="absolute inset-0 rounded-full"
+          style={{ background: "radial-gradient(circle at 32% 28%, #ffe8a3, #ff9f4a 55%, #e0631a 100%)", boxShadow: "0 6px 10px rgba(0,0,0,.35)" }}
+        />
+        <span className="absolute left-[20%] top-[28%] h-[18%] w-[18%] rounded-full bg-white">
+          <span className="absolute left-1/2 top-1/2 h-[55%] w-[55%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-black" />
+        </span>
+        <span className="absolute right-[20%] top-[28%] h-[18%] w-[18%] rounded-full bg-white">
+          <span className="absolute left-1/2 top-1/2 h-[55%] w-[55%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-black" />
+        </span>
+        <span
+          className="sr-mascot-chomp absolute bottom-[16%] left-1/2 h-[24%] w-[36%] -translate-x-1/2 rounded-b-full bg-[#7a2412]"
+          style={{ transformOrigin: "top center" }}
+        />
+      </div>
+      <span className="absolute -right-3 top-[6%] text-base">🍬</span>
+    </div>
+  );
+}
+
 /** Sugar Rush's own full-screen intro — visually isolated from the rest of the app (no
  *  GameShell/GameIntro chrome), with floating candy, sparkles, a glowing title, and a
  *  settings sheet for music/sfx volume. Music starts on the first tap anywhere here, since
@@ -69,7 +117,7 @@ export default function SugarRushIntro({
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-cover bg-center"
-      style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.15), rgba(20,8,40,.6)), url(${sugarRushBg})` }}
+      style={{ backgroundImage: `linear-gradient(180deg, rgba(30,10,50,.04), rgba(20,8,40,.34)), url(${sugarRushBg})` }}
       onPointerDown={unlockAudio}
     >
       {/* Ambient drifting candy shapes + sparkles — purely decorative, isolated to this screen. */}
@@ -90,6 +138,7 @@ export default function SugarRushIntro({
             style={{ top: s.top, left: s.left, animationDelay: `${s.delay}s` }}
           />
         ))}
+        <SugarRushMascot />
       </div>
 
       <div className="relative z-10 flex items-center justify-between px-4 pt-4" style={{ paddingTop: "max(1rem, env(safe-area-inset-top))" }}>

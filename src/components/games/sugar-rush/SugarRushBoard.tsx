@@ -137,6 +137,7 @@ export default function SugarRushBoard({
   const [comboMsg, setComboMsg] = useState<string | null>(null);
   const [shuffling, setShuffling] = useState(false);
   const [floaters, setFloaters] = useState<{ id: number; text: string; r: number; c: number }[]>([]);
+  const [sparkles, setSparkles] = useState<{ id: number; r: number; c: number }[]>([]);
 
   const bestCascadeRef = useRef(0);
   const clearedRef = useRef(0);
@@ -145,6 +146,7 @@ export default function SugarRushBoard({
   const dragStart = useRef<{ pos: Pos; x: number; y: number } | null>(null);
   const autoTimer = useRef<number | null>(null);
   const floaterId = useRef(0);
+  const sparkleId = useRef(0);
   const idleTimer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -162,6 +164,15 @@ export default function SugarRushBoard({
     const id = floaterId.current++;
     setFloaters((f) => [...f, { id, text, r: pos.r, c: pos.c }]);
     window.setTimeout(() => setFloaters((f) => f.filter((x) => x.id !== id)), 950);
+  }, []);
+
+  /** Bright starburst sparkles at each popped candy — the "automated" flourish that makes a
+   *  match read as a celebratory burst rather than a plain disappearance. */
+  const addSparkles = useCallback((cells: Pos[]) => {
+    const batch = cells.slice(0, 8).map((pos) => ({ id: sparkleId.current++, r: pos.r, c: pos.c }));
+    setSparkles((s) => [...s, ...batch]);
+    const ids = new Set(batch.map((b) => b.id));
+    window.setTimeout(() => setSparkles((s) => s.filter((x) => !ids.has(x.id))), 420);
   }, []);
 
   const finish = useCallback((won?: boolean) => {
@@ -220,6 +231,7 @@ export default function SugarRushBoard({
       setPopping(keys);
       sugarRushSfx.pop(comboDepth);
       if (comboDepth >= 2) sugarRushSfx.combo(comboDepth);
+      addSparkles(step.matchedCells);
       if (step.matchedCells[0]) addFloater(`+${step.scoreGained}`, step.matchedCells[0]);
       setScore((s) => s + step.scoreGained);
       await delay(190);
@@ -238,13 +250,14 @@ export default function SugarRushBoard({
       const label = COMBO_LABELS[Math.min(comboDepth, COMBO_LABELS.length - 1)];
       if (label) {
         setComboMsg(label);
+        sugarRushSfx.speak(label.replace(/!$/, ""));
         window.setTimeout(() => setComboMsg(null), 900);
       }
     }
 
     bestCascadeRef.current = Math.max(bestCascadeRef.current, result.cascades);
     clearedRef.current += result.cleared;
-  }, [addFloater]);
+  }, [addFloater, addSparkles]);
 
   const maybeReshuffle = useCallback(async (currentBoard: Board) => {
     if (hasLegalMove(currentBoard)) return currentBoard;
@@ -462,6 +475,17 @@ export default function SugarRushBoard({
               }),
             )}
           </div>
+
+          {sparkles.map((s) => (
+            <div
+              key={s.id}
+              className="pointer-events-none absolute z-30 sr-pop-sparkle"
+              style={{
+                left: `${((s.c + 0.5) / size) * 100}%`,
+                top: `${((s.r + 0.5) / size) * 100}%`,
+              }}
+            />
+          ))}
 
           {floaters.map((f) => (
             <div

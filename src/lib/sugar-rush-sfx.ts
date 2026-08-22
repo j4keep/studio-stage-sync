@@ -17,10 +17,10 @@ function readNum(key: string, fallback: number): number {
   return Number.isFinite(n) ? Math.min(1, Math.max(0, n)) : fallback;
 }
 
-// A cheerful major-pentatonic riff, looped — light and bouncy rather than melodic/complex,
-// so it can loop indefinitely without wearing thin.
-const MUSIC_NOTES = [523.25, 659.25, 587.33, 783.99, 659.25, 880.0, 783.99, 659.25];
-const MUSIC_STEP_SEC = 0.28;
+// A punchy, syncopated pop-style riff — faster tempo and a hook-y octave jump so it reads
+// as "hot"/upbeat rather than a plain music-box melody. Loops indefinitely.
+const MUSIC_NOTES = [523.25, 523.25, 659.25, 783.99, 659.25, 987.77, 880.0, 783.99, 659.25, 587.33, 659.25, 783.99, 1046.5, 783.99, 659.25, 587.33];
+const MUSIC_STEP_SEC = 0.21;
 
 class SugarRushSfx {
   private ctx: AudioContext | null = null;
@@ -66,6 +66,7 @@ class SugarRushSfx {
     }
     if (this.sfxBus) this.sfxBus.gain.value = muted ? 0 : this.sfxVolume;
     if (this.musicBus) this.musicBus.gain.value = muted ? 0 : this.musicVolume;
+    if (muted && typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
   setMusicVolume(v: number) {
@@ -109,14 +110,20 @@ class SugarRushSfx {
       if (!this.musicRunning || !this.ctx || !this.musicBus) return;
       const t = this.ctx.currentTime;
       const note = MUSIC_NOTES[this.musicStep % MUSIC_NOTES.length];
+
+      // Plucky lead: fast attack, quick decay — reads as a "pop synth" hook rather than a
+      // soft music-box tone.
       const osc = this.ctx.createOscillator();
-      osc.type = "triangle";
+      osc.type = "sawtooth";
       osc.frequency.value = note;
+      const lp = this.ctx.createBiquadFilter();
+      lp.type = "lowpass";
+      lp.frequency.value = 3200;
       const gain = this.ctx.createGain();
       gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.linearRampToValueAtTime(0.5, t + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + MUSIC_STEP_SEC * 0.9);
-      osc.connect(gain).connect(this.musicBus);
+      gain.gain.linearRampToValueAtTime(0.34, t + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + MUSIC_STEP_SEC * 0.72);
+      osc.connect(lp).connect(gain).connect(this.musicBus);
       osc.start(t);
       osc.stop(t + MUSIC_STEP_SEC);
 
@@ -132,6 +139,32 @@ class SugarRushSfx {
         bass.connect(bgain).connect(this.musicBus);
         bass.start(t);
         bass.stop(t + MUSIC_STEP_SEC * 3.8);
+      }
+
+      // A crisp closed-hihat tick on every step and a soft kick on the downbeat — gives the
+      // loop a driving pop-song pulse instead of just a melody.
+      const tick = this.ctx.createBufferSource();
+      tick.buffer = this.noiseBuffer(this.ctx, 0.03);
+      const hp = this.ctx.createBiquadFilter();
+      hp.type = "highpass";
+      hp.frequency.value = 7000;
+      const tgain = this.ctx.createGain();
+      tgain.gain.setValueAtTime(this.musicStep % 2 === 0 ? 0.05 : 0.03, t);
+      tgain.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+      tick.connect(hp).connect(tgain).connect(this.musicBus);
+      tick.start(t);
+
+      if (this.musicStep % 4 === 0) {
+        const kick = this.ctx.createOscillator();
+        kick.type = "sine";
+        kick.frequency.setValueAtTime(150, t);
+        kick.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+        const kgain = this.ctx.createGain();
+        kgain.gain.setValueAtTime(0.4, t);
+        kgain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+        kick.connect(kgain).connect(this.musicBus);
+        kick.start(t);
+        kick.stop(t + 0.14);
       }
 
       this.musicStep++;
@@ -180,7 +213,8 @@ class SugarRushSfx {
     src.start(t);
   }
 
-  /** A quick soft tick when a swap is accepted (before the pops land). */
+  /** A bright, punchy "flip" when a swap is accepted — deliberately the loudest one-shot in
+   *  the sfx set so it reads clearly over the music/other effects while actually playing. */
   swap() {
     if (this.muted) return;
     const ctx = this.ensure();
@@ -188,15 +222,17 @@ class SugarRushSfx {
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
     osc.type = "sine";
-    osc.frequency.setValueAtTime(500, t);
-    osc.frequency.exponentialRampToValueAtTime(700, t + 0.05);
+    osc.frequency.setValueAtTime(520, t);
+    osc.frequency.exponentialRampToValueAtTime(780, t + 0.06);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.08);
+    gain.gain.linearRampToValueAtTime(0.32, t + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.1);
     osc.connect(gain).connect(this.sfxBus!);
     osc.start(t);
-    osc.stop(t + 0.1);
+    osc.stop(t + 0.12);
+    // A quick low click underneath gives the flip some physical weight.
+    this.thud(this.sfxBus!, t, 0.02, 1400, 0.16, 0.05);
   }
 
   /** A soft low buzz for a swap that didn't form a match. */
@@ -266,6 +302,23 @@ class SugarRushSfx {
       osc.start(t);
       osc.stop(t + 0.22);
     });
+  }
+
+  /** Speaks a combo callout ("Sweet!", "Tasty Combo!", ...) out loud using the browser's
+   *  built-in speech synthesis — no audio files needed. Cancels any callout still queued so
+   *  a fast chain never stacks overlapping voices. */
+  speak(text: string) {
+    if (this.muted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.volume = Math.min(1, this.sfxVolume * 1.15);
+      utter.pitch = 1.4;
+      utter.rate = 1.1;
+      window.speechSynthesis.speak(utter);
+    } catch {
+      /* speech synthesis unavailable */
+    }
   }
 
   /** A special candy being created or triggered — a bright sparkly sweep. */

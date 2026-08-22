@@ -85,9 +85,42 @@
 }
 .sr-shuffle-spin { animation: sr-shuffle-spin 0.6s ease-in-out; }
 
+@keyframes sr-pop-sparkle {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+  55% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.3); opacity: 0; }
+}
+.sr-pop-sparkle {
+  width: 34px;
+  height: 34px;
+  background: radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,246,210,.85) 35%, rgba(255,246,210,0) 70%);
+  border-radius: 999px;
+  animation: sr-pop-sparkle 0.42s ease-out both;
+}
+
+/* The little candy-hungry mascot that occasionally scoots across the intro screen. */
+@keyframes sr-mascot-walk {
+  0% { left: -14%; }
+  100% { left: 114%; }
+}
+.sr-mascot-walk { animation: sr-mascot-walk 6.5s linear both; }
+
+@keyframes sr-mascot-bob {
+  0%, 100% { transform: translateY(0) rotate(-4deg); }
+  50% { transform: translateY(-7px) rotate(4deg); }
+}
+.sr-mascot-bob { animation: sr-mascot-bob 0.36s ease-in-out infinite; }
+
+@keyframes sr-mascot-chomp {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(0.35); }
+}
+.sr-mascot-chomp { animation: sr-mascot-chomp 0.3s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .sr-candy-fall, .sr-pop, .sr-shake, .sr-hint-pulse, .sr-float-up, .sr-combo-pop,
-  .sr-bob, .sr-drift, .sr-twinkle, .sr-glow-title, .sr-play-pulse, .sr-shuffle-spin {
+  .sr-bob, .sr-drift, .sr-twinkle, .sr-glow-title, .sr-play-pulse, .sr-shuffle-spin,
+  .sr-pop-sparkle, .sr-mascot-walk, .sr-mascot-bob, .sr-mascot-chomp {
     animation: none !important;
   }
 }
