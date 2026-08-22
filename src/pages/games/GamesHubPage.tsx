@@ -38,6 +38,7 @@ import bingoArt from "@/assets/games/bingo.svg";
 import wordLinkArt from "@/assets/games/word-link.svg";
 import miniGolfArt from "@/assets/games/mini-golf.svg";
 import snakeRoyaleArt from "@/assets/games/snake-royale.svg";
+import sugarRushArt from "@/assets/games/sugar-rush.svg";
 import obbyArt from "@/assets/games/yaj-obby-intro.png";
 import cityRunArtAsset from "@/assets/games/adventures/city-run.png.asset.json";
 import treasureRushArtAsset from "@/assets/games/adventures/treasure-rush.png.asset.json";
@@ -70,6 +71,7 @@ const CARDS: CardDef[] = [
   { type: "word_link", title: "Word Link", players: "2 players", image: wordLinkArt, category: "Puzzle", isNew: true },
   { type: "mini_golf", title: "Mini Golf", players: "2 players", image: miniGolfArt, category: "Sports", isNew: true },
   { type: "snake_royale", title: "Snake Royale", players: "2 players", image: snakeRoyaleArt, category: "Arcade", isNew: true },
+  { type: "sugar_rush", title: "YAJ Sugar Rush", players: "2 players", image: sugarRushArt, category: "Puzzle", isNew: true },
   { type: "obby", title: "YAJ Obby", players: "2 players", image: obbyArt, category: "Adventure", isNew: true },
   { type: "city_run", title: "YAJ City Run", players: "Solo endless run", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
   { type: "treasure_rush", title: "YAJ Treasure Rush", players: "Solo treasure hunt", image: treasureRushArtAsset.url, category: "Adventure", isNew: true },

@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <radialGradient id="sr-bg" cx="50%" cy="35%" r="75%">
+      <stop offset="0%" stop-color="hsl(272,55%,32%)" />
+      <stop offset="60%" stop-color="hsl(268,55%,18%)" />
+      <stop offset="100%" stop-color="hsl(265,55%,9%)" />
+    </radialGradient>
+    <radialGradient id="sr-c0" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#ffb0bd"/><stop offset="55%" stop-color="#ff5c72"/><stop offset="100%" stop-color="#c81f38"/></radialGradient>
+    <radialGradient id="sr-c1" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#ffe0ad"/><stop offset="55%" stop-color="#ffb23e"/><stop offset="100%" stop-color="#c96f00"/></radialGradient>
+    <radialGradient id="sr-c2" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#fff6b0"/><stop offset="55%" stop-color="#ffe14d"/><stop offset="100%" stop-color="#c9a300"/></radialGradient>
+    <radialGradient id="sr-c3" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#b8ffc0"/><stop offset="55%" stop-color="#5fd66b"/><stop offset="100%" stop-color="#1e8a2a"/></radialGradient>
+    <radialGradient id="sr-c4" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#c0ecff"/><stop offset="55%" stop-color="#4fb8ff"/><stop offset="100%" stop-color="#0d6fbf"/></radialGradient>
+    <radialGradient id="sr-c5" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#e6d0ff"/><stop offset="55%" stop-color="#b57bff"/><stop offset="100%" stop-color="#6c1fc9"/></radialGradient>
+  </defs>
+  <rect width="400" height="400" fill="url(#sr-bg)" />
+
+  <!-- Board panel -->
+  <rect x="42" y="40" width="316" height="316" rx="26" fill="rgba(0,0,0,0.28)" stroke="rgba(255,255,255,0.15)" stroke-width="3" />
+
+  <!-- Candy grid -->
+  <g>
+    <circle cx="94" cy="92" r="26" fill="url(#sr-c3)" />
+    <circle cx="152" cy="92" r="26" fill="url(#sr-c1)" />
+    <circle cx="210" cy="92" r="26" fill="url(#sr-c4)" />
+    <circle cx="268" cy="92" r="26" fill="url(#sr-c2)" />
+    <circle cx="326" cy="92" r="26" fill="url(#sr-c0)" />
+
+    <circle cx="94" cy="150" r="26" fill="url(#sr-c2)" />
+    <circle cx="152" cy="150" r="26" fill="url(#sr-c5)" />
+    <circle cx="210" cy="150" r="34" fill="url(#sr-c0)" stroke="#fff" stroke-width="4" />
+    <circle cx="268" cy="150" r="26" fill="url(#sr-c3)" />
+    <circle cx="326" cy="150" r="26" fill="url(#sr-c1)" />
+
+    <circle cx="94" cy="212" r="26" fill="url(#sr-c0)" />
+    <circle cx="152" cy="212" r="26" fill="url(#sr-c4)" />
+    <circle cx="210" cy="212" r="26" fill="url(#sr-c5)" />
+    <circle cx="268" cy="212" r="34" fill="url(#sr-c3)" stroke="#fff" stroke-width="4" />
+    <circle cx="326" cy="212" r="26" fill="url(#sr-c2)" />
+
+    <circle cx="94" cy="270" r="26" fill="url(#sr-c1)" />
+    <circle cx="152" cy="270" r="26" fill="url(#sr-c0)" />
+    <circle cx="210" cy="270" r="26" fill="url(#sr-c2)" />
+    <circle cx="268" cy="270" r="26" fill="url(#sr-c5)" />
+    <circle cx="326" cy="270" r="26" fill="url(#sr-c4)" />
+  </g>
+
+  <!-- Sparkles -->
+  <g fill="#ffffff" opacity="0.85">
+    <circle cx="220" cy="160" r="3" />
+    <circle cx="232" cy="146" r="2" />
+    <circle cx="278" cy="222" r="3" />
+    <circle cx="290" cy="204" r="2" />
+  </g>
+
+  <!-- Title lockup -->
+  <text x="200" y="382" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="30" fill="#ffffff" letter-spacing="1">SUGAR RUSH</text>
+</svg>

@@ -135,6 +135,8 @@ import BingoPage from "./pages/games/BingoPage";
 import WordLinkPage from "./pages/games/WordLinkPage";
 import MiniGolfPage from "./pages/games/MiniGolfPage";
 import SnakeRoyalePage from "./pages/games/SnakeRoyalePage";
+import SugarRushPage from "./pages/games/SugarRushPage";
+import SugarRushLevelsPage from "./pages/games/SugarRushLevelsPage";
 import ObbyPage from "./pages/games/ObbyPage";
 import CityRunPage from "./pages/games/CityRunPage";
 import TreasureRushPage from "./pages/games/TreasureRushPage";
@@ -439,6 +441,8 @@ const ProtectedRoutes = () => {
         <Route path="/games/word-link/:id" element={<WordLinkPage />} />
         <Route path="/games/mini-golf/:id" element={<MiniGolfPage />} />
         <Route path="/games/snake-royale/:id" element={<SnakeRoyalePage />} />
+        <Route path="/games/sugar-rush/:id" element={<SugarRushPage />} />
+        <Route path="/games/sugar-rush-levels" element={<SugarRushLevelsPage />} />
         <Route path="/games/obby/:id" element={<ObbyPage />} />
         <Route path="/games/city-run/:id" element={<CityRunPage />} />
         <Route path="/games/treasure-rush/:id" element={<TreasureRushPage />} />
