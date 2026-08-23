@@ -1,8 +1,6 @@
 import { ArrowLeft, Heart, LogOut, Pause, Volume2, VolumeX } from "lucide-react";
-import GameMenu from "@/components/games/GameMenu";
-import { confirmQuitGame } from "@/components/games/QuitGameButton";
+import GameMenu, { confirmQuitGame } from "@/components/games/GameMenu";
 import { MAX_HEARTS, SugarRushMazeState } from "@/lib/sugar-rush-maze";
-import "./sugar-rush.css";
 
 type Props = {
   st: SugarRushMazeState;
@@ -14,39 +12,33 @@ type Props = {
   onQuit?: () => void;
 };
 
-/** Hearts (left) · Objective (center) · Score (right), Sugar Meter below — kept compact
- *  and out of the maze's own play area, mirrors TowerHud.tsx's layout conventions. */
+/** Compact Sugar Rush HUD. The old long Sugar Meter bar was intentionally removed because
+ * it covered too much of the maze in landscape. Meter progress now lives in a small pill. */
 export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, onBack, onQuit }: Props) {
+  const meter = st.rushActive ? 100 : Math.round(st.sugarMeter);
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 select-none px-3 pt-3" style={{ paddingTop: "max(0.75rem, env(safe-area-inset-top))" }}>
+    <div className="pointer-events-none absolute inset-x-0 top-0 z-20 select-none px-3 pt-2" style={{ paddingTop: "max(0.5rem, env(safe-area-inset-top))" }}>
       <div className="flex items-start justify-between gap-2">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1.5 backdrop-blur-sm">
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-white/10 bg-[#190b2b]/75 px-2 py-1.5 shadow-lg backdrop-blur-sm">
           {Array.from({ length: MAX_HEARTS }, (_, i) => (
-            <Heart key={i} className={`h-4 w-4 ${i < st.hearts ? "text-rose-400" : "text-white/20"}`} fill={i < st.hearts ? "currentColor" : "none"} />
+            <Heart key={i} className={`h-3.5 w-3.5 ${i < st.hearts ? "text-rose-400" : "text-white/20"}`} fill={i < st.hearts ? "currentColor" : "none"} />
           ))}
         </div>
 
-        <div className="mx-2 flex-1 rounded-full bg-black/55 px-3 py-1.5 text-center backdrop-blur-sm">
-          <p className="truncate text-[10px] font-black uppercase tracking-wide text-yellow-200/90">
+        <div className="min-w-0 max-w-[48%] flex-1 rounded-2xl border border-white/10 bg-[#190b2b]/72 px-3 py-1.5 text-center shadow-lg backdrop-blur-sm">
+          <p className="truncate text-[10px] font-black uppercase tracking-wide text-yellow-100">
             {st.exitUnlocked ? "Exit unlocked!" : st.objectiveLabel}
           </p>
-          {!st.exitUnlocked && (
-            <p className="text-[10px] font-bold text-white/70">
-              {st.objectiveProgress}/{st.objectiveTarget}
-            </p>
-          )}
+          {!st.exitUnlocked && <p className="text-[10px] font-bold text-white/80">{st.objectiveProgress}/{st.objectiveTarget}</p>}
         </div>
 
-        <div className="rounded-full bg-black/55 px-3 py-1.5 text-right backdrop-blur-sm">
-          <p className="text-[13px] font-black tabular-nums text-white">{st.score.toLocaleString()}</p>
-          {best ? <p className="text-[9px] font-bold text-white/50">BEST {best.toLocaleString()}</p> : null}
-        </div>
-      </div>
-
-      <div className="mt-2 flex items-center gap-2">
-        <div className="pointer-events-auto flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
+          <div className="rounded-2xl border border-white/10 bg-[#190b2b]/72 px-2.5 py-1.5 text-right shadow-lg backdrop-blur-sm">
+            <p className="text-[12px] font-black tabular-nums text-white">{st.score.toLocaleString()}</p>
+            {best ? <p className="text-[8px] font-bold text-white/55">BEST {best.toLocaleString()}</p> : null}
+          </div>
           <GameMenu
-            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-3 py-2 text-white backdrop-blur-sm active:scale-95"
+            triggerClassName="pointer-events-auto flex items-center rounded-full border border-white/10 bg-[#190b2b]/75 px-2.5 py-2 text-white shadow-lg backdrop-blur-sm active:scale-95"
             actions={[
               { key: "pause", label: "Pause", icon: Pause, onClick: onPause },
               { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
@@ -55,26 +47,13 @@ export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, o
             ]}
           />
         </div>
+      </div>
 
-        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
-          <div
-            className="h-full rounded-full transition-[width] duration-150"
-            style={{
-              width: `${st.rushActive ? 100 : st.sugarMeter}%`,
-              background: st.rushActive
-                ? "linear-gradient(90deg, #ffd166, #ff5ecb, #ffd166)"
-                : "linear-gradient(90deg, #ff9ecb, #ffd166)",
-            }}
-          />
+      <div className="mt-1.5 flex justify-center">
+        <div className={`rounded-full border px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] shadow-md backdrop-blur-sm ${st.rushActive ? "sr-rush-pulse border-yellow-200/50 bg-fuchsia-600/80 text-yellow-100" : "border-white/10 bg-[#190b2b]/60 text-white/75"}`}>
+          {st.rushActive ? `Sugar Rush · ${Math.ceil(st.rushTimeLeft)}s` : `Sugar ${meter}%`}
         </div>
       </div>
-      <p
-        className={`mt-0.5 text-center text-[9px] font-black uppercase tracking-[0.16em] ${
-          st.rushActive ? "sr-rush-pulse text-yellow-200" : "text-white/60"
-        }`}
-      >
-        {st.rushActive ? `Sugar Rush! ${Math.ceil(st.rushTimeLeft)}s` : "Sugar Meter"}
-      </p>
     </div>
   );
 }
