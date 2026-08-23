@@ -99,11 +99,11 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
     if (!canvas) return;
 
     const resize = () => {
-      // iPhone Safari is much more stable when the full-screen gameplay canvas does not
-      // render at native 2x/3x DPR on top of the WebGL actor layer.
+      // Measure first, then choose a capped DPR. The prior version referenced `rect`
+      // before it existed, which throws in Safari and leaves a white game screen.
+      const rect = canvas.getBoundingClientRect();
       const maxDpr = rect.width < 900 ? 1.35 : 1.75;
       const dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
-      const rect = canvas.getBoundingClientRect();
       canvas.width = Math.floor(rect.width * dpr);
       canvas.height = Math.floor(rect.height * dpr);
       const g = canvas.getContext("2d");
