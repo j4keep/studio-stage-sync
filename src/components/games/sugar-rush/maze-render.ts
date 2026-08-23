@@ -37,16 +37,18 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   // constant camera jitter, but can never drift into the HUD/screen edge.
   const clampX = (x: number) => mapW <= vw ? mapW / 2 : clamp(x, vw / 2, mapW - vw / 2);
 
-  // Keep a small amount of world-space breathing room beyond the map's top/bottom edges.
-  // Without this, the outer frosting wall sits exactly on the canvas edge in landscape Safari,
-  // so half of the stroke gets clipped and the player cannot tell whether the top lane is open.
-  // The padding is intentionally under half a cell: enough to reveal the complete border and
-  // nearby passage, but not enough to create a noticeable empty band around the game.
-  const verticalEdgePad = map.cellSize * 0.34;
+  // Landscape Safari/browser chrome can visually cover the very top of a fullscreen canvas.
+  // Reserve a real screen-space safe zone so the TOP frosting wall, its openings, and an actor
+  // travelling through the first row always remain visible below the browser/game controls.
+  // This is intentionally asymmetric: we need much more room at the top than at the bottom.
+  const landscape = w > h;
+  const topSafePx = landscape ? Math.min(104, h * 0.19) : Math.min(76, h * 0.11);
+  const topEdgePad = Math.max(map.cellSize * 0.9, topSafePx / scale);
+  const bottomEdgePad = map.cellSize * 0.34;
   const clampY = (y: number) =>
     mapH <= vh
       ? mapH / 2
-      : clamp(y, vh / 2 - verticalEdgePad, mapH - vh / 2 + verticalEdgePad);
+      : clamp(y, vh / 2 - topEdgePad, mapH - vh / 2 + bottomEdgePad);
   if (!prev) return { x: clampX(target.x), y: clampY(target.y), scale };
 
   let tx = prev.x;
