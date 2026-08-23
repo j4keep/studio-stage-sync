@@ -12,7 +12,8 @@ type Props = {
   camRef: React.MutableRefObject<Camera | undefined>;
 };
 
-const ACTOR_SCALE = 34;
+const PLAYER_ACTOR_SCALE = 21;
+const CAVITY_ACTOR_SCALE = 20;
 
 function cavityPoseFor(mode: SugarRushMazeState["cavity"]["mode"]): CavityPose {
   if (mode === "chase") return "chase";
@@ -55,7 +56,7 @@ function PlayerActor({ stateRef, camRef }: Props) {
   });
 
   return (
-    <group ref={group} scale={ACTOR_SCALE}>
+    <group ref={group} scale={PLAYER_ACTOR_SCALE}>
       <ObbyAvatar color="#5b8cff" skin={skinTone} moving={moving} />
     </group>
   );
@@ -92,7 +93,7 @@ function CavityActor({ stateRef, camRef }: Props) {
   });
 
   return (
-    <group ref={group} scale={ACTOR_SCALE}>
+    <group ref={group} scale={CAVITY_ACTOR_SCALE}>
       <DrCavityAvatar pose={pose} moving={moving} />
     </group>
   );
