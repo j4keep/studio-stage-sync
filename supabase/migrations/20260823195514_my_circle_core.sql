@@ -55,8 +55,14 @@ CREATE INDEX IF NOT EXISTS circle_members_circle_idx ON public.circle_members (c
 
 -- ---------------------------------------------------------------------------
 -- Helper: circle membership (needed by RLS — SECURITY DEFINER avoids recursive RLS)
+--
+-- Named is_social_circle_* rather than is_circle_* because is_circle_member/
+-- is_circle_admin already exist in this database for the unrelated savings_circles
+-- (rotating savings club) feature — same name, different tables. Confirmed live via
+-- `SELECT pg_get_functiondef(oid) FROM pg_proc WHERE proname = 'is_circle_member'`
+-- before writing this, to avoid silently overwriting that feature's RLS helper.
 -- ---------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.is_circle_member(p_circle_id uuid, p_user_id uuid DEFAULT auth.uid())
+CREATE OR REPLACE FUNCTION public.is_social_circle_member(p_circle_id uuid, p_user_id uuid DEFAULT auth.uid())
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -75,7 +81,7 @@ AS $$
   );
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_circle_admin(p_circle_id uuid, p_user_id uuid DEFAULT auth.uid())
+CREATE OR REPLACE FUNCTION public.is_social_circle_admin(p_circle_id uuid, p_user_id uuid DEFAULT auth.uid())
 RETURNS boolean
 LANGUAGE sql
 STABLE
@@ -148,7 +154,7 @@ ALTER TABLE public.circle_members ENABLE ROW LEVEL SECURITY;
 -- Circles: public/discoverable circles fully visible; private circles show metadata
 -- (name/cover/description/member_count) to everyone so the "request to join" welcome
 -- screen works, but member-only content (posts/videos, added in a later milestone) is
--- gated separately by circle_id + is_circle_member(), not by this policy.
+-- gated separately by circle_id + is_social_circle_member(), not by this policy.
 DROP POLICY IF EXISTS "View circles" ON public.circles;
 CREATE POLICY "View circles" ON public.circles
   FOR SELECT TO public
@@ -162,7 +168,7 @@ CREATE POLICY "Users create circles" ON public.circles
 DROP POLICY IF EXISTS "Admins update circles" ON public.circles;
 CREATE POLICY "Admins update circles" ON public.circles
   FOR UPDATE TO authenticated
-  USING (public.is_circle_admin(id, auth.uid()));
+  USING (public.is_social_circle_admin(id, auth.uid()));
 
 DROP POLICY IF EXISTS "Owners delete circles" ON public.circles;
 CREATE POLICY "Owners delete circles" ON public.circles
@@ -177,8 +183,8 @@ CREATE POLICY "View circle members" ON public.circle_members
   FOR SELECT TO authenticated
   USING (
     user_id = auth.uid()
-    OR public.is_circle_member(circle_id, auth.uid())
-    OR public.is_circle_admin(circle_id, auth.uid())
+    OR public.is_social_circle_member(circle_id, auth.uid())
+    OR public.is_social_circle_admin(circle_id, auth.uid())
   );
 
 DROP POLICY IF EXISTS "Users request to join circles" ON public.circle_members;
@@ -192,12 +198,12 @@ CREATE POLICY "Users request to join circles" ON public.circle_members
 DROP POLICY IF EXISTS "Admins manage circle members" ON public.circle_members;
 CREATE POLICY "Admins manage circle members" ON public.circle_members
   FOR UPDATE TO authenticated
-  USING (public.is_circle_admin(circle_id, auth.uid()));
+  USING (public.is_social_circle_admin(circle_id, auth.uid()));
 
 DROP POLICY IF EXISTS "Leave or admins remove circle members" ON public.circle_members;
 CREATE POLICY "Leave or admins remove circle members" ON public.circle_members
   FOR DELETE TO authenticated
-  USING (user_id = auth.uid() OR public.is_circle_admin(circle_id, auth.uid()));
+  USING (user_id = auth.uid() OR public.is_social_circle_admin(circle_id, auth.uid()));
 
 -- Grants
 GRANT SELECT ON public.circles TO anon, authenticated;
