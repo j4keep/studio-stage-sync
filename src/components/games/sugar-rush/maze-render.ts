@@ -7,10 +7,42 @@
 
 import { CandyCityMap } from "@/lib/sugar-rush-map";
 import { SugarRushMazeState, cartWorldPos } from "@/lib/sugar-rush-maze";
+import candy0 from "@/assets/games/sugar-rush/candy-0.png.asset.json";
+import candy1 from "@/assets/games/sugar-rush/candy-1.png.asset.json";
+import candy2 from "@/assets/games/sugar-rush/candy-2.png.asset.json";
+import candy3 from "@/assets/games/sugar-rush/candy-3.png.asset.json";
+import candy4 from "@/assets/games/sugar-rush/candy-4.png.asset.json";
+import candy5 from "@/assets/games/sugar-rush/candy-5.png.asset.json";
 
 export type Camera = { x: number; y: number; scale: number };
 
-const VIEW_CELLS_H = 8;
+const VIEW_CELLS_H = 9.5;
+
+const CANDY_URLS = [candy0.url, candy1.url, candy2.url, candy3.url, candy4.url, candy5.url];
+const candyImages: HTMLImageElement[] = [];
+function candyImage(index: number) {
+  if (typeof Image === "undefined") return null;
+  if (!candyImages[index]) {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = CANDY_URLS[index % CANDY_URLS.length];
+    candyImages[index] = img;
+  }
+  return candyImages[index];
+}
+
+function drawCandySprite(g: CanvasRenderingContext2D, index: number, cx: number, cy: number, size: number) {
+  const img = candyImage(index);
+  if (img?.complete && img.naturalWidth > 0) {
+    g.save();
+    g.shadowColor = "rgba(20, 4, 40, .38)";
+    g.shadowBlur = Math.max(4, size * 0.14);
+    g.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+    g.restore();
+    return true;
+  }
+  return false;
+}
 
 export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, w: number, h: number, prev?: Camera): Camera {
   const vh = VIEW_CELLS_H * map.cellSize;
@@ -50,8 +82,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     bg.addColorStop(0, "#3a0f52");
     bg.addColorStop(1, "#1c0630");
   } else {
-    bg.addColorStop(0, "#2a1147");
-    bg.addColorStop(1, "#160a28");
+    bg.addColorStop(0, "#4a2271");
+    bg.addColorStop(1, "#25113f");
   }
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
@@ -75,7 +107,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
       const y = toScreenY(r * CELL);
       const s = CELL * cam.scale;
       const checker = (c + r) % 2 === 0;
-      g.fillStyle = inPlaza(c, r) ? "#7a4fae" : checker ? "#3a2160" : "#331c55";
+      g.fillStyle = inPlaza(c, r) ? "#9a6ccc" : checker ? "#5b347e" : "#4d2b70";
       g.fillRect(x, y, s + 1, s + 1);
     }
   }
@@ -110,7 +142,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
 
   // ── Walls ("frosting") ────────────────────────────────────────────────────
   g.fillStyle = "#ffe6f4";
-  g.strokeStyle = "#ffb6dd";
+  g.strokeStyle = "#ff9fd3";
   const wallT = Math.max(3, CELL * 0.11 * cam.scale);
   const drawWallSeg = (x1: number, y1: number, x2: number, y2: number) => {
     g.beginPath();
@@ -241,42 +273,31 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     const cy = toScreenY(item.r * CELL + CELL / 2) + bob;
     if (cx < -20 || cx > w + 20 || cy < -20 || cy > h + 20) continue;
     const rr = CELL * 0.16 * cam.scale;
+    const candySize = CELL * 0.46 * cam.scale;
     if (item.kind === "gummy") {
-      g.fillStyle = "#ff6fa3";
-      g.beginPath();
-      g.ellipse(cx, cy, rr, rr * 1.15, 0, 0, Math.PI * 2);
-      g.fill();
+      if (!drawCandySprite(g, 0, cx, cy, candySize)) {
+        g.fillStyle = "#ff6fa3"; g.beginPath(); g.ellipse(cx, cy, rr, rr * 1.15, 0, 0, Math.PI * 2); g.fill();
+      }
     } else if (item.kind === "candyDrop") {
-      g.fillStyle = "#5fd0ff";
-      g.beginPath();
-      g.arc(cx, cy, rr * 0.9, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.6)";
-      g.beginPath();
-      g.arc(cx - rr * 0.3, cy - rr * 0.3, rr * 0.28, 0, Math.PI * 2);
-      g.fill();
+      if (!drawCandySprite(g, 2, cx, cy, candySize)) {
+        g.fillStyle = "#5fd0ff"; g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.fill();
+      }
     } else if (item.kind === "sugarStar") {
-      g.fillStyle = "#ffe066";
-      star(g, cx, cy, rr * 1.3, rr * 0.55);
-      g.fill();
-    } else if (item.kind === "donutToken") {
-      g.strokeStyle = "#c9788f";
-      g.lineWidth = rr * 0.7;
-      g.beginPath();
-      g.arc(cx, cy, rr * 0.85, 0, Math.PI * 2);
-      g.stroke();
-      g.strokeStyle = "#ffd7e6";
-      g.lineWidth = rr * 0.25;
-      g.stroke();
-    } else if (item.kind === "frostingGem") {
       g.save();
-      g.translate(cx, cy);
-      g.rotate(Math.PI / 4);
-      g.fillStyle = "#8ef4ff";
-      g.shadowColor = "#8ef4ff";
-      g.shadowBlur = 8 * cam.scale;
-      g.fillRect(-rr * 0.85, -rr * 0.85, rr * 1.7, rr * 1.7);
+      g.shadowColor = "#ffe066";
+      g.shadowBlur = 10 * cam.scale;
+      g.fillStyle = "#ffe066";
+      star(g, cx, cy, rr * 1.35, rr * 0.58);
+      g.fill();
       g.restore();
+    } else if (item.kind === "donutToken") {
+      if (!drawCandySprite(g, 4, cx, cy, candySize * 1.03)) {
+        g.strokeStyle = "#ffb0c8"; g.lineWidth = rr * 0.65; g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
+      }
+    } else if (item.kind === "frostingGem") {
+      if (!drawCandySprite(g, 5, cx, cy, candySize * 0.92)) {
+        g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4); g.fillStyle = "#8ef4ff"; g.fillRect(-rr, -rr, rr * 2, rr * 2); g.restore();
+      }
     }
   }
 
