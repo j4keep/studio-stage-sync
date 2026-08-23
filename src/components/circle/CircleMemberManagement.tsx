@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Check, Loader2, Shield, UserX, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Check, Loader2, Shield, UserMinus, UserX, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,6 +31,7 @@ async function withProfiles(members: CircleMember[]): Promise<Row[]> {
 
 export default function CircleMemberManagement({ circle }: { circle: Circle }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<"pending" | "members" | "blocked">("pending");
   const [pending, setPending] = useState<Row[] | null>(null);
   const [members, setMembers] = useState<Row[] | null>(null);
@@ -83,13 +85,19 @@ export default function CircleMemberManagement({ circle }: { circle: Circle }) {
         <div className="space-y-2">
           {rows.map((r) => (
             <div key={r.id} className="flex items-center gap-2.5 rounded-2xl border border-border bg-card px-3 py-2.5">
-              <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
-                {r.avatar_url && <img src={r.avatar_url} alt="" className="h-full w-full object-cover" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[12.5px] font-bold">{r.display_name || "YAJ member"}</p>
-                <p className="text-[10.5px] capitalize text-muted-foreground">{r.role}</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(`/artist/${r.user_id}`)}
+                className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
+              >
+                <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {r.avatar_url && <img src={r.avatar_url} alt="" className="h-full w-full object-cover" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[12.5px] font-bold">{r.display_name || "YAJ member"}</p>
+                  <p className="text-[10.5px] capitalize text-muted-foreground">{tab === "pending" ? "Tap to view profile" : r.role}</p>
+                </div>
+              </button>
 
               {tab === "pending" && (
                 <div className="flex gap-1.5">
@@ -129,9 +137,28 @@ export default function CircleMemberManagement({ circle }: { circle: Circle }) {
                   <button
                     type="button"
                     disabled={busyId === r.id}
-                    onClick={() => act(() => blockMember(r.id), r.id)}
+                    onClick={() => {
+                      if (confirm(`Remove ${r.display_name || "this member"} from ${circle.name}? They can ask to join again later.`)) {
+                        void act(() => removeMember(r.id), r.id);
+                      }
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border active:scale-95"
+                    aria-label="Remove from Circle"
+                    title="Remove (can re-request later)"
+                  >
+                    <UserMinus className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busyId === r.id}
+                    onClick={() => {
+                      if (confirm(`Block ${r.display_name || "this member"}? They won't be able to request to join again.`)) {
+                        void act(() => blockMember(r.id), r.id);
+                      }
+                    }}
                     className="flex h-8 w-8 items-center justify-center rounded-full border border-border active:scale-95"
                     aria-label="Block"
+                    title="Block (can't re-request)"
                   >
                     <UserX className="h-4 w-4 text-rose-500" />
                   </button>

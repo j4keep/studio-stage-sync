@@ -416,7 +416,7 @@ export default function DesktopReelViewer({ items, startIndex, onClose }: Props)
                   type="button"
                   onClick={() => {
                     onClose();
-                    navigate("/circle");
+                    navigate(`/circle/u/${profile.user_id || post.user_id}`);
                   }}
                   className="flex flex-col items-center gap-0.5 text-white"
                   aria-label="Open My Circle"

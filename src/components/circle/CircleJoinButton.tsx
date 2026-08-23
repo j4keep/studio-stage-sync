@@ -54,6 +54,14 @@ export default function CircleJoinButton({ circle, userId, membership, isOwner, 
     );
   }
 
+  if (membership?.status === "blocked") {
+    return (
+      <span className="flex items-center gap-1.5 rounded-full bg-muted px-4 py-2 text-[12.5px] font-bold text-muted-foreground opacity-70">
+        <Lock className="h-3.5 w-3.5" /> You can't join this Circle
+      </span>
+    );
+  }
+
   if (circle.is_paid) {
     return (
       <button
@@ -86,7 +94,7 @@ export default function CircleJoinButton({ circle, userId, membership, isOwner, 
       className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-black text-primary-foreground active:scale-95 disabled:opacity-60"
     >
       {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-      {circle.requires_approval ? "Request to Join" : "Join Circle"}
+      {circle.requires_approval ? "Ask to Join" : "Join Circle"}
     </button>
   );
 }

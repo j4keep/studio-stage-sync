@@ -1348,7 +1348,7 @@ const FeedPostCard = ({
           </button>
 
           <button
-            onClick={(e) => { e.stopPropagation(); navigate("/circle"); }}
+            onClick={(e) => { e.stopPropagation(); navigate(`/circle/u/${post.user_id}`); }}
             className="feed-action-btn"
             aria-label="Open My Circle"
           >

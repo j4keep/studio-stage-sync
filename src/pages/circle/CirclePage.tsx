@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Users } from "lucide-react";
+import { ArrowLeft, Lock, Settings, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Circle, CircleMember, getMyMembership, getCircle } from "@/lib/circles";
+import { Circle, CircleMember, getMyMembership, getCircle, updateCircle } from "@/lib/circles";
 import { CIRCLE_TYPE_META } from "@/lib/circles";
 import CircleJoinButton from "@/components/circle/CircleJoinButton";
 import CircleTopFansWheel from "@/components/circle/CircleTopFansWheel";
 import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
+import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 
 type Tab = "home" | "posts" | "videos" | "members" | "about";
 
@@ -47,6 +48,19 @@ export default function CirclePage() {
   const isAdmin = isOwner || (membership?.status === "approved" && (membership.role === "owner" || membership.role === "admin"));
   const meta = CIRCLE_TYPE_META[circle.type];
 
+  if (isOwner && circle.is_personal && !circle.cover_url && user?.id) {
+    return (
+      <CircleCoverCreator
+        userId={user.id}
+        circleName={circle.name}
+        fullScreen
+        onSaved={(url) => {
+          void updateCircle(circle.id, { coverUrl: url }).then(load);
+        }}
+      />
+    );
+  }
+
   const tabs: { id: Tab; label: string }[] = [
     { id: "home", label: "Home" },
     { id: "posts", label: "Posts" },
@@ -70,6 +84,16 @@ export default function CirclePage() {
         >
           <ArrowLeft className="h-4.5 w-4.5" />
         </button>
+        {isOwner && (
+          <button
+            type="button"
+            onClick={() => navigate(`/circle/c/${circle.id}/settings`)}
+            aria-label="Circle settings"
+            className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] rounded-full bg-black/50 p-2 text-white backdrop-blur-sm"
+          >
+            <Settings className="h-4.5 w-4.5" />
+          </button>
+        )}
       </div>
 
       <div className="px-4">
@@ -109,17 +133,26 @@ export default function CirclePage() {
         ))}
       </div>
 
+      {tab === "home" && (
+        <CircleTopFansWheel
+          circle={circle}
+          isOwner={isOwner}
+          onCreateAvatar={() => navigate(`/circle/c/${circle.id}/settings`)}
+        />
+      )}
+
       {!isApprovedMember && circle.is_private ? (
-        <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
-          <Lock className="h-9 w-9 text-muted-foreground" />
-          <h2 className="text-base font-bold">This is a private Circle</h2>
-          <p className="max-w-xs text-[13px] text-muted-foreground">
-            {circle.welcome_message || "Request to join to see posts, videos, and everything else in here."}
-          </p>
-        </div>
+        tab !== "home" && (
+          <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
+            <Lock className="h-9 w-9 text-muted-foreground" />
+            <h2 className="text-base font-bold">This is a private Circle</h2>
+            <p className="max-w-xs text-[13px] text-muted-foreground">
+              {circle.welcome_message || "Request to join to see posts, videos, and everything else in here."}
+            </p>
+          </div>
+        )
       ) : (
         <>
-          {tab === "home" && <CircleTopFansWheel circle={circle} />}
           {tab === "posts" && <ComingSoon label="Circle posts" />}
           {tab === "videos" && <ComingSoon label="Circle videos" />}
           {tab === "members" && isAdmin && <CircleMemberManagement circle={circle} />}

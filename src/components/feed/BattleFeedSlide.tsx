@@ -1195,7 +1195,8 @@ export default function BattleFeedSlide({
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                navigate("/circle");
+                const focusedUserId = activeSide === "left" ? battle?.challenger_id : battle?.opponent_id;
+                navigate(focusedUserId ? `/circle/u/${focusedUserId}` : "/circle");
               }}
               className="feed-action-btn"
               aria-label="Open My Circle"

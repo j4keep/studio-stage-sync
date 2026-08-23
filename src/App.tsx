@@ -27,6 +27,8 @@ import MyBookingsPage from "./pages/MyBookingsPage";
 import MyCirclePage from "./pages/MyCirclePage";
 import CircleCreatePage from "./pages/circle/CircleCreatePage";
 import CirclePage from "./pages/circle/CirclePage";
+import PersonalCircleGate from "./pages/circle/PersonalCircleGate";
+import CircleSettingsPage from "./pages/circle/CircleSettingsPage";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -465,6 +467,8 @@ const ProtectedRoutes = () => {
         <Route path="/circle" element={<MyCirclePage />} />
         <Route path="/circle/create/:type" element={<CircleCreatePage />} />
         <Route path="/circle/c/:id" element={<CirclePage />} />
+        <Route path="/circle/c/:id/settings" element={<CircleSettingsPage />} />
+        <Route path="/circle/u/:userId" element={<PersonalCircleGate />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
         <Route path="/studios" element={<StudiosPage />} />
         <Route path="/my-studios" element={<MyStudiosPage />} />

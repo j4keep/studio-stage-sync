@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { User } from "lucide-react";
+import { Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Circle, listCircleMembers } from "@/lib/circles";
 
@@ -9,14 +9,44 @@ type FanProfile = { user_id: string; display_name: string | null; avatar_url: st
 
 const SLOTS = 8;
 
+/** Warm, varied gradients so empty spokes read as "a person hasn't joined yet" rather
+ *  than a blank system placeholder — cycled by slot index for visual variety. */
+const SLOT_GRADIENTS = [
+  "from-rose-400 to-orange-300",
+  "from-sky-400 to-cyan-300",
+  "from-violet-400 to-fuchsia-300",
+  "from-amber-400 to-yellow-300",
+  "from-emerald-400 to-teal-300",
+  "from-pink-400 to-rose-300",
+  "from-indigo-400 to-blue-300",
+  "from-lime-400 to-green-300",
+];
+
+/** Simple head-and-shoulders silhouette — reads as "a person" at a glance, unlike a bare
+ *  lucide User glyph, without needing real stock photography for open slots. */
+function PersonSilhouette({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 40" className={className} fill="none">
+      <circle cx="20" cy="15" r="7" fill="white" fillOpacity={0.85} />
+      <path d="M6 38c0-9 6.3-15 14-15s14 6 14 15" fill="white" fillOpacity={0.85} />
+    </svg>
+  );
+}
+
+type Props = {
+  circle: Circle;
+  isOwner?: boolean;
+  onCreateAvatar?: () => void;
+};
+
 /**
  * Radial "Top Fans" wheel — the creator's profile centered, members arranged around it
  * on spokes, matching the hub-and-spoke reference the user shared. Ranked by earliest
  * approved membership for now (a real engagement-based ranking lives in Creator Studio
- * Analytics, Milestone D); empty spokes show a placeholder icon rather than nothing,
- * per the user's note to keep the wheel full until real members arrive.
+ * Analytics, Milestone D); empty spokes show a colorful person silhouette rather than a
+ * flat gray dot, per the user's "real real people on there not white dots" note.
  */
-export default function CircleTopFansWheel({ circle }: { circle: Circle }) {
+export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar }: Props) {
   const [owner, setOwner] = useState<FanProfile | null>(null);
   const [fans, setFans] = useState<FanProfile[]>([]);
 
@@ -52,6 +82,7 @@ export default function CircleTopFansWheel({ circle }: { circle: Circle }) {
 
   const radius = 108;
   const center = 130;
+  const centerAvatarUrl = owner?.avatar_url || circle.avatar_url;
 
   return (
     <div className="flex flex-col items-center py-4">
@@ -77,19 +108,31 @@ export default function CircleTopFansWheel({ circle }: { circle: Circle }) {
           })}
         </svg>
 
-        {/* center — the creator */}
-        <div
-          className="absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-card shadow-lg"
-          style={{ left: center, top: center }}
-        >
-          {owner?.avatar_url ? (
-            <img src={owner.avatar_url} alt={owner.display_name || "Creator"} className="h-full w-full object-cover" />
-          ) : (
-            <User className="h-6 w-6 text-muted-foreground" />
-          )}
-        </div>
+        {/* center — the creator, or a "Create" prompt for an owner with no photo yet */}
+        {isOwner && !centerAvatarUrl ? (
+          <button
+            type="button"
+            onClick={onCreateAvatar}
+            className="absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-lg"
+            style={{ left: center, top: center }}
+          >
+            <Plus className="h-5 w-5" />
+            <span className="text-[9px] font-black uppercase tracking-wide">Create</span>
+          </button>
+        ) : (
+          <div
+            className="absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-gradient-to-br from-slate-400 to-slate-300 shadow-lg"
+            style={{ left: center, top: center }}
+          >
+            {centerAvatarUrl ? (
+              <img src={centerAvatarUrl} alt={owner?.display_name || "Creator"} className="h-full w-full object-cover" />
+            ) : (
+              <PersonSilhouette className="h-9 w-9" />
+            )}
+          </div>
+        )}
 
-        {/* spokes — top fans, placeholders for empty slots */}
+        {/* spokes — top fans, colorful silhouettes for empty slots */}
         {Array.from({ length: SLOTS }).map((_, i) => {
           const angle = (Math.PI * 2 * i) / SLOTS - Math.PI / 2;
           const x = center + Math.cos(angle) * radius;
@@ -98,16 +141,18 @@ export default function CircleTopFansWheel({ circle }: { circle: Circle }) {
           return (
             <div
               key={i}
-              className="absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border border-border bg-muted shadow-sm"
+              className={`absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-background bg-gradient-to-br shadow-sm ${
+                fan?.avatar_url ? "" : SLOT_GRADIENTS[i % SLOT_GRADIENTS.length]
+              }`}
               style={{ left: x, top: y }}
               title={fan?.display_name || "Open spot"}
             >
               {fan?.avatar_url ? (
                 <img src={fan.avatar_url} alt={fan.display_name || ""} className="h-full w-full object-cover" />
               ) : fan ? (
-                <span className="text-[11px] font-black text-muted-foreground">{(fan.display_name || "?").slice(0, 1).toUpperCase()}</span>
+                <span className="text-[11px] font-black text-white">{(fan.display_name || "?").slice(0, 1).toUpperCase()}</span>
               ) : (
-                <User className="h-4 w-4 text-muted-foreground/50" />
+                <PersonSilhouette className="h-6 w-6" />
               )}
             </div>
           );

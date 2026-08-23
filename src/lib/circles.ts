@@ -28,6 +28,13 @@ export type Circle = {
   member_comments_allowed: boolean;
   member_invites_allowed: boolean;
   member_count: number;
+  /** Every user gets exactly one — their own gated "My Circle" fan space, distinct
+   *  from the group Circles they can additionally create. Auto-provisioned on first
+   *  visit via getOrCreatePersonalCircle(). */
+  is_personal: boolean;
+  /** Owner-level prefs, editable any time from Circle Settings. */
+  notify_new_requests: boolean;
+  notify_new_members: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -73,6 +80,8 @@ export type CreateCircleInput = {
   memberPostingAllowed?: boolean;
   memberCommentsAllowed?: boolean;
   memberInvitesAllowed?: boolean;
+  notifyNewRequests?: boolean;
+  notifyNewMembers?: boolean;
 };
 
 export async function createCircle(input: CreateCircleInput): Promise<Circle> {
@@ -110,6 +119,25 @@ export async function getCircle(id: string): Promise<Circle | null> {
   return data as Circle | null;
 }
 
+/** Every user's own gated "My Circle" — created lazily the first time anyone (usually
+ *  the owner, but also whoever taps their "My Circle" icon first) resolves it. Always
+ *  private + approval-required: the personal circle is meant to work exactly like the
+ *  request-to-join flow the user described, not an optional toggle.
+ *
+ *  Goes through the get_or_create_personal_circle RPC (SECURITY DEFINER) rather than a
+ *  plain insert — the normal "Users create circles" RLS policy requires
+ *  auth.uid() = owner_id, which would reject provisioning someone *else's* personal
+ *  circle (e.g. tapping their "My Circle" icon on a post before they've ever opened
+ *  their own). The RPC does the find-or-create atomically for any target user. */
+export async function getOrCreatePersonalCircle(userId: string, displayName?: string): Promise<Circle> {
+  const { data, error } = await sb.rpc("get_or_create_personal_circle", {
+    p_user_id: userId,
+    p_display_name: displayName ?? null,
+  });
+  if (error) throw error;
+  return data as Circle;
+}
+
 export async function updateCircle(id: string, patch: Partial<CreateCircleInput>): Promise<Circle> {
   const { data, error } = await sb
     .from("circles")
@@ -130,6 +158,8 @@ export async function updateCircle(id: string, patch: Partial<CreateCircleInput>
       ...(patch.memberPostingAllowed !== undefined ? { member_posting_allowed: patch.memberPostingAllowed } : {}),
       ...(patch.memberCommentsAllowed !== undefined ? { member_comments_allowed: patch.memberCommentsAllowed } : {}),
       ...(patch.memberInvitesAllowed !== undefined ? { member_invites_allowed: patch.memberInvitesAllowed } : {}),
+      ...(patch.notifyNewRequests !== undefined ? { notify_new_requests: patch.notifyNewRequests } : {}),
+      ...(patch.notifyNewMembers !== undefined ? { notify_new_members: patch.notifyNewMembers } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -137,6 +167,12 @@ export async function updateCircle(id: string, patch: Partial<CreateCircleInput>
     .single();
   if (error) throw error;
   return data as Circle;
+}
+
+/** Personal circles can't be deleted — every user needs exactly one. */
+export async function deleteCircle(id: string): Promise<void> {
+  const { error } = await sb.from("circles").delete().eq("id", id).eq("is_personal", false);
+  if (error) throw error;
 }
 
 /** Circles the user owns or is an approved member of. */
@@ -268,6 +304,19 @@ export async function uploadCircleImage(userId: string, file: File, kind: "avata
   const ext = file.name.split(".").pop() || "jpg";
   const path = `circles/${userId}/${kind}-${Date.now()}.${ext}`;
   const { error } = await sb.storage.from("media").upload(path, file, { contentType: file.type || "image/jpeg" });
+  if (error) throw error;
+  const { data } = sb.storage.from("media").getPublicUrl(path);
+  return data.publicUrl as string;
+}
+
+/** Uploads a YAJ-AI-generated data: URL (from generateYajImage) to the same place a
+ *  device-picked cover would go, so it isn't stored as a giant base64 string. */
+export async function uploadCircleImageFromDataUrl(userId: string, dataUrl: string, kind: "avatar" | "cover"): Promise<string> {
+  const res = await fetch(dataUrl);
+  const blob = await res.blob();
+  const ext = blob.type.split("/")[1] || "png";
+  const path = `circles/${userId}/${kind}-ai-${Date.now()}.${ext}`;
+  const { error } = await sb.storage.from("media").upload(path, blob, { contentType: blob.type || "image/png" });
   if (error) throw error;
   const { data } = sb.storage.from("media").getPublicUrl(path);
   return data.publicUrl as string;
