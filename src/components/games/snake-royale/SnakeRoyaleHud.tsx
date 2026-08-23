@@ -87,6 +87,10 @@ export default function SnakeRoyaleHud({ st, best, muted, onToggleMute, onPause,
         </div>
       </div>
 
+      <div className="absolute bottom-24 right-3 rounded-full border border-amber-200/25 bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-100 backdrop-blur">
+        {st.driving ? "🚙 Escape road — GO!" : st.weapon ? `🛡 ${st.weapon} ${st.weapon === "stick" ? "ready" : `×${st.weaponUses}`}` : "Find a defense tool"}
+      </div>
+
       {/* objectives */}
       <div className="absolute bottom-24 left-3 flex flex-col gap-1">
         {st.objectives.map((o) => (
