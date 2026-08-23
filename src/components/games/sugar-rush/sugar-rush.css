@@ -1,5 +1,5 @@
 /*
- * YAJ Sugar Rush — scoped animations. Imported only by Sugar Rush's own components,
+ * YAJ Sugar Rush â€” scoped animations. Imported only by Sugar Rush's own components,
  * never by src/index.css, so nothing here can affect any other game.
  */
 
@@ -72,3 +72,11 @@
     animation: none !important;
   }
 }
+
+/* Gameplay polish: warnings/effects live on the screen edge so the maze remains readable. */
+@keyframes sr-danger-edge-pulse { 0%,100%{box-shadow:inset 0 0 32px rgba(255,45,86,.32)} 50%{box-shadow:inset 0 0 62px rgba(255,45,86,.72)} }
+.sr-danger-edge { animation:sr-danger-edge-pulse .72s ease-in-out infinite; }
+@keyframes sr-danger-toast { 0%{opacity:0;transform:translateY(-9px) scale(.88)} 18%,76%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-5px) scale(.96)} }
+.sr-danger-toast { animation:sr-danger-toast 1.35s ease-out both; }
+@keyframes sr-rush-burst { 0%{opacity:0;transform:scale(.48) rotate(-4deg)} 20%{opacity:1;transform:scale(1.12) rotate(1deg)} 62%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.22)} }
+.sr-rush-burst { animation:sr-rush-burst 1.15s cubic-bezier(.2,.9,.25,1) both; }
