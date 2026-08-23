@@ -17,14 +17,14 @@ type Props = {
  * Both voxel models are about 2 world-units tall and are authored from their feet upward,
  * so we center the model around the cell and size it from the current on-screen cell size.
  */
-const ACTOR_CELL_HEIGHT = 0.50;
+const ACTOR_CELL_HEIGHT = 0.62;
 const MODEL_CENTER_Y = -1.02;
 const MIN_SCALE = 8;
 const MAX_SCALE = 22;
 
 function actorScale(st: SugarRushMazeState, cam: Camera) {
   const cellPx = st.map.cellSize * cam.scale;
-  // model height is ~2.05 units, so this yields ~50% of one visible maze cell.
+  // model height is ~2.05 units, so this yields ~62% of one visible maze cell — large enough to read clearly while still fitting inside corridor walls.
   return Math.max(MIN_SCALE, Math.min(MAX_SCALE, (cellPx * ACTOR_CELL_HEIGHT) / 2.05));
 }
 
