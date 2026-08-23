@@ -26,6 +26,7 @@ export default function TowerHud({ st, sectionName, best, muted, onToggleMute, o
       <div className="flex items-start justify-between gap-2">
         <div className="pointer-events-auto flex items-center gap-1.5">
           <GameMenu
+            align="left"
             triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-3 py-2 text-white backdrop-blur-sm active:scale-95"
             actions={[
               { key: "pause", label: "Pause", icon: Pause, onClick: onPause },

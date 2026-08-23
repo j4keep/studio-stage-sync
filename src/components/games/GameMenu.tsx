@@ -21,6 +21,10 @@ type Props = {
   /** Positions the trigger button itself; defaults to a small round icon-button look
    *  matching every game's existing back/mute/quit buttons. */
   triggerClassName?: string;
+  /** Which edge the dropdown panel hangs from — "right" (default) for triggers placed near
+   *  the right side of the screen, "left" for triggers placed near the left (e.g. Tower
+   *  Escape's top-left menu) so the panel doesn't render off-screen. */
+  align?: "left" | "right";
 };
 
 /**
@@ -29,11 +33,15 @@ type Props = {
  * pattern GameLiveDock already uses for its own sub-menu, just generalized so every game's
  * header collapses to one control instead of four or five crowding the screen.
  */
-export default function GameMenu({ actions, extra, triggerClassName }: Props) {
+export default function GameMenu({ actions, extra, triggerClassName, align = "right" }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="relative">
+    // pointer-events-auto is required here, not just on the trigger: every HUD that renders
+    // this wraps it in a `pointer-events-none` overlay (so clicks pass through to the game
+    // underneath everywhere else), and `pointer-events` inherits — so without this, the
+    // trigger button was clickable but the open panel's own action buttons silently were not.
+    <div className="relative pointer-events-auto">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -47,7 +55,11 @@ export default function GameMenu({ actions, extra, triggerClassName }: Props) {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full z-40 mt-2 flex w-52 flex-col gap-1 rounded-2xl border border-white/15 bg-black/90 p-2 shadow-xl backdrop-blur-xl">
+          <div
+            className={`absolute top-full z-40 mt-2 flex w-52 flex-col gap-1 rounded-2xl border border-white/15 bg-black/90 p-2 shadow-xl backdrop-blur-xl ${
+              align === "left" ? "left-0" : "right-0"
+            }`}
+          >
             {actions.map((a) => (
               <button
                 key={a.key}
