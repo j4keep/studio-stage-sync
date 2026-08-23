@@ -6,6 +6,7 @@ import {
   SugarRushMazeState,
   SugarRushScore,
   initialSugarRushMaze,
+  cavityWorldPos,
   playerWorldPos,
   retryFromCheckpoint,
   scoreRun,
@@ -53,6 +54,8 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
   const [, setTick] = useState(0);
   const [downed, setDowned] = useState(false);
   const [checkpointFlash, setCheckpointFlash] = useState(0);
+  const [rushFlash, setRushFlash] = useState(0);
+  const [dangerFlash, setDangerFlash] = useState(0);
   const [tutorial, setTutorial] = useState(() => {
     try {
       return localStorage.getItem(TUTORIAL_KEY) !== "1";
@@ -108,7 +111,10 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
           if (ev === "pickup") sugarRushSfx.treatPickup();
           else if (ev === "sugarStar") sugarRushSfx.sugarStarPickup();
           else if (ev === "powerUp") sugarRushSfx.powerUpPickup();
-          else if (ev === "rushStart") sugarRushSfx.rushStart();
+          else if (ev === "rushStart") {
+            sugarRushSfx.rushStart();
+            setRushFlash((n) => n + 1);
+          }
           else if (ev === "rushEnd") sugarRushSfx.rushEnd();
           else if (ev === "tunnel") sugarRushSfx.tunnelWarp();
           else if (ev === "hit" || ev === "shieldBlock") sugarRushSfx.playerHit();
@@ -120,6 +126,7 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
           else if (ev === "cavityNear" && next.t - cavityAlertRef.current > 2.5) {
             cavityAlertRef.current = next.t;
             sugarRushSfx.cavityAlert();
+            setDangerFlash((n) => n + 1);
           }
         }
         if (next.status !== "playing" && !endedRef.current) {
@@ -149,6 +156,10 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
   }, [paused, downed, tutorial, runKey, onEnd]);
 
   const st = stRef.current;
+  const pp = playerWorldPos(st);
+  const cp = cavityWorldPos(st);
+  const cavityDistance = Math.hypot(pp.x - cp.x, pp.y - cp.y);
+  const dangerStrength = st.rushActive ? 0 : Math.max(0, Math.min(1, 1 - cavityDistance / (st.map.cellSize * 4.2)));
 
   const retry = () => {
     stRef.current = retryFromCheckpoint(stRef.current);
@@ -178,6 +189,31 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
       <SugarRushActors stateRef={stRef} camRef={camRef} />
 
       <SugarRushHud st={st} best={best} muted={muted} onToggleMute={onToggleMute} onPause={() => setPaused((p) => !p)} onBack={onBack} onQuit={onQuit} />
+
+      {/* Edge warning stays out of the maze itself and grows only as Dr. Cavity gets close. */}
+      {dangerStrength > 0.08 && !paused && !tutorial && (
+        <div
+          className="pointer-events-none absolute inset-0 z-[12] sr-danger-edge"
+          style={{ opacity: 0.18 + dangerStrength * 0.52 }}
+        />
+      )}
+
+      {dangerFlash > 0 && !st.rushActive && (
+        <div key={dangerFlash} className="pointer-events-none absolute inset-x-0 top-[16%] z-30 flex justify-center">
+          <div className="sr-danger-toast rounded-full border border-rose-300/35 bg-rose-950/80 px-4 py-2 text-[10px] font-black uppercase tracking-[0.15em] text-rose-100 shadow-xl backdrop-blur-md">
+            Dr. Cavity spotted you!
+          </div>
+        </div>
+      )}
+
+      {rushFlash > 0 && (
+        <div key={rushFlash} className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
+          <div className="sr-rush-burst text-center">
+            <p className="text-4xl font-black uppercase tracking-tight text-yellow-100 drop-shadow-[0_4px_18px_rgba(255,84,200,.9)]">Sugar Rush!</p>
+            <p className="mt-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/85">Fast • glowing • bonus score</p>
+          </div>
+        </div>
+      )}
 
       {checkpointFlash > 0 && (
         <p
