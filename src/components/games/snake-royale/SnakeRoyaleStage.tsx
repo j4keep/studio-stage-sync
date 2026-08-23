@@ -107,6 +107,11 @@ export default function SnakeRoyaleStage({ runKey, best, muted, onToggleMute, on
           else if (ev === "wave") snakeRoyaleSfx.wave();
           else if (ev === "objective") snakeRoyaleSfx.objective();
           else if (ev === "timer") snakeRoyaleSfx.timer();
+          else if (ev === "weapon") snakeRoyaleSfx.objective();
+          else if (ev === "attack") snakeRoyaleSfx.branch();
+          else if (ev === "animal") snakeRoyaleSfx.bite();
+          else if (ev === "jeep") snakeRoyaleSfx.objective();
+          else if (ev === "escape") snakeRoyaleSfx.win();
         }
 
         const ids = next.snakes.map((s) => s.id);
@@ -162,8 +167,8 @@ export default function SnakeRoyaleStage({ runKey, best, muted, onToggleMute, on
         <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-black/80 px-6 text-center backdrop-blur-sm">
           <p className="text-2xl font-black uppercase tracking-widest text-white">Paused</p>
           <p className="max-w-[300px] text-xs text-white/60">
-            Drag anywhere to move. Watch the grass for rustling, dodge rolling rocks and
-            falling branches, and {endless ? "survive as long as you can — end the run whenever you're ready." : "reach the temple before the clock runs out."}
+            Drag anywhere to move. Find a defense tool, fight off snakes and predators, cross the river,
+            reach the abandoned camp, and escape in the jeep.
           </p>
           <button
             type="button"
