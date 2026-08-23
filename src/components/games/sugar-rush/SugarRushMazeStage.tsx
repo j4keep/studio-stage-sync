@@ -49,9 +49,16 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
   const lastRef = useRef<number>(0);
   const endedRef = useRef(false);
   const cavityAlertRef = useRef(0);
+  const lastUiPaintRef = useRef(0);
+  const lastRushActivationRef = useRef(0);
+  const rushFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkpointTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dangerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [paused, setPaused] = useState(false);
-  const [, setTick] = useState(0);
+  // Keep React/UI updates deliberately throttled. Canvas + R3F already animate independently;
+  // forcing a full React render every animation frame can make mobile Safari reload the tab.
+  const [, setUiTick] = useState(0);
   const [downed, setDowned] = useState(false);
   const [checkpointFlash, setCheckpointFlash] = useState(0);
   const [rushFlash, setRushFlash] = useState(0);
@@ -73,6 +80,14 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
     stRef.current = initialSugarRushMaze();
     camRef.current = undefined;
     endedRef.current = false;
+    lastRushActivationRef.current = 0;
+    lastUiPaintRef.current = 0;
+    if (rushFlashTimerRef.current) clearTimeout(rushFlashTimerRef.current);
+    if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+    if (dangerTimerRef.current) clearTimeout(dangerTimerRef.current);
+    setRushFlash(0);
+    setCheckpointFlash(0);
+    setDangerFlash(0);
     setDowned(false);
     setPaused(false);
     void sugarRushSfx.prime().then(() => sugarRushSfx.startMusic());
@@ -84,7 +99,10 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
     if (!canvas) return;
 
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      // iPhone Safari is much more stable when the full-screen gameplay canvas does not
+      // render at native 2x/3x DPR on top of the WebGL actor layer.
+      const maxDpr = rect.width < 900 ? 1.35 : 1.75;
+      const dpr = Math.min(maxDpr, window.devicePixelRatio || 1);
       const rect = canvas.getBoundingClientRect();
       canvas.width = Math.floor(rect.width * dpr);
       canvas.height = Math.floor(rect.height * dpr);
@@ -112,8 +130,15 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
           else if (ev === "sugarStar") sugarRushSfx.sugarStarPickup();
           else if (ev === "powerUp") sugarRushSfx.powerUpPickup();
           else if (ev === "rushStart") {
-            sugarRushSfx.rushStart();
-            setRushFlash((n) => n + 1);
+            // Guard the celebration by activation number. This prevents duplicate audio/DOM
+            // bursts if a browser delivers several closely-spaced simulation ticks.
+            if (next.rushActivations > lastRushActivationRef.current) {
+              lastRushActivationRef.current = next.rushActivations;
+              sugarRushSfx.rushStart();
+              setRushFlash(next.rushActivations);
+              if (rushFlashTimerRef.current) clearTimeout(rushFlashTimerRef.current);
+              rushFlashTimerRef.current = setTimeout(() => setRushFlash(0), 1250);
+            }
           }
           else if (ev === "rushEnd") sugarRushSfx.rushEnd();
           else if (ev === "tunnel") sugarRushSfx.tunnelWarp();
@@ -121,12 +146,16 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
           else if (ev === "checkpoint") {
             sugarRushSfx.checkpointReached();
             setCheckpointFlash((n) => n + 1);
+            if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+            checkpointTimerRef.current = setTimeout(() => setCheckpointFlash(0), 1500);
           }
           else if (ev === "objectiveComplete") sugarRushSfx.powerUpPickup();
           else if (ev === "cavityNear" && next.t - cavityAlertRef.current > 2.5) {
             cavityAlertRef.current = next.t;
             sugarRushSfx.cavityAlert();
             setDangerFlash((n) => n + 1);
+            if (dangerTimerRef.current) clearTimeout(dangerTimerRef.current);
+            dangerTimerRef.current = setTimeout(() => setDangerFlash(0), 1450);
           }
         }
         if (next.status !== "playing" && !endedRef.current) {
@@ -143,7 +172,12 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
 
       camRef.current = makeCamera(playerWorldPos(stRef.current), stRef.current.map, rect.width, rect.height, camRef.current);
       drawCandyCity(g, stRef.current, camRef.current, rect.width, rect.height);
-      setTick((t) => (t + 1) % 1_000_000);
+
+      // HUD/state labels only need ~8 updates/sec. The maze canvas and actors remain full-speed.
+      if (now - lastUiPaintRef.current >= 120) {
+        lastUiPaintRef.current = now;
+        setUiTick((t) => (t + 1) % 1_000_000);
+      }
     };
     rafRef.current = requestAnimationFrame(loop);
 
@@ -155,6 +189,12 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
     };
   }, [paused, downed, tutorial, runKey, onEnd]);
 
+  useEffect(() => () => {
+    if (rushFlashTimerRef.current) clearTimeout(rushFlashTimerRef.current);
+    if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+    if (dangerTimerRef.current) clearTimeout(dangerTimerRef.current);
+  }, []);
+
   const st = stRef.current;
   const pp = playerWorldPos(st);
   const cp = cavityWorldPos(st);
@@ -164,6 +204,14 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
   const retry = () => {
     stRef.current = retryFromCheckpoint(stRef.current);
     endedRef.current = false;
+    lastRushActivationRef.current = 0;
+    lastUiPaintRef.current = 0;
+    if (rushFlashTimerRef.current) clearTimeout(rushFlashTimerRef.current);
+    if (checkpointTimerRef.current) clearTimeout(checkpointTimerRef.current);
+    if (dangerTimerRef.current) clearTimeout(dangerTimerRef.current);
+    setRushFlash(0);
+    setCheckpointFlash(0);
+    setDangerFlash(0);
     setDowned(false);
   };
 
@@ -190,6 +238,17 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
 
       <SugarRushHud st={st} best={best} muted={muted} onToggleMute={onToggleMute} onPause={() => setPaused((p) => !p)} onBack={onBack} onQuit={onQuit} />
 
+      {/* Lightweight automated Sugar Rush effects: no extra canvas/WebGL scene, just composited
+          screen-edge glow + moving streaks so the boost feels alive without stressing iPhone Safari. */}
+      {st.rushActive && !paused && !tutorial && (
+        <>
+          <div className="pointer-events-none absolute inset-0 z-[11] sr-rush-mode-edge" />
+          <div className="pointer-events-none absolute inset-0 z-[11] overflow-hidden opacity-60">
+            <div className="sr-speed-lines absolute inset-[-18%]" />
+          </div>
+        </>
+      )}
+
       {/* Edge warning stays out of the maze itself and grows only as Dr. Cavity gets close. */}
       {dangerStrength > 0.08 && !paused && !tutorial && (
         <div
@@ -211,6 +270,7 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
           <div className="sr-rush-burst text-center">
             <p className="text-4xl font-black uppercase tracking-tight text-yellow-100 drop-shadow-[0_4px_18px_rgba(255,84,200,.9)]">Sugar Rush!</p>
             <p className="mt-1 text-[10px] font-black uppercase tracking-[0.24em] text-white/85">Fast • glowing • bonus score</p>
+            <p className="mt-2 inline-flex rounded-full border border-yellow-200/50 bg-black/35 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-yellow-100">2× Score</p>
           </div>
         </div>
       )}
