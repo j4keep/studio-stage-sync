@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type ConversationContext = "marketplace" | "local_help" | null;
+export type ConversationContext = "marketplace" | "local_help" | "circle" | "dating" | null;
 
 /**
  * Finds an existing 1:1 conversation between two users, or creates one.
