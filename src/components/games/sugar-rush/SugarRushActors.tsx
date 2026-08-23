@@ -12,8 +12,21 @@ type Props = {
   camRef: React.MutableRefObject<Camera | undefined>;
 };
 
-const PLAYER_ACTOR_SCALE = 21;
-const CAVITY_ACTOR_SCALE = 20;
+/**
+ * Keep actors visually INSIDE one maze lane.
+ * Both voxel models are about 2 world-units tall and are authored from their feet upward,
+ * so we center the model around the cell and size it from the current on-screen cell size.
+ */
+const ACTOR_CELL_HEIGHT = 0.43;
+const MODEL_CENTER_Y = -1.02;
+const MIN_SCALE = 8;
+const MAX_SCALE = 22;
+
+function actorScale(st: SugarRushMazeState, cam: Camera) {
+  const cellPx = st.map.cellSize * cam.scale;
+  // model height is ~2.05 units, so this yields ~43% of one visible maze cell.
+  return Math.max(MIN_SCALE, Math.min(MAX_SCALE, (cellPx * ACTOR_CELL_HEIGHT) / 2.05));
+}
 
 function cavityPoseFor(mode: SugarRushMazeState["cavity"]["mode"]): CavityPose {
   if (mode === "chase") return "chase";
@@ -26,7 +39,6 @@ function cavityPoseFor(mode: SugarRushMazeState["cavity"]["mode"]): CavityPose {
 
 function PlayerActor({ stateRef, camRef }: Props) {
   const group = useRef<Group>(null);
-  const { size } = useThree();
   const { skinTone } = useCharacterAppearance();
   const [moving, setMoving] = useState(false);
   const movingRef = useRef(false);
@@ -40,6 +52,7 @@ function PlayerActor({ stateRef, camRef }: Props) {
     const relX = (pos.x - cam.x) * cam.scale;
     const relY = (pos.y - cam.y) * cam.scale;
     g.position.set(relX, -relY, 0);
+    g.scale.setScalar(actorScale(st, cam));
 
     const heading = st.player.heading;
     if (heading === "e") g.rotation.y = Math.PI / 2;
@@ -56,8 +69,10 @@ function PlayerActor({ stateRef, camRef }: Props) {
   });
 
   return (
-    <group ref={group} scale={PLAYER_ACTOR_SCALE}>
-      <ObbyAvatar color="#5b8cff" skin={skinTone} moving={moving} />
+    <group ref={group}>
+      <group position={[0, MODEL_CENTER_Y, 0]}>
+        <ObbyAvatar color="#5b8cff" skin={skinTone} moving={moving} />
+      </group>
     </group>
   );
 }
@@ -67,6 +82,7 @@ function CavityActor({ stateRef, camRef }: Props) {
   const [pose, setPose] = useState<CavityPose>("patrol");
   const [moving, setMoving] = useState(false);
   const poseRef = useRef<CavityPose>("patrol");
+  const movingRef = useRef(false);
 
   useFrame(() => {
     const g = group.current;
@@ -77,6 +93,7 @@ function CavityActor({ stateRef, camRef }: Props) {
     const relX = (pos.x - cam.x) * cam.scale;
     const relY = (pos.y - cam.y) * cam.scale;
     g.position.set(relX, -relY, 0);
+    g.scale.setScalar(actorScale(st, cam));
 
     const heading = st.cavity.heading;
     if (heading === "e") g.rotation.y = Math.PI / 2;
@@ -89,18 +106,24 @@ function CavityActor({ stateRef, camRef }: Props) {
       poseRef.current = nextPose;
       setPose(nextPose);
     }
-    setMoving(heading !== null);
+    const isMoving = heading !== null;
+    if (isMoving !== movingRef.current) {
+      movingRef.current = isMoving;
+      setMoving(isMoving);
+    }
   });
 
   return (
-    <group ref={group} scale={CAVITY_ACTOR_SCALE}>
-      <DrCavityAvatar pose={pose} moving={moving} />
+    <group ref={group}>
+      <group position={[0, MODEL_CENTER_Y, 0]}>
+        <DrCavityAvatar pose={pose} moving={moving} />
+      </group>
     </group>
   );
 }
 
-/** Orthographic overlay compositing the player and Dr. Cavity above the 2D canvas maze —
- *  same pattern as SurvivalIslandAvatar.tsx / NeighborhoodAvatars.tsx. */
+/** 3D actor overlay above the 2D maze. Actor sizing is tied to maze-cell size so it stays
+ * inside corridors in portrait, landscape and browser-preview layouts. */
 export default function SugarRushActors(props: Props) {
   return (
     <div className="pointer-events-none absolute inset-0 z-10">
