@@ -18,10 +18,13 @@ function ticks(st: ReturnType<typeof initialSnakeRoyale>, count: number, input =
 
 function freshState(endless = false) {
   const st = initialSnakeRoyale(1, endless);
-  // isolate from the procedurally-placed dens/hazards so each test controls exactly
-  // what's active — natural spawn timing is covered indirectly by the den/impact tests.
+  // isolate from the procedurally-placed dens/hazards/wildlife/pickups so each test
+  // controls exactly what's active — natural spawn timing is covered indirectly by the
+  // den/impact tests.
   st.snakes = [];
   st.impacts = [];
+  st.animals = [];
+  st.pickups = [];
   return st;
 }
 
@@ -157,15 +160,18 @@ describe("snake royale engine — croc water & hearts", () => {
 });
 
 describe("snake royale engine — timer", () => {
-  it("a timed run auto-completes once RUN_MS elapses", () => {
+  it("a timed run ends once RUN_MS elapses without escaping", () => {
     const st = freshState(false);
-    for (let i = 0; i < 40; i++) {
+    const iterations = Math.ceil(RUN_MS / 5000) + 2;
+    for (let i = 0; i < iterations; i++) {
       st.snakes = [];
       st.impacts = [];
       step(st, NO_INPUT, 5000); // timeLeft is decremented by the raw dtMs, by design
     }
     expect(st.timeLeft).toBe(0);
-    expect(st.status).toBe("survived");
+    // Running out of the clock is always a loss now — "survived" only comes from
+    // actually escaping via the extraction jeep (tickJeep), which this run never reaches.
+    expect(st.status).toBe("over");
   });
 
   it("an endless (solo) run never auto-completes from the clock", () => {
