@@ -60,14 +60,14 @@ export type ImpactHazard = {
 export type WaveDef = { n: number; name: string; sub: string };
 
 export const WAVES: WaveDef[] = [
-  { n: 1, name: "Wave 1", sub: "Rustling Grass" },
-  { n: 2, name: "Wave 2", sub: "River Crossing" },
-  { n: 3, name: "Wave 3", sub: "Falling Branches" },
-  { n: 4, name: "Wave 4", sub: "Rolling Rocks" },
-  { n: 5, name: "Wave 5", sub: "Full Jungle Fury" },
+  { n: 1, name: "Deep Jungle", sub: "Snakes in the undergrowth" },
+  { n: 2, name: "River Run", sub: "Crocodiles and broken crossings" },
+  { n: 3, name: "Ancient Ruins", sub: "Predators are hunting" },
+  { n: 4, name: "Predator Trail", sub: "Boars, jaguars and falling timber" },
+  { n: 5, name: "Extraction", sub: "Reach the camp and find the jeep" },
 ];
 
-export const WAVE_MS = 28_000;
+export const WAVE_MS = 42_000;
 export const MAX_ACTIVE_SNAKES = 6;
 export const MAX_ACTIVE_IMPACTS = 8;
 
