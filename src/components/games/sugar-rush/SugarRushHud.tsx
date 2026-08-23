@@ -62,6 +62,7 @@ export default function SugarRushHud({ st, best, muted, onToggleMute, onPause, o
           </div>
           <div className="pointer-events-auto">
             <GameMenu
+              align="left"
               triggerClassName="flex items-center rounded-full border border-white/15 bg-[#130b24]/72 px-2.5 py-2 text-white shadow-lg backdrop-blur-sm active:scale-95"
               actions={[
                 { key: "pause", label: "Pause", icon: Pause, onClick: onPause },
