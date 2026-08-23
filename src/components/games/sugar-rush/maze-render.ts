@@ -19,7 +19,8 @@ const candyImageFor = (id: string) => candyImages.length ? candyImages[Math.abs(
 
 export type Camera = { x: number; y: number; scale: number };
 
-const VIEW_CELLS_H = 8;
+// Slightly wider view than the original so intersections and incoming hazards are readable.
+const VIEW_CELLS_H = 8.65;
 
 export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, w: number, h: number, prev?: Camera): Camera {
   const vh = VIEW_CELLS_H * map.cellSize;
@@ -28,11 +29,29 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   const mapW = map.cols * map.cellSize;
   const mapH = map.rows * map.cellSize;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-  const tx = mapW <= vw ? mapW / 2 : clamp(target.x, vw / 2, mapW - vw / 2);
-  const ty = mapH <= vh ? mapH / 2 : clamp(target.y, vh / 2, mapH - vh / 2);
-  if (!prev) return { x: tx, y: ty, scale };
+
+  // Dead-zone camera: the actor can move naturally around the middle of the screen without
+  // constant camera jitter, but can never drift into the HUD/screen edge.
+  const clampX = (x: number) => mapW <= vw ? mapW / 2 : clamp(x, vw / 2, mapW - vw / 2);
+  const clampY = (y: number) => mapH <= vh ? mapH / 2 : clamp(y, vh / 2, mapH - vh / 2);
+  if (!prev) return { x: clampX(target.x), y: clampY(target.y), scale };
+
+  let tx = prev.x;
+  let ty = prev.y;
+  const dx = target.x - prev.x;
+  const dy = target.y - prev.y;
+  const safeX = vw * 0.17;
+  const safeTop = vh * 0.15;
+  const safeBottom = vh * 0.19;
+  if (dx > safeX) tx = target.x - safeX;
+  else if (dx < -safeX) tx = target.x + safeX;
+  if (dy > safeBottom) ty = target.y - safeBottom;
+  else if (dy < -safeTop) ty = target.y + safeTop;
+
+  tx = clampX(tx);
+  ty = clampY(ty);
   const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
-  return { x: lerp(prev.x, tx, 0.15), y: lerp(prev.y, ty, 0.15), scale };
+  return { x: lerp(prev.x, tx, 0.22), y: lerp(prev.y, ty, 0.22), scale };
 }
 
 function star(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, r2: number) {
@@ -59,8 +78,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     bg.addColorStop(0, "#3a0f52");
     bg.addColorStop(1, "#1c0630");
   } else {
-    bg.addColorStop(0, "#2a1147");
-    bg.addColorStop(1, "#160a28");
+    bg.addColorStop(0, "#32175a");
+    bg.addColorStop(1, "#1d0c36");
   }
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
@@ -84,7 +103,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
       const y = toScreenY(r * CELL);
       const s = CELL * cam.scale;
       const checker = (c + r) % 2 === 0;
-      g.fillStyle = inPlaza(c, r) ? "#7a4fae" : checker ? "#3a2160" : "#331c55";
+      g.fillStyle = inPlaza(c, r) ? "#8658bc" : checker ? "#4a2b76" : "#40236a";
       g.fillRect(x, y, s + 1, s + 1);
     }
   }
@@ -119,8 +138,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
 
   // ── Walls ("frosting") ────────────────────────────────────────────────────
   g.fillStyle = "#ffe6f4";
-  g.strokeStyle = "#ffb6dd";
-  const wallT = Math.max(3, CELL * 0.11 * cam.scale);
+  g.strokeStyle = "#ff9bd1";
+  const wallT = Math.max(3.5, CELL * 0.105 * cam.scale);
   const drawWallSeg = (x1: number, y1: number, x2: number, y2: number) => {
     g.beginPath();
     g.lineCap = "round";
@@ -130,7 +149,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     g.lineTo(x2, y2);
     g.stroke();
     g.lineWidth = wallT * 0.5;
-    g.strokeStyle = "#fff6fb";
+    g.strokeStyle = "#fffafd";
     g.beginPath();
     g.moveTo(x1, y1);
     g.lineTo(x2, y2);
