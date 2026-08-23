@@ -4,9 +4,9 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { useGameRecord } from "@/components/games/GameQuickActions";
-import GameResultCard from "@/components/games/pro/GameResultCard";
 import SugarRushMazeStage, { SugarRushOutcome } from "@/components/games/sugar-rush/SugarRushMazeStage";
 import SugarRushIntro from "@/components/games/sugar-rush/SugarRushIntro";
+import SugarRushResultCard from "@/components/games/sugar-rush/SugarRushResultCard";
 import { sugarRushSfx } from "@/lib/sugar-rush-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { bumpStats, createSoloGame, endGame, updateGameState } from "@/lib/games";
@@ -137,8 +137,8 @@ export default function SugarRushPage() {
     : undefined;
 
   return (
-    <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
-      <div className="relative h-full w-full">
+    <div className="fixed inset-0 z-[100] h-[100dvh] w-[100dvw] overflow-hidden bg-black">
+      <div className="relative h-[100dvh] w-[100dvw] overflow-hidden">
         {seated && (
           <SugarRushMazeStage
             runKey={runKey}
@@ -163,20 +163,13 @@ export default function SugarRushPage() {
         )}
       </div>
 
-      <GameResultCard
-        open={Boolean(result)}
-        outcome={result?.completed ? "win" : "loss"}
-        title={
-          result?.completed
-            ? best && result.score >= best
-              ? "Sugar Rush Complete — new best score!"
-              : "Sugar Rush Complete!"
-            : "Dr. Cavity got you"
-        }
-        detail={detail}
-        onRematch={runAgain}
+      <SugarRushResultCard
+        result={result}
+        best={best}
+        onPlayAgain={runAgain}
         onChallenge={challengeFriend}
         onShare={shareResult}
+        onClose={() => navigate("/games")}
       />
     </div>
   );
