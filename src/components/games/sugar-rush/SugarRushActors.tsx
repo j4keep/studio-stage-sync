@@ -129,7 +129,7 @@ export default function SugarRushActors(props: Props) {
     <div className="pointer-events-none absolute inset-0 z-10">
       <Canvas
         orthographic
-        dpr={[1, 1.6]}
+        dpr={[1, 1.25]}
         camera={{ position: [0, 0, 100], zoom: 1 }}
         gl={{ alpha: true, antialias: true }}
         style={{ background: "transparent" }}
