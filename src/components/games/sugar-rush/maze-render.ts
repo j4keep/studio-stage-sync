@@ -7,42 +7,19 @@
 
 import { CandyCityMap } from "@/lib/sugar-rush-map";
 import { SugarRushMazeState, cartWorldPos } from "@/lib/sugar-rush-maze";
-import candy0 from "@/assets/games/sugar-rush/candy-0.png.asset.json";
-import candy1 from "@/assets/games/sugar-rush/candy-1.png.asset.json";
-import candy2 from "@/assets/games/sugar-rush/candy-2.png.asset.json";
-import candy3 from "@/assets/games/sugar-rush/candy-3.png.asset.json";
-import candy4 from "@/assets/games/sugar-rush/candy-4.png.asset.json";
-import candy5 from "@/assets/games/sugar-rush/candy-5.png.asset.json";
+import { CANDY_SPRITES } from "./assets";
+
+const candyImages: HTMLImageElement[] = typeof Image === "undefined" ? [] : CANDY_SPRITES.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+
+const candyImageFor = (id: string) => candyImages.length ? candyImages[Math.abs(Array.from(id).reduce((n, ch) => n + ch.charCodeAt(0), 0)) % candyImages.length] : undefined;
 
 export type Camera = { x: number; y: number; scale: number };
 
-const VIEW_CELLS_H = 9.5;
-
-const CANDY_URLS = [candy0.url, candy1.url, candy2.url, candy3.url, candy4.url, candy5.url];
-const candyImages: HTMLImageElement[] = [];
-function candyImage(index: number) {
-  if (typeof Image === "undefined") return null;
-  if (!candyImages[index]) {
-    const img = new Image();
-    img.decoding = "async";
-    img.src = CANDY_URLS[index % CANDY_URLS.length];
-    candyImages[index] = img;
-  }
-  return candyImages[index];
-}
-
-function drawCandySprite(g: CanvasRenderingContext2D, index: number, cx: number, cy: number, size: number) {
-  const img = candyImage(index);
-  if (img?.complete && img.naturalWidth > 0) {
-    g.save();
-    g.shadowColor = "rgba(20, 4, 40, .38)";
-    g.shadowBlur = Math.max(4, size * 0.14);
-    g.drawImage(img, cx - size / 2, cy - size / 2, size, size);
-    g.restore();
-    return true;
-  }
-  return false;
-}
+const VIEW_CELLS_H = 8;
 
 export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, w: number, h: number, prev?: Camera): Camera {
   const vh = VIEW_CELLS_H * map.cellSize;
@@ -82,8 +59,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     bg.addColorStop(0, "#3a0f52");
     bg.addColorStop(1, "#1c0630");
   } else {
-    bg.addColorStop(0, "#4a2271");
-    bg.addColorStop(1, "#25113f");
+    bg.addColorStop(0, "#2a1147");
+    bg.addColorStop(1, "#160a28");
   }
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
@@ -107,7 +84,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
       const y = toScreenY(r * CELL);
       const s = CELL * cam.scale;
       const checker = (c + r) % 2 === 0;
-      g.fillStyle = inPlaza(c, r) ? "#9a6ccc" : checker ? "#5b347e" : "#4d2b70";
+      g.fillStyle = inPlaza(c, r) ? "#7a4fae" : checker ? "#3a2160" : "#331c55";
       g.fillRect(x, y, s + 1, s + 1);
     }
   }
@@ -142,7 +119,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
 
   // ── Walls ("frosting") ────────────────────────────────────────────────────
   g.fillStyle = "#ffe6f4";
-  g.strokeStyle = "#ff9fd3";
+  g.strokeStyle = "#ffb6dd";
   const wallT = Math.max(3, CELL * 0.11 * cam.scale);
   const drawWallSeg = (x1: number, y1: number, x2: number, y2: number) => {
     g.beginPath();
@@ -265,39 +242,59 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     g.fill();
   }
 
-  // ── Collectibles / power-ups ─────────────────────────────────────────────
+  // ── Collectibles — use Sugar Rush's illustrated candy assets rather than placeholder dots.
   const bob = Math.sin(st.t * 4) * 2 * cam.scale;
   for (const item of map.collectibles) {
     if (st.taken[item.id]) continue;
     const cx = toScreenX(item.c * CELL + CELL / 2);
     const cy = toScreenY(item.r * CELL + CELL / 2) + bob;
-    if (cx < -20 || cx > w + 20 || cy < -20 || cy > h + 20) continue;
+    if (cx < -24 || cx > w + 24 || cy < -24 || cy > h + 24) continue;
     const rr = CELL * 0.16 * cam.scale;
-    const candySize = CELL * 0.46 * cam.scale;
-    if (item.kind === "gummy") {
-      if (!drawCandySprite(g, 0, cx, cy, candySize)) {
-        g.fillStyle = "#ff6fa3"; g.beginPath(); g.ellipse(cx, cy, rr, rr * 1.15, 0, 0, Math.PI * 2); g.fill();
-      }
-    } else if (item.kind === "candyDrop") {
-      if (!drawCandySprite(g, 2, cx, cy, candySize)) {
-        g.fillStyle = "#5fd0ff"; g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.fill();
-      }
-    } else if (item.kind === "sugarStar") {
+
+    if (item.kind === "sugarStar") {
       g.save();
       g.shadowColor = "#ffe066";
-      g.shadowBlur = 10 * cam.scale;
+      g.shadowBlur = 9 * cam.scale;
       g.fillStyle = "#ffe066";
       star(g, cx, cy, rr * 1.35, rr * 0.58);
       g.fill();
       g.restore();
-    } else if (item.kind === "donutToken") {
-      if (!drawCandySprite(g, 4, cx, cy, candySize * 1.03)) {
-        g.strokeStyle = "#ffb0c8"; g.lineWidth = rr * 0.65; g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
-      }
-    } else if (item.kind === "frostingGem") {
-      if (!drawCandySprite(g, 5, cx, cy, candySize * 0.92)) {
-        g.save(); g.translate(cx, cy); g.rotate(Math.PI / 4); g.fillStyle = "#8ef4ff"; g.fillRect(-rr, -rr, rr * 2, rr * 2); g.restore();
-      }
+      continue;
+    }
+    if (item.kind === "frostingGem") {
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(Math.PI / 4);
+      const grad = g.createLinearGradient(-rr, -rr, rr, rr);
+      grad.addColorStop(0, "#efffff");
+      grad.addColorStop(.45, "#8ef4ff");
+      grad.addColorStop(1, "#83a8ff");
+      g.fillStyle = grad;
+      g.shadowColor = "#8ef4ff";
+      g.shadowBlur = 10 * cam.scale;
+      g.fillRect(-rr * 0.82, -rr * 0.82, rr * 1.64, rr * 1.64);
+      g.restore();
+      continue;
+    }
+
+    const img = candyImageFor(item.id);
+    if (img?.complete && img.naturalWidth) {
+      const size = item.kind === "donutToken" ? rr * 2.65 : rr * 2.35;
+      g.save();
+      g.shadowColor = "rgba(255,120,220,.45)";
+      g.shadowBlur = 7 * cam.scale;
+      g.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+      g.restore();
+    } else {
+      // Tiny polished fallback while the image cache finishes loading.
+      const grad = g.createRadialGradient(cx - rr * .3, cy - rr * .35, rr * .15, cx, cy, rr);
+      grad.addColorStop(0, "#fff4fb");
+      grad.addColorStop(.3, "#ff87c7");
+      grad.addColorStop(1, "#d94091");
+      g.fillStyle = grad;
+      g.beginPath();
+      g.arc(cx, cy, rr, 0, Math.PI * 2);
+      g.fill();
     }
   }
 
