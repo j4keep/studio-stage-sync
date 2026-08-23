@@ -24,10 +24,13 @@ const VIEW_CELLS_H = 8.65;
 
 export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, w: number, h: number, prev?: Camera): Camera {
   const vh = VIEW_CELLS_H * map.cellSize;
-  const scale = h / vh;
-  const vw = w / scale;
   const mapW = map.cols * map.cellSize;
   const mapH = map.rows * map.cellSize;
+  // Landscape/fullscreen fix: never let the maze become a narrow strip with empty side gutters.
+  // The normal vertical scale preserves gameplay framing; the width scale only zooms in when the
+  // entire map would otherwise be narrower than the available viewport.
+  const scale = Math.max(h / vh, w / mapW);
+  const vw = w / scale;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
   // Dead-zone camera: the actor can move naturally around the middle of the screen without
