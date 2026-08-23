@@ -36,7 +36,17 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   // Dead-zone camera: the actor can move naturally around the middle of the screen without
   // constant camera jitter, but can never drift into the HUD/screen edge.
   const clampX = (x: number) => mapW <= vw ? mapW / 2 : clamp(x, vw / 2, mapW - vw / 2);
-  const clampY = (y: number) => mapH <= vh ? mapH / 2 : clamp(y, vh / 2, mapH - vh / 2);
+
+  // Keep a small amount of world-space breathing room beyond the map's top/bottom edges.
+  // Without this, the outer frosting wall sits exactly on the canvas edge in landscape Safari,
+  // so half of the stroke gets clipped and the player cannot tell whether the top lane is open.
+  // The padding is intentionally under half a cell: enough to reveal the complete border and
+  // nearby passage, but not enough to create a noticeable empty band around the game.
+  const verticalEdgePad = map.cellSize * 0.34;
+  const clampY = (y: number) =>
+    mapH <= vh
+      ? mapH / 2
+      : clamp(y, vh / 2 - verticalEdgePad, mapH - vh / 2 + verticalEdgePad);
   if (!prev) return { x: clampX(target.x), y: clampY(target.y), scale };
 
   let tx = prev.x;
