@@ -184,7 +184,7 @@ export default function SugarRushMazeStage({ runKey, best, muted, onToggleMute, 
   };
 
   return (
-    <div className="absolute inset-0 overflow-hidden bg-[#160a28]">
+    <div className="sr-game-viewport fixed inset-0 h-[100dvh] w-[100dvw] overflow-hidden bg-[#160a28]">
       <canvas ref={canvasRef} className="h-full w-full touch-none" />
       <SugarRushActors stateRef={stRef} camRef={camRef} />
 
