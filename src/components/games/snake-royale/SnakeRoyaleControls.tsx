@@ -64,6 +64,7 @@ export default function SnakeRoyaleControls({ input }: Props) {
     setKnob(null);
     input.current.mx = 0;
     input.current.my = 0;
+    input.current.attack = false;
   };
 
   const move = (cx: number, cy: number) => {
@@ -107,6 +108,16 @@ export default function SnakeRoyaleControls({ input }: Props) {
       onContextMenu={(e) => e.preventDefault()}
       aria-label="Drag anywhere to move"
     >
+      <button
+        type="button"
+        className="absolute bottom-7 right-5 z-30 h-20 w-20 rounded-full border-2 border-amber-200/70 bg-amber-500/80 text-xs font-black uppercase tracking-widest text-black shadow-[0_8px_30px_rgba(0,0,0,.35)] active:scale-95"
+        onPointerDown={(e) => { e.stopPropagation(); input.current.attack = true; }}
+        onPointerUp={(e) => { e.stopPropagation(); input.current.attack = false; }}
+        onPointerCancel={() => { input.current.attack = false; }}
+      >
+        Fight
+      </button>
+
       {knob && (
         <div
           className="pointer-events-none absolute h-28 w-28 rounded-full border border-white/15 bg-white/5"

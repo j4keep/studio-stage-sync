@@ -36,7 +36,7 @@ function Player({ stateRef, cameraRef }: Pick<Props, "stateRef" | "cameraRef">) 
 
     groupNode.position.set(screenX - size.width / 2, size.height / 2 - screenY, 0);
     groupNode.rotation.y = Math.atan2(state.vx, state.vy);
-    groupNode.visible = !(state.invuln > 0 && Math.floor(state.t * 14) % 2 === 0);
+    groupNode.visible = !state.driving && !(state.invuln > 0 && Math.floor(state.t * 14) % 2 === 0);
 
     const isMoving = Math.hypot(state.vx, state.vy) > 10;
     if (isMoving !== movingRef.current) {

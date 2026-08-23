@@ -1,5 +1,5 @@
 /*
- * YAJ Sugar Rush — scoped animations. Imported only by Sugar Rush's own components,
+ * YAJ Sugar Rush â€” scoped animations. Imported only by Sugar Rush's own components,
  * never by src/index.css, so nothing here can affect any other game.
  */
 
@@ -69,6 +69,96 @@
 @media (prefers-reduced-motion: reduce) {
   .sr-bob, .sr-drift, .sr-twinkle, .sr-glow-title, .sr-play-pulse,
   .sr-mascot-walk, .sr-mascot-bob, .sr-mascot-chomp, .sr-rush-pulse, .sr-checkpoint-flash {
+    animation: none !important;
+  }
+}
+
+/* Gameplay polish: warnings/effects live on the screen edge so the maze remains readable. */
+@keyframes sr-danger-edge-pulse { 0%,100%{box-shadow:inset 0 0 32px rgba(255,45,86,.32)} 50%{box-shadow:inset 0 0 62px rgba(255,45,86,.72)} }
+.sr-danger-edge { animation:sr-danger-edge-pulse .72s ease-in-out infinite; }
+@keyframes sr-danger-toast { 0%{opacity:0;transform:translateY(-9px) scale(.88)} 18%,76%{opacity:1;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-5px) scale(.96)} }
+.sr-danger-toast { animation:sr-danger-toast 1.35s ease-out both; }
+@keyframes sr-rush-burst { 0%{opacity:0;transform:scale(.48) rotate(-4deg)} 20%{opacity:1;transform:scale(1.12) rotate(1deg)} 62%{opacity:1;transform:scale(1)} 100%{opacity:0;transform:scale(1.22)} }
+.sr-rush-burst { animation:sr-rush-burst 1.15s cubic-bezier(.2,.9,.25,1) both; }
+
+
+/* Landscape/fullscreen fit: Sugar Rush owns the entire dynamic viewport. */
+html:has(.sr-game-viewport), body:has(.sr-game-viewport) { overflow: hidden; }
+.sr-game-viewport { width:100dvw; height:100dvh; min-width:100dvw; min-height:100dvh; }
+@media (orientation: landscape) {
+  .sr-game-viewport { width:100dvw; height:100dvh; }
+}
+
+/* Animated caught-state dentist scene. Lightweight CSS only: no extra canvas/WebGL. */
+@keyframes sr-dentist-card-in {
+  0% { opacity: 0; transform: translateY(22px) scale(.92); }
+  70% { opacity: 1; transform: translateY(-3px) scale(1.012); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.sr-dentist-card { animation: sr-dentist-card-in .46s cubic-bezier(.2,.9,.25,1) both; }
+
+@keyframes sr-chair-bob {
+  0%,100% { transform: translateY(0) rotate(-5deg); }
+  50% { transform: translateY(-3px) rotate(-4deg); }
+}
+.sr-dentist-chair { animation: sr-chair-bob 2.15s ease-in-out infinite; }
+
+@keyframes sr-patient-nervous {
+  0%,100% { transform: translateY(0) rotate(-8deg); }
+  45% { transform: translateY(-2px) rotate(-7deg); }
+  50% { transform: translateX(1px) translateY(-2px) rotate(-9deg); }
+  55% { transform: translateX(-1px) translateY(-1px) rotate(-7deg); }
+}
+.sr-patient { animation: sr-patient-nervous 1.7s ease-in-out infinite; }
+
+@keyframes sr-dentist-tool {
+  0%,100% { transform: rotate(18deg); }
+  50% { transform: rotate(31deg) translateX(-3px); }
+}
+.sr-dentist-arm { animation: sr-dentist-tool .95s ease-in-out infinite; }
+
+@keyframes sr-cavity-bob {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+.sr-cavity-dentist { animation: sr-cavity-bob 1.8s ease-in-out infinite; }
+
+@keyframes sr-lamp-sway {
+  0%,100% { transform: translateX(-50%) rotate(-3deg); }
+  50% { transform: translateX(-50%) rotate(3deg); }
+}
+.sr-exam-lamp { transform-origin: 50% 0; animation: sr-lamp-sway 2.8s ease-in-out infinite; }
+
+@keyframes sr-lamp-pulse {
+  0%,100% { opacity: .55; }
+  50% { opacity: .95; }
+}
+.sr-lamp-beam { animation: sr-lamp-pulse 1.25s ease-in-out infinite; }
+
+@keyframes sr-tooth-sparkle {
+  0%,100% { opacity: 0; transform: scale(.45) rotate(0deg); }
+  35% { opacity: 1; transform: scale(1.25) rotate(90deg); }
+  65% { opacity: .8; transform: scale(.85) rotate(180deg); }
+}
+.sr-tooth-sparkle { color:#fff3a6; text-shadow:0 0 12px rgba(255,235,123,.95); animation:sr-tooth-sparkle 1.1s ease-in-out infinite; }
+
+@keyframes sr-dental-bubble {
+  0% { opacity: 0; transform: translateY(5px) scale(.9); }
+  18%,78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-4px) scale(.96); }
+}
+.sr-dental-bubble { animation: sr-dental-bubble 2.8s ease-in-out infinite; }
+
+@media (max-height: 560px) and (orientation: landscape) {
+  .sr-dentist-card { max-width: 720px; padding-top: .75rem; padding-bottom: .75rem; }
+  .sr-dentist-scene { height: 160px; max-width: 390px; }
+  .sr-dentist-card h2 { margin-top: .55rem; font-size: 1.15rem; }
+  .sr-dentist-card p { font-size: .65rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sr-dentist-card, .sr-dentist-chair, .sr-patient, .sr-dentist-arm,
+  .sr-cavity-dentist, .sr-exam-lamp, .sr-lamp-beam, .sr-tooth-sparkle, .sr-dental-bubble {
     animation: none !important;
   }
 }

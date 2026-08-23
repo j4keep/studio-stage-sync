@@ -21,6 +21,8 @@ const TERRAIN: Record<Terrain, string> = {
   bridge: "#8a5c2f",
   ruins: "#8f8672",
   rock: "#7d7f74",
+  camp: "#6f5b3f",
+  road: "#7b684e",
 };
 
 export function makeCamera(st: SnakeRoyaleState, w: number, h: number, prev?: Camera): Camera {
@@ -161,6 +163,26 @@ export function drawJungle(g: CanvasRenderingContext2D, st: SnakeRoyaleState, ca
   items.sort((a, b) => a.y - b.y);
   items.forEach((i) => i.draw());
 
+  // Moving wildlife gives Snake Royale its own living-jungle identity.
+  for (const a of st.animals) {
+    const x = sx(a.x), y = sy(a.y);
+    drawAnimal(g, a.kind, x, y, 1.05 * s, Math.atan2(a.vy, a.vx), a.stunned > 0, st.t);
+  }
+
+  // Defense pickups.
+  for (const p of st.pickups) {
+    if (p.taken) continue;
+    drawPickup(g, p.kind, sx(p.x), sy(p.y), s, st.t);
+  }
+
+  // Abandoned extraction jeep + final road beacon. The jeep disappears once the player enters it.
+  if (!st.driving) drawJeep(g, sx(st.map.jeep.x), sy(st.map.jeep.y), s, false);
+  else drawJeep(g, sx(st.x), sy(st.y), s, true);
+  const ex = sx(st.map.exit.x), ey = sy(st.map.exit.y);
+  g.save();
+  g.strokeStyle = "rgba(255,225,95,.9)"; g.lineWidth = Math.max(2, 3*s);
+  g.setLineDash([10*s, 8*s]); g.beginPath(); g.arc(ex, ey, 34*s, 0, Math.PI*2); g.stroke(); g.restore();
+
   const vg = g.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.35, w / 2, h / 2, Math.max(w, h) * 0.75);
   vg.addColorStop(0, "rgba(0,0,0,0)");
   vg.addColorStop(1, "rgba(0,0,0,0.42)");
@@ -269,6 +291,53 @@ function drawProp(g: CanvasRenderingContext2D, kind: string, cx: number, cy: num
     g.lineTo(cx + 12 * s, cy);
     g.closePath();
     g.fill();
+  } else if (kind === "fern") {
+    g.strokeStyle="#3faa57"; g.lineWidth=3*s;
+    for (let i=-2;i<=2;i++){ g.beginPath(); g.moveTo(cx,cy); g.quadraticCurveTo(cx+i*7*s,cy-16*s,cx+i*12*s,cy-25*s); g.stroke(); }
+  } else if (kind === "crate") {
+    g.fillStyle="#8b5a2b"; g.fillRect(cx-15*s,cy-24*s,30*s,24*s);
+    g.strokeStyle="#c18a4b"; g.lineWidth=2*s; g.strokeRect(cx-15*s,cy-24*s,30*s,24*s);
+    g.beginPath(); g.moveTo(cx-13*s,cy-22*s); g.lineTo(cx+13*s,cy-2*s); g.moveTo(cx+13*s,cy-22*s); g.lineTo(cx-13*s,cy-2*s); g.stroke();
+  } else if (kind === "tent") {
+    g.fillStyle="#68764b"; g.beginPath(); g.moveTo(cx-25*s,cy); g.lineTo(cx,cy-32*s); g.lineTo(cx+25*s,cy); g.closePath(); g.fill();
+    g.fillStyle="#2f3825"; g.beginPath(); g.moveTo(cx-6*s,cy); g.lineTo(cx,cy-17*s); g.lineTo(cx+6*s,cy); g.closePath(); g.fill();
   }
   g.restore();
+}
+
+function drawAnimal(g: CanvasRenderingContext2D, kind: string, cx: number, cy: number, s: number, angle: number, stunned: boolean, t: number) {
+  g.save(); g.translate(cx, cy); g.rotate(angle); g.globalAlpha = stunned ? 0.55 : 1;
+  const bob = Math.sin(t * 8 + cx * .01) * 2 * s; g.translate(0, bob);
+  g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(0, 8*s, 18*s, 7*s, 0, 0, Math.PI*2); g.fill();
+  if (kind === "boar") {
+    g.fillStyle="#5c3827"; g.fillRect(-19*s,-10*s,34*s,20*s); g.fillStyle="#744733"; g.fillRect(10*s,-12*s,16*s,17*s);
+    g.fillStyle="#f2dfba"; g.fillRect(22*s,2*s,7*s,3*s); g.fillRect(22*s,-5*s,7*s,3*s);
+  } else if (kind === "jaguar") {
+    g.fillStyle="#d9952c"; g.fillRect(-22*s,-10*s,38*s,18*s); g.fillRect(12*s,-14*s,17*s,17*s);
+    g.fillStyle="#3a2418"; for (const x of [-13,-2,9]) { g.beginPath(); g.arc(x*s,-2*s,2.5*s,0,Math.PI*2); g.fill(); }
+    g.strokeStyle="#d9952c"; g.lineWidth=5*s; g.beginPath(); g.moveTo(-20*s,0); g.quadraticCurveTo(-35*s,-8*s,-40*s,5*s); g.stroke();
+  } else if (kind === "croc") {
+    g.fillStyle="#477a3c"; g.fillRect(-27*s,-7*s,42*s,14*s); g.fillStyle="#5b944b"; g.fillRect(10*s,-9*s,23*s,18*s);
+    g.fillStyle="#e7f1c2"; g.fillRect(29*s,-5*s,4*s,3*s); g.fillRect(29*s,2*s,4*s,3*s);
+  } else {
+    g.fillStyle="#8a5935"; g.beginPath(); g.arc(0,-4*s,12*s,0,Math.PI*2); g.fill();
+    g.fillStyle="#b77b4b"; g.beginPath(); g.arc(11*s,-10*s,8*s,0,Math.PI*2); g.fill();
+    g.strokeStyle="#8a5935"; g.lineWidth=4*s; g.beginPath(); g.arc(-11*s,-3*s,14*s,.3,Math.PI*1.6); g.stroke();
+  }
+  if (stunned) { g.fillStyle="#ffe45c"; g.font=`${16*s}px sans-serif`; g.fillText("★",-8*s,-22*s); }
+  g.restore();
+}
+
+function drawPickup(g: CanvasRenderingContext2D, kind: string, cx: number, cy: number, s: number, t: number) {
+  const bob=Math.sin(t*3+cx*.02)*4*s; g.save(); g.translate(cx,cy-12*s+bob);
+  g.shadowColor="#ffe66d";g.shadowBlur=12*s; g.fillStyle=kind==="flare"?"#ff5b45":kind==="repellent"?"#7be0ff":"#9b6a34";
+  if(kind==="stick"){g.rotate(-.45);g.fillRect(-3*s,-18*s,6*s,36*s);} else {g.fillRect(-8*s,-14*s,16*s,28*s);}
+  g.shadowBlur=0; g.fillStyle="white"; g.font=`bold ${9*s}px sans-serif`; g.textAlign="center"; g.fillText(kind.toUpperCase(),0,27*s); g.restore();
+}
+
+function drawJeep(g: CanvasRenderingContext2D, cx: number, cy: number, s: number, driving: boolean) {
+  g.save();g.translate(cx,cy); if(driving) g.rotate(-.12);
+  g.fillStyle="#c9a227";g.fillRect(-28*s,-18*s,56*s,30*s); g.fillStyle="#263c2d";g.fillRect(-14*s,-14*s,26*s,14*s);
+  g.fillStyle="#161616"; for(const x of [-21,21]){g.beginPath();g.arc(x*s,14*s,8*s,0,Math.PI*2);g.fill();}
+  g.fillStyle="#f8e27c";g.fillRect(21*s,-10*s,8*s,6*s); g.restore();
 }

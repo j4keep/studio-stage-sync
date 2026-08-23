@@ -7,23 +7,76 @@
 
 import { CandyCityMap } from "@/lib/sugar-rush-map";
 import { SugarRushMazeState, cartWorldPos } from "@/lib/sugar-rush-maze";
+import { CANDY_SPRITES } from "./assets";
+
+const candyImages: HTMLImageElement[] = typeof Image === "undefined" ? [] : CANDY_SPRITES.map((src) => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+
+const candyImageFor = (id: string) => candyImages.length ? candyImages[Math.abs(Array.from(id).reduce((n, ch) => n + ch.charCodeAt(0), 0)) % candyImages.length] : undefined;
 
 export type Camera = { x: number; y: number; scale: number };
 
-const VIEW_CELLS_H = 8;
+// Slightly wider view than the original so intersections and incoming hazards are readable.
+const VIEW_CELLS_H = 8.65;
 
 export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, w: number, h: number, prev?: Camera): Camera {
   const vh = VIEW_CELLS_H * map.cellSize;
-  const scale = h / vh;
-  const vw = w / scale;
   const mapW = map.cols * map.cellSize;
   const mapH = map.rows * map.cellSize;
+  // Landscape/fullscreen fix: never let the maze become a narrow strip with empty side gutters.
+  // The normal vertical scale preserves gameplay framing; the width scale only zooms in when the
+  // entire map would otherwise be narrower than the available viewport.
+  const scale = Math.max(h / vh, w / mapW);
+  const vw = w / scale;
+  // IMPORTANT: when landscape width determines the scale, the *actual* visible
+  // world-height is smaller than `vh`. Camera edge clamping must use this
+  // real viewport height or the first maze row can be pushed behind Safari chrome.
+  const visibleWorldH = h / scale;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-  const tx = mapW <= vw ? mapW / 2 : clamp(target.x, vw / 2, mapW - vw / 2);
-  const ty = mapH <= vh ? mapH / 2 : clamp(target.y, vh / 2, mapH - vh / 2);
-  if (!prev) return { x: tx, y: ty, scale };
+
+  // Dead-zone camera: the actor can move naturally around the middle of the screen without
+  // constant camera jitter, but can never drift into the HUD/screen edge.
+  const clampX = (x: number) => mapW <= vw ? mapW / 2 : clamp(x, vw / 2, mapW - vw / 2);
+
+  // Landscape Safari/browser chrome can visually cover the very top of a fullscreen canvas.
+  // Reserve a real screen-space safe zone so the TOP frosting wall, its openings, and an actor
+  // travelling through the first row always remain visible below the browser/game controls.
+  // This is intentionally asymmetric: we need much more room at the top than at the bottom.
+  const landscape = w > h;
+  const topSafePx = landscape ? Math.min(96, h * 0.16) : Math.min(76, h * 0.11);
+  const topEdgePad = Math.max(map.cellSize * 0.42, topSafePx / scale);
+  const bottomEdgePad = map.cellSize * 0.28;
+
+  // Use the REAL visible world height here. In landscape, `scale` is often set
+  // by width (`w / mapW`), so using the fixed 8.65-cell `vh` incorrectly pushes
+  // the camera downward and clips the top frosting border + actors in row 1.
+  const topCenter = visibleWorldH / 2 - topEdgePad;
+  const bottomCenter = mapH - visibleWorldH / 2 + bottomEdgePad;
+  const clampY = (y: number) =>
+    mapH <= visibleWorldH
+      ? mapH / 2
+      : clamp(y, topCenter, bottomCenter);
+  if (!prev) return { x: clampX(target.x), y: clampY(target.y), scale };
+
+  let tx = prev.x;
+  let ty = prev.y;
+  const dx = target.x - prev.x;
+  const dy = target.y - prev.y;
+  const safeX = vw * 0.17;
+  const safeTop = visibleWorldH * 0.15;
+  const safeBottom = visibleWorldH * 0.19;
+  if (dx > safeX) tx = target.x - safeX;
+  else if (dx < -safeX) tx = target.x + safeX;
+  if (dy > safeBottom) ty = target.y - safeBottom;
+  else if (dy < -safeTop) ty = target.y + safeTop;
+
+  tx = clampX(tx);
+  ty = clampY(ty);
   const lerp = (a: number, b: number, f: number) => a + (b - a) * f;
-  return { x: lerp(prev.x, tx, 0.15), y: lerp(prev.y, ty, 0.15), scale };
+  return { x: lerp(prev.x, tx, 0.22), y: lerp(prev.y, ty, 0.22), scale };
 }
 
 function star(g: CanvasRenderingContext2D, cx: number, cy: number, r: number, r2: number) {
@@ -50,8 +103,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     bg.addColorStop(0, "#3a0f52");
     bg.addColorStop(1, "#1c0630");
   } else {
-    bg.addColorStop(0, "#2a1147");
-    bg.addColorStop(1, "#160a28");
+    bg.addColorStop(0, "#32175a");
+    bg.addColorStop(1, "#1d0c36");
   }
   g.fillStyle = bg;
   g.fillRect(0, 0, w, h);
@@ -75,7 +128,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
       const y = toScreenY(r * CELL);
       const s = CELL * cam.scale;
       const checker = (c + r) % 2 === 0;
-      g.fillStyle = inPlaza(c, r) ? "#7a4fae" : checker ? "#3a2160" : "#331c55";
+      g.fillStyle = inPlaza(c, r) ? "#8658bc" : checker ? "#4a2b76" : "#40236a";
       g.fillRect(x, y, s + 1, s + 1);
     }
   }
@@ -110,8 +163,8 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
 
   // ── Walls ("frosting") ────────────────────────────────────────────────────
   g.fillStyle = "#ffe6f4";
-  g.strokeStyle = "#ffb6dd";
-  const wallT = Math.max(3, CELL * 0.11 * cam.scale);
+  g.strokeStyle = "#ff9bd1";
+  const wallT = Math.max(3.5, CELL * 0.105 * cam.scale);
   const drawWallSeg = (x1: number, y1: number, x2: number, y2: number) => {
     g.beginPath();
     g.lineCap = "round";
@@ -121,7 +174,7 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     g.lineTo(x2, y2);
     g.stroke();
     g.lineWidth = wallT * 0.5;
-    g.strokeStyle = "#fff6fb";
+    g.strokeStyle = "#fffafd";
     g.beginPath();
     g.moveTo(x1, y1);
     g.lineTo(x2, y2);
@@ -233,50 +286,59 @@ export function drawCandyCity(g: CanvasRenderingContext2D, st: SugarRushMazeStat
     g.fill();
   }
 
-  // ── Collectibles / power-ups ─────────────────────────────────────────────
+  // ── Collectibles — use Sugar Rush's illustrated candy assets rather than placeholder dots.
   const bob = Math.sin(st.t * 4) * 2 * cam.scale;
   for (const item of map.collectibles) {
     if (st.taken[item.id]) continue;
     const cx = toScreenX(item.c * CELL + CELL / 2);
     const cy = toScreenY(item.r * CELL + CELL / 2) + bob;
-    if (cx < -20 || cx > w + 20 || cy < -20 || cy > h + 20) continue;
+    if (cx < -24 || cx > w + 24 || cy < -24 || cy > h + 24) continue;
     const rr = CELL * 0.16 * cam.scale;
-    if (item.kind === "gummy") {
-      g.fillStyle = "#ff6fa3";
-      g.beginPath();
-      g.ellipse(cx, cy, rr, rr * 1.15, 0, 0, Math.PI * 2);
-      g.fill();
-    } else if (item.kind === "candyDrop") {
-      g.fillStyle = "#5fd0ff";
-      g.beginPath();
-      g.arc(cx, cy, rr * 0.9, 0, Math.PI * 2);
-      g.fill();
-      g.fillStyle = "rgba(255,255,255,.6)";
-      g.beginPath();
-      g.arc(cx - rr * 0.3, cy - rr * 0.3, rr * 0.28, 0, Math.PI * 2);
-      g.fill();
-    } else if (item.kind === "sugarStar") {
+
+    if (item.kind === "sugarStar") {
+      g.save();
+      g.shadowColor = "#ffe066";
+      g.shadowBlur = 9 * cam.scale;
       g.fillStyle = "#ffe066";
-      star(g, cx, cy, rr * 1.3, rr * 0.55);
+      star(g, cx, cy, rr * 1.35, rr * 0.58);
       g.fill();
-    } else if (item.kind === "donutToken") {
-      g.strokeStyle = "#c9788f";
-      g.lineWidth = rr * 0.7;
-      g.beginPath();
-      g.arc(cx, cy, rr * 0.85, 0, Math.PI * 2);
-      g.stroke();
-      g.strokeStyle = "#ffd7e6";
-      g.lineWidth = rr * 0.25;
-      g.stroke();
-    } else if (item.kind === "frostingGem") {
+      g.restore();
+      continue;
+    }
+    if (item.kind === "frostingGem") {
       g.save();
       g.translate(cx, cy);
       g.rotate(Math.PI / 4);
-      g.fillStyle = "#8ef4ff";
+      const grad = g.createLinearGradient(-rr, -rr, rr, rr);
+      grad.addColorStop(0, "#efffff");
+      grad.addColorStop(.45, "#8ef4ff");
+      grad.addColorStop(1, "#83a8ff");
+      g.fillStyle = grad;
       g.shadowColor = "#8ef4ff";
-      g.shadowBlur = 8 * cam.scale;
-      g.fillRect(-rr * 0.85, -rr * 0.85, rr * 1.7, rr * 1.7);
+      g.shadowBlur = 10 * cam.scale;
+      g.fillRect(-rr * 0.82, -rr * 0.82, rr * 1.64, rr * 1.64);
       g.restore();
+      continue;
+    }
+
+    const img = candyImageFor(item.id);
+    if (img?.complete && img.naturalWidth) {
+      const size = item.kind === "donutToken" ? rr * 2.65 : rr * 2.35;
+      g.save();
+      g.shadowColor = "rgba(255,120,220,.45)";
+      g.shadowBlur = 7 * cam.scale;
+      g.drawImage(img, cx - size / 2, cy - size / 2, size, size);
+      g.restore();
+    } else {
+      // Tiny polished fallback while the image cache finishes loading.
+      const grad = g.createRadialGradient(cx - rr * .3, cy - rr * .35, rr * .15, cx, cy, rr);
+      grad.addColorStop(0, "#fff4fb");
+      grad.addColorStop(.3, "#ff87c7");
+      grad.addColorStop(1, "#d94091");
+      g.fillStyle = grad;
+      g.beginPath();
+      g.arc(cx, cy, rr, 0, Math.PI * 2);
+      g.fill();
     }
   }
 
