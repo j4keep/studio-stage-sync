@@ -31,6 +31,10 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   // entire map would otherwise be narrower than the available viewport.
   const scale = Math.max(h / vh, w / mapW);
   const vw = w / scale;
+  // IMPORTANT: when landscape width determines the scale, the *actual* visible
+  // world-height is smaller than `vh`. Camera edge clamping must use this
+  // real viewport height or the first maze row can be pushed behind Safari chrome.
+  const visibleWorldH = h / scale;
   const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
   // Dead-zone camera: the actor can move naturally around the middle of the screen without
@@ -42,13 +46,19 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   // travelling through the first row always remain visible below the browser/game controls.
   // This is intentionally asymmetric: we need much more room at the top than at the bottom.
   const landscape = w > h;
-  const topSafePx = landscape ? Math.min(104, h * 0.19) : Math.min(76, h * 0.11);
-  const topEdgePad = Math.max(map.cellSize * 0.9, topSafePx / scale);
-  const bottomEdgePad = map.cellSize * 0.34;
+  const topSafePx = landscape ? Math.min(96, h * 0.16) : Math.min(76, h * 0.11);
+  const topEdgePad = Math.max(map.cellSize * 0.42, topSafePx / scale);
+  const bottomEdgePad = map.cellSize * 0.28;
+
+  // Use the REAL visible world height here. In landscape, `scale` is often set
+  // by width (`w / mapW`), so using the fixed 8.65-cell `vh` incorrectly pushes
+  // the camera downward and clips the top frosting border + actors in row 1.
+  const topCenter = visibleWorldH / 2 - topEdgePad;
+  const bottomCenter = mapH - visibleWorldH / 2 + bottomEdgePad;
   const clampY = (y: number) =>
-    mapH <= vh
+    mapH <= visibleWorldH
       ? mapH / 2
-      : clamp(y, vh / 2 - topEdgePad, mapH - vh / 2 + bottomEdgePad);
+      : clamp(y, topCenter, bottomCenter);
   if (!prev) return { x: clampX(target.x), y: clampY(target.y), scale };
 
   let tx = prev.x;
@@ -56,8 +66,8 @@ export function makeCamera(target: { x: number; y: number }, map: CandyCityMap, 
   const dx = target.x - prev.x;
   const dy = target.y - prev.y;
   const safeX = vw * 0.17;
-  const safeTop = vh * 0.15;
-  const safeBottom = vh * 0.19;
+  const safeTop = visibleWorldH * 0.15;
+  const safeBottom = visibleWorldH * 0.19;
   if (dx > safeX) tx = target.x - safeX;
   else if (dx < -safeX) tx = target.x + safeX;
   if (dy > safeBottom) ty = target.y - safeBottom;
