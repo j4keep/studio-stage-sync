@@ -70,7 +70,7 @@ const CARDS: CardDef[] = [
   { type: "bingo", title: "Bingo", players: "2 players", image: bingoArt, category: "Board", isNew: true },
   { type: "word_link", title: "Word Link", players: "2 players", image: wordLinkArt, category: "Puzzle", isNew: true },
   { type: "mini_golf", title: "Mini Golf", players: "2 players", image: miniGolfArt, category: "Sports", isNew: true },
-  { type: "snake_royale", title: "Snake Royale", players: "2 players", image: snakeRoyaleArt, category: "Arcade", isNew: true },
+  { type: "snake_royale", title: "YAJ Snake Royale", players: "Solo jungle survival", image: snakeRoyaleArt, category: "Adventure", isNew: true },
   { type: "sugar_rush", title: "YAJ Sugar Rush", players: "Solo candy chase", image: sugarRushArt, category: "Adventure", isNew: true },
   { type: "obby", title: "YAJ Obby", players: "2 players", image: obbyArt, category: "Adventure", isNew: true },
   { type: "city_run", title: "YAJ City Run", players: "Solo endless run", image: cityRunArtAsset.url, category: "Adventure", isNew: true },
@@ -90,7 +90,7 @@ const CATEGORIES: Category[] = ["Board", "Strategy", "Action", "Sports", "Arcade
 
 /** YAJ Adventures — the original-IP adventure line-up. The rest are planned titles that
  *  reuse the same movement/collision/score/power-up systems. */
-const ADVENTURE_TYPES: GameType[] = ["survival_island", "tower_escape", "treasure_rush", "city_run", "obby", "neighborhood"];
+const ADVENTURE_TYPES: GameType[] = ["survival_island", "tower_escape", "treasure_rush", "snake_royale", "city_run", "obby", "neighborhood"];
 const ADVENTURE_CARDS: CardDef[] = ADVENTURE_TYPES.map((t) => CARDS.find((c) => c.type === t)!).filter(Boolean);
 
 const ADVENTURES_COMING_SOON: { title: string; blurb: string; image: string }[] = [];

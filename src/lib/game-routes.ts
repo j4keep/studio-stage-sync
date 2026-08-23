@@ -14,7 +14,6 @@ import { initialKnockHockey } from "@/lib/knock-hockey-run";
 import { initialBingo } from "@/lib/bingo-run";
 import { initialWordLink } from "@/lib/word-link-run";
 import { initialMiniGolf } from "@/lib/mini-golf-run";
-import { initialSnakeRoyale } from "@/lib/snake-royale-run";
 import { initialObby } from "@/lib/obby";
 
 export const GAME_PATHS: Record<GameType, string> = {
@@ -82,12 +81,11 @@ export function initialStateFor(type: GameType): any {
       return { wordLink: initialWordLink(), moveNumber: 0 };
     case "mini_golf":
       return { miniGolf: initialMiniGolf(), moveNumber: 0 };
-    case "snake_royale":
-      return { snakeRoyale: initialSnakeRoyale(), moveNumber: 0 };
     case "sugar_rush":
     case "treasure_rush":
     case "tower_escape":
     case "survival_island":
+    case "snake_royale":
     case "neighborhood":
       return { moveNumber: 0 };
     case "obby":

@@ -1,33 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400" width="300" height="400">
   <defs>
-    <radialGradient id="bg" cx="50%" cy="38%" r="75%">
-      <stop offset="0%" stop-color="hsl(152,45%,26%)" />
-      <stop offset="60%" stop-color="hsl(152,45%,14%)" />
-      <stop offset="100%" stop-color="hsl(154,48%,7%)" />
+    <radialGradient id="jr-bg" cx="50%" cy="30%" r="85%">
+      <stop offset="0%" stop-color="hsl(140,45%,22%)" />
+      <stop offset="55%" stop-color="hsl(150,50%,12%)" />
+      <stop offset="100%" stop-color="hsl(155,55%,6%)" />
     </radialGradient>
+    <linearGradient id="jr-snake" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#5fb15a" />
+      <stop offset="100%" stop-color="#2c6b32" />
+    </linearGradient>
+    <linearGradient id="jr-title-fill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e8ffb0" />
+      <stop offset="100%" stop-color="#a3e635" />
+    </linearGradient>
   </defs>
-  <rect width="400" height="400" fill="url(#bg)" />
 
-  <!-- Play field -->
-  <rect x="55" y="45" width="290" height="290" rx="14" fill="hsl(150,42%,15%)" stroke="#0a1a0d" stroke-width="6" />
+  <rect width="300" height="400" fill="url(#jr-bg)" />
 
-  <!-- Storm ring (danger zone) -->
-  <rect x="55" y="45" width="290" height="290" rx="14" fill="none" />
-  <rect x="55" y="45" width="290" height="46" fill="rgba(180,20,20,0.4)" />
-  <rect x="55" y="289" width="290" height="46" fill="rgba(180,20,20,0.4)" />
-  <rect x="55" y="91" width="46" height="198" fill="rgba(180,20,20,0.4)" />
-  <rect x="299" y="91" width="46" height="198" fill="rgba(180,20,20,0.4)" />
-  <rect x="101" y="91" width="198" height="198" fill="none" stroke="#f0d84c" stroke-width="3" stroke-dasharray="10 8" opacity="0.75" />
+  <!-- distant canopy silhouettes -->
+  <ellipse cx="30" cy="40" rx="70" ry="46" fill="#123a1f" opacity="0.85" />
+  <ellipse cx="150" cy="20" rx="90" ry="50" fill="#0f3019" opacity="0.9" />
+  <ellipse cx="270" cy="46" rx="70" ry="44" fill="#123a1f" opacity="0.85" />
 
-  <!-- Food -->
-  <circle cx="255" cy="150" r="10" fill="#ff5a5a" stroke="#7a1614" stroke-width="2" />
+  <!-- ground path -->
+  <path d="M -10 330 Q 90 300 150 320 Q 220 342 310 310 L 310 410 L -10 410 Z" fill="#3a2a16" opacity="0.9" />
+  <path d="M -10 330 Q 90 300 150 320 Q 220 342 310 310" fill="none" stroke="#5c4423" stroke-width="4" opacity="0.6" />
 
-  <!-- Snake -->
-  <rect x="135" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
-  <rect x="161" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
-  <rect x="187" y="185" width="26" height="26" rx="6" fill="#22b061" stroke="#0d4f2a" stroke-width="1.5" />
-  <rect x="213" y="185" width="26" height="26" rx="6" fill="#4ade80" stroke="#0d5f30" stroke-width="1.5" />
+  <!-- bushes framing the bottom -->
+  <g opacity="0.95">
+    <circle cx="34" cy="352" r="30" fill="#1e5c30" />
+    <circle cx="60" cy="360" r="22" fill="#256b3a" />
+    <circle cx="252" cy="358" r="28" fill="#1e5c30" />
+    <circle cx="278" cy="368" r="20" fill="#256b3a" />
+  </g>
 
-  <!-- Title lockup -->
-  <text x="200" y="378" text-anchor="middle" font-family="Arial Black, Arial, sans-serif" font-weight="900" font-size="26" fill="#ffffff" letter-spacing="1">SNAKE ROYALE</text>
+  <!-- motion streaks -->
+  <g stroke="#d7ffb8" stroke-width="4" stroke-linecap="round" opacity="0.35">
+    <line x1="60" y1="205" x2="100" y2="200" />
+    <line x1="55" y1="225" x2="95" y2="222" />
+    <line x1="65" y1="245" x2="100" y2="244" />
+  </g>
+
+  <!-- snake lunging from lower-right -->
+  <g transform="translate(196,300)">
+    <path d="M 40 60 C 10 40 30 10 0 -10 C -25 -28 -10 -55 -30 -70"
+          fill="none" stroke="url(#jr-snake)" stroke-width="26" stroke-linecap="round" />
+    <path d="M 40 60 C 10 40 30 10 0 -10 C -25 -28 -10 -55 -30 -70"
+          fill="none" stroke="#d9c26a" stroke-width="8" stroke-linecap="round" stroke-dasharray="1 20" opacity="0.7" />
+    <!-- head -->
+    <g transform="translate(-30,-70) rotate(-35)">
+      <ellipse cx="0" cy="0" rx="20" ry="15" fill="url(#jr-snake)" />
+      <circle cx="7" cy="-5" r="4" fill="#ffe15a" />
+      <circle cx="7" cy="5" r="4" fill="#ffe15a" />
+      <circle cx="8" cy="-5" r="1.6" fill="#1a1a1a" />
+      <circle cx="8" cy="5" r="1.6" fill="#1a1a1a" />
+      <path d="M 18 0 L 34 -6 M 18 0 L 34 6" stroke="#c0392b" stroke-width="2.4" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <!-- YAJ character sprinting -->
+  <g transform="translate(100,208)">
+    <ellipse cx="0" cy="112" rx="34" ry="9" fill="#000" opacity="0.28" />
+    <!-- back leg -->
+    <rect x="-8" y="72" width="16" height="38" rx="5" fill="#2c3350" transform="rotate(18 0 72)" />
+    <!-- front leg -->
+    <rect x="-8" y="72" width="16" height="38" rx="5" fill="#232849" transform="rotate(-24 0 72)" />
+    <!-- torso -->
+    <rect x="-24" y="34" width="48" height="46" rx="10" fill="#5b8cff" />
+    <!-- back arm -->
+    <rect x="18" y="38" width="14" height="34" rx="6" fill="#FFCC4D" transform="rotate(50 24 40)" />
+    <!-- front arm reaching forward -->
+    <rect x="-34" y="34" width="14" height="34" rx="6" fill="#FFCC4D" transform="rotate(-60 -28 36)" />
+    <!-- head -->
+    <rect x="-22" y="-14" width="44" height="44" rx="9" fill="#FFCC4D" />
+    <rect x="-14" y="0" width="9" height="9" fill="#241a12" />
+    <rect x="6" y="0" width="9" height="9" fill="#241a12" />
+    <rect x="-9" y="16" width="18" height="5" fill="#241a12" />
+  </g>
+
+  <!-- stars -->
+  <g fill="#fbbf24">
+    <path d="M 250 130 l 5 12 13 1 -10 8 3 13 -11 -7 -11 7 3 -13 -10 -8 13 -1 z" opacity="0.95" />
+    <path d="M 40 150 l 4 9 10 1 -8 6 3 10 -9 -5 -9 5 3 -10 -8 -6 10 -1 z" opacity="0.85" />
+  </g>
+
+  <!-- title -->
+  <g transform="translate(150,360)" text-anchor="middle" font-family="Arial, sans-serif" font-weight="900">
+    <text y="0" font-size="34" fill="#123a1f" opacity="0.55" letter-spacing="1" transform="translate(2,3)">SNAKE ROYALE</text>
+    <text y="0" font-size="34" fill="url(#jr-title-fill)" letter-spacing="1" stroke="#123a1f" stroke-width="1.5" paint-order="stroke">SNAKE ROYALE</text>
+  </g>
 </svg>

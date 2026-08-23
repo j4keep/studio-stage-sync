@@ -1,0 +1,43 @@
+/* Snake Royale — general-purpose ambient keyframes for the intro screen and HUD flashes. */
+
+@keyframes jr-bob {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-12px) rotate(3deg); }
+}
+.jr-bob { animation: jr-bob 3.4s ease-in-out infinite; }
+
+@keyframes jr-drift {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  100% { transform: translate(-5%, -6%) rotate(-6deg); }
+}
+.jr-drift { animation: jr-drift 16s ease-in-out infinite alternate; }
+
+@keyframes jr-twinkle {
+  0%, 100% { opacity: 0.2; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+.jr-twinkle { animation: jr-twinkle 2.1s ease-in-out infinite; }
+
+@keyframes jr-glow-title {
+  0%, 100% { text-shadow: 0 0 16px rgba(120, 255, 150, .8), 0 4px 0 rgba(0,0,0,.4); }
+  50% { text-shadow: 0 0 30px rgba(120, 255, 150, 1), 0 4px 0 rgba(0,0,0,.4); }
+}
+.jr-glow-title { animation: jr-glow-title 2.4s ease-in-out infinite; }
+
+@keyframes jr-play-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255,255,255,.5); }
+  50% { transform: scale(1.045); box-shadow: 0 0 0 14px rgba(255,255,255,0); }
+}
+.jr-play-pulse { animation: jr-play-pulse 1.6s ease-in-out infinite; }
+
+@keyframes jr-blink {
+  0%, 88%, 100% { opacity: 0.85; }
+  92% { opacity: 0.1; }
+}
+.jr-blink { animation: jr-blink 4.5s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .jr-bob, .jr-drift, .jr-twinkle, .jr-glow-title, .jr-play-pulse, .jr-blink {
+    animation: none !important;
+  }
+}
