@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Settings, Users } from "lucide-react";
+import { ArrowLeft, Loader2, Lock, Radio, Settings, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
 import { Circle, CircleMember, getMyMembership, getCircle, updateCircle, countPendingMembers } from "@/lib/circles";
 import { CIRCLE_TYPE_META } from "@/lib/circles";
+import { CircleLiveSession, getActiveLiveSession, startCircleLive } from "@/lib/circle-live";
+import { supabase } from "@/integrations/supabase/client";
 import CircleJoinButton from "@/components/circle/CircleJoinButton";
 import CircleTopFansWheel from "@/components/circle/CircleTopFansWheel";
 import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
@@ -19,6 +22,8 @@ export default function CirclePage() {
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [tab, setTab] = useState<Tab>("home");
   const [pendingCount, setPendingCount] = useState(0);
+  const [liveSession, setLiveSession] = useState<CircleLiveSession | null>(null);
+  const [goingLive, setGoingLive] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -45,6 +50,24 @@ export default function CirclePage() {
     }
     void countPendingMembers(circle.id).then(setPendingCount).catch(() => setPendingCount(0));
   }, [circle, membership, user?.id]);
+
+  // Realtime so members see "went live" / "ended" without refreshing — RLS already
+  // limits this to circles you're actually approved in (or own).
+  useEffect(() => {
+    if (!circle) return;
+    void getActiveLiveSession(circle.id).then(setLiveSession).catch(() => setLiveSession(null));
+    const channel = supabase
+      .channel(`circle-live-${circle.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "circle_live_sessions", filter: `circle_id=eq.${circle.id}` },
+        () => void getActiveLiveSession(circle.id).then(setLiveSession).catch(() => setLiveSession(null)),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [circle?.id]);
 
   if (circle === undefined) {
     return <div className="flex min-h-[100dvh] items-center justify-center bg-background text-muted-foreground">Loading…</div>;
@@ -77,6 +100,19 @@ export default function CirclePage() {
       />
     );
   }
+
+  const handleGoLive = async () => {
+    if (!user?.id) return;
+    setGoingLive(true);
+    try {
+      await startCircleLive(circle.id, user.id);
+      navigate(`/circle/c/${circle.id}/live`);
+    } catch (e: any) {
+      toast({ title: "Couldn't go live", description: e.message, variant: "destructive" });
+    } finally {
+      setGoingLive(false);
+    }
+  };
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "home", label: "Home" },
@@ -130,8 +166,31 @@ export default function CirclePage() {
 
         {circle.description && <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{circle.description}</p>}
 
-        <div className="mt-3">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {user?.id && <CircleJoinButton circle={circle} userId={user.id} membership={membership} isOwner={isOwner} onChanged={load} />}
+
+          {isOwner && !liveSession && (
+            <button
+              type="button"
+              disabled={goingLive}
+              onClick={handleGoLive}
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95 disabled:opacity-60"
+            >
+              {goingLive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
+              Go Live
+            </button>
+          )}
+
+          {liveSession && isApprovedMember && (
+            <button
+              type="button"
+              onClick={() => navigate(`/circle/c/${circle.id}/live`)}
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
+            >
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+              {liveSession.host_user_id === user?.id ? "You're Live" : "Watch Live"}
+            </button>
+          )}
         </div>
       </div>
 

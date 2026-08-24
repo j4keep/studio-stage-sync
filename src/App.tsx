@@ -28,6 +28,7 @@ import MyCircleRedirect from "./pages/circle/MyCircleRedirect";
 import CirclePage from "./pages/circle/CirclePage";
 import PersonalCircleGate from "./pages/circle/PersonalCircleGate";
 import CircleSettingsPage from "./pages/circle/CircleSettingsPage";
+import CircleLiveRoomPage from "./pages/circle/CircleLiveRoomPage";
 
 import ProfilePage from "./pages/ProfilePage";
 import TermsPage from "./pages/TermsPage";
@@ -466,6 +467,7 @@ const ProtectedRoutes = () => {
         <Route path="/circle" element={<MyCircleRedirect />} />
         <Route path="/circle/c/:id" element={<CirclePage />} />
         <Route path="/circle/c/:id/settings" element={<CircleSettingsPage />} />
+        <Route path="/circle/c/:id/live" element={<CircleLiveRoomPage />} />
         <Route path="/circle/u/:userId" element={<PersonalCircleGate />} />
         <Route path="/m/*" element={<Navigate to="/" replace />} />
         <Route path="/studios" element={<StudiosPage />} />

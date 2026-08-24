@@ -77,8 +77,12 @@ export function usePodcastLiveRoom(opts: {
   displayName: string;
   hostIdentity?: string; // identity considered host (defaults to first joiner = self if not set)
   enabled: boolean;
+  /** Defaults to true (existing Podcast behavior: everyone publishes). Pass false for a
+   *  view-only participant (e.g. a Circle-live viewer) — skips requesting publish
+   *  permission and never turns on their camera/mic. */
+  publish?: boolean;
 }) {
-  const { roomName, displayName, enabled } = opts;
+  const { roomName, displayName, enabled, publish = true } = opts;
   const roomRef = useRef<Room | null>(null);
   const [connState, setConnState] = useState<"idle" | "connecting" | "connected" | "error" | "disconnected">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -121,7 +125,7 @@ export function usePodcastLiveRoom(opts: {
       setError(null);
       try {
         const { data, error: fnErr } = await supabase.functions.invoke("livekit-token", {
-          body: { room: roomName, name: displayName, canPublish: true },
+          body: { room: roomName, name: displayName, canPublish: publish },
         });
         if (fnErr) throw fnErr;
         if (!data?.token || !data?.url) throw new Error("No token returned");
@@ -150,7 +154,7 @@ export function usePodcastLiveRoom(opts: {
           });
 
         await room.connect(data.url, data.token);
-        await room.localParticipant.enableCameraAndMicrophone();
+        if (publish) await room.localParticipant.enableCameraAndMicrophone();
         if (cancelled) { room.disconnect(); return; }
         setConnState("connected");
         refresh();
@@ -172,7 +176,7 @@ export function usePodcastLiveRoom(opts: {
       r?.disconnect().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, roomName, displayName]);
+  }, [enabled, roomName, displayName, publish]);
 
   const setMic = useCallback(async (on: boolean) => {
     await roomRef.current?.localParticipant.setMicrophoneEnabled(on);
