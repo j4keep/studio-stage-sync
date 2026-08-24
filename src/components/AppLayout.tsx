@@ -57,7 +57,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
-  const isCircleLive = /^\/circle\/c\/[^/]+\/live$/.test(location.pathname);
+  const isCircleLive = /^\/circle\/c\/[^/]+\/live$/.test(location.pathname) || /^\/live\/[^/]+$/.test(location.pathname);
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");

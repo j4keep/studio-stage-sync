@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { X, SwitchCamera, Sparkles, Wand2, Timer, LayoutGrid, ChevronDown } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
 import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { startCircleLive } from "@/lib/circle-live";
 import CreateModeTabs from "./CreateModeTabs";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
@@ -19,6 +23,8 @@ export default function LiveCameraView({
   onClose,
   initialStream,
 }: Props) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [facing, setFacing] = useState<"user" | "environment">("user");
@@ -30,7 +36,7 @@ export default function LiveCameraView({
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
   const [filterIntensity, setFilterIntensity] = useState(80);
-  const [liveActive, setLiveActive] = useState(false);
+  const [startingLive, setStartingLive] = useState(false);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -72,11 +78,21 @@ export default function LiveCameraView({
 
   const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
-  const handleGoLive = () => {
-    if (!ready || !streamHasLiveAudio(streamRef.current)) {
+  const handleGoLive = async () => {
+    if (!ready || !streamHasLiveAudio(streamRef.current) || !user?.id || startingLive) {
       return;
     }
-    setLiveActive((v) => !v);
+    setStartingLive(true);
+    try {
+      // Same live infrastructure as My Circle's Go Live (LiveKit room, gifts, comments,
+      // face filters) — circleId: null makes this a public, feed-facing live instead of
+      // Circle-gated: anyone can watch, not just approved Circle members.
+      const session = await startCircleLive(null, user.id);
+      navigate(`/live/${session.id}`);
+    } catch (e: any) {
+      toast({ title: "Couldn't go live", description: e.message, variant: "destructive" });
+      setStartingLive(false);
+    }
   };
 
   return (
@@ -97,7 +113,7 @@ export default function LiveCameraView({
           <X className="w-7 h-7" />
         </button>
         <span className="text-xs font-bold text-white/80 px-3 py-1 rounded-full bg-black/40">
-          {liveActive ? "● LIVE" : "Go Live"}
+          {startingLive ? "Starting…" : "Go Live"}
         </span>
         <div className="w-11" />
       </div>
@@ -140,17 +156,15 @@ export default function LiveCameraView({
       <div className="relative z-20 mt-auto flex flex-col items-center pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
         <button
           type="button"
-          onClick={handleGoLive}
-          disabled={denied || !ready}
-          className={`w-[4.75rem] h-[4.75rem] rounded-full border-[5px] flex items-center justify-center transition-all disabled:opacity-40 ${
-            liveActive ? "border-red-400 bg-red-500/30" : "border-white bg-white/10"
-          }`}
-          aria-label={liveActive ? "End live" : "Go live"}
+          onClick={() => void handleGoLive()}
+          disabled={denied || !ready || startingLive}
+          className="w-[4.75rem] h-[4.75rem] rounded-full border-[5px] border-white bg-white/10 flex items-center justify-center transition-all disabled:opacity-40"
+          aria-label="Go live"
         >
-          <div className={`rounded-full ${liveActive ? "w-7 h-7 bg-red-500" : "w-[3.5rem] h-[3.5rem] bg-red-500"}`} />
+          <div className="w-[3.5rem] h-[3.5rem] rounded-full bg-red-500" />
         </button>
         <p className="mt-3 text-xs font-bold text-white/70">
-          {liveActive ? "Tap to end live" : "Round Go Live"}
+          {startingLive ? "Starting your live…" : "Tap to go live"}
         </p>
       </div>
 
@@ -172,7 +186,7 @@ export default function LiveCameraView({
         onSelect={setSelectedEffect}
       />
 
-      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={liveActive} />
+      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
     </div>
   );
 }

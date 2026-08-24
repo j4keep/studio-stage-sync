@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, Users, Video, VideoOff, X } from "lucide-react";
+import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, UserCheck, UserPlus, Users, Video, VideoOff, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,6 +11,7 @@ import {
   CircleLiveSession,
   endCircleLive,
   getActiveLiveSession,
+  getLiveSession,
   GIFT_CATALOG,
   LIKE_GIFT,
   listCircleLiveComments,
@@ -30,13 +31,19 @@ const GIFT_EMOJI: Record<GiftType, string> = Object.fromEntries(ALL_GIFTS.map((g
  *  rooms run on (usePodcastLiveRoom), just with the host publishing and everyone else
  *  watching (publish: false), instead of every participant publishing like a podcast. */
 export default function CircleLiveRoomPage() {
-  const { id } = useParams<{ id: string }>();
+  // /circle/c/:id/live (Circle-gated) sets `id`; /live/:sessionId (public, feed-facing —
+  // anyone can watch, same room/gifts/comments/filters underneath) sets `sessionId`. One
+  // shared page and data model for both, deliberately — see circle-live.ts.
+  const { id, sessionId } = useParams<{ id?: string; sessionId?: string }>();
+  const isPublicRoute = !!sessionId;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [circle, setCircle] = useState<Circle | null | undefined>(undefined);
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [session, setSession] = useState<CircleLiveSession | null | undefined>(undefined);
   const [ending, setEnding] = useState(false);
+  const [hostProfile, setHostProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [giftSheetOpen, setGiftSheetOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [faceFilterSheetOpen, setFaceFilterSheetOpen] = useState(false);
@@ -55,16 +62,49 @@ export default function CircleLiveRoomPage() {
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (isPublicRoute) {
+      if (!sessionId) return;
+      setCircle(null);
+      void getLiveSession(sessionId).then(setSession).catch(() => setSession(null));
+      return;
+    }
     if (!id) return;
     void getCircle(id).then(setCircle).catch(() => setCircle(null));
     if (user?.id) void getMyMembership(id, user.id).then(setMembership).catch(() => setMembership(null));
     void getActiveLiveSession(id).then(setSession).catch(() => setSession(null));
-  }, [id, user?.id]);
+  }, [isPublicRoute, id, sessionId, user?.id]);
 
-  const isOwner = !!circle && user?.id === circle.owner_id;
-  const isApprovedMember = isOwner || membership?.status === "approved";
+  const isOwner = !isPublicRoute && !!circle && user?.id === circle.owner_id;
+  const isApprovedMember = isPublicRoute ? !!user?.id : isOwner || membership?.status === "approved";
   const isHost = !!session && session.host_user_id === user?.id;
   const displayName = (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "Guest";
+  const backPath = isPublicRoute ? "/feed" : `/circle/c/${id}`;
+
+  // Public route only — who's live, and can the viewer follow them.
+  useEffect(() => {
+    if (!isPublicRoute || !session) return;
+    void sb.from("profiles").select("display_name, avatar_url").eq("user_id", session.host_user_id).maybeSingle()
+      .then(({ data }: any) => setHostProfile(data ?? null));
+    if (user?.id && user.id !== session.host_user_id) {
+      void sb.from("follows").select("follower_id").eq("follower_id", user.id).eq("following_id", session.host_user_id).maybeSingle()
+        .then(({ data }: any) => setIsFollowing(!!data));
+    }
+  }, [isPublicRoute, session?.host_user_id, user?.id]);
+
+  const toggleFollow = async () => {
+    if (!user?.id || !session) return;
+    try {
+      if (isFollowing) {
+        await sb.from("follows").delete().eq("follower_id", user.id).eq("following_id", session.host_user_id);
+        setIsFollowing(false);
+      } else {
+        await sb.from("follows").insert({ follower_id: user.id, following_id: session.host_user_id });
+        setIsFollowing(true);
+      }
+    } catch (e: any) {
+      toast({ title: "Couldn't update follow", description: e.message, variant: "destructive" });
+    }
+  };
 
   const room = usePodcastLiveRoom({
     roomName: session?.room ?? "",
@@ -183,7 +223,7 @@ export default function CircleLiveRoomPage() {
 
   const handleLeave = () => {
     room.disconnect();
-    navigate(`/circle/c/${id}`, { replace: true });
+    navigate(backPath, { replace: true });
   };
 
   const handleEndLive = async () => {
@@ -192,14 +232,14 @@ export default function CircleLiveRoomPage() {
     try {
       await endCircleLive(session.id);
       room.disconnect();
-      navigate(`/circle/c/${id}`, { replace: true });
+      navigate(backPath, { replace: true });
     } catch (e: any) {
       toast({ title: "Couldn't end the live", description: e.message, variant: "destructive" });
       setEnding(false);
     }
   };
 
-  if (circle === undefined || session === undefined) {
+  if (session === undefined || (!isPublicRoute && circle === undefined)) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-black text-white/70">
         <Loader2 className="h-6 w-6 animate-spin" />
@@ -207,11 +247,22 @@ export default function CircleLiveRoomPage() {
     );
   }
 
-  if (!circle || !isApprovedMember) {
+  if (!isPublicRoute && !circle) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
+        <p className="font-bold">This Circle isn't available.</p>
+        <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+          Back to Circle
+        </button>
+      </div>
+    );
+  }
+
+  if (!isApprovedMember) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">You don't have access to this live.</p>
-        <button type="button" onClick={() => navigate(`/circle/c/${id}`)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+        <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle
         </button>
       </div>
@@ -222,7 +273,7 @@ export default function CircleLiveRoomPage() {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">This live has ended.</p>
-        <button type="button" onClick={() => navigate(`/circle/c/${id}`)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+        <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle
         </button>
       </div>
@@ -269,6 +320,23 @@ export default function CircleLiveRoomPage() {
             </button>
           )}
         </div>
+
+        {isPublicRoute && !isHost && (
+          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex items-center gap-2 rounded-full bg-black/50 py-1 pl-1 pr-2 backdrop-blur-sm">
+            <div className="h-6 w-6 shrink-0 overflow-hidden rounded-full bg-white/20">
+              {hostProfile?.avatar_url && <img src={hostProfile.avatar_url} alt="" className="h-full w-full object-cover" />}
+            </div>
+            <span className="max-w-[7rem] truncate text-[12px] font-bold">{hostProfile?.display_name || "Host"}</span>
+            <button
+              type="button"
+              onClick={toggleFollow}
+              className={`flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-black ${isFollowing ? "bg-white/15" : "bg-primary text-primary-foreground"}`}
+            >
+              {isFollowing ? <UserCheck className="h-3 w-3" /> : <UserPlus className="h-3 w-3" />}
+              {isFollowing ? "Following" : "Follow"}
+            </button>
+          </div>
+        )}
 
         {isHost && controlsOpen && (
           <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">

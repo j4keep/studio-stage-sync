@@ -4,7 +4,10 @@ const sb = supabase as any;
 
 export type CircleLiveSession = {
   id: string;
-  circle_id: string;
+  /** null = a public live tied directly to host_user_id (shows on the feed, anyone can
+   *  watch) rather than gated to a Circle's approved members. Same table, same room page
+   *  either way — deliberately one shared structure, not two. */
+  circle_id: string | null;
   host_user_id: string;
   room: string;
   status: "live" | "ended";
@@ -13,9 +16,11 @@ export type CircleLiveSession = {
 };
 
 /** The room name doubles as the LiveKit room id — must match the livekit-token edge
- *  function's `^[a-zA-Z0-9_-]+$` validation, which a raw circle uuid already satisfies. */
-export async function startCircleLive(circleId: string, hostUserId: string): Promise<CircleLiveSession> {
-  const room = `circle_${circleId}_${Date.now()}`;
+ *  function's `^[a-zA-Z0-9_-]+$` validation, which a raw circle/user uuid already
+ *  satisfies. Pass circleId: null for a public live (posted to the feed, open to anyone)
+ *  instead of a Circle-gated one. */
+export async function startCircleLive(circleId: string | null, hostUserId: string): Promise<CircleLiveSession> {
+  const room = `${circleId ? "circle" : "user"}_${circleId ?? hostUserId}_${Date.now()}`;
   const { data, error } = await sb
     .from("circle_live_sessions")
     .insert({ circle_id: circleId, host_user_id: hostUserId, room, status: "live" })
@@ -52,6 +57,22 @@ export async function getLiveSession(sessionId: string): Promise<CircleLiveSessi
   return data as CircleLiveSession | null;
 }
 
+/** The active public (circle_id null) live for a given host, if any — mirrors
+ *  getActiveLiveSession but for a person's feed-facing live instead of a Circle's. */
+export async function getActivePublicLiveSession(hostUserId: string): Promise<CircleLiveSession | null> {
+  const { data, error } = await sb
+    .from("circle_live_sessions")
+    .select("*")
+    .eq("host_user_id", hostUserId)
+    .is("circle_id", null)
+    .eq("status", "live")
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as CircleLiveSession | null;
+}
+
 export type GiftType = "like" | "heart" | "rose" | "star" | "fire" | "party" | "money" | "rocket" | "diamond" | "unicorn" | "crown";
 
 /** Display-only "value" — no real money moves yet. Card capture + actual charges are
@@ -80,13 +101,13 @@ export const LIKE_GIFT: { type: GiftType; emoji: string; label: string; value: s
 export type CircleLiveGift = {
   id: string;
   session_id: string;
-  circle_id: string;
+  circle_id: string | null;
   sender_id: string;
   gift_type: GiftType;
   created_at: string;
 };
 
-export async function sendCircleLiveGift(sessionId: string, circleId: string, senderId: string, giftType: GiftType): Promise<CircleLiveGift> {
+export async function sendCircleLiveGift(sessionId: string, circleId: string | null, senderId: string, giftType: GiftType): Promise<CircleLiveGift> {
   const { data, error } = await sb
     .from("circle_live_gifts")
     .insert({ session_id: sessionId, circle_id: circleId, sender_id: senderId, gift_type: giftType })
@@ -99,13 +120,13 @@ export async function sendCircleLiveGift(sessionId: string, circleId: string, se
 export type CircleLiveComment = {
   id: string;
   session_id: string;
-  circle_id: string;
+  circle_id: string | null;
   sender_id: string;
   text: string;
   created_at: string;
 };
 
-export async function sendCircleLiveComment(sessionId: string, circleId: string, senderId: string, text: string): Promise<CircleLiveComment> {
+export async function sendCircleLiveComment(sessionId: string, circleId: string | null, senderId: string, text: string): Promise<CircleLiveComment> {
   const { data, error } = await sb
     .from("circle_live_comments")
     .insert({ session_id: sessionId, circle_id: circleId, sender_id: senderId, text: text.trim().slice(0, 200) })
