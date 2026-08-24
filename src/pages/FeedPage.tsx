@@ -9,6 +9,7 @@ import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
 import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
+import { listActivePublicLiveSessions } from "@/lib/circle-live";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
@@ -63,6 +64,22 @@ const FeedPage = () => {
       return (data as TrendingCreator[]) || [];
     },
   });
+
+  const { data: liveNow = [], refetch: refetchLiveNow } = useQuery({
+    queryKey: ["live-now"],
+    queryFn: () => listActivePublicLiveSessions(20),
+  });
+
+  // Realtime so "Live Now" appears/disappears without a manual refresh.
+  useEffect(() => {
+    const channel = supabase
+      .channel("feed-live-now")
+      .on("postgres_changes", { event: "*", schema: "public", table: "circle_live_sessions" }, () => void refetchLiveNow())
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [refetchLiveNow]);
 
   // Posts rail: every regular post + battles (create flow no longer splits reels).
   const posts = useMemo(() => {
@@ -161,7 +178,7 @@ const FeedPage = () => {
     setSearchParams(next, { replace: true });
   }, [openPostId, isLoading, posts, searchParams, setSearchParams]);
 
-  const trendingRow = trending.length > 0 && (
+  const trendingRow = (trending.length > 0 || liveNow.length > 0) && (
     <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
       <button
         onClick={() => navigate("/profile")}
@@ -171,6 +188,26 @@ const FeedPage = () => {
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-light text-foreground ring-2 ring-primary">+</div>
         <span className="text-[10px] font-medium leading-none text-foreground/80">Pitch</span>
       </button>
+      {liveNow.map((s) => (
+        <button
+          key={s.id}
+          onClick={() => navigate(`/live/${s.id}`)}
+          className="flex w-[3rem] shrink-0 flex-col items-center gap-1"
+        >
+          <div className="h-10 w-10 overflow-hidden rounded-full bg-muted ring-2 ring-red-500">
+            {s.host_avatar_url ? (
+              <img src={s.host_avatar_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-xs font-bold text-foreground">
+                {(s.host_display_name || "?")[0]?.toUpperCase()}
+              </div>
+            )}
+          </div>
+          <span className="w-full truncate rounded-full bg-red-600 px-1 text-center text-[8.5px] font-black uppercase leading-tight text-white">
+            Live
+          </span>
+        </button>
+      ))}
       {trending.map((c) => (
         <button
           key={c.user_id}
@@ -278,7 +315,7 @@ const FeedPage = () => {
         </div>
       </div>
 
-      {trending.length > 0 && (
+      {(trending.length > 0 || liveNow.length > 0) && (
         <div className="pointer-events-none absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+3.25rem)] z-30 px-3 lg:hidden">
           <div className="pointer-events-auto">{trendingRow}</div>
         </div>
@@ -304,7 +341,7 @@ const FeedPage = () => {
           </div>
 
           <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-hidden p-3 lg:flex">
-            {trending.length > 0 && <div className="mb-3 shrink-0">{trendingRow}</div>}
+            {(trending.length > 0 || liveNow.length > 0) && <div className="mb-3 shrink-0">{trendingRow}</div>}
             <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border/60 bg-background/40">
               <div className="h-full w-[32%] min-w-[180px] max-w-[280px] space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-2 pb-4 scrollbar-hide">
                 {happeningColumn(false)}

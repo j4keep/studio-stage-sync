@@ -73,6 +73,38 @@ export async function getActivePublicLiveSession(hostUserId: string): Promise<Ci
   return data as CircleLiveSession | null;
 }
 
+export type PublicLiveWithHost = CircleLiveSession & {
+  host_display_name: string | null;
+  host_avatar_url: string | null;
+};
+
+/** Everyone currently live on the feed (circle_id null) — powers the Home "Live Now"
+ *  row. Two-step fetch (session rows, then a batch profile lookup) rather than a
+ *  relational select — host_user_id isn't declared as an FK to profiles. */
+export async function listActivePublicLiveSessions(limit = 20): Promise<PublicLiveWithHost[]> {
+  const { data: sessions, error } = await sb
+    .from("circle_live_sessions")
+    .select("*")
+    .is("circle_id", null)
+    .eq("status", "live")
+    .order("started_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  const rows = (sessions as CircleLiveSession[]) || [];
+  if (!rows.length) return [];
+
+  const ids = Array.from(new Set(rows.map((r) => r.host_user_id)));
+  const { data: profiles } = await sb.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids);
+  const byId = new Map<string, { display_name: string | null; avatar_url: string | null }>(
+    (profiles || []).map((p: any) => [p.user_id, p]),
+  );
+  return rows.map((r) => ({
+    ...r,
+    host_display_name: byId.get(r.host_user_id)?.display_name ?? null,
+    host_avatar_url: byId.get(r.host_user_id)?.avatar_url ?? null,
+  }));
+}
+
 export type GiftType = "like" | "heart" | "rose" | "star" | "fire" | "party" | "money" | "rocket" | "diamond" | "unicorn" | "crown";
 
 /** Display-only "value" — no real money moves yet. Card capture + actual charges are
