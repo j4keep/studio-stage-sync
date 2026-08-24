@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, SwitchCamera, X } from "lucide-react";
-import { warmCameraStream, releaseCameraStream, streamHasLiveAudio, streamHasLiveVideo } from "@/lib/create-camera";
+import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
 import type { CreateMode } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
@@ -30,92 +30,55 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
-  const ownsStreamRef = useRef(false);
-  const mountedRef = useRef(true);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
-    if (!streamHasLiveVideo(stream)) throw new Error("camera stream is not live");
     streamRef.current = stream;
     const video = videoRef.current;
     if (video) {
       video.srcObject = stream;
       await video.play();
     }
-    if (!mountedRef.current) return;
     setReady(true);
     setDenied(false);
   }, []);
 
   const startCamera = useCallback(async () => {
-    // Only release a stream this view acquired itself. A pre-warmed stream can be
-    // shared by the create sheet, and killing it here makes iOS think camera access
-    // failed when the user simply switches POST -> LIVE.
-    if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+    releaseCameraStream(streamRef.current);
     streamRef.current = null;
-    if (mountedRef.current) {
-      setDenied(false);
-      setReady(false);
-    }
-
     try {
       let stream: MediaStream | null = null;
+      // Switching straight from Post mode's camera to here can race the previous
+      // stream's hardware release, especially on iOS — a single retry wasn't enough in
+      // practice, so this keeps trying for a couple seconds before actually giving up.
       for (let attempt = 0; attempt < CAMERA_RETRY_ATTEMPTS && !stream; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, CAMERA_RETRY_DELAY_MS));
-        stream = await warmCameraStream(facing, { withAudio: true });
-        if (stream && !streamHasLiveVideo(stream)) {
-          releaseCameraStream(stream);
-          stream = null;
-        }
+        stream = await warmCameraStream(facing);
       }
-      if (!stream) throw new Error("camera unavailable");
-      ownsStreamRef.current = true;
+      if (!stream) throw new Error("denied");
       await attachStream(stream);
     } catch {
-      if (mountedRef.current) {
-        setDenied(true);
-        setReady(false);
-      }
+      setDenied(true);
+      setReady(false);
     }
   }, [facing, attachStream]);
 
+  // A single effect for both "just mounted" and "facing flipped" — this used to be two
+  // separate effects (one mount-only, one keyed on [facing, initialStream]), and BOTH
+  // fire on the initial mount (React runs every effect on mount regardless of its deps;
+  // deps only control whether it re-fires later). That meant two concurrent
+  // getUserMedia-chains racing each other on every single open of this screen — not a
+  // rare timing fluke, a guaranteed collision, and the actual reason the camera kept
+  // coming back "denied" even with retries. CreateCameraView avoids the exact same trap
+  // with a facingReady guard ref; merging into one effect here sidesteps it entirely.
   useEffect(() => {
-    mountedRef.current = true;
-    let cancelled = false;
-
-    (async () => {
-      // Reuse the already-open POST camera only when it is genuinely still live.
-      // Otherwise acquire LIVE's own stream immediately.
-      if (initialStream && streamHasLiveVideo(initialStream) && !cancelled) {
-        try {
-          ownsStreamRef.current = false;
-          await attachStream(initialStream);
-          return;
-        } catch {
-          // Fall through to a fresh camera request.
-        }
-      }
-      if (!cancelled) await startCamera();
-    })();
-
-    return () => {
-      cancelled = true;
-      mountedRef.current = false;
-      if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
-      if (videoRef.current) videoRef.current.srcObject = null;
-      streamRef.current = null;
-    };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Skip the initial render: the mount effect above already starts/attaches the camera.
-  // This prevents two simultaneous getUserMedia calls on iPhone Safari.
-  const facingReadyRef = useRef(false);
-  useEffect(() => {
-    if (!facingReadyRef.current) {
-      facingReadyRef.current = true;
-      return;
+    if (initialStream) {
+      void attachStream(initialStream);
+    } else {
+      void startCamera();
     }
-    void startCamera();
-  }, [facing, startCamera]);
+    return () => releaseCameraStream(streamRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [facing, initialStream]);
 
   const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 

@@ -64,30 +64,6 @@ const [showSoundPicker, setShowSoundPicker] = useState(false);
 const [uploading, setUploading] = useState(false);
 const [cameraSessionKey, setCameraSessionKey] = useState(0);
 
-// Switching back from LIVE must start a fresh Post camera session.
-// The LIVE view owns/releases its stream on unmount; reusing the original
-// pre-warmed stream here can leave iOS Safari with a live-looking but blank stream.
-const handleCreateModeChange = useCallback((mode: CreateMode) => {
-  if (mode === "post" && createMode !== "post") {
-    setCameraSessionKey((k) => k + 1);
-  }
-  setCreateMode(mode);
-}, [createMode]);
-
-// Dedicated LIVE -> POST transition. Keeping this separate from the generic
-// tab handler avoids iOS Safari leaving the Live camera view mounted while
-// its stream cleanup runs. We stop the live camera first, then mount a brand
-// new Post camera session on the next frame.
-const handleOpenPostFromLive = useCallback(() => {
-  window.dispatchEvent(new CustomEvent("yaj-stop-create-camera"));
-  setStep("camera");
-  setCameraSessionKey((k) => k + 1);
-
-  window.requestAnimationFrame(() => {
-    setCreateMode("post");
-  });
-}, []);
-
 const photoInputRef = useRef<HTMLInputElement>(null);
 const videoInputRef = useRef<HTMLInputElement>(null);
 const previewBlobRef = useRef<string | null>(null);
@@ -585,7 +561,7 @@ style={{ height: "100dvh", maxHeight: "100dvh" }}
 <CreateCameraView
 key={cameraSessionKey}
 createMode={createMode}
-onModeChange={handleCreateModeChange}
+onModeChange={setCreateMode}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
@@ -608,10 +584,8 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 {step === "camera" && createMode === "live" && (
 <LiveCameraView
 createMode={createMode}
-onModeChange={handleCreateModeChange}
-onOpenPost={handleOpenPostFromLive}
+onModeChange={setCreateMode}
 onClose={reset}
-onOpenGallery={openGallery}
 initialStream={cameraStream}
 />
 )}
