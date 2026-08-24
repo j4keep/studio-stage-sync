@@ -301,7 +301,13 @@ export default function CircleLiveRoomPage() {
           of the video area just clipping its own overflow. */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {isHost ? (
-          host && <ParticipantVideo participant={host} mirrored />
+          host && (
+            <ParticipantVideo
+              participant={host}
+              mirrored
+              cssFilter={!faceFilters.active ? colorFilter : undefined}
+            />
+          )
         ) : host?.videoTrack && host.camOn ? (
           <ParticipantVideo participant={host} />
         ) : (
@@ -585,7 +591,18 @@ function FloatingGift({ emoji }: { emoji: string }) {
   );
 }
 
-function ParticipantVideo({ participant, mirrored }: { participant: RoomParticipant; mirrored?: boolean }) {
+function ParticipantVideo({
+  participant,
+  mirrored,
+  cssFilter,
+}: {
+  participant: RoomParticipant;
+  mirrored?: boolean;
+  /** Instant local preview only — the canvas pipeline (once it catches up) bakes the
+   *  same look into the actual published pixels; this just closes the gap so the host
+   *  isn't staring at an unfiltered picture for the second or two that takes. */
+  cssFilter?: string;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   // A remote participant's video+audio go on the SAME <video> element (one MediaStream
   // with both tracks) — splitting audio into a separate <audio autoPlay> element, as
@@ -613,6 +630,7 @@ function ParticipantVideo({ participant, mirrored }: { participant: RoomParticip
         playsInline
         muted={participant.isLocal}
         className={`h-full w-full object-cover ${mirrored ? "-scale-x-100" : ""}`}
+        style={cssFilter && cssFilter !== "none" ? { filter: cssFilter } : undefined}
       />
       {needsTap && !participant.isLocal && (
         <button
