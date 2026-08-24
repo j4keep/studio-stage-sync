@@ -64,6 +64,16 @@ const [showSoundPicker, setShowSoundPicker] = useState(false);
 const [uploading, setUploading] = useState(false);
 const [cameraSessionKey, setCameraSessionKey] = useState(0);
 
+// Switching back from LIVE must start a fresh Post camera session.
+// The LIVE view owns/releases its stream on unmount; reusing the original
+// pre-warmed stream here can leave iOS Safari with a live-looking but blank stream.
+const handleCreateModeChange = useCallback((mode: CreateMode) => {
+  if (mode === "post" && createMode !== "post") {
+    setCameraSessionKey((k) => k + 1);
+  }
+  setCreateMode(mode);
+}, [createMode]);
+
 const photoInputRef = useRef<HTMLInputElement>(null);
 const videoInputRef = useRef<HTMLInputElement>(null);
 const previewBlobRef = useRef<string | null>(null);
@@ -561,7 +571,7 @@ style={{ height: "100dvh", maxHeight: "100dvh" }}
 <CreateCameraView
 key={cameraSessionKey}
 createMode={createMode}
-onModeChange={setCreateMode}
+onModeChange={handleCreateModeChange}
 onClose={reset}
 onCapture={handleMediaFile}
 onOpenGallery={openGallery}
@@ -584,7 +594,7 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 {step === "camera" && createMode === "live" && (
 <LiveCameraView
 createMode={createMode}
-onModeChange={setCreateMode}
+onModeChange={handleCreateModeChange}
 onClose={reset}
 onOpenGallery={openGallery}
 initialStream={cameraStream}
