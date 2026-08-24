@@ -22,6 +22,7 @@ import { startCircleLive } from "@/lib/circle-live";
 interface Props {
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
+  onOpenPost?: () => void;
   onClose: () => void;
   onOpenGallery?: () => void;
   initialStream?: MediaStream | null;
@@ -46,6 +47,7 @@ const LIVE_STYLES: { id: LiveStyle; label: string; icon: typeof Radio }[] = [
 export default function LiveCameraView({
   createMode,
   onModeChange,
+  onOpenPost,
   onClose,
   onOpenGallery,
   initialStream,
@@ -54,13 +56,22 @@ export default function LiveCameraView({
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const ownsStreamRef = useRef(!initialStream);
+  const facingReadyRef = useRef(false);
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
   const [liveStyle, setLiveStyle] = useState<LiveStyle>("live");
 
+  const streamIsUsable = useCallback((stream: MediaStream | null | undefined) => {
+    if (!stream) return false;
+    const track = stream.getVideoTracks()[0];
+    return !!track && track.readyState === "live" && track.enabled;
+  }, []);
+
   const attachStream = useCallback(async (stream: MediaStream) => {
+    if (!streamIsUsable(stream)) throw new Error("stale-camera-stream");
     streamRef.current = stream;
     const video = videoRef.current;
     if (video) {
@@ -68,42 +79,85 @@ export default function LiveCameraView({
       video.setAttribute("webkit-playsinline", "true");
       video.srcObject = stream;
       await video.play();
+
+      // A stream can still report `live` on iOS while producing no frame after a view switch.
+      // Wait briefly for real video dimensions; if they never arrive we reacquire the camera.
+      if (!video.videoWidth || !video.videoHeight) {
+        await Promise.race([
+          new Promise<void>((resolve) => video.addEventListener("loadedmetadata", () => resolve(), { once: true })),
+          new Promise<void>((resolve) => setTimeout(resolve, 700)),
+        ]);
+      }
+      if (!video.videoWidth || !video.videoHeight) throw new Error("camera-no-frame");
     }
     setReady(true);
     setDenied(false);
-  }, []);
+  }, [streamIsUsable]);
 
   const startCamera = useCallback(async () => {
-    releaseCameraStream(streamRef.current);
+    if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
     streamRef.current = null;
+    setReady(false);
+    setDenied(false);
     try {
       let stream: MediaStream | null = null;
       // iOS can briefly hold the camera when switching from the Post recorder.
       for (let attempt = 0; attempt < CAMERA_RETRY_ATTEMPTS && !stream; attempt++) {
         if (attempt > 0) await new Promise((r) => setTimeout(r, CAMERA_RETRY_DELAY_MS));
         stream = await warmCameraStream(facing);
+        if (stream && !streamIsUsable(stream)) {
+          releaseCameraStream(stream);
+          stream = null;
+        }
       }
       if (!stream) throw new Error("denied");
+      ownsStreamRef.current = true;
       await attachStream(stream);
     } catch {
+      // If attach failed because Safari handed us a stale/no-frame stream, make one clean retry.
+      if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+      streamRef.current = null;
       setDenied(true);
       setReady(false);
     }
-  }, [facing, attachStream]);
+  }, [facing, attachStream, streamIsUsable]);
 
   useEffect(() => {
-    if (initialStream) {
-      void attachStream(initialStream);
-      return () => releaseCameraStream(streamRef.current);
-    }
-    void startCamera();
-    return () => releaseCameraStream(streamRef.current);
+    let cancelled = false;
+    (async () => {
+      if (initialStream && streamIsUsable(initialStream)) {
+        try {
+          ownsStreamRef.current = false;
+          await attachStream(initialStream);
+          if (!cancelled) return;
+        } catch {
+          // Fall through to a fresh camera request below.
+        }
+      }
+      if (!cancelled) {
+        ownsStreamRef.current = true;
+        await startCamera();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+      const video = videoRef.current;
+      if (video) video.srcObject = null;
+      streamRef.current = null;
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Do not run a second camera start on initial mount. That race was causing the black LIVE preview on iPhone.
   useEffect(() => {
-    if (initialStream) return;
+    if (!facingReadyRef.current) {
+      facingReadyRef.current = true;
+      return;
+    }
+    ownsStreamRef.current = true;
     void startCamera();
-  }, [facing, initialStream, startCamera]);
+  }, [facing, startCamera]);
 
   const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
@@ -245,7 +299,10 @@ export default function LiveCameraView({
         <div className="mx-auto flex w-full max-w-[28rem] items-center gap-3">
           <button
             type="button"
-            onClick={() => onModeChange("post")}
+            onClick={() => {
+              if (onOpenPost) onOpenPost();
+              else onModeChange("post");
+            }}
             disabled={startingLive}
             className="h-14 flex-1 rounded-full border border-white/35 bg-black/30 backdrop-blur-xl text-sm font-black tracking-wide text-white shadow-lg active:scale-[0.98] transition-transform disabled:opacity-40"
           >
