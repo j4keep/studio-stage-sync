@@ -364,14 +364,24 @@ export default function CircleLiveRoomPage() {
         )}
 
         {isHost && (
-          <FaceFilterPanel
-            open={faceFilterSheetOpen}
-            onClose={() => setFaceFilterSheetOpen(false)}
-            selectedId={faceFilter}
-            onSelect={setFaceFilter}
-            loading={faceFilters.loading}
-            error={faceFilters.error}
-          />
+          <>
+            <FaceFilterPanel
+              open={faceFilterSheetOpen}
+              onClose={() => setFaceFilterSheetOpen(false)}
+              selectedId={faceFilter}
+              onSelect={setFaceFilter}
+              loading={faceFilters.loading}
+              error={faceFilters.error}
+            />
+            {/* Never shown directly — useFaceFilters draws into this canvas, then
+                captureStream() turns it into the track that gets published. Uses
+                `invisible` (visibility:hidden), not `hidden` (display:none) — the same
+                fix already learned for the Podcast background-replacement canvas:
+                display:none skips layout entirely and the canvas never gets a real
+                backing store, so the hook waits ~2s and gives up with "Canvas not
+                ready", which is exactly what was happening here before. */}
+            <canvas ref={faceFilters.canvasRef} className="invisible absolute inset-0 h-px w-px" />
+          </>
         )}
       </div>
 

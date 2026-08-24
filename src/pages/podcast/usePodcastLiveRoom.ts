@@ -164,7 +164,15 @@ export function usePodcastLiveRoom(opts: {
           });
 
         await room.connect(data.url, data.token);
-        if (publish) await room.localParticipant.enableCameraAndMicrophone();
+        if (publish) {
+          await room.localParticipant.enableCameraAndMicrophone();
+          // Belt-and-suspenders: mic/cam must default to ON the moment you go live —
+          // explicit here rather than trusting enableCameraAndMicrophone alone left it.
+          await Promise.all([
+            room.localParticipant.setMicrophoneEnabled(true),
+            room.localParticipant.setCameraEnabled(true),
+          ]);
+        }
         if (cancelled) { room.disconnect(); return; }
         setConnState("connected");
         refresh();
