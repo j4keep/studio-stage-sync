@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, SwitchCamera, X } from "lucide-react";
+import { Loader2, Radio, Smile, Sparkles, SwitchCamera, UserRound, Users, Wand2, X } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
 import type { CreateMode } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -18,9 +18,27 @@ interface Props {
 const CAMERA_RETRY_ATTEMPTS = 6;
 const CAMERA_RETRY_DELAY_MS = 400;
 
-/** Pre-live camera check — flip camera, then go live. Enhance/Effects/Face filters live
- *  on the actual live room now (CircleLiveRoomPage), not here — they used to sit on this
- *  screen without doing anything, since nothing here ever fed into a real broadcast. */
+type ViewMode = "live" | "multi" | "virtual";
+
+const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio }[] = [
+  { id: "live", label: "Live", icon: Radio },
+  { id: "multi", label: "Multi", icon: Users },
+  { id: "virtual", label: "Virtual", icon: UserRound },
+];
+
+/** Get-ready icons — not wired to anything yet on purpose (per the user: place them now,
+ *  wire them up in a follow-up pass). Tapping just toggles which one looks selected. */
+const PREP_TOOLS: { id: "enhance" | "effects" | "face"; label: string; icon: typeof Sparkles }[] = [
+  { id: "enhance", label: "Enhance", icon: Sparkles },
+  { id: "effects", label: "Effects", icon: Wand2 },
+  { id: "face", label: "Face", icon: Smile },
+];
+
+/** Pre-live camera check — flip camera, get ready (Enhance/Effects/Face, view mode), then
+ *  go live. The real broadcast room (CircleLiveRoomPage) already has working
+ *  Enhance/Effects/Face controls; these mirror them here as a "set up before you're live"
+ *  step. Deliberately UI-only for now — selection state, no actual video effect yet —
+ *  per the user's explicit ask to place the icons first and wire them up in a follow-up. */
 export default function LiveCameraView({ createMode, onModeChange, onClose, initialStream }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -30,6 +48,8 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("live");
+  const [selectedTool, setSelectedTool] = useState<"enhance" | "effects" | "face" | null>(null);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -144,7 +164,52 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         </button>
       </div>
 
-      <div className="relative z-20 mt-auto flex flex-col items-center pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
+      <div className="relative z-20 mt-auto flex flex-col items-center gap-4 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
+        {/* Live / Multi / Virtual — which kind of live this is. Selection only for now. */}
+        <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/40 p-1 backdrop-blur-md">
+          {VIEW_MODES.map((mode) => {
+            const Icon = mode.icon;
+            const selected = viewMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setViewMode(mode.id)}
+                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-colors ${
+                  selected ? "bg-white text-black" : "text-white/70"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {mode.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Get-ready tools — Enhance/Effects/Face, same idea as the live room's own
+            controls, so you can set your look up before you're actually on. */}
+        <div className="flex items-center gap-3">
+          {PREP_TOOLS.map((tool) => {
+            const Icon = tool.icon;
+            const selected = selectedTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => setSelectedTool((v) => (v === tool.id ? null : tool.id))}
+                className="flex flex-col items-center gap-1"
+              >
+                <span className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md ${
+                  selected ? "border-white bg-white text-black" : "border-white/15 bg-black/40 text-white"
+                }`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="text-[10px] font-semibold text-white/80">{tool.label}</span>
+              </button>
+            );
+          })}
+        </div>
+
         <button
           type="button"
           onClick={() => void handleGoLive()}
