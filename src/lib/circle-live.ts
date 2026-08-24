@@ -52,17 +52,30 @@ export async function getLiveSession(sessionId: string): Promise<CircleLiveSessi
   return data as CircleLiveSession | null;
 }
 
-export type GiftType = "heart" | "rose" | "fire" | "diamond" | "crown";
+export type GiftType = "like" | "heart" | "rose" | "star" | "fire" | "party" | "money" | "rocket" | "diamond" | "unicorn" | "crown";
 
 /** Display-only "value" — no real money moves yet. Card capture + actual charges are
- *  explicit future work; this is purely the sending/animation layer for now. */
+ *  explicit future work; this is purely the sending/animation layer for now. `like` is
+ *  the free, unlimited quick-tap reaction; everything else is the gift-sheet catalog. */
 export const GIFT_CATALOG: { type: GiftType; emoji: string; label: string; value: string }[] = [
   { type: "heart", emoji: "❤️", label: "Heart", value: "$1" },
+  { type: "star", emoji: "⭐", label: "Star", value: "$2" },
   { type: "rose", emoji: "🌹", label: "Rose", value: "$5" },
+  { type: "party", emoji: "🎉", label: "Party", value: "$8" },
   { type: "fire", emoji: "🔥", label: "Fire", value: "$10" },
+  { type: "rocket", emoji: "🚀", label: "Rocket", value: "$15" },
   { type: "diamond", emoji: "💎", label: "Diamond", value: "$25" },
-  { type: "crown", emoji: "👑", label: "Crown", value: "$50" },
+  { type: "unicorn", emoji: "🦄", label: "Unicorn", value: "$40" },
+  { type: "money", emoji: "💰", label: "Money Bag", value: "$75" },
+  { type: "crown", emoji: "👑", label: "Crown", value: "$100" },
 ];
+
+export const LIKE_GIFT: { type: GiftType; emoji: string; label: string; value: string } = {
+  type: "like",
+  emoji: "❤️",
+  label: "Like",
+  value: "Free",
+};
 
 export type CircleLiveGift = {
   id: string;
@@ -81,4 +94,34 @@ export async function sendCircleLiveGift(sessionId: string, circleId: string, se
     .single();
   if (error) throw error;
   return data as CircleLiveGift;
+}
+
+export type CircleLiveComment = {
+  id: string;
+  session_id: string;
+  circle_id: string;
+  sender_id: string;
+  text: string;
+  created_at: string;
+};
+
+export async function sendCircleLiveComment(sessionId: string, circleId: string, senderId: string, text: string): Promise<CircleLiveComment> {
+  const { data, error } = await sb
+    .from("circle_live_comments")
+    .insert({ session_id: sessionId, circle_id: circleId, sender_id: senderId, text: text.trim().slice(0, 200) })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as CircleLiveComment;
+}
+
+export async function listCircleLiveComments(sessionId: string, limit = 50): Promise<CircleLiveComment[]> {
+  const { data, error } = await sb
+    .from("circle_live_comments")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return ((data as CircleLiveComment[]) || []).reverse();
 }

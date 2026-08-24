@@ -90,6 +90,16 @@ export function usePodcastLiveRoom(opts: {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [hostIdentity, setHostIdentity] = useState<string>(opts.hostIdentity ?? "");
 
+  // opts.hostIdentity often isn't known yet on first render (e.g. a Circle live's
+  // session row is still loading), and useState's initializer only runs once on mount —
+  // it silently ignores the prop on every later render. Without this, a viewer whose
+  // hostIdentity was "" at mount time falls through to the `!hostIdentity` branch below
+  // and permanently (mis)labels *themselves* as host once their own token comes back,
+  // and the real host's video never renders (RoomParticipant.isHost never matches them).
+  useEffect(() => {
+    if (opts.hostIdentity && opts.hostIdentity !== hostIdentity) setHostIdentity(opts.hostIdentity);
+  }, [opts.hostIdentity]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const refresh = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
@@ -131,7 +141,11 @@ export function usePodcastLiveRoom(opts: {
         if (!data?.token || !data?.url) throw new Error("No token returned");
         if (cancelled) return;
 
-        if (!hostIdentity) setHostIdentity(data.identity);
+        // Use the prop (opts.hostIdentity), not the `hostIdentity` state var, here — this
+        // async callback's closure can still be holding a stale "" state snapshot from
+        // before the sync effect above ran, which would otherwise let this clobber a
+        // correctly-provided hostIdentity with this client's own identity.
+        if (!opts.hostIdentity) setHostIdentity(data.identity);
 
         const room = new Room({ adaptiveStream: true, dynacast: true });
         roomRef.current = room;
