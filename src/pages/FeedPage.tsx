@@ -11,6 +11,7 @@ import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFee
 import { stopAllPageMedia } from "@/lib/stop-page-media";
 import { listActivePublicLiveSessions } from "@/lib/circle-live";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import LiveNowCard from "@/components/feed/LiveNowCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
@@ -262,6 +263,9 @@ const FeedPage = () => {
   const postsColumn = () => (
     <>
       <LiveGamesRail />
+      {liveNow.map((s) => (
+        <LiveNowCard key={s.id} session={s} onOpen={() => navigate(`/live/${s.id}`)} />
+      ))}
       {posts.length === 0 ? (
         <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
           <p className="text-xs text-muted-foreground">No posts yet</p>
