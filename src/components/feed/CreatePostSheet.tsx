@@ -586,6 +586,7 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 createMode={createMode}
 onModeChange={setCreateMode}
 onClose={reset}
+onOpenGallery={openGallery}
 initialStream={cameraStream}
 />
 )}
