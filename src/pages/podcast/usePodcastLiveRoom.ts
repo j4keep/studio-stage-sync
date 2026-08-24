@@ -214,13 +214,12 @@ export function usePodcastLiveRoom(opts: {
    *  between their raw camera and a face-filter canvas mid-broadcast. */
   const replaceVideoTrack = useCallback(async (track: MediaStreamTrack) => {
     const room = roomRef.current;
-    if (!room) return;
+    if (!room) throw new Error("Not connected to the live room yet");
     const pub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
     const localTrack = pub?.track as LocalVideoTrack | undefined;
-    if (localTrack) {
-      await localTrack.replaceTrack(track);
-      refresh();
-    }
+    if (!localTrack) throw new Error("No camera track published yet");
+    await localTrack.replaceTrack(track);
+    refresh();
   }, [refresh]);
 
   const local = useMemo(() => participants.find((p) => p.isLocal), [participants]);

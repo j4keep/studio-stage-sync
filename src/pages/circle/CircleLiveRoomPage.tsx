@@ -138,11 +138,14 @@ export default function CircleLiveRoomPage() {
 
   useEffect(() => {
     if (!isHost) return;
-    if (!hasAnyVideoEffect) {
-      if (rawHostTrackRef.current) void room.replaceVideoTrack(rawHostTrackRef.current);
-    } else if (faceFilters.outputTrack) {
-      void room.replaceVideoTrack(faceFilters.outputTrack);
-    }
+    const target = !hasAnyVideoEffect ? rawHostTrackRef.current : faceFilters.outputTrack;
+    if (!target) return;
+    // Was previously fire-and-forget (`void room.replaceVideoTrack(...)`, no .catch) — a
+    // real failure here (e.g. no camera publication yet) would throw and silently vanish
+    // as an unhandled rejection, which looks identical to "nothing happened" from the UI.
+    room.replaceVideoTrack(target).catch((e: any) => {
+      toast({ title: "Couldn't update your live video", description: e?.message, variant: "destructive" });
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, hasAnyVideoEffect, faceFilters.outputTrack]);
 
@@ -293,6 +296,13 @@ export default function CircleLiveRoomPage() {
 
   const host = room.participants.find((p) => p.isHost);
   const viewerCount = Math.max(room.participants.length - 1, 0);
+  // Gate the instant CSS fallback on the *published* track actually being the filtered
+  // canvas output (reference equality with what useFaceFilters captured) — not on
+  // faceFilters.active (the canvas is drawing locally), which can flip true well before
+  // replaceVideoTrack's real network-level swap has landed. Gating on .active alone left
+  // a window where the CSS fallback was already suppressed but the live-visible video
+  // hadn't actually swapped yet, so neither was showing anything.
+  const canvasIsLive = !!faceFilters.outputTrack && host?.videoTrack === faceFilters.outputTrack;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black text-white">
@@ -305,7 +315,7 @@ export default function CircleLiveRoomPage() {
             <ParticipantVideo
               participant={host}
               mirrored
-              cssFilter={!faceFilters.active ? colorFilter : undefined}
+              cssFilter={!canvasIsLive ? colorFilter : undefined}
             />
           )
         ) : host?.videoTrack && host.camOn ? (
