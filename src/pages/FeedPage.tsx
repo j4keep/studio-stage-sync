@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { MessageCircle, Search } from "lucide-react";
+import { MessageCircle, Search, Users } from "lucide-react";
 import { fetchFeedItems } from "@/lib/feed-items";
 import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
 import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
@@ -18,7 +18,6 @@ import LiveGamesRail from "@/components/games/live/LiveGamesRail";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
-import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
 import yajLogo from "@/assets/yaj-logo.png";
 
@@ -268,8 +267,8 @@ const FeedPage = () => {
           <button onClick={() => navigate("/browse-songs")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Search">
             <Search className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
           </button>
-          <button onClick={() => navigate("/ask-yaj")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Ask YAJ">
-            <YajAiGeneratorIcon className="h-[1.15rem] w-[1.15rem]" />
+          <button onClick={() => navigate("/circle")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="My Circle">
+            <Users className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
           </button>
           <IncognitoHeaderButton className="!h-8 !w-8 border border-border bg-card/80" />
           <button onClick={() => navigate("/messages")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Messages">
