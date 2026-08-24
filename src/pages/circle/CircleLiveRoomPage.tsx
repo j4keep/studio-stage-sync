@@ -1,11 +1,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Mic, MicOff, Users, Video, VideoOff, X } from "lucide-react";
+import { Gift, Loader2, Mic, MicOff, Users, Video, VideoOff, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { Circle, CircleMember, getCircle, getMyMembership } from "@/lib/circles";
-import { CircleLiveSession, endCircleLive, getActiveLiveSession } from "@/lib/circle-live";
+import {
+  CircleLiveGift,
+  CircleLiveSession,
+  endCircleLive,
+  getActiveLiveSession,
+  GIFT_CATALOG,
+  sendCircleLiveGift,
+  type GiftType,
+} from "@/lib/circle-live";
 import { usePodcastLiveRoom, type RoomParticipant } from "@/pages/podcast/usePodcastLiveRoom";
+
+const sb = supabase as any;
+const GIFT_EMOJI: Record<GiftType, string> = Object.fromEntries(GIFT_CATALOG.map((g) => [g.type, g.emoji])) as Record<GiftType, string>;
 
 /** A Circle's live broadcast room — reuses the same LiveKit connection hook the Podcast
  *  rooms run on (usePodcastLiveRoom), just with the host publishing and everyone else
@@ -18,6 +30,11 @@ export default function CircleLiveRoomPage() {
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [session, setSession] = useState<CircleLiveSession | null | undefined>(undefined);
   const [ending, setEnding] = useState(false);
+  const [giftSheetOpen, setGiftSheetOpen] = useState(false);
+  const [sendingGift, setSendingGift] = useState<GiftType | null>(null);
+  const [floatingGifts, setFloatingGifts] = useState<{ id: string; emoji: string }[]>([]);
+  const [giftTicker, setGiftTicker] = useState<{ id: string; text: string }[]>([]);
+  const nameCache = useRef<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (!id) return;
@@ -38,6 +55,58 @@ export default function CircleLiveRoomPage() {
     enabled: !!session && isApprovedMember,
     publish: isHost,
   });
+
+  // Realtime gift feed — every viewer (and the host) subscribes to the same session's
+  // gifts, so a send shows up as a floating animation + ticker line for everyone at once,
+  // including the sender (no separate optimistic-animation path to keep in sync).
+  useEffect(() => {
+    if (!session) return;
+    const channel = supabase
+      .channel(`circle-live-gifts-${session.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "circle_live_gifts", filter: `session_id=eq.${session.id}` },
+        (payload: { new: CircleLiveGift }) => void handleIncomingGift(payload.new),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [session?.id]);
+
+  const resolveName = async (userId: string): Promise<string> => {
+    const cached = nameCache.current.get(userId);
+    if (cached) return cached;
+    const { data } = await sb.from("profiles").select("display_name").eq("user_id", userId).maybeSingle();
+    const name = data?.display_name || "Someone";
+    nameCache.current.set(userId, name);
+    return name;
+  };
+
+  const handleIncomingGift = async (gift: CircleLiveGift) => {
+    const floatId = `${gift.id}-${Math.random()}`;
+    setFloatingGifts((prev) => [...prev, { id: floatId, emoji: GIFT_EMOJI[gift.gift_type] }]);
+    window.setTimeout(() => setFloatingGifts((prev) => prev.filter((g) => g.id !== floatId)), 4600);
+
+    const catalogEntry = GIFT_CATALOG.find((g) => g.type === gift.gift_type);
+    const senderName = gift.sender_id === user?.id ? "You" : await resolveName(gift.sender_id);
+    const tickerId = `${gift.id}-t`;
+    setGiftTicker((prev) => [...prev.slice(-2), { id: tickerId, text: `${senderName} sent ${catalogEntry?.emoji ?? "🎁"} ${catalogEntry?.label ?? "a gift"}!` }]);
+    window.setTimeout(() => setGiftTicker((prev) => prev.filter((g) => g.id !== tickerId)), 4000);
+  };
+
+  const handleSendGift = async (giftType: GiftType) => {
+    if (!session || !user?.id) return;
+    setSendingGift(giftType);
+    try {
+      await sendCircleLiveGift(session.id, session.circle_id, user.id, giftType);
+      setGiftSheetOpen(false);
+    } catch (e: any) {
+      toast({ title: "Couldn't send that gift", description: e.message, variant: "destructive" });
+    } finally {
+      setSendingGift(null);
+    }
+  };
 
   const handleLeave = () => {
     room.disconnect();
@@ -123,7 +192,54 @@ export default function CircleLiveRoomPage() {
         >
           <X className="h-4.5 w-4.5" />
         </button>
+
+        {/* Floating gift animations */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-16 flex justify-end pr-4">
+          <div className="relative h-52 w-16">
+            {floatingGifts.map((g) => (
+              <FloatingGift key={g.id} emoji={g.emoji} />
+            ))}
+          </div>
+        </div>
+
+        {/* Gift ticker */}
+        <div className="pointer-events-none absolute bottom-3 left-3 flex max-w-[70%] flex-col gap-1">
+          {giftTicker.map((g) => (
+            <p key={g.id} className="w-fit animate-in fade-in rounded-full bg-black/50 px-3 py-1 text-[12px] font-bold backdrop-blur-sm duration-300">
+              {g.text}
+            </p>
+          ))}
+        </div>
       </div>
+
+      {giftSheetOpen && (
+        <div className="absolute inset-0 z-20 flex items-end bg-black/60" onClick={() => setGiftSheetOpen(false)}>
+          <div
+            className="w-full rounded-t-3xl bg-neutral-900 px-4 pb-6 pt-4"
+            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-3 text-center text-[12px] font-bold text-white/60">
+              Gifts are free during testing — real payments are coming soon.
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              {GIFT_CATALOG.map((g) => (
+                <button
+                  key={g.type}
+                  type="button"
+                  disabled={sendingGift !== null}
+                  onClick={() => handleSendGift(g.type)}
+                  className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 py-3 disabled:opacity-50"
+                >
+                  <span className="text-2xl">{sendingGift === g.type ? <Loader2 className="h-6 w-6 animate-spin" /> : g.emoji}</span>
+                  <span className="text-[10.5px] font-bold">{g.label}</span>
+                  <span className="text-[9.5px] text-white/50">{g.value}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center justify-center gap-3 border-t border-white/10 bg-black/90 px-4 py-4" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}>
         {isHost ? (
@@ -154,12 +270,32 @@ export default function CircleLiveRoomPage() {
             </button>
           </>
         ) : (
-          <button type="button" onClick={handleLeave} className="rounded-full bg-white/15 px-6 py-3 text-[13px] font-bold">
-            Leave
-          </button>
+          <>
+            <button type="button" onClick={handleLeave} className="rounded-full bg-white/15 px-6 py-3 text-[13px] font-bold">
+              Leave
+            </button>
+            <button
+              type="button"
+              onClick={() => setGiftSheetOpen(true)}
+              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-amber-400 px-5 py-3 text-[13px] font-black text-white active:scale-95"
+            >
+              <Gift className="h-4 w-4" /> Gift
+            </button>
+          </>
         )}
       </div>
     </div>
+  );
+}
+
+function FloatingGift({ emoji }: { emoji: string }) {
+  const [offsetX] = useState(() => Math.round((Math.random() - 0.5) * 40));
+  return (
+    // left/margin (not transform) position it horizontally, so it doesn't fight the
+    // emoji-float keyframe's own `transform` for the rise-and-fade motion.
+    <span className="absolute bottom-0 animate-emoji-float text-4xl" style={{ left: `calc(50% + ${offsetX}px)`, marginLeft: "-1rem" }}>
+      {emoji}
+    </span>
   );
 }
 

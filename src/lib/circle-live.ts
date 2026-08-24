@@ -51,3 +51,34 @@ export async function getLiveSession(sessionId: string): Promise<CircleLiveSessi
   if (error) throw error;
   return data as CircleLiveSession | null;
 }
+
+export type GiftType = "heart" | "rose" | "fire" | "diamond" | "crown";
+
+/** Display-only "value" — no real money moves yet. Card capture + actual charges are
+ *  explicit future work; this is purely the sending/animation layer for now. */
+export const GIFT_CATALOG: { type: GiftType; emoji: string; label: string; value: string }[] = [
+  { type: "heart", emoji: "❤️", label: "Heart", value: "$1" },
+  { type: "rose", emoji: "🌹", label: "Rose", value: "$5" },
+  { type: "fire", emoji: "🔥", label: "Fire", value: "$10" },
+  { type: "diamond", emoji: "💎", label: "Diamond", value: "$25" },
+  { type: "crown", emoji: "👑", label: "Crown", value: "$50" },
+];
+
+export type CircleLiveGift = {
+  id: string;
+  session_id: string;
+  circle_id: string;
+  sender_id: string;
+  gift_type: GiftType;
+  created_at: string;
+};
+
+export async function sendCircleLiveGift(sessionId: string, circleId: string, senderId: string, giftType: GiftType): Promise<CircleLiveGift> {
+  const { data, error } = await sb
+    .from("circle_live_gifts")
+    .insert({ session_id: sessionId, circle_id: circleId, sender_id: senderId, gift_type: giftType })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as CircleLiveGift;
+}
