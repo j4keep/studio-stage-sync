@@ -281,7 +281,7 @@ export default function CircleLiveRoomPage() {
         </div>
 
         {/* Gift ticker */}
-        <div className="pointer-events-none absolute bottom-28 left-3 flex max-w-[65%] flex-col gap-1">
+        <div className="pointer-events-none absolute bottom-52 left-3 flex max-w-[65%] flex-col gap-1">
           {giftTicker.map((g) => (
             <p key={g.id} className="w-fit animate-in fade-in rounded-full bg-black/50 px-3 py-1 text-[12px] font-bold backdrop-blur-sm duration-300">
               {g.text}
@@ -289,9 +289,9 @@ export default function CircleLiveRoomPage() {
           ))}
         </div>
 
-        {/* Comment feed */}
-        <div className="pointer-events-none absolute bottom-0 left-0 flex max-h-28 w-[70%] flex-col justify-end gap-1 overflow-hidden px-3 pb-2">
-          {comments.slice(-8).map((c) => (
+        {/* Comment feed — holds the last 7 on screen before the oldest scrolls out. */}
+        <div className="pointer-events-none absolute bottom-0 left-0 flex max-h-48 w-[70%] flex-col justify-end gap-1 overflow-hidden px-3 pb-2">
+          {comments.slice(-7).map((c) => (
             <CommentLine key={c.id} comment={c} nameCache={nameCache} resolveName={resolveName} isMe={c.sender_id === user?.id} />
           ))}
           <div ref={commentsEndRef} />
@@ -411,15 +411,23 @@ function FloatingGift({ emoji }: { emoji: string }) {
 
 function ParticipantVideo({ participant, mirrored }: { participant: RoomParticipant; mirrored?: boolean }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // A remote participant's video+audio go on the SAME <video> element (one MediaStream
+  // with both tracks) — splitting audio into a separate <audio autoPlay> element, as
+  // this used to do, is much more likely to get silently blocked by iOS/Safari's
+  // autoplay-with-sound policy since that element never had its own play() call tied to
+  // anything. Local (your own) preview stays muted either way, to avoid echoing your mic
+  // back at yourself.
+  const [needsTap, setNeedsTap] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) videoRef.current.srcObject = participant.videoTrack ? new MediaStream([participant.videoTrack]) : null;
-  }, [participant.videoTrack]);
-
-  useEffect(() => {
-    if (audioRef.current) audioRef.current.srcObject = !participant.isLocal && participant.audioTrack ? new MediaStream([participant.audioTrack]) : null;
-  }, [participant.audioTrack, participant.isLocal]);
+    const el = videoRef.current;
+    if (!el) return;
+    const tracks = [participant.videoTrack, participant.audioTrack].filter(Boolean) as MediaStreamTrack[];
+    el.srcObject = tracks.length ? new MediaStream(tracks) : null;
+    if (tracks.length) {
+      el.play().then(() => setNeedsTap(false)).catch(() => setNeedsTap(true));
+    }
+  }, [participant.videoTrack, participant.audioTrack]);
 
   return (
     <>
@@ -430,7 +438,18 @@ function ParticipantVideo({ participant, mirrored }: { participant: RoomParticip
         muted={participant.isLocal}
         className={`h-full w-full object-cover ${mirrored ? "-scale-x-100" : ""}`}
       />
-      <audio ref={audioRef} autoPlay playsInline />
+      {needsTap && !participant.isLocal && (
+        <button
+          type="button"
+          onClick={() => {
+            videoRef.current?.play().then(() => setNeedsTap(false)).catch(() => {});
+          }}
+          className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 text-white"
+        >
+          <span className="text-3xl">🔊</span>
+          <span className="text-[13px] font-bold">Tap for sound</span>
+        </button>
+      )}
     </>
   );
 }
