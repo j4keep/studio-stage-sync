@@ -88,23 +88,22 @@ export function usePodcastLiveRoom(opts: {
   const [error, setError] = useState<string | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
-  const [hostIdentity, setHostIdentity] = useState<string>(opts.hostIdentity ?? "");
+  // A ref, not state: `refresh` is registered once per connection on Room event listeners
+  // and a setInterval — both bind to whatever closure existed at that moment and never
+  // see a *new* `refresh` if hostIdentity later changed as state (state changes don't
+  // retroactively update already-bound listener closures). A ref sidesteps that — every
+  // call to `refresh`, however it was bound, reads the live value at call time.
+  const hostIdentityRef = useRef<string>(opts.hostIdentity ?? "");
 
-  // opts.hostIdentity often isn't known yet on first render (e.g. a Circle live's
-  // session row is still loading), and useState's initializer only runs once on mount —
-  // it silently ignores the prop on every later render. Without this, a viewer whose
-  // hostIdentity was "" at mount time falls through to the `!hostIdentity` branch below
-  // and permanently (mis)labels *themselves* as host once their own token comes back,
-  // and the real host's video never renders (RoomParticipant.isHost never matches them).
   useEffect(() => {
-    if (opts.hostIdentity && opts.hostIdentity !== hostIdentity) setHostIdentity(opts.hostIdentity);
-  }, [opts.hostIdentity]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (opts.hostIdentity) hostIdentityRef.current = opts.hostIdentity;
+  }, [opts.hostIdentity]);
 
   const refresh = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
     const list: Participant[] = [room.localParticipant, ...Array.from(room.remoteParticipants.values())];
-    const h = hostIdentity || room.localParticipant.identity;
+    const h = hostIdentityRef.current || room.localParticipant.identity;
     setParticipants(list.slice(0, MAX_PARTICIPANTS).map((p) => snapshot(p, h)));
 
     // Build a fresh local MediaStream from currently-published local tracks.
@@ -123,7 +122,7 @@ export function usePodcastLiveRoom(opts: {
       const nextIds = next.getTracks().map((t) => t.id).sort().join(",");
       return prevIds === nextIds ? prev : next;
     });
-  }, [hostIdentity]);
+  }, []);
 
   useEffect(() => {
     if (!enabled || !roomName) return;
@@ -141,11 +140,7 @@ export function usePodcastLiveRoom(opts: {
         if (!data?.token || !data?.url) throw new Error("No token returned");
         if (cancelled) return;
 
-        // Use the prop (opts.hostIdentity), not the `hostIdentity` state var, here — this
-        // async callback's closure can still be holding a stale "" state snapshot from
-        // before the sync effect above ran, which would otherwise let this clobber a
-        // correctly-provided hostIdentity with this client's own identity.
-        if (!opts.hostIdentity) setHostIdentity(data.identity);
+        if (!opts.hostIdentity) hostIdentityRef.current = data.identity;
 
         const room = new Room({ adaptiveStream: true, dynacast: true });
         roomRef.current = room;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Gift, Heart, Loader2, Mic, MicOff, Send, Users, Video, VideoOff, X } from "lucide-react";
+import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Users, Video, VideoOff, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,7 @@ export default function CircleLiveRoomPage() {
   const [session, setSession] = useState<CircleLiveSession | null | undefined>(undefined);
   const [ending, setEnding] = useState(false);
   const [giftSheetOpen, setGiftSheetOpen] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [floatingGifts, setFloatingGifts] = useState<{ id: string; emoji: string }[]>([]);
   const [giftTicker, setGiftTicker] = useState<{ id: string; text: string }[]>([]);
   const [comments, setComments] = useState<CircleLiveComment[]>([]);
@@ -170,7 +171,7 @@ export default function CircleLiveRoomPage() {
 
   if (circle === undefined || session === undefined) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-black text-white/70">
+      <div className="fixed inset-0 flex items-center justify-center bg-black text-white/70">
         <Loader2 className="h-6 w-6 animate-spin" />
       </div>
     );
@@ -178,7 +179,7 @@ export default function CircleLiveRoomPage() {
 
   if (!circle || !isApprovedMember) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">You don't have access to this live.</p>
         <button type="button" onClick={() => navigate(`/circle/c/${id}`)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle
@@ -189,7 +190,7 @@ export default function CircleLiveRoomPage() {
 
   if (!session) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">This live has ended.</p>
         <button type="button" onClick={() => navigate(`/circle/c/${id}`)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle
@@ -202,8 +203,11 @@ export default function CircleLiveRoomPage() {
   const viewerCount = Math.max(room.participants.length - 1, 0);
 
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-black text-white">
-      <div className="relative flex-1 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black text-white">
+      {/* min-h-0 is load-bearing here — without it a flex child can't shrink below its
+          content size, and the whole fixed page would grow and start scrolling instead
+          of the video area just clipping its own overflow. */}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
         {isHost ? (
           host && <ParticipantVideo participant={host} mirrored />
         ) : host?.videoTrack && host.camOn ? (
@@ -224,15 +228,47 @@ export default function CircleLiveRoomPage() {
           <span className="flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm">
             <Users className="h-3 w-3" /> {viewerCount}
           </span>
+          {isHost && (
+            <button
+              type="button"
+              onClick={() => setControlsOpen((v) => !v)}
+              aria-label="Mic and camera controls"
+              className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 backdrop-blur-sm"
+            >
+              <ChevronDown className={`h-3.5 w-3.5 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
+            </button>
+          )}
         </div>
+
+        {isHost && controlsOpen && (
+          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => room.setMic(!room.local?.micOn)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.micOn ? "bg-white/15" : "bg-white text-black"}`}
+              aria-label="Toggle microphone"
+            >
+              {room.local?.micOn ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => room.setCam(!room.local?.camOn)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.camOn ? "bg-white/15" : "bg-white text-black"}`}
+              aria-label="Toggle camera"
+            >
+              {room.local?.camOn ? <Video className="h-4.5 w-4.5" /> : <VideoOff className="h-4.5 w-4.5" />}
+            </button>
+          </div>
+        )}
 
         <button
           type="button"
-          onClick={handleLeave}
-          aria-label="Leave"
-          className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] rounded-full bg-black/50 p-2 backdrop-blur-sm"
+          disabled={ending}
+          onClick={isHost ? handleEndLive : handleLeave}
+          aria-label={isHost ? "End live" : "Leave"}
+          className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] rounded-full bg-black/50 p-2 backdrop-blur-sm disabled:opacity-60"
         >
-          <X className="h-4.5 w-4.5" />
+          {ending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <X className="h-4.5 w-4.5" />}
         </button>
 
         {/* Floating gift animations */}
@@ -245,7 +281,7 @@ export default function CircleLiveRoomPage() {
         </div>
 
         {/* Gift ticker */}
-        <div className="pointer-events-none absolute bottom-36 left-3 flex max-w-[65%] flex-col gap-1">
+        <div className="pointer-events-none absolute bottom-28 left-3 flex max-w-[65%] flex-col gap-1">
           {giftTicker.map((g) => (
             <p key={g.id} className="w-fit animate-in fade-in rounded-full bg-black/50 px-3 py-1 text-[12px] font-bold backdrop-blur-sm duration-300">
               {g.text}
@@ -254,43 +290,48 @@ export default function CircleLiveRoomPage() {
         </div>
 
         {/* Comment feed */}
-        <div className="pointer-events-none absolute bottom-0 left-0 flex max-h-32 w-[70%] flex-col justify-end gap-1 overflow-hidden px-3 pb-2">
+        <div className="pointer-events-none absolute bottom-0 left-0 flex max-h-28 w-[70%] flex-col justify-end gap-1 overflow-hidden px-3 pb-2">
           {comments.slice(-8).map((c) => (
             <CommentLine key={c.id} comment={c} nameCache={nameCache} resolveName={resolveName} isMe={c.sender_id === user?.id} />
           ))}
           <div ref={commentsEndRef} />
         </div>
-      </div>
 
-      {giftSheetOpen && (
-        <div className="absolute inset-0 z-20 flex items-end bg-black/60" onClick={() => setGiftSheetOpen(false)}>
-          <div
-            className="w-full rounded-t-3xl bg-neutral-900 px-4 pb-6 pt-4"
-            style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="mb-3 text-center text-[12px] font-bold text-white/60">
-              Gifts are free during testing — real payments are coming soon.
-            </p>
-            <div className="grid grid-cols-5 gap-2">
-              {GIFT_CATALOG.map((g) => (
-                <button
-                  key={g.type}
-                  type="button"
-                  onClick={() => handleSendGift(g.type)}
-                  className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 py-3 active:scale-95"
-                >
-                  <span className="text-2xl">{g.emoji}</span>
-                  <span className="text-[10.5px] font-bold">{g.label}</span>
-                  <span className="text-[9.5px] text-white/50">{g.value}</span>
-                </button>
-              ))}
+        {giftSheetOpen && (
+          <div className="absolute inset-0 z-20 flex items-end bg-black/60" onClick={() => setGiftSheetOpen(false)}>
+            <div
+              className="w-full rounded-t-3xl bg-neutral-900 px-4 pb-6 pt-4"
+              style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1.5rem)" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="mb-3 text-center text-[12px] font-bold text-white/60">
+                Gifts are free during testing — real payments are coming soon.
+              </p>
+              <div className="grid grid-cols-5 gap-2">
+                {GIFT_CATALOG.map((g) => (
+                  <button
+                    key={g.type}
+                    type="button"
+                    onClick={() => handleSendGift(g.type)}
+                    className="flex flex-col items-center gap-1 rounded-2xl bg-white/10 py-3 active:scale-95"
+                  >
+                    <span className="text-2xl">{g.emoji}</span>
+                    <span className="text-[10.5px] font-bold">{g.label}</span>
+                    <span className="text-[9.5px] text-white/50">{g.value}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      <div className="flex items-center gap-2 border-t border-white/10 bg-black/90 px-3 py-2">
+      {/* One fixed-height bottom row — comment input plus (viewer) Like/Gift, so nothing
+          ever pushes the page taller than the screen. */}
+      <div
+        className="flex shrink-0 items-center gap-2 border-t border-white/10 bg-black/90 px-3 py-2"
+        style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)" }}
+      >
         <input
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
@@ -308,53 +349,20 @@ export default function CircleLiveRoomPage() {
         >
           <Send className="h-4 w-4" />
         </button>
-      </div>
-
-      <div className="flex items-center justify-center gap-3 border-t border-white/10 bg-black/90 px-4 py-4" style={{ paddingBottom: "max(env(safe-area-inset-bottom), 1rem)" }}>
-        {isHost ? (
+        {!isHost && (
           <>
-            <button
-              type="button"
-              onClick={() => room.setMic(!room.local?.micOn)}
-              className={`flex h-11 w-11 items-center justify-center rounded-full ${room.local?.micOn ? "bg-white/15" : "bg-white text-black"}`}
-              aria-label="Toggle microphone"
-            >
-              {room.local?.micOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => room.setCam(!room.local?.camOn)}
-              className={`flex h-11 w-11 items-center justify-center rounded-full ${room.local?.camOn ? "bg-white/15" : "bg-white text-black"}`}
-              aria-label="Toggle camera"
-            >
-              {room.local?.camOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-            </button>
-            <button
-              type="button"
-              disabled={ending}
-              onClick={handleEndLive}
-              className="rounded-full bg-red-600 px-5 py-3 text-[13px] font-black disabled:opacity-60"
-            >
-              {ending ? "Ending…" : "End Live"}
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" onClick={handleLeave} className="rounded-full bg-white/15 px-6 py-3 text-[13px] font-bold">
-              Leave
-            </button>
             <button
               type="button"
               onClick={() => handleSendGift(LIKE_GIFT.type)}
               aria-label="Like"
-              className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 active:scale-90"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 active:scale-90"
             >
-              <Heart className="h-5 w-5 text-red-500" fill="currentColor" />
+              <Heart className="h-4 w-4 text-red-500" fill="currentColor" />
             </button>
             <button
               type="button"
               onClick={() => setGiftSheetOpen(true)}
-              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-fuchsia-500 to-amber-400 px-5 py-3 text-[13px] font-black text-white active:scale-95"
+              className="flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-fuchsia-500 to-amber-400 px-3.5 py-2 text-[12.5px] font-black text-white active:scale-95"
             >
               <Gift className="h-4 w-4" /> Gift
             </button>

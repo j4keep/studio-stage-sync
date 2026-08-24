@@ -57,6 +57,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
     location.pathname.startsWith("/podcast/room/");
   const isPodcastLobby = location.pathname === "/tv/podcast";
+  const isCircleLive = /^\/circle\/c\/[^/]+\/live$/.test(location.pathname);
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
@@ -89,6 +90,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     <span />
   );
 
+
+  if (isCircleLive) {
+    // True full-screen, no header/bottom-nav — same escape hatch the Podcast workspace
+    // uses below. The live page itself is `fixed inset-0`, so this wrapper barely
+    // matters beyond not adding any chrome around it.
+    return <>{children}</>;
+  }
 
   if (isPodcastWorkspace || isPodcastLobby) {
     return (
