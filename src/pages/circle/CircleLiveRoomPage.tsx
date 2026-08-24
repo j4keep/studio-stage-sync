@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Users, Video, VideoOff, X } from "lucide-react";
+import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, Users, Video, VideoOff, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +19,8 @@ import {
   type GiftType,
 } from "@/lib/circle-live";
 import { usePodcastLiveRoom, type RoomParticipant } from "@/pages/podcast/usePodcastLiveRoom";
+import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
+import FaceFilterPanel from "@/components/feed/create/FaceFilterPanel";
 
 const sb = supabase as any;
 const ALL_GIFTS = [...GIFT_CATALOG, LIKE_GIFT];
@@ -37,6 +39,13 @@ export default function CircleLiveRoomPage() {
   const [ending, setEnding] = useState(false);
   const [giftSheetOpen, setGiftSheetOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
+  const [faceFilterSheetOpen, setFaceFilterSheetOpen] = useState(false);
+  const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
+  // Captured once — the host's ORIGINAL camera track, before any face-filter swap. Needed
+  // to revert cleanly back to "none": once a filtered canvas track is published, the
+  // room's own "current local video track" IS that canvas, so it can no longer serve as
+  // the filter engine's input (that would feed the canvas its own output).
+  const rawHostTrackRef = useRef<MediaStreamTrack | null>(null);
   const [floatingGifts, setFloatingGifts] = useState<{ id: string; emoji: string }[]>([]);
   const [giftTicker, setGiftTicker] = useState<{ id: string; text: string }[]>([]);
   const [comments, setComments] = useState<CircleLiveComment[]>([]);
@@ -64,6 +73,27 @@ export default function CircleLiveRoomPage() {
     enabled: !!session && isApprovedMember,
     publish: isHost,
   });
+
+  // Capture the raw camera track exactly once, before any filter is ever applied —
+  // afterwards room.local?.videoTrack reflects whatever is CURRENTLY published (the
+  // filtered canvas, once one's active), so it can't be relied on as a stable source.
+  useEffect(() => {
+    if (isHost && room.local?.videoTrack && !rawHostTrackRef.current) {
+      rawHostTrackRef.current = room.local.videoTrack;
+    }
+  }, [isHost, room.local?.videoTrack]);
+
+  const faceFilters = useFaceFilters(rawHostTrackRef.current, faceFilter, isHost && faceFilter !== "none");
+
+  useEffect(() => {
+    if (!isHost) return;
+    if (faceFilter === "none") {
+      if (rawHostTrackRef.current) void room.replaceVideoTrack(rawHostTrackRef.current);
+    } else if (faceFilters.outputTrack) {
+      void room.replaceVideoTrack(faceFilters.outputTrack);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, faceFilter, faceFilters.outputTrack]);
 
   const resolveName = async (userId: string): Promise<string> => {
     const cached = nameCache.current.get(userId);
@@ -258,6 +288,14 @@ export default function CircleLiveRoomPage() {
             >
               {room.local?.camOn ? <Video className="h-4.5 w-4.5" /> : <VideoOff className="h-4.5 w-4.5" />}
             </button>
+            <button
+              type="button"
+              onClick={() => setFaceFilterSheetOpen(true)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${faceFilter !== "none" ? "bg-white text-black" : "bg-white/15"}`}
+              aria-label="Face filters"
+            >
+              <Smile className="h-4.5 w-4.5" />
+            </button>
           </div>
         )}
 
@@ -323,6 +361,17 @@ export default function CircleLiveRoomPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {isHost && (
+          <FaceFilterPanel
+            open={faceFilterSheetOpen}
+            onClose={() => setFaceFilterSheetOpen(false)}
+            selectedId={faceFilter}
+            onSelect={setFaceFilter}
+            loading={faceFilters.loading}
+            error={faceFilters.error}
+          />
         )}
       </div>
 

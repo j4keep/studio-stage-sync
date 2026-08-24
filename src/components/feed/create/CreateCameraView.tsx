@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, Sparkles, Wand2, Camera, Type, Music } from "lucide-react";
+import { X, SwitchCamera, Sparkles, Wand2, Smile, Camera, Type, Music } from "lucide-react";
 import {
   warmCameraStream,
   releaseCameraStream,
@@ -17,10 +17,12 @@ import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
 import { QUICK_MAX_RECORD_SEC, getEffectFilter } from "@/lib/create-modes";
 import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
+import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import CreateModeTabs from "./CreateModeTabs";
 import RecordButton from "./RecordButton";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
+import FaceFilterPanel from "./FaceFilterPanel";
 import { toast } from "sonner";
 
 const MIN_RECORD_MS = 400;
@@ -94,10 +96,15 @@ export default function CreateCameraView({
   const [micMissing, setMicMissing] = useState(false);
   const [showEnhance, setShowEnhance] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
+  const [showFaceFilters, setShowFaceFilters] = useState(false);
   const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
   const [filterIntensity, setFilterIntensity] = useState(80);
+  const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
+  const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
+
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, faceFilter !== "none");
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -135,6 +142,7 @@ export default function CreateCameraView({
     setReady(true);
     setDenied(false);
     setMicMissing(!streamHasLiveAudio(stream));
+    setRawVideoTrack(stream.getVideoTracks()[0] ?? null);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -423,6 +431,7 @@ export default function CreateCameraView({
       stream,
       video,
       shouldMirrorRecordOutput(facing),
+      faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
     );
     mirrorRecordStopRef.current = stopMirror;
 
@@ -554,6 +563,7 @@ export default function CreateCameraView({
     try {
       const blob = await capturePhotoFromStream(stream, video, {
         mirror: facing === "user",
+        filterSource: faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
       });
       if (!blob) {
         toast.error("Couldn't capture photo — try again");
@@ -637,6 +647,21 @@ export default function CreateCameraView({
           muted
           autoPlay
           style={{
+            // Hidden (not removed — useFaceFilters still needs it as a track source)
+            // behind the filter canvas once a face filter is actively drawing.
+            visibility: faceFilter !== "none" && faceFilters.active ? "hidden" : "visible",
+            transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: liveFilter,
+          }}
+        />
+      )}
+
+      {!denied && faceFilter !== "none" && (
+        <canvas
+          ref={faceFilters.canvasRef}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            visibility: faceFilters.active ? "visible" : "hidden",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
             filter: liveFilter,
           }}
@@ -744,6 +769,18 @@ export default function CreateCameraView({
           <Wand2 className="w-5 h-5" />
           <span className="text-[9px] font-semibold">Effects</span>
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            setShowEnhance(false);
+            setShowEffects(false);
+            setShowFaceFilters((v) => !v);
+          }}
+          className={`flex flex-col items-center gap-0.5 ${showFaceFilters || faceFilter !== "none" ? "text-white" : "text-white/80"}`}
+        >
+          <Smile className="w-5 h-5" />
+          <span className="text-[9px] font-semibold">Face</span>
+        </button>
       </div>
 
       <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2rem)]">
@@ -819,6 +856,15 @@ export default function CreateCameraView({
         onClose={() => setShowEffects(false)}
         selectedId={selectedEffect}
         onSelect={setSelectedEffect}
+      />
+
+      <FaceFilterPanel
+        open={showFaceFilters}
+        onClose={() => setShowFaceFilters(false)}
+        selectedId={faceFilter}
+        onSelect={setFaceFilter}
+        loading={faceFilters.loading}
+        error={faceFilters.error}
       />
 
       <CreateModeTabs

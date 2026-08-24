@@ -133,14 +133,19 @@ export type MirroredRecordStream = {
  * Record through a canvas when the live preview is CSS-mirrored (front camera)
  * so the saved file matches what the user saw.
  */
+/** `filterSource`: a face-filter canvas (raw, unmirrored frames) to record from instead
+ *  of the plain camera video — when set, always draws via canvas (bypassing the
+ *  clone-the-raw-track shortcut, iOS included) since the filtered pixels only exist on
+ *  that canvas, not on the underlying camera track. */
 export function createMirroredVideoRecordStream(
   sourceStream: MediaStream,
   video: HTMLVideoElement,
   mirror: boolean,
+  filterSource?: HTMLCanvasElement,
 ): MirroredRecordStream {
   const audioTracks = sourceStream.getAudioTracks();
 
-  if (!mirror || isAppleMobile()) {
+  if (!filterSource && (!mirror || isAppleMobile())) {
     const cloned = new MediaStream([...sourceStream.getVideoTracks(), ...audioTracks]);
     return {
       stream: cloned,
@@ -160,10 +165,12 @@ export function createMirroredVideoRecordStream(
 
   let rafId = 0;
   let stopped = false;
+  const source: HTMLVideoElement | HTMLCanvasElement = filterSource ?? video;
+  const isVideoSource = source instanceof HTMLVideoElement;
 
   const syncCanvasSize = () => {
-    const w = video.videoWidth || 720;
-    const h = video.videoHeight || 1280;
+    const w = (isVideoSource ? (source as HTMLVideoElement).videoWidth : (source as HTMLCanvasElement).width) || 720;
+    const h = (isVideoSource ? (source as HTMLVideoElement).videoHeight : (source as HTMLCanvasElement).height) || 1280;
     if (canvas.width !== w || canvas.height !== h) {
       canvas.width = w;
       canvas.height = h;
@@ -173,11 +180,14 @@ export function createMirroredVideoRecordStream(
   const drawFrame = () => {
     if (stopped) return;
     syncCanvasSize();
-    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && canvas.width && canvas.height) {
+    const sourceReady = isVideoSource ? (source as HTMLVideoElement).readyState >= HTMLMediaElement.HAVE_CURRENT_DATA : canvas.width > 0;
+    if (sourceReady && canvas.width && canvas.height) {
       ctx.save();
-      ctx.translate(canvas.width, 0);
-      ctx.scale(-1, 1);
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (mirror) {
+        ctx.translate(canvas.width, 0);
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
       ctx.restore();
     }
     rafId = requestAnimationFrame(drawFrame);
@@ -216,15 +226,16 @@ export function shouldMirrorRecordOutput(facing: CameraFacing): boolean {
   return facing === "user" && !isMobileDevice();
 }
 
-async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Promise<Blob | null> {
-  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+async function captureWithCanvas(source: HTMLVideoElement | HTMLCanvasElement, mirror: boolean): Promise<Blob | null> {
+  const isVideo = source instanceof HTMLVideoElement;
+  if (isVideo && source.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
     await new Promise<void>((resolve) => {
-      video.addEventListener("loadeddata", () => resolve(), { once: true });
+      source.addEventListener("loadeddata", () => resolve(), { once: true });
     });
   }
 
-  const w = video.videoWidth;
-  const h = video.videoHeight;
+  const w = isVideo ? source.videoWidth : source.width;
+  const h = isVideo ? source.videoHeight : source.height;
   if (!w || !h) return null;
 
   const canvas = document.createElement("canvas");
@@ -236,20 +247,23 @@ async function captureWithCanvas(video: HTMLVideoElement, mirror: boolean): Prom
     ctx.translate(w, 0);
     ctx.scale(-1, 1);
   }
-  ctx.drawImage(video, 0, 0, w, h);
+  ctx.drawImage(source, 0, 0, w, h);
 
   return new Promise((resolve) => {
     canvas.toBlob((blob) => resolve(blob), "image/jpeg", PHOTO_JPEG_QUALITY);
   });
 }
 
-/** Capture a still from the live preview (matches brightness/exposure you see on screen). */
+/** Capture a still from the live preview (matches brightness/exposure you see on screen).
+ *  Pass `filterSource` (a face-filter canvas already drawing raw, unmirrored frames) to
+ *  bake an active AR filter into the captured photo — mirroring is still applied here,
+ *  same as the plain-video path, so it isn't mirrored twice. */
 export async function capturePhotoFromStream(
   _stream: MediaStream,
   video: HTMLVideoElement,
-  options: { mirror?: boolean } = {},
+  options: { mirror?: boolean; filterSource?: HTMLCanvasElement } = {},
 ): Promise<Blob | null> {
-  return captureWithCanvas(video, options.mirror ?? false);
+  return captureWithCanvas(options.filterSource ?? video, options.mirror ?? false);
 }
 
 /** Prefer codecs that reliably mux microphone audio with video. */

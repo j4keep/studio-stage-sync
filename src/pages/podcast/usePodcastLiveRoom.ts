@@ -12,6 +12,7 @@ import {
   Track,
   ConnectionQuality,
   LocalParticipant,
+  LocalVideoTrack,
   RemoteParticipant,
   Participant,
   ConnectionState,
@@ -200,6 +201,20 @@ export function usePodcastLiveRoom(opts: {
     refresh();
   }, [refresh]);
 
+  /** Swaps the published camera track's underlying pixels without unpublish/republish
+   *  (no renegotiation flicker for remote viewers) — used to switch a Circle live host
+   *  between their raw camera and a face-filter canvas mid-broadcast. */
+  const replaceVideoTrack = useCallback(async (track: MediaStreamTrack) => {
+    const room = roomRef.current;
+    if (!room) return;
+    const pub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
+    const localTrack = pub?.track as LocalVideoTrack | undefined;
+    if (localTrack) {
+      await localTrack.replaceTrack(track);
+      refresh();
+    }
+  }, [refresh]);
+
   const local = useMemo(() => participants.find((p) => p.isLocal), [participants]);
 
   return {
@@ -211,6 +226,7 @@ export function usePodcastLiveRoom(opts: {
     setMic,
     setCam,
     setScreen,
+    replaceVideoTrack,
     disconnect: () => roomRef.current?.disconnect(),
   };
 }
