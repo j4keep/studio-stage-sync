@@ -80,7 +80,11 @@ const NotificationBell = () => {
         .eq("user_id", user.id);
       queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
     }
-    if (notification.reference_type === "battle") navigate("/battles");
+    if (notification.reference_type === "circle_request" || notification.reference_type === "circle_approved") {
+      if (notification.reference_id) navigate(`/circle/c/${notification.reference_id}`);
+      else navigate("/circle");
+    }
+    else if (notification.reference_type === "battle") navigate("/battles");
     else if (notification.reference_type === "message") {
       if (notification.reference_id) navigate("/messages", { state: { conversationId: notification.reference_id } });
       else navigate("/messages");

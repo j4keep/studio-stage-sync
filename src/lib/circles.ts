@@ -252,6 +252,12 @@ export async function requestToJoin(circleId: string, userId: string, requiresAp
     .select("*")
     .single();
   if (error) throw error;
+  if (requiresApproval) {
+    // Best-effort — the requester's own join succeeded either way, notifying the owner
+    // just makes them aware faster. Goes through a SECURITY DEFINER RPC since a plain
+    // insert can't write a notification row for someone else (RLS: auth.uid() = user_id).
+    void sb.rpc("notify_circle_join_request", { p_circle_id: circleId }).catch(() => {});
+  }
   return data as CircleMember;
 }
 
@@ -277,6 +283,7 @@ export async function approveMember(memberId: string, approvedBy: string): Promi
     .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: approvedBy })
     .eq("id", memberId);
   if (error) throw error;
+  void sb.rpc("notify_circle_join_approved", { p_member_id: memberId }).catch(() => {});
 }
 
 export async function denyMember(memberId: string): Promise<void> {

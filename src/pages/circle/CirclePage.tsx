@@ -97,18 +97,18 @@ export default function CirclePage() {
       </div>
 
       <div className="px-4">
-        <div className="-mt-8 flex items-end gap-3">
-          <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-card shadow">
-            {circle.avatar_url ? <img src={circle.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-2xl">{meta.emoji}</div>}
-          </div>
-          <div className="min-w-0 flex-1 pb-1">
-            <h1 className="truncate text-lg font-black">{circle.name}</h1>
-            <p className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-              <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {circle.member_count}</span>
-              {circle.is_private && <span className="flex items-center gap-0.5"><Lock className="h-3 w-3" /> Private</span>}
-              <span>{meta.label}</span>
-            </p>
-          </div>
+        {/* Only the small avatar overlaps the cover photo — the name and stats always
+            render in clear space below it, so they're never covered by the image. */}
+        <div className="-mt-8 h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-card shadow">
+          {circle.avatar_url ? <img src={circle.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-2xl">{meta.emoji}</div>}
+        </div>
+        <div className="mt-2 min-w-0">
+          <h1 className="truncate text-lg font-black">{circle.name}</h1>
+          <p className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
+            <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {circle.member_count}</span>
+            {circle.is_private && <span className="flex items-center gap-0.5"><Lock className="h-3 w-3" /> Private</span>}
+            <span>{meta.label}</span>
+          </p>
         </div>
 
         {circle.description && <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{circle.description}</p>}
