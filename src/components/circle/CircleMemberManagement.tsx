@@ -1,19 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Check, Loader2, Shield, UserMinus, UserX, X } from "lucide-react";
+import { Check, Loader2, Shield, UserMinus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import {
-  Circle,
-  CircleMember,
-  approveMember,
-  blockMember,
-  denyMember,
-  listCircleMembers,
-  removeMember,
-  setMemberRole,
-} from "@/lib/circles";
+import { Circle, CircleMember, approveMember, denyMember, listCircleMembers, removeMember, setMemberRole } from "@/lib/circles";
 
 const sb = supabase as any;
 
@@ -29,19 +20,20 @@ async function withProfiles(members: CircleMember[]): Promise<Row[]> {
   return members.map((m) => ({ ...m, display_name: byId.get(m.user_id)?.display_name ?? null, avatar_url: byId.get(m.user_id)?.avatar_url ?? null }));
 }
 
+/** No "Block" here on purpose — a Circle is just membership, not a relationship. Someone
+ *  removed from a Circle can always ask to rejoin; blocking a person outright (so they
+ *  can't) lives on their profile, not here. */
 export default function CircleMemberManagement({ circle, onChanged }: { circle: Circle; onChanged?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"pending" | "members" | "blocked">("pending");
+  const [tab, setTab] = useState<"pending" | "members">("pending");
   const [pending, setPending] = useState<Row[] | null>(null);
   const [members, setMembers] = useState<Row[] | null>(null);
-  const [blocked, setBlocked] = useState<Row[] | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const reload = () => {
     void listCircleMembers(circle.id, "pending").then(withProfiles).then(setPending).catch(() => setPending([]));
     void listCircleMembers(circle.id, "approved").then(withProfiles).then(setMembers).catch(() => setMembers([]));
-    void listCircleMembers(circle.id, "blocked").then(withProfiles).then(setBlocked).catch(() => setBlocked([]));
   };
 
   useEffect(reload, [circle.id]);
@@ -59,12 +51,12 @@ export default function CircleMemberManagement({ circle, onChanged }: { circle: 
     }
   };
 
-  const rows = tab === "pending" ? pending : tab === "members" ? members : blocked;
+  const rows = tab === "pending" ? pending : members;
 
   return (
     <div className="px-4 pb-8">
       <div className="mb-3 flex gap-2">
-        {(["pending", "members", "blocked"] as const).map((t) => (
+        {(["pending", "members"] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -147,34 +139,9 @@ export default function CircleMemberManagement({ circle, onChanged }: { circle: 
                     aria-label="Remove from Circle"
                     title="Remove (can re-request later)"
                   >
-                    <UserMinus className="h-4 w-4 text-muted-foreground" />
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busyId === r.id}
-                    onClick={() => {
-                      if (confirm(`Block ${r.display_name || "this member"}? They won't be able to request to join again.`)) {
-                        void act(() => blockMember(r.id), r.id);
-                      }
-                    }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border active:scale-95"
-                    aria-label="Block"
-                    title="Block (can't re-request)"
-                  >
-                    <UserX className="h-4 w-4 text-rose-500" />
+                    <UserMinus className="h-4 w-4 text-rose-500" />
                   </button>
                 </div>
-              )}
-
-              {tab === "blocked" && (
-                <button
-                  type="button"
-                  disabled={busyId === r.id}
-                  onClick={() => act(() => removeMember(r.id), r.id)}
-                  className="rounded-full border border-border px-3 py-1.5 text-[11px] font-bold active:scale-95"
-                >
-                  Unblock
-                </button>
               )}
             </div>
           ))}

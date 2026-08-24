@@ -5,7 +5,7 @@ const sb = supabase as any;
 export type CircleType = "friends" | "local" | "gaming" | "fitness" | "networking" | "creator" | "private" | "custom";
 export type PostVisibility = "everyone" | "circle_members" | "paid_members" | "selected_members" | "only_me";
 export type MemberRole = "owner" | "admin" | "moderator" | "member" | "paid_member";
-export type MemberStatus = "pending" | "approved" | "blocked";
+export type MemberStatus = "pending" | "approved";
 
 export type Circle = {
   id: string;
@@ -318,11 +318,6 @@ export async function denyMember(memberId: string): Promise<void> {
 
 export async function removeMember(memberId: string): Promise<void> {
   const { error } = await sb.from("circle_members").delete().eq("id", memberId);
-  if (error) throw error;
-}
-
-export async function blockMember(memberId: string): Promise<void> {
-  const { error } = await sb.from("circle_members").update({ status: "blocked" }).eq("id", memberId);
   if (error) throw error;
 }
 
