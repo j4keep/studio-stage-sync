@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, Sparkles, Wand2, Smile, Camera, Type, Music } from "lucide-react";
+import { X, SwitchCamera, Sparkles, Wand2, Smile, ImagePlus, Type, Music } from "lucide-react";
 import {
   warmCameraStream,
   releaseCameraStream,
@@ -746,7 +746,7 @@ export default function CreateCameraView({
         </div>
       </div>
 
-      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+3.5rem)] z-20 flex flex-col items-center gap-3">
+      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+5.25rem)] z-20 flex flex-col items-center gap-3">
         <button
           type="button"
           onClick={() => {
@@ -797,13 +797,13 @@ export default function CreateCameraView({
             <button
               type="button"
               disabled={recordDisabled}
-              onClick={() => void takePhoto()}
+              onClick={onOpenGallery}
               className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
             >
-              <span className="w-11 h-11 rounded-full border-2 border-white/80 bg-black/30 flex items-center justify-center">
-                <Camera className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
+              <span className="w-11 h-11 rounded-full border border-white/25 bg-black/35 backdrop-blur-md flex items-center justify-center">
+                <ImagePlus className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
               </span>
-              <span className="text-[11px] font-semibold text-white/70">Photo</span>
+              <span className="text-[11px] font-semibold text-white/75">Upload</span>
             </button>
           )}
 
@@ -829,7 +829,7 @@ export default function CreateCameraView({
               onClick={onTextPost}
               className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
             >
-              <span className="w-11 h-11 rounded-full border-2 border-white/80 bg-black/30 flex items-center justify-center">
+              <span className="w-11 h-11 rounded-full border border-white/25 bg-black/35 backdrop-blur-md flex items-center justify-center">
                 <Type className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
               </span>
               <span className="text-[11px] font-semibold text-white/70">Text</span>
