@@ -146,15 +146,25 @@ function drawFilter(ctx: CanvasRenderingContext2D, lm: { x: number; y: number }[
   }
 }
 
-export function useFaceFilters(videoTrack: MediaStreamTrack | null, filterId: FaceFilterId, enabled: boolean) {
+/** `colorFilter` is a plain CSS filter string (e.g. from getEffectFilter) — the same
+ *  Effects picker used for post/video capture, applied here via canvas ctx.filter so it
+ *  actually reaches viewers of a live instead of only the host's own local preview. */
+export function useFaceFilters(
+  videoTrack: MediaStreamTrack | null,
+  filterId: FaceFilterId,
+  enabled: boolean,
+  colorFilter?: string,
+) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outputTrack, setOutputTrack] = useState<MediaStreamTrack | null>(null);
+  const hasColorFilter = !!colorFilter && colorFilter !== "none";
+  const needsFaceTracking = filterId !== "none";
 
   useEffect(() => {
-    if (!enabled || !videoTrack || filterId === "none") {
+    if (!enabled || !videoTrack || (!needsFaceTracking && !hasColorFilter)) {
       setActive(false);
       setLoading(false);
       setError(null);
@@ -181,7 +191,7 @@ export function useFaceFilters(videoTrack: MediaStreamTrack | null, filterId: Fa
 
     (async () => {
       try {
-        const landmarker = await loadFaceLandmarker();
+        const landmarker = needsFaceTracking ? await loadFaceLandmarker() : null;
         if (cancelled) return;
         await video.play().catch(() => {});
 
@@ -213,13 +223,17 @@ export function useFaceFilters(videoTrack: MediaStreamTrack | null, filterId: Fa
                 canvas!.height = h;
               }
               ctx.clearRect(0, 0, w, h);
+              ctx.filter = hasColorFilter ? colorFilter! : "none";
               ctx.drawImage(video, 0, 0, w, h);
-              try {
-                const result = landmarker.detectForVideo(video, performance.now());
-                const lm = result?.faceLandmarks?.[0];
-                if (lm) drawFilter(ctx, lm, w, h, filterId);
-              } catch {
-                /* skip this frame */
+              ctx.filter = "none"; // stickers below draw crisp, not color-filtered too
+              if (landmarker) {
+                try {
+                  const result = landmarker.detectForVideo(video, performance.now());
+                  const lm = result?.faceLandmarks?.[0];
+                  if (lm) drawFilter(ctx, lm, w, h, filterId);
+                } catch {
+                  /* skip this frame */
+                }
               }
               if (!cancelled) {
                 setActive(true);
@@ -260,7 +274,7 @@ export function useFaceFilters(videoTrack: MediaStreamTrack | null, filterId: Fa
         /* ignore */
       }
     };
-  }, [videoTrack, filterId, enabled]);
+  }, [videoTrack, filterId, enabled, colorFilter, hasColorFilter, needsFaceTracking]);
 
   return { canvasRef, active, loading, error, outputTrack };
 }

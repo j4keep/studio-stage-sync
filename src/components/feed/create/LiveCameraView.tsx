@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, SwitchCamera, Sparkles, Wand2, Timer, LayoutGrid, ChevronDown } from "lucide-react";
+import { Loader2, SwitchCamera, X } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
+import type { CreateMode } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { startCircleLive } from "@/lib/circle-live";
 import CreateModeTabs from "./CreateModeTabs";
-import EnhancePanel from "./EnhancePanel";
-import EffectsPanel from "./EffectsPanel";
 
 interface Props {
   createMode: CreateMode;
@@ -17,12 +15,13 @@ interface Props {
   initialStream?: MediaStream | null;
 }
 
-export default function LiveCameraView({
-  createMode,
-  onModeChange,
-  onClose,
-  initialStream,
-}: Props) {
+const CAMERA_RETRY_ATTEMPTS = 6;
+const CAMERA_RETRY_DELAY_MS = 400;
+
+/** Pre-live camera check — flip camera, then go live. Enhance/Effects/Face filters live
+ *  on the actual live room now (CircleLiveRoomPage), not here — they used to sit on this
+ *  screen without doing anything, since nothing here ever fed into a real broadcast. */
+export default function LiveCameraView({ createMode, onModeChange, onClose, initialStream }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -30,12 +29,6 @@ export default function LiveCameraView({
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
-  const [showEnhance, setShowEnhance] = useState(false);
-  const [showEffects, setShowEffects] = useState(false);
-  const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
-  const [effectCategory, setEffectCategory] = useState("Trending");
-  const [selectedEffect, setSelectedEffect] = useState("none");
-  const [filterIntensity, setFilterIntensity] = useState(80);
   const [startingLive, setStartingLive] = useState(false);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
@@ -53,13 +46,12 @@ export default function LiveCameraView({
     releaseCameraStream(streamRef.current);
     streamRef.current = null;
     try {
-      let stream = await warmCameraStream(facing);
-      if (!stream) {
-        // Switching straight from Post mode's camera to here can race the previous
-        // stream's hardware release (especially on iOS) — one short retry absorbs that
-        // instead of immediately showing "camera access needed" for a stream that was
-        // actually just about to become available.
-        await new Promise((r) => setTimeout(r, 350));
+      let stream: MediaStream | null = null;
+      // Switching straight from Post mode's camera to here can race the previous
+      // stream's hardware release, especially on iOS — a single retry wasn't enough in
+      // practice, so this keeps trying for a couple seconds before actually giving up.
+      for (let attempt = 0; attempt < CAMERA_RETRY_ATTEMPTS && !stream; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, CAMERA_RETRY_DELAY_MS));
         stream = await warmCameraStream(facing);
       }
       if (!stream) throw new Error("denied");
@@ -132,7 +124,7 @@ export default function LiveCameraView({
 
       {!ready && !denied && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
-          <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <Loader2 className="h-8 w-8 animate-spin text-white/70" />
         </div>
       )}
 
@@ -143,42 +135,9 @@ export default function LiveCameraView({
         <span className="text-xs font-bold text-white/80 px-3 py-1 rounded-full bg-black/40">
           {startingLive ? "Starting…" : "Go Live"}
         </span>
-        <div className="w-11" />
-      </div>
-
-      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+4rem)] z-20 flex flex-col items-center gap-4">
-        <button type="button" onClick={flipCamera} className="flex flex-col items-center gap-1 text-white">
-          <SwitchCamera className="w-7 h-7" />
+        <button type="button" onClick={flipCamera} className="w-11 h-11 flex items-center justify-center text-white" aria-label="Flip camera">
+          <SwitchCamera className="w-6 h-6" />
         </button>
-        <button type="button" className="flex flex-col items-center gap-1 text-white/80">
-          <Timer className="w-6 h-6" />
-        </button>
-        <button type="button" className="flex flex-col items-center gap-1 text-white/80">
-          <LayoutGrid className="w-6 h-6" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowEffects(false);
-            setShowEnhance((v) => !v);
-          }}
-          className={`flex flex-col items-center gap-1 ${showEnhance ? "text-white" : "text-white/80"}`}
-        >
-          <Sparkles className="w-6 h-6" />
-          <span className="text-[9px] font-semibold">Enhance</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowEnhance(false);
-            setShowEffects((v) => !v);
-          }}
-          className={`flex flex-col items-center gap-1 ${showEffects ? "text-white" : "text-white/80"}`}
-        >
-          <Wand2 className="w-6 h-6" />
-          <span className="text-[9px] font-semibold">Effects</span>
-        </button>
-        <ChevronDown className="w-5 h-5 text-white/50 mt-1" />
       </div>
 
       <div className="relative z-20 mt-auto flex flex-col items-center pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
@@ -186,33 +145,13 @@ export default function LiveCameraView({
           type="button"
           onClick={() => void handleGoLive()}
           disabled={denied || !ready || startingLive}
-          className="w-[4.75rem] h-[4.75rem] rounded-full border-[5px] border-white bg-white/10 flex items-center justify-center transition-all disabled:opacity-40"
+          className="flex h-16 w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-base font-black text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-40"
           aria-label="Go live"
         >
-          <div className="w-[3.5rem] h-[3.5rem] rounded-full bg-red-500" />
+          {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+          {startingLive ? "Starting your live…" : "Go Live"}
         </button>
-        <p className="mt-3 text-xs font-bold text-white/70">
-          {startingLive ? "Starting your live…" : "Tap to go live"}
-        </p>
       </div>
-
-      <EnhancePanel
-        open={showEnhance}
-        tab={enhanceTab}
-        onTabChange={setEnhanceTab}
-        onClose={() => setShowEnhance(false)}
-        filterIntensity={filterIntensity}
-        onFilterIntensityChange={setFilterIntensity}
-      />
-
-      <EffectsPanel
-        open={showEffects}
-        category={effectCategory}
-        onCategoryChange={setEffectCategory}
-        onClose={() => setShowEffects(false)}
-        selectedId={selectedEffect}
-        onSelect={setSelectedEffect}
-      />
 
       <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
     </div>

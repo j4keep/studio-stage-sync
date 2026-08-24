@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, UserCheck, UserPlus, Users, Video, VideoOff, X } from "lucide-react";
+import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +22,9 @@ import {
 import { usePodcastLiveRoom, type RoomParticipant } from "@/pages/podcast/usePodcastLiveRoom";
 import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import FaceFilterPanel from "@/components/feed/create/FaceFilterPanel";
+import EnhancePanel from "@/components/feed/create/EnhancePanel";
+import EffectsPanel from "@/components/feed/create/EffectsPanel";
+import { getEffectFilter, type EnhanceTab } from "@/lib/create-modes";
 
 const sb = supabase as any;
 const ALL_GIFTS = [...GIFT_CATALOG, LIKE_GIFT];
@@ -48,6 +51,12 @@ export default function CircleLiveRoomPage() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [faceFilterSheetOpen, setFaceFilterSheetOpen] = useState(false);
   const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
+  const [showEnhance, setShowEnhance] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
+  const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
+  const [effectCategory, setEffectCategory] = useState("Trending");
+  const [selectedEffect, setSelectedEffect] = useState("none");
+  const [filterIntensity, setFilterIntensity] = useState(80);
   // Captured once — the host's ORIGINAL camera track, before any face-filter swap. Needed
   // to revert cleanly back to "none": once a filtered canvas track is published, the
   // room's own "current local video track" IS that canvas, so it can no longer serve as
@@ -123,17 +132,19 @@ export default function CircleLiveRoomPage() {
     }
   }, [isHost, room.local?.videoTrack]);
 
-  const faceFilters = useFaceFilters(rawHostTrackRef.current, faceFilter, isHost && faceFilter !== "none");
+  const colorFilter = getEffectFilter(selectedEffect);
+  const hasAnyVideoEffect = faceFilter !== "none" || selectedEffect !== "none";
+  const faceFilters = useFaceFilters(rawHostTrackRef.current, faceFilter, isHost && hasAnyVideoEffect, colorFilter);
 
   useEffect(() => {
     if (!isHost) return;
-    if (faceFilter === "none") {
+    if (!hasAnyVideoEffect) {
       if (rawHostTrackRef.current) void room.replaceVideoTrack(rawHostTrackRef.current);
     } else if (faceFilters.outputTrack) {
       void room.replaceVideoTrack(faceFilters.outputTrack);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, faceFilter, faceFilters.outputTrack]);
+  }, [isHost, hasAnyVideoEffect, faceFilters.outputTrack]);
 
   const resolveName = async (userId: string): Promise<string> => {
     const cached = nameCache.current.get(userId);
@@ -364,6 +375,28 @@ export default function CircleLiveRoomPage() {
             >
               <Smile className="h-4.5 w-4.5" />
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowEffects(false);
+                setShowEnhance((v) => !v);
+              }}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${showEnhance ? "bg-white text-black" : "bg-white/15"}`}
+              aria-label="Enhance"
+            >
+              <Sparkles className="h-4.5 w-4.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowEnhance(false);
+                setShowEffects((v) => !v);
+              }}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${selectedEffect !== "none" ? "bg-white text-black" : "bg-white/15"}`}
+              aria-label="Effects"
+            >
+              <Wand2 className="h-4.5 w-4.5" />
+            </button>
           </div>
         )}
 
@@ -440,6 +473,22 @@ export default function CircleLiveRoomPage() {
               onSelect={setFaceFilter}
               loading={faceFilters.loading}
               error={faceFilters.error}
+            />
+            <EnhancePanel
+              open={showEnhance}
+              tab={enhanceTab}
+              onTabChange={setEnhanceTab}
+              onClose={() => setShowEnhance(false)}
+              filterIntensity={filterIntensity}
+              onFilterIntensityChange={setFilterIntensity}
+            />
+            <EffectsPanel
+              open={showEffects}
+              category={effectCategory}
+              onCategoryChange={setEffectCategory}
+              onClose={() => setShowEffects(false)}
+              selectedId={selectedEffect}
+              onSelect={setSelectedEffect}
             />
             {/* Never shown directly — useFaceFilters draws into this canvas, then
                 captureStream() turns it into the track that gets published. Uses
