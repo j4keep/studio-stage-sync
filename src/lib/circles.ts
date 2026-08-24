@@ -256,7 +256,15 @@ export async function requestToJoin(circleId: string, userId: string, requiresAp
     // Best-effort — the requester's own join succeeded either way, notifying the owner
     // just makes them aware faster. Goes through a SECURITY DEFINER RPC since a plain
     // insert can't write a notification row for someone else (RLS: auth.uid() = user_id).
-    void sb.rpc("notify_circle_join_request", { p_circle_id: circleId }).catch(() => {});
+    // supabase-js query/RPC builders are thenable but not real Promises, so .catch() isn't
+    // callable directly on them — await inside a try/catch instead.
+    void (async () => {
+      try {
+        await sb.rpc("notify_circle_join_request", { p_circle_id: circleId });
+      } catch {
+        /* best-effort */
+      }
+    })();
   }
   return data as CircleMember;
 }
@@ -277,13 +285,30 @@ export async function listCircleMembers(circleId: string, status: MemberStatus =
   return (data as CircleMember[]) || [];
 }
 
+/** Lightweight count for the red "pending requests" badge — avoids fetching full rows. */
+export async function countPendingMembers(circleId: string): Promise<number> {
+  const { count, error } = await sb
+    .from("circle_members")
+    .select("*", { count: "exact", head: true })
+    .eq("circle_id", circleId)
+    .eq("status", "pending");
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function approveMember(memberId: string, approvedBy: string): Promise<void> {
   const { error } = await sb
     .from("circle_members")
     .update({ status: "approved", approved_at: new Date().toISOString(), approved_by: approvedBy })
     .eq("id", memberId);
   if (error) throw error;
-  void sb.rpc("notify_circle_join_approved", { p_member_id: memberId }).catch(() => {});
+  void (async () => {
+    try {
+      await sb.rpc("notify_circle_join_approved", { p_member_id: memberId });
+    } catch {
+      /* best-effort */
+    }
+  })();
 }
 
 export async function denyMember(memberId: string): Promise<void> {

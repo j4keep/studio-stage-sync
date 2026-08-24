@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Lock, Settings, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Circle, CircleMember, getMyMembership, getCircle, updateCircle } from "@/lib/circles";
+import { Circle, CircleMember, getMyMembership, getCircle, updateCircle, countPendingMembers } from "@/lib/circles";
 import { CIRCLE_TYPE_META } from "@/lib/circles";
 import CircleJoinButton from "@/components/circle/CircleJoinButton";
 import CircleTopFansWheel from "@/components/circle/CircleTopFansWheel";
@@ -18,6 +18,7 @@ export default function CirclePage() {
   const [circle, setCircle] = useState<Circle | null | undefined>(undefined);
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [tab, setTab] = useState<Tab>("home");
+  const [pendingCount, setPendingCount] = useState(0);
 
   const load = () => {
     if (!id) return;
@@ -28,6 +29,22 @@ export default function CirclePage() {
   };
 
   useEffect(load, [id, user?.id]);
+
+  // Kept as its own effect (not part of the `isAdmin` computed below) so the "you have
+  // pending requests" badge is visible on any tab — not just after opening Members —
+  // per the user's explicit ask not to have to hunt for it.
+  useEffect(() => {
+    if (!circle || !user?.id) {
+      setPendingCount(0);
+      return;
+    }
+    const admin = user.id === circle.owner_id || (membership?.status === "approved" && (membership.role === "owner" || membership.role === "admin"));
+    if (!admin) {
+      setPendingCount(0);
+      return;
+    }
+    void countPendingMembers(circle.id).then(setPendingCount).catch(() => setPendingCount(0));
+  }, [circle, membership, user?.id]);
 
   if (circle === undefined) {
     return <div className="flex min-h-[100dvh] items-center justify-center bg-background text-muted-foreground">Loading…</div>;
@@ -124,11 +141,16 @@ export default function CirclePage() {
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`px-3 py-2.5 text-[12.5px] font-bold border-b-2 transition ${
+            className={`relative px-3 py-2.5 text-[12.5px] font-bold border-b-2 transition ${
               tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
             }`}
           >
             {t.label}
+            {t.id === "members" && pendingCount > 0 && (
+              <span className="absolute -right-1 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-black text-destructive-foreground">
+                {pendingCount > 99 ? "99+" : pendingCount}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -155,7 +177,7 @@ export default function CirclePage() {
         <>
           {tab === "posts" && <ComingSoon label="Circle posts" />}
           {tab === "videos" && <ComingSoon label="Circle videos" />}
-          {tab === "members" && isAdmin && <CircleMemberManagement circle={circle} />}
+          {tab === "members" && isAdmin && <CircleMemberManagement circle={circle} onChanged={load} />}
           {tab === "about" && (
             <div className="space-y-3 px-4 py-5 text-[13px]">
               <Row label="Type" value={meta.label} />

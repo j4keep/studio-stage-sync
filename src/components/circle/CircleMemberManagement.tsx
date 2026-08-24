@@ -29,7 +29,7 @@ async function withProfiles(members: CircleMember[]): Promise<Row[]> {
   return members.map((m) => ({ ...m, display_name: byId.get(m.user_id)?.display_name ?? null, avatar_url: byId.get(m.user_id)?.avatar_url ?? null }));
 }
 
-export default function CircleMemberManagement({ circle }: { circle: Circle }) {
+export default function CircleMemberManagement({ circle, onChanged }: { circle: Circle; onChanged?: () => void }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"pending" | "members" | "blocked">("pending");
@@ -51,6 +51,7 @@ export default function CircleMemberManagement({ circle }: { circle: Circle }) {
     try {
       await fn();
       reload();
+      onChanged?.();
     } catch (e: any) {
       toast({ title: "Action failed", description: e.message, variant: "destructive" });
     } finally {
