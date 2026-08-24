@@ -5,11 +5,8 @@ import GlobalRadioPlayer from "./GlobalRadioPlayer";
 import GlobalPlaylistPlayer from "./GlobalPlaylistPlayer";
 import PlaylistPlayerSheet from "./PlaylistPlayerSheet";
 import NotificationBell from "./NotificationBell";
-import YajAiGeneratorIcon from "./YajAiGeneratorIcon";
 import MessagesInboxButton from "./MessagesInboxButton";
-import { ArrowLeft } from "lucide-react";
-import { useProGate } from "@/hooks/use-pro-gate";
-import ProGateModal from "./ProGateModal";
+import { ArrowLeft, Users } from "lucide-react";
 import IncognitoFeedWindow from "./IncognitoFeedWindow";
 import DesktopTopBar from "./desktop/DesktopTopBar";
 import DesktopLeftNav from "./desktop/DesktopLeftNav";
@@ -56,7 +53,6 @@ function isMobileFeedPath(pathname: string) {
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isPro, requirePro, showProModal, gatedFeature, closeProModal, activatePro } = useProGate();
   const isPodcastWorkspace =
     (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
     location.pathname.startsWith("/podcast/room/");
@@ -94,14 +90,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   );
 
 
-  const handleAskYaj = () => {
-    if (!isPro) {
-      requirePro("Ask YAJ");
-    } else {
-      navigate("/ask-yaj");
-    }
-  };
-
   if (isPodcastWorkspace || isPodcastLobby) {
     return (
       <div className="relative min-h-screen overflow-x-hidden overscroll-x-none bg-background text-foreground">
@@ -124,16 +112,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <div className="flex items-center gap-2">
 
             <button
-              onClick={handleAskYaj}
-              className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-              aria-label="Ask YAJ"
+              onClick={() => navigate("/circle")}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+              aria-label="My Circle"
             >
-              <YajAiGeneratorIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
-              {!isPro && (
-                <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
-                  PRO
-                </span>
-              )}
+              <Users className={`h-5 w-5 ${location.pathname.startsWith("/circle") ? "text-primary" : "text-foreground"}`} />
             </button>
             <MessagesInboxButton />
             <NotificationBell />
@@ -176,7 +159,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         <GlobalRadioPlayer />
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />
-        <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
         {location.pathname !== "/auth" && <IncognitoFeedWindow />}
       </div>
     );
@@ -189,17 +171,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           {backSlot}
           <div className="flex items-center gap-2">
           <button
-
-            onClick={handleAskYaj}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            aria-label="Ask YAJ"
+            onClick={() => navigate("/circle")}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+            aria-label="My Circle"
           >
-            <YajAiGeneratorIcon className="h-5 w-5" active={location.pathname === "/ask-yaj"} />
-            {!isPro && (
-              <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary px-1 py-0.5 text-[6px] font-bold leading-none text-primary-foreground">
-                PRO
-              </span>
-            )}
+            <Users className={`h-5 w-5 ${location.pathname.startsWith("/circle") ? "text-primary" : "text-foreground"}`} />
           </button>
           <MessagesInboxButton />
           <NotificationBell />
@@ -213,7 +189,6 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
       <BottomNav />
-      <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>
   );
