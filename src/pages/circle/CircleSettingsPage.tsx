@@ -181,11 +181,11 @@ export default function CircleSettingsPage() {
             onChange={(v) => patch("discoverable", () => updateCircle(circle.id, { isDiscoverable: v }))}
           />
           <Toggle
-            label="Require approval to join"
-            hint="Review each request before someone gets in."
-            value={circle.requires_approval}
+            label="Automatically accept join requests"
+            hint={circle.requires_approval ? "Off — you review and approve each request yourself." : "On — anyone who asks to join gets in immediately."}
+            value={!circle.requires_approval}
             saving={savingField === "approval"}
-            onChange={(v) => patch("approval", () => updateCircle(circle.id, { requiresApproval: v }))}
+            onChange={(v) => patch("approval", () => updateCircle(circle.id, { requiresApproval: !v }))}
           />
           {!circle.is_personal && (
             <>
