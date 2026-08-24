@@ -84,35 +84,6 @@ export type CreateCircleInput = {
   notifyNewMembers?: boolean;
 };
 
-export async function createCircle(input: CreateCircleInput): Promise<Circle> {
-  const { data, error } = await sb
-    .from("circles")
-    .insert({
-      owner_id: input.ownerId,
-      type: input.type,
-      name: input.name.trim(),
-      description: input.description?.trim() || null,
-      category: input.category || null,
-      city: input.city || null,
-      avatar_url: input.avatarUrl || null,
-      cover_url: input.coverUrl || null,
-      is_private: input.isPrivate ?? false,
-      is_discoverable: input.isDiscoverable ?? true,
-      requires_approval: input.requiresApproval ?? false,
-      is_paid: input.isPaid ?? false,
-      price_cents: input.isPaid ? input.priceCents ?? null : null,
-      welcome_message: input.welcomeMessage || null,
-      default_post_visibility: input.defaultPostVisibility ?? "circle_members",
-      member_posting_allowed: input.memberPostingAllowed ?? false,
-      member_comments_allowed: input.memberCommentsAllowed ?? true,
-      member_invites_allowed: input.memberInvitesAllowed ?? false,
-    })
-    .select("*")
-    .single();
-  if (error) throw error;
-  return data as Circle;
-}
-
 export async function getCircle(id: string): Promise<Circle | null> {
   const { data, error } = await sb.from("circles").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
@@ -173,55 +144,6 @@ export async function updateCircle(id: string, patch: Partial<CreateCircleInput>
 export async function deleteCircle(id: string): Promise<void> {
   const { error } = await sb.from("circles").delete().eq("id", id).eq("is_personal", false);
   if (error) throw error;
-}
-
-/** Circles the user owns or is an approved member of. */
-export async function listMyCircles(userId: string): Promise<{ circle: Circle; membership: CircleMember }[]> {
-  const { data, error } = await sb
-    .from("circle_members")
-    .select("*, circles(*)")
-    .eq("user_id", userId)
-    .eq("status", "approved")
-    .order("approved_at", { ascending: false });
-  if (error) throw error;
-  return ((data as any[]) || [])
-    .filter((row) => row.circles)
-    .map((row) => ({ circle: row.circles as Circle, membership: row as CircleMember }));
-}
-
-export async function listCreatedCircles(userId: string): Promise<Circle[]> {
-  const { data, error } = await sb.from("circles").select("*").eq("owner_id", userId).order("created_at", { ascending: false });
-  if (error) throw error;
-  return (data as Circle[]) || [];
-}
-
-export type DiscoverCirclesOpts = {
-  type?: CircleType;
-  search?: string;
-  city?: string;
-  limit?: number;
-};
-
-export async function listDiscoverableCircles(opts: DiscoverCirclesOpts = {}): Promise<Circle[]> {
-  let q = sb.from("circles").select("*").eq("is_discoverable", true).order("member_count", { ascending: false }).limit(opts.limit ?? 30);
-  if (opts.type) q = q.eq("type", opts.type);
-  if (opts.city) q = q.eq("city", opts.city);
-  if (opts.search?.trim()) q = q.ilike("name", `%${opts.search.trim()}%`);
-  const { data, error } = await q;
-  if (error) throw error;
-  return (data as Circle[]) || [];
-}
-
-export async function listExclusiveCircles(limit = 20): Promise<Circle[]> {
-  const { data, error } = await sb
-    .from("circles")
-    .select("*")
-    .eq("type", "creator")
-    .eq("is_discoverable", true)
-    .order("member_count", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return (data as Circle[]) || [];
 }
 
 export async function getMyMembership(circleId: string, userId: string): Promise<CircleMember | null> {
