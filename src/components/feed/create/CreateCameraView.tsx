@@ -1,130 +1,76 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { X, SwitchCamera, Sparkles, Wand2, Smile, ImagePlus, Type, Music } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-  warmCameraStream,
-  releaseCameraStream,
-  createVideoRecorder,
-  pickVideoRecorderMimeType,
-  streamHasLiveAudio,
-  streamHasLiveVideo,
-  fileExtensionForMime,
-  ensureStreamHasAudio,
-  createMirroredVideoRecordStream,
-  shouldMirrorRecordOutput,
-  capturePhotoFromStream,
-} from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
-import { QUICK_MAX_RECORD_SEC, getEffectFilter } from "@/lib/create-modes";
-import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
-import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
-import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
-import CreateModeTabs from "./CreateModeTabs";
-import RecordButton from "./RecordButton";
-import EnhancePanel from "./EnhancePanel";
-import EffectsPanel from "./EffectsPanel";
-import FaceFilterPanel from "./FaceFilterPanel";
-import { toast } from "sonner";
-
-const MIN_RECORD_MS = 400;
+  ChevronDown,
+  ImagePlus,
+  Loader2,
+  Radio,
+  Settings,
+  Sparkles,
+  SwitchCamera,
+  UserRound,
+  Users,
+  Wand2,
+  X,
+} from "lucide-react";
+import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
+import type { CreateMode } from "@/lib/create-modes";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "@/hooks/use-toast";
+import { startCircleLive } from "@/lib/circle-live";
 
 interface Props {
-  onClose: () => void;
-  onCapture: (file: File, mediaType: "image" | "video", visualEffect?: string) => void;
-  onOpenGallery: () => void;
-  onTextPost: () => void;
-  initialStream?: MediaStream | null;
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
-  onAddSound?: () => void;
-  soundLabel?: string;
-  musicPreviewUrl?: string | null;
-  musicTrim?: MusicTrim;
-  musicPaused?: boolean;
-  onRegisterMusicPlay?: (play: (() => Promise<boolean>) | null) => void;
-  /** "hold" (Reel) = press-and-hold with a max; "tap" (Post) = tap to start/stop. */
-  recordMode?: "hold" | "tap";
-  /** Max recording seconds. null = unlimited. */
-  maxRecordSec?: number | null;
+  onClose: () => void;
+  onOpenGallery?: () => void;
+  initialStream?: MediaStream | null;
 }
 
-export default function CreateCameraView({
-  onClose,
-  onCapture,
-  onOpenGallery,
-  onTextPost,
-  initialStream,
+type LiveStyle = "virtual" | "multi" | "live";
+
+const CAMERA_RETRY_ATTEMPTS = 6;
+const CAMERA_RETRY_DELAY_MS = 400;
+
+const LIVE_STYLES: { id: LiveStyle; label: string; icon: typeof Radio }[] = [
+  { id: "virtual", label: "Virtual Live", icon: UserRound },
+  { id: "multi", label: "Multi-guest LIVE", icon: Users },
+  { id: "live", label: "LIVE", icon: Radio },
+];
+
+/**
+ * Pre-live camera check. Keep this intentionally thin: the real broadcast room still owns
+ * the live session, gifts/comments and the working live effects stack. This screen is only
+ * the cleaner launch surface.
+ */
+export default function LiveCameraView({
   createMode,
   onModeChange,
-  onAddSound,
-  soundLabel,
-  musicPreviewUrl,
-  musicTrim,
-  musicPaused = false,
-  onRegisterMusicPlay,
-  recordMode = "hold",
-  maxRecordSec = QUICK_MAX_RECORD_SEC,
+  onClose,
+  onOpenGallery,
+  initialStream,
 }: Props) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const ownsStreamRef = useRef(true);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const recordStartRef = useRef<number | null>(null);
-  const progressTimerRef = useRef<number | null>(null);
-  const recordPendingRef = useRef(false);
-  const mirrorRecordStopRef = useRef<(() => void) | null>(null);
-  const wantsRecordRef = useRef(false);
-  const discardClipRef = useRef(false);
-  const recordingRef = useRef(false);
-  const finishRecordingRef = useRef<() => void>(() => {});
-  const pointerCleanupRef = useRef<(() => void) | null>(null);
-  const cameraMusicStopRef = useRef<(() => void) | null>(null);
-  const cameraMusicPlayerRef = useRef<ReturnType<typeof createTrimmedMusicPlayer> | null>(null);
-  const cameraMusicSessionRef = useRef<(() => void) | null>(null);
-  const lipSyncModeRef = useRef(!!musicPreviewUrl);
-  const recordStartedAtRef = useRef<number | null>(null);
-  const isStoppingRecordingRef = useRef(false);
-  const cameraStoppedForSoundPickerRef = useRef(false);
-
+  const ownsStreamRef = useRef(!initialStream);
+  const facingReadyRef = useRef(false);
   const [facing, setFacing] = useState<"user" | "environment">("user");
-  const [denied, setDenied] = useState(false);
-  const [recording, setRecording] = useState(false);
-  const [capturingPhoto, setCapturingPhoto] = useState(false);
-  const [recordProgress, setRecordProgress] = useState(0);
   const [ready, setReady] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [micMissing, setMicMissing] = useState(false);
-  const [showEnhance, setShowEnhance] = useState(false);
-  const [showEffects, setShowEffects] = useState(false);
-  const [showFaceFilters, setShowFaceFilters] = useState(false);
-  const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
-  const [effectCategory, setEffectCategory] = useState("Trending");
-  const [selectedEffect, setSelectedEffect] = useState("none");
-  const [filterIntensity, setFilterIntensity] = useState(80);
-  const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
-  const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
+  const [denied, setDenied] = useState(false);
+  const [startingLive, setStartingLive] = useState(false);
+  const [liveStyle, setLiveStyle] = useState<LiveStyle>("live");
 
-  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, faceFilter !== "none");
-
-  const stopStream = useCallback((forceRelease = false) => {
-    if (ownsStreamRef.current || forceRelease) {
-      releaseCameraStream(streamRef.current);
-    }
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-      try {
-        videoRef.current.load();
-      } catch {
-        /* ignore */
-      }
-    }
-    streamRef.current = null;
-    setReady(false);
+  const streamIsUsable = useCallback((stream: MediaStream | null | undefined) => {
+    if (!stream) return false;
+    const track = stream.getVideoTracks()[0];
+    return !!track && track.readyState === "live" && track.enabled;
   }, []);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
+    if (!streamIsUsable(stream)) throw new Error("stale-camera-stream");
     streamRef.current = stream;
-
     const video = videoRef.current;
     if (video) {
       video.setAttribute("playsinline", "true");
@@ -132,63 +78,60 @@ export default function CreateCameraView({
       video.srcObject = stream;
       await video.play();
 
-      if (!video.videoWidth) {
-        await new Promise<void>((resolve) => {
-          video.addEventListener("loadedmetadata", () => resolve(), { once: true });
-        });
+      // A stream can still report `live` on iOS while producing no frame after a view switch.
+      // Wait briefly for real video dimensions; if they never arrive we reacquire the camera.
+      if (!video.videoWidth || !video.videoHeight) {
+        await Promise.race([
+          new Promise<void>((resolve) => video.addEventListener("loadedmetadata", () => resolve(), { once: true })),
+          new Promise<void>((resolve) => setTimeout(resolve, 700)),
+        ]);
       }
+      if (!video.videoWidth || !video.videoHeight) throw new Error("camera-no-frame");
     }
-
     setReady(true);
     setDenied(false);
-    setMicMissing(!streamHasLiveAudio(stream));
-    setRawVideoTrack(stream.getVideoTracks()[0] ?? null);
-  }, []);
+  }, [streamIsUsable]);
 
   const startCamera = useCallback(async () => {
-    stopStream(true);
-    setStarting(true);
-    setDenied(false);
+    if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+    streamRef.current = null;
     setReady(false);
-
+    setDenied(false);
     try {
-      const stream = await warmCameraStream(facing, { withAudio: true });
+      let stream: MediaStream | null = null;
+      // iOS can briefly hold the camera when switching from the Post recorder.
+      for (let attempt = 0; attempt < CAMERA_RETRY_ATTEMPTS && !stream; attempt++) {
+        if (attempt > 0) await new Promise((r) => setTimeout(r, CAMERA_RETRY_DELAY_MS));
+        stream = await warmCameraStream(facing);
+        if (stream && !streamIsUsable(stream)) {
+          releaseCameraStream(stream);
+          stream = null;
+        }
+      }
       if (!stream) throw new Error("denied");
       ownsStreamRef.current = true;
       await attachStream(stream);
     } catch {
+      // If attach failed because Safari handed us a stale/no-frame stream, make one clean retry.
+      if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+      streamRef.current = null;
       setDenied(true);
-    } finally {
-      setStarting(false);
+      setReady(false);
     }
-  }, [facing, attachStream, stopStream, musicPreviewUrl]);
-
-  const ensureLiveCamera = useCallback(() => {
-    if (streamHasLiveVideo(streamRef.current)) return;
-    void startCamera();
-  }, [startCamera]);
-
-  useEffect(() => {
-    const stopForGallery = () => {
-      stopStream(true);
-    };
-    window.addEventListener("yaj-stop-create-camera", stopForGallery);
-    return () => {
-      window.removeEventListener("yaj-stop-create-camera", stopForGallery);
-    };
-  }, [stopStream]);
+  }, [facing, attachStream, streamIsUsable]);
 
   useEffect(() => {
     let cancelled = false;
-
-
     (async () => {
-      if (initialStream && streamHasLiveVideo(initialStream) && !cancelled) {
-        ownsStreamRef.current = false;
-        await attachStream(initialStream);
-        return;
+      if (initialStream && streamIsUsable(initialStream)) {
+        try {
+          ownsStreamRef.current = false;
+          await attachStream(initialStream);
+          if (!cancelled) return;
+        } catch {
+          // Fall through to a fresh camera request below.
+        }
       }
-
       if (!cancelled) {
         ownsStreamRef.current = true;
         await startCamera();
@@ -197,448 +140,41 @@ export default function CreateCameraView({
 
     return () => {
       cancelled = true;
-      stopStream();
+      if (ownsStreamRef.current) releaseCameraStream(streamRef.current);
+      const video = videoRef.current;
+      if (video) video.srcObject = null;
+      streamRef.current = null;
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const facingReady = useRef(false);
-
+  // Do not run a second camera start on initial mount. That race was causing the black LIVE preview on iPhone.
   useEffect(() => {
-    if (!facingReady.current) {
-      facingReady.current = true;
+    if (!facingReadyRef.current) {
+      facingReadyRef.current = true;
       return;
     }
+    ownsStreamRef.current = true;
     void startCamera();
   }, [facing, startCamera]);
 
-  useEffect(() => {
-    recordingRef.current = recording;
-  }, [recording]);
+  const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
-  /** Stop camera/mic while Add Sound is open so iOS does not duck speaker volume. */
-  useEffect(() => {
-    const stream = streamRef.current;
-    const video = videoRef.current;
-
-    if (musicPaused) {
-      cameraStoppedForSoundPickerRef.current = true;
-      stopStream(true);
-      void resetIosAudioSessionToPlayback();
-      return;
-    }
-
-    if (cameraStoppedForSoundPickerRef.current && !streamHasLiveVideo(stream)) {
-      cameraStoppedForSoundPickerRef.current = false;
-      void startCamera();
-      return;
-    }
-
-    cameraStoppedForSoundPickerRef.current = false;
-
-    if (!stream || !ready) return;
-
-    for (const track of stream.getVideoTracks()) {
-      track.enabled = true;
-    }
-    if (video?.paused) {
-      void video.play().catch(() => {});
-    }
-
-    void ensureStreamHasAudio(stream).then((ok) => setMicMissing(!ok));
-  }, [musicPaused, ready, startCamera, stopStream]);
-
-  /** Keep track of added-sound mode without rebuilding the camera stream. */
-  useEffect(() => {
-    const lipSync = !!musicPreviewUrl;
-    lipSyncModeRef.current = lipSync;
-  }, [musicPreviewUrl]);
-
-  const armCameraMusic = useCallback(
-    (media: HTMLMediaElement) => {
-      forceIosAudioSessionToPlayback();
-      boostMediaElementLoudness(media, 1.9);
-      cameraMusicSessionRef.current?.();
-      cameraMusicSessionRef.current = armFeedAudioPlayback(
-        media,
-        { title: soundLabel || "Added sound" },
-        CAMERA_ADDED_SOUND_MONITOR_VOLUME,
-      );
-    },
-    [soundLabel],
-  );
-
-  const playCameraMusic = useCallback(async (): Promise<boolean> => {
-    const player = cameraMusicPlayerRef.current;
-    if (!player) return false;
-    armCameraMusic(player.audio);
-    return player.play();
-  }, [armCameraMusic]);
-
-  useEffect(() => {
-    cameraMusicSessionRef.current?.();
-    cameraMusicSessionRef.current = null;
-    cameraMusicStopRef.current?.();
-    cameraMusicStopRef.current = null;
-    cameraMusicPlayerRef.current = null;
-    onRegisterMusicPlay?.(null);
-
-    if (!musicPreviewUrl || !ready || musicPaused) return;
-
-    const player = createTrimmedMusicPlayer(musicPreviewUrl, {
-      ...(musicTrim ?? {}),
-      volume: CAMERA_ADDED_SOUND_MONITOR_VOLUME,
-    });
-    cameraMusicStopRef.current = player.stop;
-    cameraMusicPlayerRef.current = player;
-    onRegisterMusicPlay?.(() => playCameraMusic());
-
-    return () => {
-      cameraMusicSessionRef.current?.();
-      cameraMusicSessionRef.current = null;
-      player.stop();
-      cameraMusicStopRef.current = null;
-      cameraMusicPlayerRef.current = null;
-      onRegisterMusicPlay?.(null);
-    };
-  }, [
-    musicPreviewUrl,
-    ready,
-    musicTrim?.trimStart,
-    musicTrim?.trimEnd,
-    musicTrim?.sourceDurationSec,
-    onRegisterMusicPlay,
-    musicPaused,
-    playCameraMusic,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      cameraMusicSessionRef.current?.();
-      cameraMusicSessionRef.current = null;
-      cameraMusicStopRef.current?.();
-      cameraMusicStopRef.current = null;
-    };
-  }, []);
-
-  const clearProgressTimer = () => {
-    if (progressTimerRef.current) {
-      window.clearInterval(progressTimerRef.current);
-      progressTimerRef.current = null;
-    }
-  };
-
-  const detachPointerEndListeners = useCallback(() => {
-    pointerCleanupRef.current?.();
-    pointerCleanupRef.current = null;
-  }, []);
-
-  const attachPointerEndListeners = useCallback(() => {
-    detachPointerEndListeners();
-    const onEnd = () => {
-      wantsRecordRef.current = false;
-      detachPointerEndListeners();
-      if (recordingRef.current && !isStoppingRecordingRef.current) {
-        finishRecordingRef.current();
-      } else {
-        recordPendingRef.current = false;
-      }
-    };
-    document.addEventListener("pointerup", onEnd);
-    document.addEventListener("pointercancel", onEnd);
-    pointerCleanupRef.current = () => {
-      document.removeEventListener("pointerup", onEnd);
-      document.removeEventListener("pointercancel", onEnd);
-    };
-  }, [detachPointerEndListeners]);
-
-  useEffect(() => {
-    return () => {
-      clearProgressTimer();
-      detachPointerEndListeners();
-      mirrorRecordStopRef.current?.();
-      mirrorRecordStopRef.current = null;
-    };
-  }, [detachPointerEndListeners]);
-
-  const flipCamera = () => {
-    if (recording || capturingPhoto) return;
-    stopStream(true);
-    setFacing((f) => (f === "user" ? "environment" : "user"));
-  };
-
-  const resetRecordingUi = () => {
-    clearProgressTimer();
-    recordStartRef.current = null;
-    recordStartedAtRef.current = null;
-    recordPendingRef.current = false;
-    setRecordProgress(0);
-    setRecording(false);
-  };
-
-  const finishRecording = useCallback(() => {
-    wantsRecordRef.current = false;
-    detachPointerEndListeners();
-    clearProgressTimer();
-
-    if (isStoppingRecordingRef.current) return;
-
-    const rec = recorderRef.current;
-    if (rec?.state === "recording") {
-      isStoppingRecordingRef.current = true;
-      try {
-        rec.requestData();
-      } catch {
-        /* ignore */
-      }
-      rec.stop();
-      return;
-    }
-
-    // Never stop the mirror stream here — onstop owns teardown. Stopping early
-    // truncates max-length clips to a single frame when auto-stop races pointer-up.
-    if (!recorderRef.current) {
-      resetRecordingUi();
-    }
-  }, [detachPointerEndListeners]);
-
-  useEffect(() => {
-    finishRecordingRef.current = finishRecording;
-  }, [finishRecording]);
-
-  const startRecording = async () => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!video || !stream || recordingRef.current || !wantsRecordRef.current) return;
-
-    recordPendingRef.current = true;
-    const lipSyncMode = !!musicPreviewUrl;
-
-    if (!streamHasLiveAudio(stream)) {
-      const ok = await ensureStreamHasAudio(stream);
-      setMicMissing(!ok);
-    }
-
-    if (!wantsRecordRef.current) {
-      recordPendingRef.current = false;
-      return;
-    }
-
-    chunksRef.current = [];
-    mirrorRecordStopRef.current?.();
-    mirrorRecordStopRef.current = null;
-
-    const { stream: recordStream, stop: stopMirror } = createMirroredVideoRecordStream(
-      stream,
-      video,
-      shouldMirrorRecordOutput(facing),
-      faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
-    );
-    mirrorRecordStopRef.current = stopMirror;
-
+  const handleGoLive = async () => {
+    if (!ready || !streamHasLiveAudio(streamRef.current) || !user?.id || startingLive) return;
+    setStartingLive(true);
     try {
-      const rec = createVideoRecorder(recordStream, pickVideoRecorderMimeType());
-      recorderRef.current = rec;
-
-      rec.ondataavailable = (e) => {
-        if (e.data.size) chunksRef.current.push(e.data);
-      };
-
-      rec.onstop = () => {
-        const mime = rec.mimeType || pickVideoRecorderMimeType() || "video/webm";
-        const blob = new Blob(chunksRef.current, { type: mime });
-        const ext = fileExtensionForMime(mime);
-        const elapsedMs = recordStartedAtRef.current
-          ? Date.now() - recordStartedAtRef.current
-          : 0;
-        const shouldDiscard = discardClipRef.current;
-
-        mirrorRecordStopRef.current?.();
-        mirrorRecordStopRef.current = null;
-        streamRef.current?.getTracks().forEach((track) => track.stop());
-        if (videoRef.current) {
-          videoRef.current.srcObject = null;
-        }
-        discardClipRef.current = false;
-        recorderRef.current = null;
-        isStoppingRecordingRef.current = false;
-        recordStartedAtRef.current = null;
-        resetRecordingUi();
-
-        if (shouldDiscard) {
-          ensureLiveCamera();
-          return;
-        }
-
-        if (elapsedMs < MIN_RECORD_MS || blob.size < 800) {
-          toast.message("Hold the button to record a short");
-          ensureLiveCamera();
-          return;
-        }
-
-        const capturedFile = new File([blob], `short-${Date.now()}.${ext}`, {
-          type: blob.type || mime,
-        });
-
-        void resetIosAudioSessionToPlayback().finally(() => {
-          onCapture(capturedFile, "video", selectedEffect);
-        });
-      };
-
-      rec.onerror = () => {
-        toast.error("Recording failed — try again");
-        discardClipRef.current = true;
-        finishRecordingRef.current();
-      };
-
-      if (lipSyncMode && cameraMusicPlayerRef.current) {
-        const audio = cameraMusicPlayerRef.current.audio;
-        try {
-          audio.pause();
-          audio.currentTime = musicTrim?.trimStart ?? 0;
-        } catch {
-          /* ignore */
-        }
-
-        armCameraMusic(audio);
-        await cameraMusicPlayerRef.current.play();
-      }
-
-      rec.start(100);
-
-      recordPendingRef.current = false;
-      setRecording(true);
-      const startedAt = Date.now();
-      recordStartedAtRef.current = startedAt;
-      recordStartRef.current = startedAt;
-      setRecordProgress(0);
-
-      progressTimerRef.current = window.setInterval(() => {
-        if (!recordStartedAtRef.current) return;
-        const elapsed = (Date.now() - recordStartedAtRef.current) / 1000;
-        if (maxRecordSec == null) {
-          // Unlimited (Post/Create mode) — just advance the readout.
-          setRecordProgress((elapsed % 60) / 60);
-          return;
-        }
-        const progress = Math.min(1, elapsed / maxRecordSec);
-        setRecordProgress(progress);
-        if (progress >= 1) {
-          setRecordProgress(1);
-          wantsRecordRef.current = false;
-          finishRecordingRef.current();
-        }
-      }, 50);
-    } catch {
-      mirrorRecordStopRef.current?.();
-      mirrorRecordStopRef.current = null;
-      recordPendingRef.current = false;
-      setRecording(false);
-      clearProgressTimer();
-      toast.error("Couldn't start recording");
+      // Preserve the existing, working live-session path. The selected visual mode is a
+      // presentation choice for now; we can wire mode-specific rooms in the next pass.
+      const session = await startCircleLive(null, user.id);
+      navigate(`/live/${session.id}`);
+    } catch (e: any) {
+      toast({ title: "Couldn't go live", description: e.message, variant: "destructive" });
+      setStartingLive(false);
     }
   };
-
-  const cancelRecording = () => {
-    if (!recording && !recordPendingRef.current) return;
-    discardClipRef.current = true;
-    wantsRecordRef.current = false;
-    recordPendingRef.current = false;
-    detachPointerEndListeners();
-
-    if (recorderRef.current?.state === "recording") {
-      finishRecordingRef.current();
-      return;
-    }
-
-    resetRecordingUi();
-    ensureLiveCamera();
-  };
-
-  const takePhoto = async () => {
-    const video = videoRef.current;
-    const stream = streamRef.current;
-    if (!video || !stream || !ready || capturingPhoto || recording) return;
-
-    setCapturingPhoto(true);
-    try {
-      const blob = await capturePhotoFromStream(stream, video, {
-        mirror: facing === "user",
-        filterSource: faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
-      });
-      if (!blob) {
-        toast.error("Couldn't capture photo — try again");
-        return;
-      }
-      onCapture(
-        new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }),
-        "image",
-        selectedEffect,
-      );
-      stopStream(true);
-    } catch {
-      toast.error("Photo capture failed");
-    } finally {
-      setCapturingPhoto(false);
-    }
-  };
-
-  const handleRecordDown = (e: React.PointerEvent) => {
-    if (denied || !ready || capturingPhoto) return;
-
-    // Tap-to-toggle mode (Post): first press starts, next press stops.
-    if (recordMode === "tap") {
-      e.preventDefault();
-      e.stopPropagation();
-      if (recording || recordPendingRef.current) {
-        wantsRecordRef.current = false;
-        if (recordingRef.current && !isStoppingRecordingRef.current) {
-          finishRecordingRef.current();
-        }
-        return;
-      }
-      wantsRecordRef.current = true;
-      discardClipRef.current = false;
-      void startRecording();
-      return;
-    }
-
-    if (recording || recordPendingRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    wantsRecordRef.current = true;
-    discardClipRef.current = false;
-    attachPointerEndListeners();
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    void startRecording();
-  };
-
-  const handleRecordUp = (e: React.PointerEvent) => {
-    if (recordMode === "tap") return; // ignore release in tap-toggle mode
-    wantsRecordRef.current = false;
-    e.preventDefault();
-    try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-    if (recordingRef.current && !isStoppingRecordingRef.current) {
-      finishRecordingRef.current();
-    } else {
-      recordPendingRef.current = false;
-    }
-    detachPointerEndListeners();
-  };
-
-  const recordDisabled = denied || !ready || capturingPhoto;
-  const liveFilter = getEffectFilter(selectedEffect);
-
 
   return (
-    <div className="absolute inset-0 bg-black flex flex-col touch-none">
+    <div className="absolute inset-0 bg-black flex flex-col touch-none text-white overflow-hidden">
       {!denied && (
         <video
           ref={videoRef}
@@ -646,233 +182,162 @@ export default function CreateCameraView({
           playsInline
           muted
           autoPlay
-          style={{
-            // Hidden (not removed — useFaceFilters still needs it as a track source)
-            // behind the filter canvas once a face filter is actively drawing.
-            visibility: faceFilter !== "none" && faceFilters.active ? "hidden" : "visible",
-            transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
-          }}
+          style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       )}
 
-      {!denied && faceFilter !== "none" && (
-        <canvas
-          ref={faceFilters.canvasRef}
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{
-            visibility: faceFilters.active ? "visible" : "hidden",
-            transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
-          }}
-        />
-      )}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/28 via-transparent to-black/62 pointer-events-none" />
 
       {denied && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 px-8 text-center z-10">
-          <p className="text-white text-base font-semibold">Camera access needed</p>
-          <p className="text-white/60 text-sm">
-            Allow camera in Settings, or upload from your library.
-          </p>
-          <button
-            type="button"
-            onClick={onOpenGallery}
-            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
-          >
-            Open gallery
-          </button>
-        </div>
-      )}
-
-      {starting && !ready && !denied && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
-          <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-        </div>
-      )}
-
-      {capturingPhoto && (
-        <div className="absolute inset-0 z-20 bg-white/20 pointer-events-none animate-pulse" aria-hidden />
-      )}
-
-      {micMissing && ready && !recording && !musicPreviewUrl && (
-        <div className="absolute top-[calc(env(safe-area-inset-top)+3.5rem)] left-4 right-4 z-30 px-4 py-2 rounded-xl bg-amber-500/90 text-black text-xs font-semibold text-center">
-          Microphone not detected — video will record without sound.
-        </div>
-      )}
-
-      <div className="relative z-20 px-3 pt-[max(env(safe-area-inset-top),0.5rem)] pb-1">
-        <div className="flex items-center justify-between">
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg"
-            aria-label="Close and discard"
-          >
-            <X className="w-6 h-6" strokeWidth={2.5} />
-          </button>
-
-          <button
-            type="button"
-            onClick={flipCamera}
-            disabled={denied || !ready || recording || capturingPhoto}
-            className="w-10 h-10 flex items-center justify-center text-white drop-shadow-lg disabled:opacity-30"
-            aria-label="Flip camera"
-          >
-            <SwitchCamera className="w-6 h-6" strokeWidth={2.5} />
-          </button>
-        </div>
-
-        <div className="flex flex-col items-center gap-1.5 mt-2">
-          <button
-            type="button"
-            onClick={onAddSound}
-            disabled={!onAddSound || recording}
-            className="max-w-[min(72vw,16rem)] px-4 py-1.5 rounded-full bg-black/40 border border-white/15 text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-40 active:scale-95 transition-transform"
-          >
-            <Music className="w-3.5 h-3.5 shrink-0 text-primary" />
-            <span className="truncate">{soundLabel || "Add sound"}</span>
-          </button>
-          {recording && (
-            <div className="min-w-[3rem] px-2.5 py-1 rounded-lg bg-red-500 text-white text-sm font-bold tabular-nums text-center shadow-lg">
-              {(() => {
-                const totalSec =
-                  maxRecordSec == null
-                    ? Math.floor(((recordStartedAtRef.current ? Date.now() - recordStartedAtRef.current : 0) / 1000))
-                    : Math.floor(maxRecordSec * recordProgress);
-                return `${Math.floor(totalSec / 60)}:${String(totalSec % 60).padStart(2, "0")}`;
-              })()}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="absolute right-3 top-[calc(env(safe-area-inset-top)+5.25rem)] z-20 flex flex-col items-center gap-3">
-        <button
-          type="button"
-          onClick={() => {
-            setShowEffects(false);
-            setShowEnhance((v) => !v);
-          }}
-          className={`flex flex-col items-center gap-0.5 ${showEnhance ? "text-white" : "text-white/80"}`}
-        >
-          <Sparkles className="w-5 h-5" />
-          <span className="text-[9px] font-semibold">Enhance</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowEnhance(false);
-            setShowEffects((v) => !v);
-          }}
-          className={`flex flex-col items-center gap-0.5 ${showEffects ? "text-white" : "text-white/80"}`}
-        >
-          <Wand2 className="w-5 h-5" />
-          <span className="text-[9px] font-semibold">Effects</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setShowEnhance(false);
-            setShowEffects(false);
-            setShowFaceFilters((v) => !v);
-          }}
-          className={`flex flex-col items-center gap-0.5 ${showFaceFilters || faceFilter !== "none" ? "text-white" : "text-white/80"}`}
-        >
-          <Smile className="w-5 h-5" />
-          <span className="text-[9px] font-semibold">Face</span>
-        </button>
-      </div>
-
-      <div className="relative z-20 mt-auto pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2rem)]">
-        <div className="relative z-10 flex items-end justify-center gap-7 px-5">
-          {recording ? (
-            <button
-              type="button"
-              onClick={cancelRecording}
-              className="mb-[2.35rem] px-4 py-2 rounded-full bg-black/45 border border-white/20 text-white text-sm font-semibold active:scale-95 transition-transform"
-            >
-              Undo
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 px-8 text-center bg-zinc-950">
+          <p className="text-lg font-bold">Camera access needed</p>
+          <p className="text-sm text-white/60">Allow camera access, or upload a photo or video.</p>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => void startCamera()} className="px-5 py-3 rounded-full bg-white text-black font-bold text-sm">
+              Try again
             </button>
-          ) : (
-            <button
-              type="button"
-              disabled={recordDisabled}
-              onClick={onOpenGallery}
-              className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
-            >
-              <span className="w-11 h-11 rounded-full border border-white/25 bg-black/35 backdrop-blur-md flex items-center justify-center">
-                <ImagePlus className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
-              </span>
-              <span className="text-[11px] font-semibold text-white/75">Upload</span>
-            </button>
-          )}
-
-          <div className="flex flex-col items-center">
-            <RecordButton
-              recording={recording}
-              progress={recordProgress}
-              disabled={recordDisabled}
-              onPointerDown={handleRecordDown}
-              onPointerUp={handleRecordUp}
-            />
-            {!recording && (
-              <span className="mt-1.5 text-[10px] font-medium text-white/40">
-                {recordMode === "tap" ? "Tap · unlimited" : "Hold · 60s max"}
-              </span>
+            {onOpenGallery && (
+              <button type="button" onClick={onOpenGallery} className="px-5 py-3 rounded-full bg-white/15 border border-white/20 text-white font-bold text-sm">
+                Upload
+              </button>
             )}
           </div>
+        </div>
+      )}
 
-          {!recording ? (
-            <button
-              type="button"
-              disabled={capturingPhoto}
-              onClick={onTextPost}
-              className="flex flex-col items-center gap-1.5 w-[3.25rem] mb-3 disabled:opacity-40 active:scale-95 transition-transform"
-            >
-              <span className="w-11 h-11 rounded-full border border-white/25 bg-black/35 backdrop-blur-md flex items-center justify-center">
-                <Type className="w-[1.2rem] h-[1.2rem] text-white" strokeWidth={2.25} />
-              </span>
-              <span className="text-[11px] font-semibold text-white/70">Text</span>
-            </button>
-          ) : (
-            <span className="w-[3.25rem] mb-3" aria-hidden />
-          )}
+      {!ready && !denied && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/45">
+          <Loader2 className="h-8 w-8 animate-spin text-white/75" />
+        </div>
+      )}
+
+      {/* Clean top chrome */}
+      <div className="relative z-20 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.75rem)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-11 h-11 rounded-full bg-black/30 border border-white/10 backdrop-blur-md flex items-center justify-center shadow-lg"
+          aria-label="Close"
+        >
+          <X className="w-7 h-7" />
+        </button>
+        <div className="w-11" aria-hidden />
+      </div>
+
+      {/* Bigo-inspired glass title card, but styled for YAJ. */}
+      <div className="relative z-20 mx-4 mt-4 rounded-[1.55rem] border border-white/35 bg-black/22 backdrop-blur-xl shadow-2xl overflow-hidden">
+        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-lg font-black shadow-md">Y</div>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-extrabold text-white/95">Add a title to chat</p>
+            <p className="mt-0.5 text-xs text-white/55">Give people a reason to join</p>
+          </div>
+          <button type="button" className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-white/75" aria-label="More title options">
+            <ChevronDown className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="border-t border-white/10 px-4 py-3 flex items-center gap-2 overflow-x-auto no-scrollbar">
+          <span className="rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold whitespace-nowrap"># Chat</span>
+          <span className="rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold whitespace-nowrap"># Trending</span>
+          <span className="rounded-full bg-white/12 px-3 py-1.5 text-xs font-semibold whitespace-nowrap">Public</span>
         </div>
       </div>
 
-      <EnhancePanel
-        open={showEnhance}
-        tab={enhanceTab}
-        onTabChange={setEnhanceTab}
-        onClose={() => setShowEnhance(false)}
-        filterIntensity={filterIntensity}
-        onFilterIntensityChange={setFilterIntensity}
-      />
+      {/* Preview-only live layouts. Actual room behavior stays untouched until the button pass. */}
+      {liveStyle === "multi" && (
+        <div className="absolute inset-x-4 top-[31%] bottom-[31%] z-10 grid grid-cols-2 grid-rows-2 gap-px rounded-3xl overflow-hidden border border-white/25 bg-white/10 pointer-events-none">
+          <div className="bg-transparent" />
+          {[1, 2, 3].map((seat) => (
+            <div key={seat} className="bg-black/22 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border border-white/25 bg-black/10 flex items-center justify-center text-white/35">
+                <Users className="w-6 h-6" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      <EffectsPanel
-        open={showEffects}
-        category={effectCategory}
-        onCategoryChange={setEffectCategory}
-        onClose={() => setShowEffects(false)}
-        selectedId={selectedEffect}
-        onSelect={setSelectedEffect}
-      />
+      {liveStyle === "virtual" && (
+        <div className="absolute inset-x-0 top-[29%] bottom-[30%] z-10 flex items-center justify-center pointer-events-none">
+          <div className="w-44 h-56 rounded-[2.75rem] bg-gradient-to-b from-sky-200/85 via-violet-300/80 to-fuchsia-400/85 border border-white/35 shadow-2xl flex flex-col items-center justify-center backdrop-blur-sm">
+            <div className="w-24 h-24 rounded-full bg-white/85 flex items-center justify-center text-violet-500 shadow-lg">
+              <UserRound className="w-14 h-14" />
+            </div>
+            <p className="mt-4 text-sm font-black text-white drop-shadow">Virtual Host</p>
+          </div>
+        </div>
+      )}
 
-      <FaceFilterPanel
-        open={showFaceFilters}
-        onClose={() => setShowFaceFilters(false)}
-        selectedId={faceFilter}
-        onSelect={setFaceFilter}
-        loading={faceFilters.loading}
-        error={faceFilters.error}
-      />
+      {/* Cleaner tool rail. Events + Creator Center intentionally omitted. Upload replaces camera tool. */}
+      <div className="absolute right-3 top-[44%] -translate-y-1/2 z-20 flex flex-col items-center gap-4">
+        <button type="button" onClick={flipCamera} disabled={!ready} className="flex flex-col items-center gap-1 text-white/90 disabled:opacity-35">
+          <span className="w-10 h-10 rounded-full bg-black/28 border border-white/15 backdrop-blur-md flex items-center justify-center"><SwitchCamera className="w-5 h-5" /></span>
+          <span className="text-[10px] font-semibold">Flip</span>
+        </button>
+        <button type="button" className="flex flex-col items-center gap-1 text-white/90">
+          <span className="w-10 h-10 rounded-full bg-black/28 border border-white/15 backdrop-blur-md flex items-center justify-center"><Sparkles className="w-5 h-5" /></span>
+          <span className="text-[10px] font-semibold">Beauty</span>
+        </button>
+        <button type="button" className="flex flex-col items-center gap-1 text-white/90">
+          <span className="w-10 h-10 rounded-full bg-black/28 border border-white/15 backdrop-blur-md flex items-center justify-center"><Wand2 className="w-5 h-5" /></span>
+          <span className="text-[10px] font-semibold">Magic</span>
+        </button>
+        <button type="button" onClick={onOpenGallery} className="flex flex-col items-center gap-1 text-white/90">
+          <span className="w-10 h-10 rounded-full bg-black/28 border border-white/15 backdrop-blur-md flex items-center justify-center"><ImagePlus className="w-5 h-5" /></span>
+          <span className="text-[10px] font-semibold">Upload</span>
+        </button>
+        <button type="button" className="flex flex-col items-center gap-1 text-white/90">
+          <span className="w-10 h-10 rounded-full bg-black/28 border border-white/15 backdrop-blur-md flex items-center justify-center"><Settings className="w-5 h-5" /></span>
+          <span className="text-[10px] font-semibold">Settings</span>
+        </button>
+      </div>
 
-      <CreateModeTabs
-        value={createMode}
-        onChange={onModeChange}
-        disabled={recording || capturingPhoto}
-        onOpenGallery={onOpenGallery}
-      />
+      {/* Bottom actions: preserve 60-second Post flow and existing Go Live backend. */}
+      <div className="relative z-20 mt-auto px-4 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
+        <div className="mx-auto flex w-full max-w-[28rem] items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onModeChange("post")}
+            disabled={startingLive}
+            className="h-14 flex-1 rounded-full border border-white/35 bg-black/30 backdrop-blur-xl text-sm font-black tracking-wide text-white shadow-lg active:scale-[0.98] transition-transform disabled:opacity-40"
+          >
+            POST
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleGoLive()}
+            disabled={denied || !ready || startingLive}
+            className="h-14 flex-[1.55] rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 text-base font-black text-slate-950 shadow-xl active:scale-[0.98] transition-transform disabled:opacity-40 flex items-center justify-center gap-2"
+            aria-label="Go live"
+          >
+            {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
+            {startingLive ? "Starting…" : "GO LIVE"}
+          </button>
+        </div>
+
+        <div className="mt-4 flex items-center justify-center gap-1 overflow-x-auto no-scrollbar pb-1">
+          {LIVE_STYLES.map((mode) => {
+            const Icon = mode.icon;
+            const selected = liveStyle === mode.id;
+            return (
+              <button
+                type="button"
+                key={mode.id}
+                onClick={() => setLiveStyle(mode.id)}
+                className={`min-w-[6.5rem] rounded-full px-3 py-2 text-[11px] font-extrabold flex items-center justify-center gap-1.5 transition-all ${
+                  selected ? "bg-white text-black shadow-lg" : "text-white/65"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {mode.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Keep prop used while the shared CreatePostSheet still owns Post/Live state. */}
+      <span className="sr-only">{createMode}</span>
     </div>
   );
 }
