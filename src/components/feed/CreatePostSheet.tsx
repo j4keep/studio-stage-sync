@@ -74,6 +74,20 @@ const handleCreateModeChange = useCallback((mode: CreateMode) => {
   setCreateMode(mode);
 }, [createMode]);
 
+// Dedicated LIVE -> POST transition. Keeping this separate from the generic
+// tab handler avoids iOS Safari leaving the Live camera view mounted while
+// its stream cleanup runs. We stop the live camera first, then mount a brand
+// new Post camera session on the next frame.
+const handleOpenPostFromLive = useCallback(() => {
+  window.dispatchEvent(new CustomEvent("yaj-stop-create-camera"));
+  setStep("camera");
+  setCameraSessionKey((k) => k + 1);
+
+  window.requestAnimationFrame(() => {
+    setCreateMode("post");
+  });
+}, []);
+
 const photoInputRef = useRef<HTMLInputElement>(null);
 const videoInputRef = useRef<HTMLInputElement>(null);
 const previewBlobRef = useRef<string | null>(null);
@@ -595,6 +609,7 @@ initialStream={cameraSessionKey === 0 ? cameraStream : null}
 <LiveCameraView
 createMode={createMode}
 onModeChange={handleCreateModeChange}
+onOpenPost={handleOpenPostFromLive}
 onClose={reset}
 onOpenGallery={openGallery}
 initialStream={cameraStream}
