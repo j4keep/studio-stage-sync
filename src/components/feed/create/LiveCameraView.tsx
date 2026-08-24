@@ -53,7 +53,15 @@ export default function LiveCameraView({
     releaseCameraStream(streamRef.current);
     streamRef.current = null;
     try {
-      const stream = await warmCameraStream(facing);
+      let stream = await warmCameraStream(facing);
+      if (!stream) {
+        // Switching straight from Post mode's camera to here can race the previous
+        // stream's hardware release (especially on iOS) — one short retry absorbs that
+        // instead of immediately showing "camera access needed" for a stream that was
+        // actually just about to become available.
+        await new Promise((r) => setTimeout(r, 350));
+        stream = await warmCameraStream(facing);
+      }
       if (!stream) throw new Error("denied");
       await attachStream(stream);
     } catch {
@@ -106,6 +114,26 @@ export default function LiveCameraView({
           autoPlay
           style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
+      )}
+
+      {denied && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 px-8 text-center">
+          <p className="text-white text-base font-semibold">Camera access needed</p>
+          <p className="text-white/60 text-sm">Allow camera in Settings, then try again.</p>
+          <button
+            type="button"
+            onClick={() => void startCamera()}
+            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
+      {!ready && !denied && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+          <div className="w-10 h-10 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+        </div>
       )}
 
       <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)]">
