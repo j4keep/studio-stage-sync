@@ -31,11 +31,21 @@ export async function loadFaceLandmarker(): Promise<any> {
     // @vite-ignore — a runtime CDN URL, not a build-time module specifier.
     const vision = await import(/* @vite-ignore */ `${CDN_BASE}/vision_bundle.mjs`);
     const fileset = await vision.FilesetResolver.forVisionTasks(`${CDN_BASE}/wasm`);
-    return vision.FaceLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
-      runningMode: "VIDEO",
-      numFaces: 1,
-    });
+    try {
+      return await vision.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "VIDEO",
+        numFaces: 1,
+      });
+    } catch {
+      // GPU compute (WebGL) can be unavailable or flaky in embedded WebViews — CPU delegate
+      // is slower but far more broadly supported, and beats a hard failure.
+      return vision.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
+        runningMode: "VIDEO",
+        numFaces: 1,
+      });
+    }
   })();
   return landmarkerPromise;
 }

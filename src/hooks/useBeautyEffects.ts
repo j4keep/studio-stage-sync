@@ -49,7 +49,7 @@ export function isBeautyActive(s: BeautySettings): boolean {
   );
 }
 
-function needsLandmarks(s: BeautySettings): boolean {
+export function needsLandmarks(s: BeautySettings): boolean {
   return s.skinSmooth > 0 || s.complexion > 0 || s.contour > 0 || s.light3d > 0 || !!s.makeupId;
 }
 
@@ -210,6 +210,12 @@ export function useBeautyEffects(videoTrack: MediaStreamTrack | null, settings: 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outputTrack, setOutputTrack] = useState<MediaStreamTrack | null>(null);
+  // Landmark-dependent effects (skin/complexion/contour/3D light/makeup) need a face MediaPipe
+  // can actually lock onto — backlighting, extreme angles, or being out of frame can mean no
+  // face is found frame after frame, which otherwise looks indistinguishable from "the preset
+  // does nothing." Tracked so the panel can say so instead of failing silently.
+  const [faceDetected, setFaceDetected] = useState(false);
+  const lastFaceDetectedRef = useRef(false);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
   const needsFaceTracking = needsLandmarks(settings);
@@ -220,6 +226,8 @@ export function useBeautyEffects(videoTrack: MediaStreamTrack | null, settings: 
       setLoading(false);
       setError(null);
       setOutputTrack(null);
+      setFaceDetected(false);
+      lastFaceDetectedRef.current = false;
       return;
     }
 
@@ -282,6 +290,11 @@ export function useBeautyEffects(videoTrack: MediaStreamTrack | null, settings: 
                 } catch {
                   /* skip this frame's detection */
                 }
+                const found = !!lm;
+                if (found !== lastFaceDetectedRef.current) {
+                  lastFaceDetectedRef.current = found;
+                  setFaceDetected(found);
+                }
               }
               drawBeauty(ctx, video, lm, w, h, settingsRef.current);
               if (!cancelled) {
@@ -328,7 +341,7 @@ export function useBeautyEffects(videoTrack: MediaStreamTrack | null, settings: 
     // tearing down and reconnecting the video/model.
   }, [videoTrack, enabled, needsFaceTracking]);
 
-  return { canvasRef, active, loading, error, outputTrack };
+  return { canvasRef, active, loading, error, outputTrack, faceDetected, needsFaceTracking };
 }
 
 // ---- Thumbnails: a separate IMAGE-mode landmarker (VIDEO-mode instances aren't safe to
@@ -345,11 +358,20 @@ async function loadImageLandmarker(): Promise<any> {
     // @vite-ignore — a runtime CDN URL, not a build-time module specifier.
     const vision = await import(/* @vite-ignore */ `${CDN_BASE}/vision_bundle.mjs`);
     const fileset = await vision.FilesetResolver.forVisionTasks(`${CDN_BASE}/wasm`);
-    return vision.FaceLandmarker.createFromOptions(fileset, {
-      baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
-      runningMode: "IMAGE",
-      numFaces: 1,
-    });
+    try {
+      return await vision.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "GPU" },
+        runningMode: "IMAGE",
+        numFaces: 1,
+      });
+    } catch {
+      // Same GPU→CPU fallback as the live VIDEO-mode landmarker in useFaceFilters.
+      return vision.FaceLandmarker.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: MODEL_URL, delegate: "CPU" },
+        runningMode: "IMAGE",
+        numFaces: 1,
+      });
+    }
   })();
   return imageLandmarkerPromise;
 }

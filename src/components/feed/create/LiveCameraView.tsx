@@ -287,6 +287,8 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         videoRef={videoRef}
         loading={beautyFx.loading}
         error={beautyFx.error}
+        faceDetected={beautyFx.faceDetected}
+        needsFaceTracking={beautyFx.needsFaceTracking}
       />
     </div>
   );

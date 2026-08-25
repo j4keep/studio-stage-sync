@@ -39,9 +39,25 @@ interface Props {
   videoRef: RefObject<HTMLVideoElement>;
   loading?: boolean;
   error?: string | null;
+  /** Whether the live pipeline currently has a face locked on — distinct from `loading`/
+   *  `error`: the model can be running fine and simply not finding a face (backlighting,
+   *  out of frame, extreme angle). Skin/Complexion/Contour/3D Light/Makeup need this; color
+   *  filters don't. Without surfacing it, "no face found" looks identical to "broken." */
+  faceDetected?: boolean;
+  needsFaceTracking?: boolean;
 }
 
-export default function BeautyPanel({ open, onClose, settings, onChange, videoRef, loading, error }: Props) {
+export default function BeautyPanel({
+  open,
+  onClose,
+  settings,
+  onChange,
+  videoRef,
+  loading,
+  error,
+  faceDetected,
+  needsFaceTracking,
+}: Props) {
   const [tab, setTab] = useState<Tab>("presets");
   const [beautyTool, setBeautyTool] = useState<BeautyTool>("skinSmooth");
   const [filterCategory, setFilterCategory] = useState<(typeof EFFECT_CATEGORIES)[number]>("Trending");
@@ -120,6 +136,12 @@ export default function BeautyPanel({ open, onClose, settings, onChange, videoRe
         </p>
       )}
       {error && <p className="px-4 pt-2 text-[11px] text-red-400">{error}</p>}
+      {!loading && !error && needsFaceTracking && !faceDetected && (
+        <p className="px-4 pt-2 text-[11px] text-amber-400">
+          Can't find your face — face the camera in good light so Skin, Complexion, Contour, 3D Light and Makeup can
+          apply. Color Filters don't need a detected face and still work either way.
+        </p>
+      )}
 
       {tab === "presets" && (
         <div className="flex gap-3 overflow-x-auto px-4 py-3 no-scrollbar">
