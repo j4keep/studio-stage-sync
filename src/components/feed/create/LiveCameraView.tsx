@@ -20,7 +20,9 @@ import type { CreateMode } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { startCircleLive } from "@/lib/circle-live";
+import { useBeautyEffects, DEFAULT_BEAUTY, isBeautyActive, type BeautySettings } from "@/hooks/useBeautyEffects";
 import CreateModeTabs from "./CreateModeTabs";
+import BeautyPanel from "./BeautyPanel";
 
 interface Props {
   createMode: CreateMode;
@@ -72,6 +74,10 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
   const [selectedTool, setSelectedTool] = useState<PrepToolId | null>(null);
+  const [beautyOpen, setBeautyOpen] = useState(false);
+  const [beauty, setBeauty] = useState<BeautySettings>(DEFAULT_BEAUTY);
+  const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
+  const beautyFx = useBeautyEffects(rawVideoTrack, beauty, isBeautyActive(beauty));
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -82,6 +88,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
     }
     setReady(true);
     setDenied(false);
+    setRawVideoTrack(stream.getVideoTracks()[0] ?? null);
   }, []);
 
   const startCamera = useCallback(async () => {
@@ -150,6 +157,23 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           playsInline
           muted
           autoPlay
+          style={{
+            // Hidden (not removed — the beauty pipeline still needs it as a track
+            // source) behind the processed canvas once beauty is actively drawing.
+            visibility: isBeautyActive(beauty) && beautyFx.active ? "hidden" : "visible",
+            transform: facing === "user" ? "scaleX(-1)" : undefined,
+          }}
+        />
+      )}
+
+      {!denied && isBeautyActive(beauty) && (
+        // `invisible` (visibility:hidden), never `hidden` (display:none) — a display:none
+        // canvas skips layout entirely in some engines and never gets a real backing
+        // store, which is exactly what caused "Canvas not ready" the first time this
+        // pattern was used for Circle Live's face filters.
+        <canvas
+          ref={beautyFx.canvasRef}
+          className={`absolute inset-0 h-full w-full object-cover ${beautyFx.active ? "visible" : "invisible"}`}
           style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
         />
       )}
@@ -212,12 +236,22 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         <div className="grid w-full max-w-[22rem] grid-cols-4 justify-items-center gap-x-2 gap-y-3">
           {PREP_TOOLS.map((tool) => {
             const Icon = tool.icon;
-            const selected = selectedTool === tool.id;
+            const selected = tool.id === "beauty" ? beautyOpen || isBeautyActive(beauty) : selectedTool === tool.id;
             return (
               <button
                 key={tool.id}
                 type="button"
-                onClick={() => setSelectedTool((v) => (v === tool.id ? null : tool.id))}
+                onClick={() => {
+                  if (tool.id === "flip") {
+                    flipCamera();
+                    return;
+                  }
+                  if (tool.id === "beauty") {
+                    setBeautyOpen((v) => !v);
+                    return;
+                  }
+                  setSelectedTool((v) => (v === tool.id ? null : tool.id));
+                }}
                 className="flex flex-col items-center gap-1"
               >
                 <span className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md ${
@@ -244,6 +278,16 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
       </div>
 
       <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
+
+      <BeautyPanel
+        open={beautyOpen}
+        onClose={() => setBeautyOpen(false)}
+        settings={beauty}
+        onChange={setBeauty}
+        videoRef={videoRef}
+        loading={beautyFx.loading}
+        error={beautyFx.error}
+      />
     </div>
   );
 }
