@@ -1,6 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Radio, Smile, Sparkles, SwitchCamera, UserRound, Users, Wand2, X } from "lucide-react";
+import {
+  BarChart3,
+  ChevronDown,
+  Lightbulb,
+  Loader2,
+  Radio,
+  Settings,
+  Share2,
+  Sparkles,
+  SwitchCamera,
+  UserRound,
+  Users,
+  Wand2,
+  X,
+} from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
 import type { CreateMode } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,19 +40,27 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio }[] = [
   { id: "virtual", label: "Virtual", icon: UserRound },
 ];
 
-/** Get-ready icons — not wired to anything yet on purpose (per the user: place them now,
- *  wire them up in a follow-up pass). Tapping just toggles which one looks selected. */
-const PREP_TOOLS: { id: "enhance" | "effects" | "face"; label: string; icon: typeof Sparkles }[] = [
-  { id: "enhance", label: "Enhance", icon: Sparkles },
-  { id: "effects", label: "Effects", icon: Wand2 },
-  { id: "face", label: "Face", icon: Smile },
+type PrepToolId = "flip" | "beauty" | "magic" | "creatorCenter" | "collapse" | "fillLight" | "share" | "settings";
+
+/** Get-ready icon set, matching the reference layout the user provided (minus Events and
+ *  Camera, which they explicitly don't want). Placeholder labels — the user is going to
+ *  tell us what goes behind each one next; don't wire these up or rename them yet. */
+const PREP_TOOLS: { id: PrepToolId; label: string; icon: typeof Sparkles }[] = [
+  { id: "flip", label: "Flip", icon: SwitchCamera },
+  { id: "beauty", label: "Beauty", icon: Sparkles },
+  { id: "magic", label: "Magic", icon: Wand2 },
+  { id: "creatorCenter", label: "Creator Center", icon: BarChart3 },
+  { id: "collapse", label: "Collapse", icon: ChevronDown },
+  { id: "fillLight", label: "Fill Light", icon: Lightbulb },
+  { id: "share", label: "Share", icon: Share2 },
+  { id: "settings", label: "Settings", icon: Settings },
 ];
 
-/** Pre-live camera check — flip camera, get ready (Enhance/Effects/Face, view mode), then
- *  go live. The real broadcast room (CircleLiveRoomPage) already has working
- *  Enhance/Effects/Face controls; these mirror them here as a "set up before you're live"
- *  step. Deliberately UI-only for now — selection state, no actual video effect yet —
- *  per the user's explicit ask to place the icons first and wire them up in a follow-up. */
+/** Pre-live camera check — flip camera, get ready (the prep tool grid + view mode), then
+ *  go live. The prep tools (Flip/Beauty/Magic/Creator Center/Collapse/Fill Light/Share/
+ *  Settings) are deliberately UI-only for now — placeholder labels/selection state, no
+ *  actual behavior — per the user's explicit ask to place them first and define what each
+ *  one does in a follow-up pass. */
 export default function LiveCameraView({ createMode, onModeChange, onClose, initialStream }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -49,7 +71,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
-  const [selectedTool, setSelectedTool] = useState<"enhance" | "effects" | "face" | null>(null);
+  const [selectedTool, setSelectedTool] = useState<PrepToolId | null>(null);
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -186,9 +208,8 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           })}
         </div>
 
-        {/* Get-ready tools — Enhance/Effects/Face, same idea as the live room's own
-            controls, so you can set your look up before you're actually on. */}
-        <div className="flex items-center gap-3">
+        {/* Get-ready tools — placeholders for now; behavior comes next. */}
+        <div className="grid w-full max-w-[22rem] grid-cols-4 justify-items-center gap-x-2 gap-y-3">
           {PREP_TOOLS.map((tool) => {
             const Icon = tool.icon;
             const selected = selectedTool === tool.id;
@@ -204,7 +225,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
                 }`}>
                   <Icon className="h-5 w-5" />
                 </span>
-                <span className="text-[10px] font-semibold text-white/80">{tool.label}</span>
+                <span className="text-center text-[10px] font-semibold leading-tight text-white/80">{tool.label}</span>
               </button>
             );
           })}
