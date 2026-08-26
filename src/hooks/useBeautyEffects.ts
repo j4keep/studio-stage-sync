@@ -141,6 +141,8 @@ function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: 
 /** Reused every frame — allocating a canvas per RAF would thrash GC on live. */
 let skinBlurPlate: HTMLCanvasElement | null = null;
 let skinBlurCtx: CanvasRenderingContext2D | null = null;
+let skinDownPlate: HTMLCanvasElement | null = null;
+let skinDownCtx: CanvasRenderingContext2D | null = null;
 
 function getSkinBlurPlate(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
   if (!skinBlurPlate) {
@@ -155,8 +157,21 @@ function getSkinBlurPlate(w: number, h: number): { canvas: HTMLCanvasElement; ct
   return { canvas: skinBlurPlate, ctx: skinBlurCtx };
 }
 
-/** Stronger TikTok-style skin pass: smooth texture, brighten, matte sweat shine.
- *  Uses an offscreen blur so we can blend it heavily without washing the whole frame. */
+function getSkinDownPlate(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  if (!skinDownPlate) {
+    skinDownPlate = document.createElement("canvas");
+    skinDownCtx = skinDownPlate.getContext("2d", { alpha: false });
+  }
+  if (!skinDownCtx) return null;
+  if (skinDownPlate.width !== w || skinDownPlate.height !== h) {
+    skinDownPlate.width = w;
+    skinDownPlate.height = h;
+  }
+  return { canvas: skinDownPlate, ctx: skinDownCtx };
+}
+
+/** TikTok-style skin pass: porcelain smooth (downsample blur), clear brighten, matte sweat shine.
+ *  Downsample→upsample is stronger and more reliable than CSS blur alone on live video. */
 function applySkinSmooth(
   ctx: CanvasRenderingContext2D,
   source: CanvasImageSource,
@@ -172,59 +187,95 @@ function applySkinSmooth(
   const plate = getSkinBlurPlate(w, h);
   if (!plate) return;
 
-  // Offscreen blurred plate — blur scales up hard so mid/high slider values actually look
-  // like beauty apps, not a faint haze.
-  const blurPx = 4 + t * 18;
+  // Scale factor: mid slider ≈ 1/5, full ≈ 1/8 — smaller = smoother “airbrushed” skin
+  const scale = Math.max(0.12, 0.42 - t * 0.3);
+  const dw = Math.max(8, Math.round(w * scale));
+  const dh = Math.max(8, Math.round(h * scale));
+  const down = getSkinDownPlate(dw, dh);
+  if (!down) return;
+
+  down.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  down.ctx.globalAlpha = 1;
+  down.ctx.globalCompositeOperation = "source-over";
+  down.ctx.filter = "none";
+  down.ctx.imageSmoothingEnabled = true;
+  down.ctx.imageSmoothingQuality = "high";
+  // Soften while shrinking so pores + sweat speculars dissolve before upscale
+  down.ctx.filter = `blur(${1 + t * 2.5}px)`;
+  down.ctx.drawImage(source, 0, 0, dw, dh);
+  down.ctx.filter = "none";
+
   plate.ctx.setTransform(1, 0, 0, 1, 0, 0);
-  plate.ctx.filter = `blur(${blurPx}px)`;
   plate.ctx.globalAlpha = 1;
   plate.ctx.globalCompositeOperation = "source-over";
-  plate.ctx.drawImage(source, 0, 0, w, h);
+  plate.ctx.filter = "none";
+  plate.ctx.imageSmoothingEnabled = true;
+  plate.ctx.imageSmoothingQuality = "high";
+  // Upscale tiny plate → natural airbrush; light blur so edges aren’t blocky
+  plate.ctx.filter = `blur(${2 + t * 5}px)`;
+  plate.ctx.drawImage(down.canvas, 0, 0, w, h);
   plate.ctx.filter = "none";
 
-  // 1) Smooth — blend blurred skin over original, features protected
+  // 1) Smooth — heavy blend of airbrushed plate onto skin only (eyes/mouth protected)
   ctx.save();
   clipSkinRegion(ctx, g, unit);
-  ctx.globalAlpha = 0.35 + t * 0.55; // ~0.35 at low, ~0.90 at full
+  ctx.globalAlpha = 0.45 + t * 0.5; // ~0.45 low → ~0.95 full
   ctx.globalCompositeOperation = "source-over";
   ctx.drawImage(plate.canvas, 0, 0, w, h);
   ctx.restore();
 
-  // 2) Brighten — soft warm lift so skin looks clearer / less dull
+  // 2) Brighten — warm lift so skin looks clearer (soft-light + overlay + light screen)
   ctx.save();
   clipSkinRegion(ctx, g, unit);
   ctx.globalCompositeOperation = "soft-light";
-  ctx.globalAlpha = 0.2 + t * 0.45;
-  ctx.fillStyle = "rgb(255, 236, 220)";
+  ctx.globalAlpha = 0.28 + t * 0.5;
+  ctx.fillStyle = "rgb(255, 238, 224)";
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  // Extra gentle screen lift for "glow" without blowing highlights
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalCompositeOperation = "overlay";
+  ctx.globalAlpha = 0.12 + t * 0.28;
+  ctx.fillStyle = "rgb(255, 230, 210)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
   ctx.save();
   clipSkinRegion(ctx, g, unit);
   ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = t * 0.12;
-  ctx.fillStyle = "rgb(255, 245, 235)";
+  ctx.globalAlpha = 0.08 + t * 0.18;
+  ctx.fillStyle = "rgb(255, 248, 240)";
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  // 3) Matte / de-shine — crush oily sweat speculars (T-zone + cheeks)
+  // 3) Matte / de-shine — crush oily sweat speculars across skin, then hit the T-zone hard
   ctx.save();
   clipSkinRegion(ctx, g, unit);
+  // Mid-gray soft-light flattens bright specular “sweat balls”
   ctx.globalCompositeOperation = "soft-light";
-  ctx.globalAlpha = 0.15 + t * 0.35;
-  ctx.fillStyle = "rgb(168, 148, 138)";
+  ctx.globalAlpha = 0.22 + t * 0.42;
+  ctx.fillStyle = "rgb(150, 135, 128)";
   ctx.fillRect(0, 0, w, h);
   ctx.restore();
 
-  // Targeted matte on forehead / nose bridge / cheekbones where sweat shows most
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalCompositeOperation = "multiply";
+  ctx.globalAlpha = 0.08 + t * 0.22;
+  ctx.fillStyle = "rgb(210, 195, 185)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // Targeted matte on forehead / nose / cheeks where sweat shows most
   ctx.save();
   ctx.globalCompositeOperation = "multiply";
-  ctx.globalAlpha = t * 0.18;
-  softBlob(ctx, g.forehead, unit * 1.15, "rgba(195, 175, 165, 1)");
-  softBlob(ctx, g.noseBridge, unit * 0.7, "rgba(195, 175, 165, 1)");
-  softBlob(ctx, g.leftCheek, unit * 0.85, "rgba(200, 180, 170, 1)");
-  softBlob(ctx, g.rightCheek, unit * 0.85, "rgba(200, 180, 170, 1)");
+  ctx.globalAlpha = 0.12 + t * 0.28;
+  softBlob(ctx, g.forehead, unit * 1.25, "rgba(185, 165, 155, 1)");
+  softBlob(ctx, g.noseBridge, unit * 0.85, "rgba(180, 160, 150, 1)");
+  softBlob(ctx, { x: g.noseBridge.x, y: g.noseBridge.y + unit * 0.55 }, unit * 0.55, "rgba(180, 160, 150, 1)");
+  softBlob(ctx, g.leftCheek, unit * 0.95, "rgba(190, 170, 160, 1)");
+  softBlob(ctx, g.rightCheek, unit * 0.95, "rgba(190, 170, 160, 1)");
   ctx.restore();
 }
 
