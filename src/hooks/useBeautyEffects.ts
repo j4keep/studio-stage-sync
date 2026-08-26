@@ -19,38 +19,45 @@ export const MAKEUP_LOOKS: { id: MakeupLookId; label: string; lip: string; blush
 ];
 
 export type BeautySettings = {
+  /** Master switch for Skin-group tools (Skin / Complexion / Contour / 3D Light / Contrast). */
+  skinMasterOn: boolean;
   skinSmooth: number; // 0-100
   complexion: number; // 0-100
   contour: number; // 0-100
   light3d: number; // 0-100
+  contrast: number; // 0-100
   makeupId: MakeupLookId | null;
   colorFilter: string; // CSS filter string, "none" if off
   filterIntensity: number; // 0-100
 };
 
 export const DEFAULT_BEAUTY: BeautySettings = {
+  skinMasterOn: true,
   skinSmooth: 0,
   complexion: 0,
   contour: 0,
   light3d: 0,
+  contrast: 0,
   makeupId: null,
   colorFilter: "none",
   filterIntensity: 80,
 };
 
+function skinToolsActive(s: BeautySettings): boolean {
+  if (!s.skinMasterOn) return false;
+  return s.skinSmooth > 0 || s.complexion > 0 || s.contour > 0 || s.light3d > 0 || s.contrast > 0;
+}
+
 export function isBeautyActive(s: BeautySettings): boolean {
   return (
-    s.skinSmooth > 0 ||
-    s.complexion > 0 ||
-    s.contour > 0 ||
-    s.light3d > 0 ||
+    skinToolsActive(s) ||
     !!s.makeupId ||
     (s.colorFilter !== "none" && s.filterIntensity > 0)
   );
 }
 
 export function needsLandmarks(s: BeautySettings): boolean {
-  return s.skinSmooth > 0 || s.complexion > 0 || s.contour > 0 || s.light3d > 0 || !!s.makeupId;
+  return skinToolsActive(s) || !!s.makeupId;
 }
 
 // MediaPipe Face Mesh topology — stable, well-known single-point indices. Approximated
@@ -143,8 +150,9 @@ function drawBeauty(
   if (!lm) return;
   const g = geometry(lm, w, h);
   const unit = Math.hypot(g.rightEye.x - g.leftEye.x, g.rightEye.y - g.leftEye.y);
+  const skinOn = settings.skinMasterOn !== false;
 
-  if (settings.skinSmooth > 0) {
+  if (skinOn && settings.skinSmooth > 0) {
     ctx.save();
     clipFaceOval(ctx, g);
     ctx.filter = `blur(${3 + (settings.skinSmooth / 100) * 8}px)`;
@@ -153,7 +161,7 @@ function drawBeauty(
     ctx.restore();
   }
 
-  if (settings.complexion > 0) {
+  if (skinOn && settings.complexion > 0) {
     ctx.save();
     clipFaceOval(ctx, g);
     ctx.globalCompositeOperation = "overlay";
@@ -162,7 +170,7 @@ function drawBeauty(
     ctx.restore();
   }
 
-  if (settings.contour > 0) {
+  if (skinOn && settings.contour > 0) {
     ctx.save();
     ctx.globalAlpha = (settings.contour / 100) * 0.4;
     ctx.globalCompositeOperation = "multiply";
@@ -171,12 +179,22 @@ function drawBeauty(
     ctx.restore();
   }
 
-  if (settings.light3d > 0) {
+  if (skinOn && settings.light3d > 0) {
     ctx.save();
     ctx.globalAlpha = (settings.light3d / 100) * 0.4;
     ctx.globalCompositeOperation = "screen";
     softBlob(ctx, g.forehead, unit * 1.1, "rgba(255,255,255,1)");
     softBlob(ctx, g.noseBridge, unit * 0.6, "rgba(255,255,255,1)");
+    ctx.restore();
+  }
+
+  if (skinOn && settings.contrast > 0) {
+    ctx.save();
+    clipFaceOval(ctx, g);
+    const amount = 1 + (settings.contrast / 100) * 0.45;
+    ctx.filter = `contrast(${amount})`;
+    ctx.globalAlpha = Math.min(0.75, 0.25 + settings.contrast / 140);
+    ctx.drawImage(source, 0, 0, w, h);
     ctx.restore();
   }
 
