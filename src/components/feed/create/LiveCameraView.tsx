@@ -16,8 +16,8 @@ import {
   X,
 } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
-import { getEffectFilter } from "@/lib/create-modes";
+import type { AppearanceToolId, CreateMode, EnhanceSettings, EnhanceTab } from "@/lib/create-modes";
+import { DEFAULT_ENHANCE, getEffectFilter, isEnhanceActive } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { startCircleLive } from "@/lib/circle-live";
@@ -77,13 +77,15 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [showEffects, setShowEffects] = useState(false);
   const [showFaceFilters, setShowFaceFilters] = useState(false);
   const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
+  const [appearanceTool, setAppearanceTool] = useState<AppearanceToolId>("smooth");
+  const [enhance, setEnhance] = useState<EnhanceSettings>(DEFAULT_ENHANCE);
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
-  const [filterIntensity, setFilterIntensity] = useState(80);
   const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
-  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, faceFilter !== "none");
+  const looksOn = faceFilter !== "none" || isEnhanceActive(enhance);
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, looksOn, undefined, enhance);
   const liveFilter = getEffectFilter(selectedEffect);
 
   const closeEffectSheets = () => {
@@ -161,7 +163,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
     }
   };
 
-  const faceActive = faceFilter !== "none" && faceFilters.active;
+  const looksActive = looksOn && faceFilters.active;
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -174,15 +176,15 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           autoPlay
           style={{
             // Hidden (not removed — useFaceFilters still needs it as a track source)
-            // behind the filter canvas once a face filter is actively drawing.
-            visibility: faceActive ? "hidden" : "visible",
+            // behind the filter canvas once enhance / face looks are drawing.
+            visibility: looksActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
             filter: liveFilter,
           }}
         />
       )}
 
-      {!denied && faceFilter !== "none" && (
+      {!denied && looksOn && (
         <canvas
           ref={faceFilters.canvasRef}
           className="absolute inset-0 h-full w-full object-cover"
@@ -252,7 +254,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
             const Icon = tool.icon;
             const selected =
               tool.id === "enhance"
-                ? showEnhance
+                ? showEnhance || isEnhanceActive(enhance)
                 : tool.id === "effects"
                   ? showEffects || selectedEffect !== "none"
                   : tool.id === "face"
@@ -320,8 +322,10 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         tab={enhanceTab}
         onTabChange={setEnhanceTab}
         onClose={() => setShowEnhance(false)}
-        filterIntensity={filterIntensity}
-        onFilterIntensityChange={setFilterIntensity}
+        settings={enhance}
+        onChange={setEnhance}
+        appearanceTool={appearanceTool}
+        onAppearanceToolChange={setAppearanceTool}
       />
 
       <EffectsPanel

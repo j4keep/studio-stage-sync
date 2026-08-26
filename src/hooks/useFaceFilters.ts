@@ -1,11 +1,19 @@
 /** Real-time face-tracking AR filters (Snapchat/Instagram/TikTok-style) using MediaPipe's
  *  Face Landmarker, loaded from CDN on demand — same lazy-load philosophy as
  *  usePodcastLiveRoom's sibling, useBackgroundReplacement (that one segments background;
- *  this one tracks ~478 face points and draws stickers anchored to them). Returns a
- *  canvas the caller renders locally, and — for publishing to a live viewer — an
- *  `outputTrack` captured straight off that canvas.
+ *  this one tracks ~478 face points and draws stickers anchored to them). Also bakes
+ *  Enhance (Filters / Appearance / Makeup) into the same canvas so Post + Live previews
+ *  actually change. Returns a canvas the caller renders locally, and — for publishing to
+ *  a live viewer — an `outputTrack` captured straight off that canvas.
  */
 import { useEffect, useRef, useState } from "react";
+import {
+  DEFAULT_ENHANCE,
+  getEnhanceFilterCss,
+  isEnhanceActive,
+  MAKEUP_PRESETS,
+  type EnhanceSettings,
+} from "@/lib/create-modes";
 
 export type FaceFilterId = "none" | "dog" | "cat" | "bunny" | "glasses" | "crown" | "hearts";
 
@@ -54,7 +62,16 @@ export async function loadFaceLandmarker(): Promise<any> {
 const L_EYE_OUTER = 33;
 const R_EYE_OUTER = 263;
 const FOREHEAD = 10;
+const CHIN = 152;
+const L_FACE = 234;
+const R_FACE = 454;
 const NOSE_TIP = 1;
+const L_CHEEK = 50;
+const R_CHEEK = 280;
+const MOUTH_L = 61;
+const MOUTH_R = 291;
+const MOUTH_TOP = 13;
+const MOUTH_BOTTOM = 14;
 
 type Pt = { x: number; y: number };
 
@@ -64,13 +81,39 @@ function faceGeometry(lm: { x: number; y: number }[], w: number, h: number) {
   const rightEye = p(R_EYE_OUTER);
   const dx = rightEye.x - leftEye.x;
   const dy = rightEye.y - leftEye.y;
+  const forehead = p(FOREHEAD);
+  const chin = p(CHIN);
+  const leftEdge = p(L_FACE);
+  const rightEdge = p(R_FACE);
   return {
     eyeDist: Math.hypot(dx, dy),
     angle: Math.atan2(dy, dx),
+    leftEye,
+    rightEye,
     eyeCenter: { x: (leftEye.x + rightEye.x) / 2, y: (leftEye.y + rightEye.y) / 2 },
-    forehead: p(FOREHEAD),
+    forehead,
     nose: p(NOSE_TIP),
+    leftCheek: p(L_CHEEK),
+    rightCheek: p(R_CHEEK),
+    mouthL: p(MOUTH_L),
+    mouthR: p(MOUTH_R),
+    mouthTop: p(MOUTH_TOP),
+    mouthBottom: p(MOUTH_BOTTOM),
+    faceCenter: { x: (leftEdge.x + rightEdge.x) / 2, y: (forehead.y + chin.y) / 2 },
+    faceRx: Math.abs(rightEdge.x - leftEdge.x) / 2,
+    faceRy: Math.abs(chin.y - forehead.y) / 2,
   };
+}
+
+function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: string) {
+  const r = Math.max(1, radius);
+  const grad = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, r);
+  grad.addColorStop(0, color);
+  grad.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
+  ctx.fill();
 }
 
 function drawEmoji(ctx: CanvasRenderingContext2D, at: Pt, size: number, angle: number, emoji: string, offsetY = 0) {
@@ -158,25 +201,106 @@ function drawFilter(ctx: CanvasRenderingContext2D, lm: { x: number; y: number }[
   }
 }
 
+/** Soft enhance looks (Appearance + Makeup) — feathered, no milky oval stickers. */
+function applyEnhanceLooks(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  lm: { x: number; y: number }[],
+  w: number,
+  h: number,
+  enhance: EnhanceSettings,
+) {
+  const g = faceGeometry(lm, w, h);
+  const unit = g.eyeDist;
+
+  if (enhance.smooth > 0) {
+    const t = enhance.smooth / 100;
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(g.faceCenter.x, g.faceCenter.y, g.faceRx * 0.95, g.faceRy * 0.95, 0, 0, Math.PI * 2);
+    ctx.clip();
+    ctx.filter = `blur(${1.5 + t * 3.5}px)`;
+    ctx.globalAlpha = 0.2 + t * 0.4;
+    ctx.drawImage(source, 0, 0, w, h);
+    ctx.filter = "none";
+    ctx.restore();
+  }
+
+  if (enhance.shape > 0) {
+    const a = (enhance.shape / 100) * 0.35;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a;
+    softBlob(ctx, g.leftCheek, unit * 0.85, "rgba(75,50,42,1)");
+    softBlob(ctx, g.rightCheek, unit * 0.85, "rgba(75,50,42,1)");
+    ctx.restore();
+  }
+
+  if (enhance.eye > 0) {
+    const a = (enhance.eye / 100) * 0.4;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a * 0.55;
+    softBlob(ctx, g.leftEye, unit * 0.4, "rgba(255,255,255,1)");
+    softBlob(ctx, g.rightEye, unit * 0.4, "rgba(255,255,255,1)");
+    ctx.restore();
+  }
+
+  if (enhance.makeupId) {
+    const look = MAKEUP_PRESETS.find((m) => m.id === enhance.makeupId);
+    if (look) {
+      const mouthCx = (g.mouthL.x + g.mouthR.x) / 2;
+      const mouthCy = (g.mouthTop.y + g.mouthBottom.y) / 2;
+      const mouthRx = (Math.abs(g.mouthR.x - g.mouthL.x) / 2) * 1.05;
+      const mouthRy = Math.max(unit * 0.22, (Math.abs(g.mouthBottom.y - g.mouthTop.y) / 2) * 1.4);
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = look.lip;
+      ctx.beginPath();
+      ctx.ellipse(mouthCx, mouthCy, mouthRx, mouthRy, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
+      softBlob(ctx, g.leftCheek, unit * 0.8, look.blush);
+      softBlob(ctx, g.rightCheek, unit * 0.8, look.blush);
+      ctx.restore();
+    }
+  }
+}
+
+function enhanceNeedsLandmarks(enhance: EnhanceSettings | null | undefined): boolean {
+  if (!enhance) return false;
+  return enhance.smooth > 0 || enhance.shape > 0 || enhance.eye > 0 || !!enhance.makeupId;
+}
+
 /** `colorFilter` is a plain CSS filter string (e.g. from getEffectFilter) — the same
  *  Effects picker used for post/video capture, applied here via canvas ctx.filter so it
- *  actually reaches viewers of a live instead of only the host's own local preview. */
+ *  actually reaches viewers of a live instead of only the host's own local preview.
+ *  `enhance` bakes Enhance → Filters / Appearance / Makeup into the same pass. */
 export function useFaceFilters(
   videoTrack: MediaStreamTrack | null,
   filterId: FaceFilterId,
   enabled: boolean,
   colorFilter?: string,
+  enhance?: EnhanceSettings | null,
 ) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [outputTrack, setOutputTrack] = useState<MediaStreamTrack | null>(null);
+  const enhanceRef = useRef<EnhanceSettings>(enhance ?? DEFAULT_ENHANCE);
+  enhanceRef.current = enhance ?? DEFAULT_ENHANCE;
+
   const hasColorFilter = !!colorFilter && colorFilter !== "none";
-  const needsFaceTracking = filterId !== "none";
+  // Recompute from prop for effect deps (ref alone wouldn't retrigger structural enable).
+  const enhanceActive = !!enhance && isEnhanceActive(enhance);
+  const needsFaceTracking = filterId !== "none" || enhanceNeedsLandmarks(enhance);
+  const pipelineOn = needsFaceTracking || hasColorFilter || enhanceActive;
 
   useEffect(() => {
-    if (!enabled || !videoTrack || (!needsFaceTracking && !hasColorFilter)) {
+    if (!enabled || !videoTrack || !pipelineOn) {
       setActive(false);
       setLoading(false);
       setError(null);
@@ -234,15 +358,34 @@ export function useFaceFilters(
                 canvas!.width = w;
                 canvas!.height = h;
               }
+              const enh = enhanceRef.current;
+              const enhFilterCss = getEnhanceFilterCss(enh.filterId);
+              const enhFilterOn = !!enh.filterId && enh.filterIntensity > 0 && enhFilterCss !== "none";
+
               ctx.clearRect(0, 0, w, h);
+              // Base frame (optionally Effects color-filter baked in for live publish)
               ctx.filter = hasColorFilter ? colorFilter! : "none";
               ctx.drawImage(video, 0, 0, w, h);
-              ctx.filter = "none"; // stickers below draw crisp, not color-filtered too
+              ctx.filter = "none";
+
+              // Enhance → Filters with intensity (crossfade filtered pass over base)
+              if (enhFilterOn) {
+                ctx.save();
+                ctx.filter = enhFilterCss;
+                ctx.globalAlpha = Math.min(1, enh.filterIntensity / 100);
+                ctx.drawImage(video, 0, 0, w, h);
+                ctx.filter = "none";
+                ctx.restore();
+              }
+
               if (landmarker) {
                 try {
                   const result = landmarker.detectForVideo(video, performance.now());
                   const lm = result?.faceLandmarks?.[0];
-                  if (lm) drawFilter(ctx, lm, w, h, filterId);
+                  if (lm) {
+                    if (isEnhanceActive(enh)) applyEnhanceLooks(ctx, video, lm, w, h, enh);
+                    if (filterId !== "none") drawFilter(ctx, lm, w, h, filterId);
+                  }
                 } catch {
                   /* skip this frame */
                 }
@@ -286,7 +429,8 @@ export function useFaceFilters(
         /* ignore */
       }
     };
-  }, [videoTrack, filterId, enabled, colorFilter, hasColorFilter, needsFaceTracking]);
+    // Slider values flow through enhanceRef — only structural enhance on/off restarts the loop.
+  }, [videoTrack, filterId, enabled, colorFilter, hasColorFilter, needsFaceTracking, pipelineOn, enhanceActive]);
 
   return { canvasRef, active, loading, error, outputTrack };
 }

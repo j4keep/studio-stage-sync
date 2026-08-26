@@ -1,9 +1,13 @@
-import { RotateCcw, Sparkles } from "lucide-react";
+import { Ban, RotateCcw, Sparkles } from "lucide-react";
 import {
   APPEARANCE_TOOLS,
+  DEFAULT_ENHANCE,
   ENHANCE_TABS,
   FILTER_PRESETS,
   MAKEUP_PRESETS,
+  optimizeEnhanceSettings,
+  type AppearanceToolId,
+  type EnhanceSettings,
   type EnhanceTab,
 } from "@/lib/create-modes";
 
@@ -12,8 +16,11 @@ interface Props {
   tab: EnhanceTab;
   onTabChange: (tab: EnhanceTab) => void;
   onClose: () => void;
-  filterIntensity?: number;
-  onFilterIntensityChange?: (value: number) => void;
+  settings: EnhanceSettings;
+  onChange: (settings: EnhanceSettings) => void;
+  /** Which Appearance tool the intensity slider edits. */
+  appearanceTool: AppearanceToolId;
+  onAppearanceToolChange: (id: AppearanceToolId) => void;
 }
 
 export default function EnhancePanel({
@@ -21,24 +28,40 @@ export default function EnhancePanel({
   tab,
   onTabChange,
   onClose,
-  filterIntensity = 80,
-  onFilterIntensityChange,
+  settings,
+  onChange,
+  appearanceTool,
+  onAppearanceToolChange,
 }: Props) {
   if (!open) return null;
 
+  const resetAll = () => onChange({ ...DEFAULT_ENHANCE });
+
+  const appearanceValue = settings[appearanceTool];
+
   return (
     <div className="absolute inset-x-0 bottom-0 z-40 rounded-t-2xl bg-black/90 backdrop-blur-xl border-t border-white/10 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-      {tab === "Filters" && (
+      {(tab === "Filters" || tab === "Appearance") && (
         <div className="px-4 pt-3 pb-2 flex items-center gap-3">
           <input
             type="range"
             min={0}
             max={100}
-            value={filterIntensity}
-            onChange={(e) => onFilterIntensityChange?.(Number(e.target.value))}
+            value={tab === "Filters" ? settings.filterIntensity : appearanceValue}
+            onChange={(e) => {
+              const value = Number(e.target.value);
+              if (tab === "Filters") {
+                onChange({ ...settings, filterIntensity: value });
+              } else {
+                onChange({ ...settings, [appearanceTool]: value });
+              }
+            }}
             className="flex-1 accent-white"
+            aria-label={tab === "Filters" ? "Filter intensity" : `${appearanceTool} intensity`}
           />
-          <span className="text-white text-xs font-bold w-8 text-right">{filterIntensity}</span>
+          <span className="text-white text-xs font-bold w-8 text-right">
+            {tab === "Filters" ? settings.filterIntensity : appearanceValue}
+          </span>
         </div>
       )}
 
@@ -47,7 +70,14 @@ export default function EnhancePanel({
           <button
             key={item}
             type="button"
-            onClick={() => onTabChange(item)}
+            onClick={() => {
+              if (item === "Optimize") {
+                onChange(optimizeEnhanceSettings());
+                onTabChange("Appearance");
+                return;
+              }
+              onTabChange(item);
+            }}
             className={`shrink-0 text-sm font-semibold pb-2 border-b-2 transition-colors ${
               tab === item ? "text-white border-white" : "text-white/45 border-transparent"
             }`}
@@ -62,53 +92,127 @@ export default function EnhancePanel({
             )}
           </button>
         ))}
-        <button type="button" onClick={onClose} className="ml-auto shrink-0 text-white/60 p-1">
+        <button type="button" onClick={resetAll} className="ml-auto shrink-0 text-white/60 p-1" aria-label="Reset enhance">
           <RotateCcw className="w-5 h-5" />
+        </button>
+        <button type="button" onClick={onClose} className="shrink-0 text-xs font-bold text-white">
+          Done
         </button>
       </div>
 
       <div className="px-3 py-3 overflow-x-auto scrollbar-hide">
         {tab === "Appearance" && (
           <div className="flex gap-4">
-            {APPEARANCE_TOOLS.map((tool) => (
-              <button
-                key={tool.id}
-                type="button"
-                className="flex flex-col items-center gap-1.5 shrink-0 w-16"
-              >
-                <div className="w-14 h-14 rounded-full bg-white/10 border border-white/15 flex items-center justify-center text-[10px] text-white font-bold">
-                  {tool.label[0]}
-                </div>
-                <span className="text-[11px] text-white/80">{tool.label}</span>
-              </button>
-            ))}
+            {APPEARANCE_TOOLS.map((tool) => {
+              const selected = appearanceTool === tool.id;
+              const active = settings[tool.id] > 0;
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => onAppearanceToolChange(tool.id)}
+                  className="flex flex-col items-center gap-1.5 shrink-0 w-16"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-full border flex items-center justify-center text-[10px] font-bold ${
+                      selected
+                        ? "border-cyan-400 bg-white/15 text-cyan-300"
+                        : active
+                          ? "border-white/40 bg-white/10 text-white"
+                          : "border-white/15 bg-white/10 text-white"
+                    }`}
+                  >
+                    {tool.label[0]}
+                  </div>
+                  <span className={`text-[11px] ${selected ? "text-cyan-300" : "text-white/80"}`}>{tool.label}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
         {tab === "Makeup" && (
           <div className="flex gap-3">
-            {MAKEUP_PRESETS.map((name) => (
-              <button key={name} type="button" className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-300/40 to-purple-500/40 border-2 border-white/20" />
-                <span className="text-[10px] text-white/75 text-center line-clamp-2">{name}</span>
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => onChange({ ...settings, makeupId: null })}
+              className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]"
+            >
+              <div
+                className={`w-14 h-14 rounded-full border-2 flex items-center justify-center ${
+                  !settings.makeupId ? "border-cyan-400 bg-white/10" : "border-white/20 bg-white/5"
+                }`}
+              >
+                <Ban className="w-5 h-5 text-white/70" />
+              </div>
+              <span className="text-[10px] text-white/75">None</span>
+            </button>
+            {MAKEUP_PRESETS.map((look) => {
+              const selected = settings.makeupId === look.id;
+              return (
+                <button
+                  key={look.id}
+                  type="button"
+                  onClick={() => onChange({ ...settings, makeupId: selected ? null : look.id })}
+                  className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-full border-2 ${selected ? "border-cyan-400" : "border-white/20"}`}
+                    style={{ background: look.preview }}
+                  />
+                  <span className={`text-[10px] text-center line-clamp-2 ${selected ? "text-cyan-300" : "text-white/75"}`}>
+                    {look.label}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
         {tab === "Filters" && (
           <div className="flex gap-3">
-            {FILTER_PRESETS.map((name) => (
-              <button key={name} type="button" className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-amber-200/30 to-sky-400/30 border-2 border-white/20" />
-                <span className="text-[10px] text-white/75">{name}</span>
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={() => onChange({ ...settings, filterId: null })}
+              className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]"
+            >
+              <div
+                className={`w-14 h-14 rounded-full border-2 flex items-center justify-center ${
+                  !settings.filterId ? "border-cyan-400 bg-white/10" : "border-white/20 bg-white/5"
+                }`}
+              >
+                <Ban className="w-5 h-5 text-white/70" />
+              </div>
+              <span className="text-[10px] text-white/75">None</span>
+            </button>
+            {FILTER_PRESETS.map((preset) => {
+              const selected = settings.filterId === preset.id;
+              return (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() =>
+                    onChange({
+                      ...settings,
+                      filterId: selected ? null : preset.id,
+                      filterIntensity: settings.filterIntensity || 80,
+                    })
+                  }
+                  className="flex flex-col items-center gap-1 shrink-0 w-[4.5rem]"
+                >
+                  <div
+                    className={`w-14 h-14 rounded-full border-2 ${selected ? "border-cyan-400" : "border-white/20"}`}
+                    style={{ background: preset.preview }}
+                  />
+                  <span className={`text-[10px] ${selected ? "text-cyan-300" : "text-white/75"}`}>{preset.label}</span>
+                </button>
+              );
+            })}
           </div>
         )}
 
-        {(tab === "Optimize" || !["Appearance", "Makeup", "Filters"].includes(tab)) && (
-          <p className="text-center text-white/50 text-xs py-4">AI optimize coming soon</p>
+        {tab === "Optimize" && (
+          <p className="text-center text-white/50 text-xs py-4">Tap Optimize above to apply a clear glow look.</p>
         )}
       </div>
     </div>

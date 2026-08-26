@@ -24,7 +24,14 @@ import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import FaceFilterPanel from "@/components/feed/create/FaceFilterPanel";
 import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
-import { getEffectFilter, type EnhanceTab } from "@/lib/create-modes";
+import {
+  DEFAULT_ENHANCE,
+  getEffectFilter,
+  isEnhanceActive,
+  type AppearanceToolId,
+  type EnhanceSettings,
+  type EnhanceTab,
+} from "@/lib/create-modes";
 
 const sb = supabase as any;
 const ALL_GIFTS = [...GIFT_CATALOG, LIKE_GIFT];
@@ -54,9 +61,10 @@ export default function CircleLiveRoomPage() {
   const [showEnhance, setShowEnhance] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
   const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
+  const [appearanceTool, setAppearanceTool] = useState<AppearanceToolId>("smooth");
+  const [enhance, setEnhance] = useState<EnhanceSettings>(DEFAULT_ENHANCE);
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
-  const [filterIntensity, setFilterIntensity] = useState(80);
   // Captured once — the host's ORIGINAL camera track, before any face-filter swap. Needed
   // to revert cleanly back to "none": once a filtered canvas track is published, the
   // room's own "current local video track" IS that canvas, so it can no longer serve as
@@ -133,8 +141,14 @@ export default function CircleLiveRoomPage() {
   }, [isHost, room.local?.videoTrack]);
 
   const colorFilter = getEffectFilter(selectedEffect);
-  const hasAnyVideoEffect = faceFilter !== "none" || selectedEffect !== "none";
-  const faceFilters = useFaceFilters(rawHostTrackRef.current, faceFilter, isHost && hasAnyVideoEffect, colorFilter);
+  const hasAnyVideoEffect = faceFilter !== "none" || selectedEffect !== "none" || isEnhanceActive(enhance);
+  const faceFilters = useFaceFilters(
+    rawHostTrackRef.current,
+    faceFilter,
+    isHost && hasAnyVideoEffect,
+    colorFilter,
+    enhance,
+  );
 
   useEffect(() => {
     if (!isHost) return;
@@ -397,7 +411,7 @@ export default function CircleLiveRoomPage() {
                 setShowEffects(false);
                 setShowEnhance((v) => !v);
               }}
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${showEnhance ? "bg-white text-black" : "bg-white/15"}`}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${showEnhance || isEnhanceActive(enhance) ? "bg-white text-black" : "bg-white/15"}`}
               aria-label="Enhance"
             >
               <Sparkles className="h-4.5 w-4.5" />
@@ -495,8 +509,10 @@ export default function CircleLiveRoomPage() {
               tab={enhanceTab}
               onTabChange={setEnhanceTab}
               onClose={() => setShowEnhance(false)}
-              filterIntensity={filterIntensity}
-              onFilterIntensityChange={setFilterIntensity}
+              settings={enhance}
+              onChange={setEnhance}
+              appearanceTool={appearanceTool}
+              onAppearanceToolChange={setAppearanceTool}
             />
             <EffectsPanel
               open={showEffects}

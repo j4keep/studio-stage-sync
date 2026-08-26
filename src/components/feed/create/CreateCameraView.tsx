@@ -13,8 +13,8 @@ import {
   shouldMirrorRecordOutput,
   capturePhotoFromStream,
 } from "@/lib/create-camera";
-import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
-import { QUICK_MAX_RECORD_SEC, getEffectFilter } from "@/lib/create-modes";
+import type { AppearanceToolId, CreateMode, EnhanceSettings, EnhanceTab } from "@/lib/create-modes";
+import { DEFAULT_ENHANCE, QUICK_MAX_RECORD_SEC, getEffectFilter, isEnhanceActive } from "@/lib/create-modes";
 import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
@@ -98,13 +98,15 @@ export default function CreateCameraView({
   const [showEffects, setShowEffects] = useState(false);
   const [showFaceFilters, setShowFaceFilters] = useState(false);
   const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
+  const [appearanceTool, setAppearanceTool] = useState<AppearanceToolId>("smooth");
+  const [enhance, setEnhance] = useState<EnhanceSettings>(DEFAULT_ENHANCE);
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
-  const [filterIntensity, setFilterIntensity] = useState(80);
   const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
-  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, faceFilter !== "none");
+  const looksOn = faceFilter !== "none" || isEnhanceActive(enhance);
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, looksOn, undefined, enhance);
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -431,7 +433,7 @@ export default function CreateCameraView({
       stream,
       video,
       shouldMirrorRecordOutput(facing),
-      faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
+      looksOn && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
     );
     mirrorRecordStopRef.current = stopMirror;
 
@@ -563,7 +565,7 @@ export default function CreateCameraView({
     try {
       const blob = await capturePhotoFromStream(stream, video, {
         mirror: facing === "user",
-        filterSource: faceFilter !== "none" && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
+        filterSource: looksOn && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
       });
       if (!blob) {
         toast.error("Couldn't capture photo — try again");
@@ -648,15 +650,15 @@ export default function CreateCameraView({
           autoPlay
           style={{
             // Hidden (not removed — useFaceFilters still needs it as a track source)
-            // behind the filter canvas once a face filter is actively drawing.
-            visibility: faceFilter !== "none" && faceFilters.active ? "hidden" : "visible",
+            // behind the filter canvas once enhance / face looks are drawing.
+            visibility: looksOn && faceFilters.active ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
             filter: liveFilter,
           }}
         />
       )}
 
-      {!denied && faceFilter !== "none" && (
+      {!denied && looksOn && (
         <canvas
           ref={faceFilters.canvasRef}
           className="absolute inset-0 h-full w-full object-cover"
@@ -753,7 +755,7 @@ export default function CreateCameraView({
             setShowEffects(false);
             setShowEnhance((v) => !v);
           }}
-          className={`flex flex-col items-center gap-0.5 ${showEnhance ? "text-white" : "text-white/80"}`}
+          className={`flex flex-col items-center gap-0.5 ${showEnhance || isEnhanceActive(enhance) ? "text-white" : "text-white/80"}`}
         >
           <Sparkles className="w-5 h-5" />
           <span className="text-[9px] font-semibold">Enhance</span>
@@ -845,8 +847,10 @@ export default function CreateCameraView({
         tab={enhanceTab}
         onTabChange={setEnhanceTab}
         onClose={() => setShowEnhance(false)}
-        filterIntensity={filterIntensity}
-        onFilterIntensityChange={setFilterIntensity}
+        settings={enhance}
+        onChange={setEnhance}
+        appearanceTool={appearanceTool}
+        onAppearanceToolChange={setAppearanceTool}
       />
 
       <EffectsPanel

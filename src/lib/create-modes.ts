@@ -42,25 +42,83 @@ export const APPEARANCE_TOOLS = [
   { id: "shape", label: "Shape" },
   { id: "eye", label: "Eye" },
 ] as const;
+export type AppearanceToolId = (typeof APPEARANCE_TOOLS)[number]["id"];
 
-export const MAKEUP_PRESETS = [
-  "After Party",
-  "Defined",
-  "Fairy Veil",
-  "Dusty Cherry",
-  "Soft Natural",
-  "Indigo Pop",
-] as const;
+export const MAKEUP_PRESETS: readonly {
+  id: string;
+  label: string;
+  lip: string;
+  blush: string;
+  preview: string;
+}[] = [
+  { id: "after-party", label: "After Party", lip: "rgba(160,45,70,0.5)", blush: "rgba(210,120,140,0.24)", preview: "linear-gradient(135deg,#ff8fab,#c9184a)" },
+  { id: "defined", label: "Defined", lip: "rgba(120,40,55,0.52)", blush: "rgba(180,110,120,0.22)", preview: "linear-gradient(135deg,#9d0208,#6a040f)" },
+  { id: "fairy-veil", label: "Fairy Veil", lip: "rgba(230,140,170,0.42)", blush: "rgba(250,190,210,0.26)", preview: "linear-gradient(135deg,#ffc2d1,#ff8fab)" },
+  { id: "dusty-cherry", label: "Dusty Cherry", lip: "rgba(170,70,90,0.48)", blush: "rgba(200,130,145,0.24)", preview: "linear-gradient(135deg,#c1121f,#780000)" },
+  { id: "soft-natural", label: "Soft Natural", lip: "rgba(200,120,110,0.4)", blush: "rgba(230,170,150,0.22)", preview: "linear-gradient(135deg,#ffcdb2,#e5989b)" },
+  { id: "indigo-pop", label: "Indigo Pop", lip: "rgba(90,50,140,0.45)", blush: "rgba(160,130,200,0.22)", preview: "linear-gradient(135deg,#7b2cbf,#c77dff)" },
+];
 
-export const FILTER_PRESETS = [
-  "Peach",
-  "Movie",
-  "Youth",
-  "Vintage",
-  "Amber",
-  "Holiday",
-  "Brew",
-] as const;
+export const FILTER_PRESETS: readonly {
+  id: string;
+  label: string;
+  filter: string;
+  preview: string;
+}[] = [
+  { id: "peach", label: "Peach", filter: "saturate(1.2) brightness(1.08) contrast(1.05) sepia(0.15)", preview: "linear-gradient(135deg,#ffcdb2,#ff9f7a)" },
+  { id: "movie", label: "Movie", filter: "contrast(1.2) saturate(0.9) brightness(0.95)", preview: "linear-gradient(135deg,#141e30,#243b55)" },
+  { id: "youth", label: "Youth", filter: "brightness(1.12) contrast(1.05) saturate(1.15) blur(0.35px)", preview: "linear-gradient(135deg,#fff1eb,#ace0f9)" },
+  { id: "vintage", label: "Vintage", filter: "sepia(0.35) contrast(1.1) saturate(1.1)", preview: "linear-gradient(135deg,#c2b280,#8b7355)" },
+  { id: "amber", label: "Amber", filter: "sepia(0.25) saturate(1.35) hue-rotate(-12deg) brightness(1.05)", preview: "linear-gradient(135deg,#ffb703,#fb8500)" },
+  { id: "holiday", label: "Holiday", filter: "saturate(1.4) contrast(1.12) brightness(1.06)", preview: "linear-gradient(135deg,#ef233c,#ffd166)" },
+  { id: "brew", label: "Brew", filter: "sepia(0.45) contrast(1.15) brightness(0.92) saturate(1.2)", preview: "linear-gradient(135deg,#3c2a21,#8b5e3c)" },
+];
+
+export type EnhanceSettings = {
+  /** Enhance → Filters preset id, or null for none. */
+  filterId: string | null;
+  filterIntensity: number; // 0-100
+  smooth: number;
+  shape: number;
+  eye: number;
+  makeupId: string | null;
+};
+
+export const DEFAULT_ENHANCE: EnhanceSettings = {
+  filterId: null,
+  filterIntensity: 80,
+  smooth: 0,
+  shape: 0,
+  eye: 0,
+  makeupId: null,
+};
+
+export function isEnhanceActive(s: EnhanceSettings): boolean {
+  return (
+    (!!s.filterId && s.filterIntensity > 0) ||
+    s.smooth > 0 ||
+    s.shape > 0 ||
+    s.eye > 0 ||
+    !!s.makeupId
+  );
+}
+
+export function getEnhanceFilterCss(id: string | null | undefined): string {
+  if (!id) return "none";
+  return FILTER_PRESETS.find((f) => f.id === id)?.filter || "none";
+}
+
+/** One-tap Optimize: gentle smooth + eye brighten + Youth filter. */
+export function optimizeEnhanceSettings(): EnhanceSettings {
+  return {
+    filterId: "youth",
+    filterIntensity: 70,
+    smooth: 40,
+    shape: 15,
+    eye: 30,
+    makeupId: null,
+  };
+}
 
 export const EFFECT_CATEGORIES = [
   "Trending",
