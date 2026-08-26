@@ -110,7 +110,13 @@ export default function EnhancePanel({
                 <button
                   key={tool.id}
                   type="button"
-                  onClick={() => onAppearanceToolChange(tool.id)}
+                  onClick={() => {
+                    onAppearanceToolChange(tool.id);
+                    // Tapping a tool must apply immediately — selecting alone left values at 0.
+                    if (settings[tool.id] <= 0) {
+                      onChange({ ...settings, [tool.id]: 50 });
+                    }
+                  }}
                   className="flex flex-col items-center gap-1.5 shrink-0 w-16"
                 >
                   <div

@@ -17,7 +17,14 @@ import {
 } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
 import type { AppearanceToolId, CreateMode, EnhanceSettings, EnhanceTab } from "@/lib/create-modes";
-import { DEFAULT_ENHANCE, getEffectFilter, isEnhanceActive } from "@/lib/create-modes";
+import {
+  DEFAULT_ENHANCE,
+  composeDisplayFilters,
+  enhanceNeedsCanvas,
+  getEffectFilter,
+  getEnhanceDisplayFilter,
+  isEnhanceActive,
+} from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { startCircleLive } from "@/lib/circle-live";
@@ -84,9 +91,16 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
-  const looksOn = faceFilter !== "none" || isEnhanceActive(enhance);
-  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, looksOn, undefined, enhance);
-  const liveFilter = getEffectFilter(selectedEffect);
+  const displayFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
+  const needsCanvas =
+    faceFilter !== "none" || enhanceNeedsCanvas(enhance) || displayFilter !== "none";
+  const faceFilters = useFaceFilters(
+    rawVideoTrack,
+    faceFilter,
+    needsCanvas,
+    displayFilter !== "none" ? displayFilter : undefined,
+    enhance,
+  );
 
   const closeEffectSheets = () => {
     setShowEnhance(false);
@@ -163,7 +177,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
     }
   };
 
-  const looksActive = looksOn && faceFilters.active;
+  const looksActive = needsCanvas && faceFilters.active;
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -179,19 +193,19 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
             // behind the filter canvas once enhance / face looks are drawing.
             visibility: looksActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
+            // While canvas boots, CSS still shows Filters/Effects on the raw video.
+            filter: looksActive ? "none" : displayFilter,
           }}
         />
       )}
 
-      {!denied && looksOn && (
+      {!denied && needsCanvas && (
         <canvas
           ref={faceFilters.canvasRef}
           className="absolute inset-0 h-full w-full object-cover"
           style={{
             visibility: faceFilters.active ? "visible" : "hidden",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
           }}
         />
       )}

@@ -26,7 +26,10 @@ import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
 import {
   DEFAULT_ENHANCE,
+  composeDisplayFilters,
+  enhanceNeedsCanvas,
   getEffectFilter,
+  getEnhanceDisplayFilter,
   isEnhanceActive,
   type AppearanceToolId,
   type EnhanceSettings,
@@ -140,13 +143,14 @@ export default function CircleLiveRoomPage() {
     }
   }, [isHost, room.local?.videoTrack]);
 
-  const colorFilter = getEffectFilter(selectedEffect);
-  const hasAnyVideoEffect = faceFilter !== "none" || selectedEffect !== "none" || isEnhanceActive(enhance);
+  const colorFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
+  const hasAnyVideoEffect =
+    faceFilter !== "none" || colorFilter !== "none" || enhanceNeedsCanvas(enhance);
   const faceFilters = useFaceFilters(
     rawHostTrackRef.current,
     faceFilter,
     isHost && hasAnyVideoEffect,
-    colorFilter,
+    colorFilter !== "none" ? colorFilter : undefined,
     enhance,
   );
 

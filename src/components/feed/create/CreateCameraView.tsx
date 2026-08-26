@@ -14,7 +14,15 @@ import {
   capturePhotoFromStream,
 } from "@/lib/create-camera";
 import type { AppearanceToolId, CreateMode, EnhanceSettings, EnhanceTab } from "@/lib/create-modes";
-import { DEFAULT_ENHANCE, QUICK_MAX_RECORD_SEC, getEffectFilter, isEnhanceActive } from "@/lib/create-modes";
+import {
+  DEFAULT_ENHANCE,
+  QUICK_MAX_RECORD_SEC,
+  composeDisplayFilters,
+  enhanceNeedsCanvas,
+  getEffectFilter,
+  getEnhanceDisplayFilter,
+  isEnhanceActive,
+} from "@/lib/create-modes";
 import { boostMediaElementLoudness, createTrimmedMusicPlayer, CAMERA_ADDED_SOUND_MONITOR_VOLUME, type MusicTrim } from "@/lib/post-music-preview";
 import { armFeedAudioPlayback, forceIosAudioSessionToPlayback, resetIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
@@ -105,8 +113,18 @@ export default function CreateCameraView({
   const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
-  const looksOn = faceFilter !== "none" || isEnhanceActive(enhance);
-  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, looksOn, undefined, enhance);
+  const displayFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
+  // Canvas whenever Face / Appearance / Makeup / any color filter is on — Filters+Effects
+  // bake into the canvas so capture/preview stay in sync (CSS-only was invisible on some paths).
+  const needsCanvas =
+    faceFilter !== "none" || enhanceNeedsCanvas(enhance) || displayFilter !== "none";
+  const faceFilters = useFaceFilters(
+    rawVideoTrack,
+    faceFilter,
+    needsCanvas,
+    displayFilter !== "none" ? displayFilter : undefined,
+    enhance,
+  );
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -433,7 +451,7 @@ export default function CreateCameraView({
       stream,
       video,
       shouldMirrorRecordOutput(facing),
-      looksOn && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
+      needsCanvas && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
     );
     mirrorRecordStopRef.current = stopMirror;
 
@@ -565,7 +583,7 @@ export default function CreateCameraView({
     try {
       const blob = await capturePhotoFromStream(stream, video, {
         mirror: facing === "user",
-        filterSource: looksOn && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
+        filterSource: needsCanvas && faceFilters.active ? faceFilters.canvasRef.current ?? undefined : undefined,
       });
       if (!blob) {
         toast.error("Couldn't capture photo — try again");
@@ -636,8 +654,7 @@ export default function CreateCameraView({
   };
 
   const recordDisabled = denied || !ready || capturingPhoto;
-  const liveFilter = getEffectFilter(selectedEffect);
-
+  const looksActive = needsCanvas && faceFilters.active;
 
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
@@ -651,21 +668,21 @@ export default function CreateCameraView({
           style={{
             // Hidden (not removed — useFaceFilters still needs it as a track source)
             // behind the filter canvas once enhance / face looks are drawing.
-            visibility: looksOn && faceFilters.active ? "hidden" : "visible",
+            visibility: looksActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
+            // While canvas boots, CSS still shows Filters/Effects on the raw video.
+            filter: looksActive ? "none" : displayFilter,
           }}
         />
       )}
 
-      {!denied && looksOn && (
+      {!denied && needsCanvas && (
         <canvas
           ref={faceFilters.canvasRef}
           className="absolute inset-0 h-full w-full object-cover"
           style={{
             visibility: faceFilters.active ? "visible" : "hidden",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            filter: liveFilter,
           }}
         />
       )}
