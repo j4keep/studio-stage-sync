@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  BarChart3,
   ChevronDown,
   Lightbulb,
   Loader2,
   Radio,
   Settings,
   Share2,
+  Smile,
   Sparkles,
   SwitchCamera,
   UserRound,
@@ -16,13 +16,16 @@ import {
   X,
 } from "lucide-react";
 import { warmCameraStream, releaseCameraStream, streamHasLiveAudio } from "@/lib/create-camera";
-import type { CreateMode } from "@/lib/create-modes";
+import type { CreateMode, EnhanceTab } from "@/lib/create-modes";
+import { getEffectFilter } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { startCircleLive } from "@/lib/circle-live";
-import { useBeautyEffects, DEFAULT_BEAUTY, isBeautyActive, type BeautySettings } from "@/hooks/useBeautyEffects";
+import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import CreateModeTabs from "./CreateModeTabs";
-import BeautyPanel from "./BeautyPanel";
+import EnhancePanel from "./EnhancePanel";
+import EffectsPanel from "./EffectsPanel";
+import FaceFilterPanel from "./FaceFilterPanel";
 
 interface Props {
   createMode: CreateMode;
@@ -42,27 +45,22 @@ const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio }[] = [
   { id: "virtual", label: "Virtual", icon: UserRound },
 ];
 
-type PrepToolId = "flip" | "beauty" | "magic" | "creatorCenter" | "collapse" | "fillLight" | "share" | "settings";
+type PrepToolId = "flip" | "enhance" | "effects" | "face" | "collapse" | "fillLight" | "share" | "settings";
 
-/** Get-ready icon set, matching the reference layout the user provided (minus Events and
- *  Camera, which they explicitly don't want). Placeholder labels — the user is going to
- *  tell us what goes behind each one next; don't wire these up or rename them yet. */
+/** Same Enhance / Effects / Face tools as Post capture — plus Flip and the remaining
+ *  get-ready placeholders (Collapse / Fill Light / Share / Settings). */
 const PREP_TOOLS: { id: PrepToolId; label: string; icon: typeof Sparkles }[] = [
   { id: "flip", label: "Flip", icon: SwitchCamera },
-  { id: "beauty", label: "Beauty", icon: Sparkles },
-  { id: "magic", label: "Magic", icon: Wand2 },
-  { id: "creatorCenter", label: "Creator Center", icon: BarChart3 },
+  { id: "enhance", label: "Enhance", icon: Sparkles },
+  { id: "effects", label: "Effects", icon: Wand2 },
+  { id: "face", label: "Face", icon: Smile },
   { id: "collapse", label: "Collapse", icon: ChevronDown },
   { id: "fillLight", label: "Fill Light", icon: Lightbulb },
   { id: "share", label: "Share", icon: Share2 },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-/** Pre-live camera check — flip camera, get ready (the prep tool grid + view mode), then
- *  go live. The prep tools (Flip/Beauty/Magic/Creator Center/Collapse/Fill Light/Share/
- *  Settings) are deliberately UI-only for now — placeholder labels/selection state, no
- *  actual behavior — per the user's explicit ask to place them first and define what each
- *  one does in a follow-up pass. */
+/** Pre-live camera check — flip camera, Enhance/Effects/Face (shared with Post), then go live. */
 export default function LiveCameraView({ createMode, onModeChange, onClose, initialStream }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -74,10 +72,25 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
   const [selectedTool, setSelectedTool] = useState<PrepToolId | null>(null);
-  const [beautyOpen, setBeautyOpen] = useState(false);
-  const [beauty, setBeauty] = useState<BeautySettings>(DEFAULT_BEAUTY);
+
+  const [showEnhance, setShowEnhance] = useState(false);
+  const [showEffects, setShowEffects] = useState(false);
+  const [showFaceFilters, setShowFaceFilters] = useState(false);
+  const [enhanceTab, setEnhanceTab] = useState<EnhanceTab>("Appearance");
+  const [effectCategory, setEffectCategory] = useState("Trending");
+  const [selectedEffect, setSelectedEffect] = useState("none");
+  const [filterIntensity, setFilterIntensity] = useState(80);
+  const [faceFilter, setFaceFilter] = useState<FaceFilterId>("none");
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
-  const beautyFx = useBeautyEffects(rawVideoTrack, beauty, isBeautyActive(beauty));
+
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, faceFilter !== "none");
+  const liveFilter = getEffectFilter(selectedEffect);
+
+  const closeEffectSheets = () => {
+    setShowEnhance(false);
+    setShowEffects(false);
+    setShowFaceFilters(false);
+  };
 
   const attachStream = useCallback(async (stream: MediaStream) => {
     streamRef.current = stream;
@@ -148,6 +161,8 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
     }
   };
 
+  const faceActive = faceFilter !== "none" && faceFilters.active;
+
   return (
     <div className="absolute inset-0 bg-black flex flex-col touch-none">
       {!denied && (
@@ -158,23 +173,24 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           muted
           autoPlay
           style={{
-            // Hidden (not removed — the beauty pipeline still needs it as a track
-            // source) behind the processed canvas once beauty is actively drawing.
-            visibility: isBeautyActive(beauty) && beautyFx.active ? "hidden" : "visible",
+            // Hidden (not removed — useFaceFilters still needs it as a track source)
+            // behind the filter canvas once a face filter is actively drawing.
+            visibility: faceActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: liveFilter,
           }}
         />
       )}
 
-      {!denied && isBeautyActive(beauty) && (
-        // `invisible` (visibility:hidden), never `hidden` (display:none) — a display:none
-        // canvas skips layout entirely in some engines and never gets a real backing
-        // store, which is exactly what caused "Canvas not ready" the first time this
-        // pattern was used for Circle Live's face filters.
+      {!denied && faceFilter !== "none" && (
         <canvas
-          ref={beautyFx.canvasRef}
-          className={`absolute inset-0 h-full w-full object-cover ${beautyFx.active ? "visible" : "invisible"}`}
-          style={{ transform: facing === "user" ? "scaleX(-1)" : undefined }}
+          ref={faceFilters.canvasRef}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            visibility: faceFilters.active ? "visible" : "hidden",
+            transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: liveFilter,
+          }}
         />
       )}
 
@@ -211,7 +227,6 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
       </div>
 
       <div className="relative z-20 mt-auto flex flex-col items-center gap-4 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)]">
-        {/* Live / Multi / Virtual — which kind of live this is. Selection only for now. */}
         <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/40 p-1 backdrop-blur-md">
           {VIEW_MODES.map((mode) => {
             const Icon = mode.icon;
@@ -232,11 +247,17 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           })}
         </div>
 
-        {/* Get-ready tools — placeholders for now; behavior comes next. */}
         <div className="grid w-full max-w-[22rem] grid-cols-4 justify-items-center gap-x-2 gap-y-3">
           {PREP_TOOLS.map((tool) => {
             const Icon = tool.icon;
-            const selected = tool.id === "beauty" ? beautyOpen || isBeautyActive(beauty) : selectedTool === tool.id;
+            const selected =
+              tool.id === "enhance"
+                ? showEnhance
+                : tool.id === "effects"
+                  ? showEffects || selectedEffect !== "none"
+                  : tool.id === "face"
+                    ? showFaceFilters || faceFilter !== "none"
+                    : selectedTool === tool.id;
             return (
               <button
                 key={tool.id}
@@ -246,17 +267,34 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
                     flipCamera();
                     return;
                   }
-                  if (tool.id === "beauty") {
-                    setBeautyOpen((v) => !v);
+                  if (tool.id === "enhance") {
+                    setShowEffects(false);
+                    setShowFaceFilters(false);
+                    setShowEnhance((v) => !v);
                     return;
                   }
+                  if (tool.id === "effects") {
+                    setShowEnhance(false);
+                    setShowFaceFilters(false);
+                    setShowEffects((v) => !v);
+                    return;
+                  }
+                  if (tool.id === "face") {
+                    setShowEnhance(false);
+                    setShowEffects(false);
+                    setShowFaceFilters((v) => !v);
+                    return;
+                  }
+                  closeEffectSheets();
                   setSelectedTool((v) => (v === tool.id ? null : tool.id));
                 }}
                 className="flex flex-col items-center gap-1"
               >
-                <span className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md ${
-                  selected ? "border-white bg-white text-black" : "border-white/15 bg-black/40 text-white"
-                }`}>
+                <span
+                  className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md ${
+                    selected ? "border-white bg-white text-black" : "border-white/15 bg-black/40 text-white"
+                  }`}
+                >
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="text-center text-[10px] font-semibold leading-tight text-white/80">{tool.label}</span>
@@ -277,19 +315,34 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         </button>
       </div>
 
-      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
-
-      <BeautyPanel
-        open={beautyOpen}
-        onClose={() => setBeautyOpen(false)}
-        settings={beauty}
-        onChange={setBeauty}
-        videoRef={videoRef}
-        loading={beautyFx.loading}
-        error={beautyFx.error}
-        faceDetected={beautyFx.faceDetected}
-        needsFaceTracking={beautyFx.needsFaceTracking}
+      <EnhancePanel
+        open={showEnhance}
+        tab={enhanceTab}
+        onTabChange={setEnhanceTab}
+        onClose={() => setShowEnhance(false)}
+        filterIntensity={filterIntensity}
+        onFilterIntensityChange={setFilterIntensity}
       />
+
+      <EffectsPanel
+        open={showEffects}
+        category={effectCategory}
+        onCategoryChange={setEffectCategory}
+        onClose={() => setShowEffects(false)}
+        selectedId={selectedEffect}
+        onSelect={setSelectedEffect}
+      />
+
+      <FaceFilterPanel
+        open={showFaceFilters}
+        onClose={() => setShowFaceFilters(false)}
+        selectedId={faceFilter}
+        onSelect={setFaceFilter}
+        loading={faceFilters.loading}
+        error={faceFilters.error}
+      />
+
+      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
     </div>
   );
 }
