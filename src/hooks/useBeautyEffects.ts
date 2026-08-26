@@ -109,25 +109,6 @@ function clipFaceOval(ctx: CanvasRenderingContext2D, g: ReturnType<typeof geomet
   ctx.clip();
 }
 
-/** Face oval with eyes + mouth punched out so smoothing doesn't mush features. */
-function clipSkinRegion(ctx: CanvasRenderingContext2D, g: ReturnType<typeof geometry>, unit: number) {
-  const eyeRx = unit * 0.42;
-  const eyeRy = unit * 0.28;
-  const browLift = unit * 0.12;
-  const mouthCx = (g.mouthL.x + g.mouthR.x) / 2;
-  const mouthCy = (g.mouthTop.y + g.mouthBottom.y) / 2;
-  const mouthRx = (Math.abs(g.mouthR.x - g.mouthL.x) / 2) * 1.25;
-  const mouthRy = Math.max(unit * 0.28, (Math.abs(g.mouthBottom.y - g.mouthTop.y) / 2) * 1.8);
-
-  ctx.beginPath();
-  ctx.ellipse(g.faceCenter.x, g.faceCenter.y, g.faceRadiusX * 1.08, g.faceRadiusY * 1.08, 0, 0, Math.PI * 2);
-  // Holes (evenodd) — keep brows/eyes/lips crisp
-  ctx.ellipse(g.leftEye.x, g.leftEye.y - browLift * 0.2, eyeRx, eyeRy + browLift, 0, 0, Math.PI * 2);
-  ctx.ellipse(g.rightEye.x, g.rightEye.y - browLift * 0.2, eyeRx, eyeRy + browLift, 0, 0, Math.PI * 2);
-  ctx.ellipse(mouthCx, mouthCy, mouthRx, mouthRy, 0, 0, Math.PI * 2);
-  ctx.clip("evenodd");
-}
-
 function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: string) {
   const grad = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, Math.max(1, radius));
   grad.addColorStop(0, color);
