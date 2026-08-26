@@ -109,6 +109,25 @@ function clipFaceOval(ctx: CanvasRenderingContext2D, g: ReturnType<typeof geomet
   ctx.clip();
 }
 
+/** Face oval with eyes + mouth punched out so smoothing doesn't mush features. */
+function clipSkinRegion(ctx: CanvasRenderingContext2D, g: ReturnType<typeof geometry>, unit: number) {
+  const eyeRx = unit * 0.42;
+  const eyeRy = unit * 0.28;
+  const browLift = unit * 0.12;
+  const mouthCx = (g.mouthL.x + g.mouthR.x) / 2;
+  const mouthCy = (g.mouthTop.y + g.mouthBottom.y) / 2;
+  const mouthRx = (Math.abs(g.mouthR.x - g.mouthL.x) / 2) * 1.25;
+  const mouthRy = Math.max(unit * 0.28, (Math.abs(g.mouthBottom.y - g.mouthTop.y) / 2) * 1.8);
+
+  ctx.beginPath();
+  ctx.ellipse(g.faceCenter.x, g.faceCenter.y, g.faceRadiusX * 1.08, g.faceRadiusY * 1.08, 0, 0, Math.PI * 2);
+  // Holes (evenodd) — keep brows/eyes/lips crisp
+  ctx.ellipse(g.leftEye.x, g.leftEye.y - browLift * 0.2, eyeRx, eyeRy + browLift, 0, 0, Math.PI * 2);
+  ctx.ellipse(g.rightEye.x, g.rightEye.y - browLift * 0.2, eyeRx, eyeRy + browLift, 0, 0, Math.PI * 2);
+  ctx.ellipse(mouthCx, mouthCy, mouthRx, mouthRy, 0, 0, Math.PI * 2);
+  ctx.clip("evenodd");
+}
+
 function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: string) {
   const grad = ctx.createRadialGradient(at.x, at.y, 0, at.x, at.y, Math.max(1, radius));
   grad.addColorStop(0, color);
@@ -117,6 +136,96 @@ function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: 
   ctx.beginPath();
   ctx.arc(at.x, at.y, Math.max(1, radius), 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** Reused every frame — allocating a canvas per RAF would thrash GC on live. */
+let skinBlurPlate: HTMLCanvasElement | null = null;
+let skinBlurCtx: CanvasRenderingContext2D | null = null;
+
+function getSkinBlurPlate(w: number, h: number): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  if (!skinBlurPlate) {
+    skinBlurPlate = document.createElement("canvas");
+    skinBlurCtx = skinBlurPlate.getContext("2d", { alpha: false });
+  }
+  if (!skinBlurCtx) return null;
+  if (skinBlurPlate.width !== w || skinBlurPlate.height !== h) {
+    skinBlurPlate.width = w;
+    skinBlurPlate.height = h;
+  }
+  return { canvas: skinBlurPlate, ctx: skinBlurCtx };
+}
+
+/** Stronger TikTok-style skin pass: smooth texture, brighten, matte sweat shine.
+ *  Uses an offscreen blur so we can blend it heavily without washing the whole frame. */
+function applySkinSmooth(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  amount: number, // 0-100
+) {
+  const t = Math.min(1, Math.max(0, amount / 100));
+  if (t <= 0) return;
+
+  const plate = getSkinBlurPlate(w, h);
+  if (!plate) return;
+
+  // Offscreen blurred plate — blur scales up hard so mid/high slider values actually look
+  // like beauty apps, not a faint haze.
+  const blurPx = 4 + t * 18;
+  plate.ctx.setTransform(1, 0, 0, 1, 0, 0);
+  plate.ctx.filter = `blur(${blurPx}px)`;
+  plate.ctx.globalAlpha = 1;
+  plate.ctx.globalCompositeOperation = "source-over";
+  plate.ctx.drawImage(source, 0, 0, w, h);
+  plate.ctx.filter = "none";
+
+  // 1) Smooth — blend blurred skin over original, features protected
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalAlpha = 0.35 + t * 0.55; // ~0.35 at low, ~0.90 at full
+  ctx.globalCompositeOperation = "source-over";
+  ctx.drawImage(plate.canvas, 0, 0, w, h);
+  ctx.restore();
+
+  // 2) Brighten — soft warm lift so skin looks clearer / less dull
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.globalAlpha = 0.2 + t * 0.45;
+  ctx.fillStyle = "rgb(255, 236, 220)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // Extra gentle screen lift for "glow" without blowing highlights
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalCompositeOperation = "screen";
+  ctx.globalAlpha = t * 0.12;
+  ctx.fillStyle = "rgb(255, 245, 235)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // 3) Matte / de-shine — crush oily sweat speculars (T-zone + cheeks)
+  ctx.save();
+  clipSkinRegion(ctx, g, unit);
+  ctx.globalCompositeOperation = "soft-light";
+  ctx.globalAlpha = 0.15 + t * 0.35;
+  ctx.fillStyle = "rgb(168, 148, 138)";
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
+
+  // Targeted matte on forehead / nose bridge / cheekbones where sweat shows most
+  ctx.save();
+  ctx.globalCompositeOperation = "multiply";
+  ctx.globalAlpha = t * 0.18;
+  softBlob(ctx, g.forehead, unit * 1.15, "rgba(195, 175, 165, 1)");
+  softBlob(ctx, g.noseBridge, unit * 0.7, "rgba(195, 175, 165, 1)");
+  softBlob(ctx, g.leftCheek, unit * 0.85, "rgba(200, 180, 170, 1)");
+  softBlob(ctx, g.rightCheek, unit * 0.85, "rgba(200, 180, 170, 1)");
+  ctx.restore();
 }
 
 /** Draws one processed frame into `ctx`. `source` can be a live <video> or a frozen
@@ -153,12 +262,7 @@ function drawBeauty(
   const skinOn = settings.skinMasterOn !== false;
 
   if (skinOn && settings.skinSmooth > 0) {
-    ctx.save();
-    clipFaceOval(ctx, g);
-    ctx.filter = `blur(${3 + (settings.skinSmooth / 100) * 8}px)`;
-    ctx.globalAlpha = Math.min(0.8, settings.skinSmooth / 100);
-    ctx.drawImage(source, 0, 0, w, h);
-    ctx.restore();
+    applySkinSmooth(ctx, source, g, unit, w, h, settings.skinSmooth);
   }
 
   if (skinOn && settings.complexion > 0) {
