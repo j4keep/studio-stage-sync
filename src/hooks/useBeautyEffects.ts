@@ -19,45 +19,183 @@ export const MAKEUP_LOOKS: { id: MakeupLookId; label: string; lip: string; blush
 ];
 
 export type BeautySettings = {
-  /** Master switch for Skin-group tools (Skin / Complexion / Contour / 3D Light / Contrast). */
+  /** Master switches per Beauty subcategory. */
   skinMasterOn: boolean;
-  skinSmooth: number; // 0-100
-  complexion: number; // 0-100
-  contour: number; // 0-100
-  light3d: number; // 0-100
-  contrast: number; // 0-100
+  touchUpMasterOn: boolean;
+  faceMasterOn: boolean;
+  eyesMasterOn: boolean;
+  noseMasterOn: boolean;
+  mouthMasterOn: boolean;
+
+  // Skin
+  skinSmooth: number;
+  complexion: number;
+  contour: number;
+  light3d: number;
+  contrast: number;
+
+  // Touch Up
+  concealer: number;
+  blemish: number;
+  wrinkles: number;
+  eyeBags: number;
+
+  // Face shape / light (canvas approximations)
+  faceSlim: number;
+  cheekbone: number;
+  jawline: number;
+  foreheadLift: number;
+
+  // Eyes
+  eyeBrighten: number;
+  eyeEnlarge: number;
+  darkCircles: number;
+  eyeSparkle: number;
+
+  // Nose
+  noseSlim: number;
+  noseBridge: number;
+  noseTip: number;
+
+  // Mouth
+  lipPlump: number;
+  lipColor: number;
+  lipBrighten: number;
+
   makeupId: MakeupLookId | null;
-  colorFilter: string; // CSS filter string, "none" if off
-  filterIntensity: number; // 0-100
+  colorFilter: string;
+  filterIntensity: number;
 };
 
 export const DEFAULT_BEAUTY: BeautySettings = {
   skinMasterOn: true,
+  touchUpMasterOn: true,
+  faceMasterOn: true,
+  eyesMasterOn: true,
+  noseMasterOn: true,
+  mouthMasterOn: true,
+
   skinSmooth: 0,
   complexion: 0,
   contour: 0,
   light3d: 0,
   contrast: 0,
+
+  concealer: 0,
+  blemish: 0,
+  wrinkles: 0,
+  eyeBags: 0,
+
+  faceSlim: 0,
+  cheekbone: 0,
+  jawline: 0,
+  foreheadLift: 0,
+
+  eyeBrighten: 0,
+  eyeEnlarge: 0,
+  darkCircles: 0,
+  eyeSparkle: 0,
+
+  noseSlim: 0,
+  noseBridge: 0,
+  noseTip: 0,
+
+  lipPlump: 0,
+  lipColor: 0,
+  lipBrighten: 0,
+
   makeupId: null,
   colorFilter: "none",
   filterIntensity: 80,
 };
 
+function groupActive(on: boolean, values: number[]): boolean {
+  return on && values.some((v) => v > 0);
+}
+
 function skinToolsActive(s: BeautySettings): boolean {
-  if (!s.skinMasterOn) return false;
-  return s.skinSmooth > 0 || s.complexion > 0 || s.contour > 0 || s.light3d > 0 || s.contrast > 0;
+  return groupActive(s.skinMasterOn, [s.skinSmooth, s.complexion, s.contour, s.light3d, s.contrast]);
+}
+
+function touchUpActive(s: BeautySettings): boolean {
+  return groupActive(s.touchUpMasterOn, [s.concealer, s.blemish, s.wrinkles, s.eyeBags]);
+}
+
+function faceToolsActive(s: BeautySettings): boolean {
+  return groupActive(s.faceMasterOn, [s.faceSlim, s.cheekbone, s.jawline, s.foreheadLift]);
+}
+
+function eyesToolsActive(s: BeautySettings): boolean {
+  return groupActive(s.eyesMasterOn, [s.eyeBrighten, s.eyeEnlarge, s.darkCircles, s.eyeSparkle]);
+}
+
+function noseToolsActive(s: BeautySettings): boolean {
+  return groupActive(s.noseMasterOn, [s.noseSlim, s.noseBridge, s.noseTip]);
+}
+
+function mouthToolsActive(s: BeautySettings): boolean {
+  return groupActive(s.mouthMasterOn, [s.lipPlump, s.lipColor, s.lipBrighten]);
 }
 
 export function isBeautyActive(s: BeautySettings): boolean {
   return (
     skinToolsActive(s) ||
+    touchUpActive(s) ||
+    faceToolsActive(s) ||
+    eyesToolsActive(s) ||
+    noseToolsActive(s) ||
+    mouthToolsActive(s) ||
     !!s.makeupId ||
     (s.colorFilter !== "none" && s.filterIntensity > 0)
   );
 }
 
 export function needsLandmarks(s: BeautySettings): boolean {
-  return skinToolsActive(s) || !!s.makeupId;
+  return (
+    skinToolsActive(s) ||
+    touchUpActive(s) ||
+    faceToolsActive(s) ||
+    eyesToolsActive(s) ||
+    noseToolsActive(s) ||
+    mouthToolsActive(s) ||
+    !!s.makeupId
+  );
+}
+
+/** Zero every Beauty-tool slider; keep masters on and leave Makeup/Filter alone. */
+export function resetAllBeautyTools(s: BeautySettings): BeautySettings {
+  return {
+    ...s,
+    skinMasterOn: true,
+    touchUpMasterOn: true,
+    faceMasterOn: true,
+    eyesMasterOn: true,
+    noseMasterOn: true,
+    mouthMasterOn: true,
+    skinSmooth: 0,
+    complexion: 0,
+    contour: 0,
+    light3d: 0,
+    contrast: 0,
+    concealer: 0,
+    blemish: 0,
+    wrinkles: 0,
+    eyeBags: 0,
+    faceSlim: 0,
+    cheekbone: 0,
+    jawline: 0,
+    foreheadLift: 0,
+    eyeBrighten: 0,
+    eyeEnlarge: 0,
+    darkCircles: 0,
+    eyeSparkle: 0,
+    noseSlim: 0,
+    noseBridge: 0,
+    noseTip: 0,
+    lipPlump: 0,
+    lipColor: 0,
+    lipBrighten: 0,
+  };
 }
 
 // MediaPipe Face Mesh topology — stable, well-known single-point indices. Approximated
@@ -68,14 +206,23 @@ const CHIN = 152;
 const L_FACE_EDGE = 234;
 const R_FACE_EDGE = 454;
 const NOSE_BRIDGE = 168;
+const NOSE_TIP = 1;
+const NOSE_L = 98;
+const NOSE_R = 327;
 const MOUTH_L = 61;
 const MOUTH_R = 291;
 const MOUTH_TOP = 13;
 const MOUTH_BOTTOM = 14;
 const L_EYE = 33;
 const R_EYE = 263;
+const L_UNDER_EYE = 145;
+const R_UNDER_EYE = 374;
 const L_CHEEK = 50;
 const R_CHEEK = 280;
+const L_JAW = 172;
+const R_JAW = 397;
+const L_NASOLABIAL = 205;
+const R_NASOLABIAL = 425;
 
 type Pt = { x: number; y: number };
 type Landmarks = { x: number; y: number }[];
@@ -88,15 +235,25 @@ function geometry(lm: Landmarks, w: number, h: number) {
   const rightEdge = p(R_FACE_EDGE);
   return {
     forehead,
+    chin,
     noseBridge: p(NOSE_BRIDGE),
+    noseTip: p(NOSE_TIP),
+    noseLeft: p(NOSE_L),
+    noseRight: p(NOSE_R),
     mouthL: p(MOUTH_L),
     mouthR: p(MOUTH_R),
     mouthTop: p(MOUTH_TOP),
     mouthBottom: p(MOUTH_BOTTOM),
     leftEye: p(L_EYE),
     rightEye: p(R_EYE),
+    leftUnderEye: p(L_UNDER_EYE),
+    rightUnderEye: p(R_UNDER_EYE),
     leftCheek: p(L_CHEEK),
     rightCheek: p(R_CHEEK),
+    leftJaw: p(L_JAW),
+    rightJaw: p(R_JAW),
+    leftNasolabial: p(L_NASOLABIAL),
+    rightNasolabial: p(R_NASOLABIAL),
     faceCenter: { x: (leftEdge.x + rightEdge.x) / 2, y: (forehead.y + chin.y) / 2 },
     faceRadiusX: Math.abs(rightEdge.x - leftEdge.x) / 2,
     faceRadiusY: Math.abs(chin.y - forehead.y) / 2,
@@ -117,6 +274,53 @@ function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: 
   ctx.beginPath();
   ctx.arc(at.x, at.y, Math.max(1, radius), 0, Math.PI * 2);
   ctx.fill();
+}
+
+/** Local liquify-style zoom inside a circular region (eye enlarge / lip plump / nose slim). */
+function localZoom(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  at: Pt,
+  radius: number,
+  scaleX: number,
+  scaleY: number,
+  w: number,
+  h: number,
+) {
+  if (Math.abs(scaleX - 1) < 0.008 && Math.abs(scaleY - 1) < 0.008) return;
+  const r = Math.max(2, radius);
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
+  ctx.clip();
+  ctx.translate(at.x, at.y);
+  ctx.scale(scaleX, scaleY);
+  ctx.translate(-at.x, -at.y);
+  ctx.drawImage(source, 0, 0, w, h);
+  ctx.restore();
+}
+
+/** Soft local blur patch — concealer / blemish / wrinkle touch-ups. */
+function softLocalBlur(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  at: Pt,
+  radius: number,
+  blurPx: number,
+  alpha: number,
+  w: number,
+  h: number,
+) {
+  if (alpha <= 0.01) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(at.x, at.y, Math.max(2, radius), 0, Math.PI * 2);
+  ctx.clip();
+  ctx.filter = `blur(${blurPx}px)`;
+  ctx.globalAlpha = alpha;
+  ctx.drawImage(source, 0, 0, w, h);
+  ctx.filter = "none";
+  ctx.restore();
 }
 
 /** Reused every frame — allocating a canvas per RAF would thrash GC on live. */
@@ -304,6 +508,262 @@ function applySkinSmooth(
   ctx.restore();
 }
 
+function applyTouchUp(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  s: BeautySettings,
+) {
+  if (s.concealer > 0) {
+    const t = s.concealer / 100;
+    softLocalBlur(ctx, source, g.leftUnderEye, unit * 0.55, 3 + t * 5, 0.25 + t * 0.4, w, h);
+    softLocalBlur(ctx, source, g.rightUnderEye, unit * 0.55, 3 + t * 5, 0.25 + t * 0.4, w, h);
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = 0.12 + t * 0.28;
+    softBlob(ctx, g.leftUnderEye, unit * 0.55, "rgba(255, 236, 220, 1)");
+    softBlob(ctx, g.rightUnderEye, unit * 0.55, "rgba(255, 236, 220, 1)");
+    ctx.restore();
+  }
+
+  if (s.blemish > 0) {
+    const t = s.blemish / 100;
+    softLocalBlur(ctx, source, g.leftCheek, unit * 0.7, 2.5 + t * 4, 0.2 + t * 0.35, w, h);
+    softLocalBlur(ctx, source, g.rightCheek, unit * 0.7, 2.5 + t * 4, 0.2 + t * 0.35, w, h);
+    softLocalBlur(ctx, source, g.forehead, unit * 0.85, 2.5 + t * 4, 0.18 + t * 0.3, w, h);
+  }
+
+  if (s.wrinkles > 0) {
+    const t = s.wrinkles / 100;
+    softLocalBlur(ctx, source, g.leftNasolabial, unit * 0.45, 2 + t * 4, 0.22 + t * 0.38, w, h);
+    softLocalBlur(ctx, source, g.rightNasolabial, unit * 0.45, 2 + t * 4, 0.22 + t * 0.38, w, h);
+    softLocalBlur(ctx, source, g.forehead, unit * 0.9, 2 + t * 3.5, 0.15 + t * 0.28, w, h);
+  }
+
+  if (s.eyeBags > 0) {
+    const t = s.eyeBags / 100;
+    softLocalBlur(ctx, source, g.leftUnderEye, unit * 0.65, 3 + t * 6, 0.28 + t * 0.42, w, h);
+    softLocalBlur(ctx, source, g.rightUnderEye, unit * 0.65, 3 + t * 6, 0.28 + t * 0.42, w, h);
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = 0.1 + t * 0.25;
+    softBlob(ctx, g.leftUnderEye, unit * 0.6, "rgba(255, 240, 228, 1)");
+    softBlob(ctx, g.rightUnderEye, unit * 0.6, "rgba(255, 240, 228, 1)");
+    ctx.restore();
+  }
+}
+
+function applyFaceTools(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  s: BeautySettings,
+) {
+  if (s.faceSlim > 0) {
+    const a = (s.faceSlim / 100) * 0.38;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a;
+    softBlob(ctx, g.leftJaw, unit * 0.95, "rgba(75, 50, 42, 1)");
+    softBlob(ctx, g.rightJaw, unit * 0.95, "rgba(75, 50, 42, 1)");
+    softBlob(ctx, g.leftCheek, unit * 0.7, "rgba(80, 55, 45, 1)");
+    softBlob(ctx, g.rightCheek, unit * 0.7, "rgba(80, 55, 45, 1)");
+    ctx.restore();
+  }
+
+  if (s.cheekbone > 0) {
+    const a = (s.cheekbone / 100) * 0.4;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a * 0.55;
+    softBlob(ctx, g.leftCheek, unit * 0.75, "rgba(255, 245, 235, 1)");
+    softBlob(ctx, g.rightCheek, unit * 0.75, "rgba(255, 245, 235, 1)");
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a * 0.35;
+    softBlob(ctx, { x: g.leftCheek.x - unit * 0.35, y: g.leftCheek.y + unit * 0.25 }, unit * 0.55, "rgba(90, 60, 50, 1)");
+    softBlob(ctx, { x: g.rightCheek.x + unit * 0.35, y: g.rightCheek.y + unit * 0.25 }, unit * 0.55, "rgba(90, 60, 50, 1)");
+    ctx.restore();
+  }
+
+  if (s.jawline > 0) {
+    const a = (s.jawline / 100) * 0.42;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a;
+    softBlob(ctx, g.leftJaw, unit * 0.8, "rgba(70, 48, 40, 1)");
+    softBlob(ctx, g.rightJaw, unit * 0.8, "rgba(70, 48, 40, 1)");
+    softBlob(ctx, g.chin, unit * 0.7, "rgba(75, 52, 44, 1)");
+    ctx.restore();
+  }
+
+  if (s.foreheadLift > 0) {
+    const a = (s.foreheadLift / 100) * 0.35;
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = a;
+    softBlob(ctx, g.forehead, unit * 1.2, "rgba(255, 240, 228, 1)");
+    ctx.restore();
+    softLocalBlur(ctx, source, g.forehead, unit * 1.15, 2 + a * 4, 0.15 + a * 0.25, w, h);
+  }
+}
+
+function applyEyesTools(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  s: BeautySettings,
+) {
+  if (s.eyeEnlarge > 0) {
+    const scale = 1 + (s.eyeEnlarge / 100) * 0.14;
+    localZoom(ctx, source, g.leftEye, unit * 0.55, scale, scale, w, h);
+    localZoom(ctx, source, g.rightEye, unit * 0.55, scale, scale, w, h);
+  }
+
+  if (s.eyeBrighten > 0) {
+    const a = (s.eyeBrighten / 100) * 0.45;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a * 0.55;
+    softBlob(ctx, g.leftEye, unit * 0.38, "rgba(255, 255, 255, 1)");
+    softBlob(ctx, g.rightEye, unit * 0.38, "rgba(255, 255, 255, 1)");
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = a * 0.4;
+    softBlob(ctx, g.leftEye, unit * 0.45, "rgba(255, 248, 240, 1)");
+    softBlob(ctx, g.rightEye, unit * 0.45, "rgba(255, 248, 240, 1)");
+    ctx.restore();
+  }
+
+  if (s.darkCircles > 0) {
+    const t = s.darkCircles / 100;
+    softLocalBlur(ctx, source, g.leftUnderEye, unit * 0.6, 3 + t * 5, 0.3 + t * 0.4, w, h);
+    softLocalBlur(ctx, source, g.rightUnderEye, unit * 0.6, 3 + t * 5, 0.3 + t * 0.4, w, h);
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = 0.14 + t * 0.3;
+    softBlob(ctx, g.leftUnderEye, unit * 0.58, "rgba(255, 232, 215, 1)");
+    softBlob(ctx, g.rightUnderEye, unit * 0.58, "rgba(255, 232, 215, 1)");
+    ctx.restore();
+  }
+
+  if (s.eyeSparkle > 0) {
+    const a = (s.eyeSparkle / 100) * 0.55;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a;
+    softBlob(ctx, { x: g.leftEye.x - unit * 0.08, y: g.leftEye.y - unit * 0.06 }, unit * 0.12, "rgba(255, 255, 255, 1)");
+    softBlob(ctx, { x: g.rightEye.x - unit * 0.08, y: g.rightEye.y - unit * 0.06 }, unit * 0.12, "rgba(255, 255, 255, 1)");
+    ctx.restore();
+  }
+}
+
+function applyNoseTools(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  s: BeautySettings,
+) {
+  if (s.noseSlim > 0) {
+    const t = s.noseSlim / 100;
+    const scaleX = 1 - t * 0.12;
+    const mid = { x: (g.noseLeft.x + g.noseRight.x) / 2, y: (g.noseBridge.y + g.noseTip.y) / 2 };
+    localZoom(ctx, source, mid, unit * 0.85, scaleX, 1, w, h);
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = t * 0.28;
+    softBlob(ctx, g.noseLeft, unit * 0.35, "rgba(85, 58, 48, 1)");
+    softBlob(ctx, g.noseRight, unit * 0.35, "rgba(85, 58, 48, 1)");
+    ctx.restore();
+  }
+
+  if (s.noseBridge > 0) {
+    const a = (s.noseBridge / 100) * 0.4;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a * 0.5;
+    softBlob(ctx, g.noseBridge, unit * 0.35, "rgba(255, 255, 255, 1)");
+    softBlob(ctx, { x: g.noseBridge.x, y: (g.noseBridge.y + g.noseTip.y) / 2 }, unit * 0.28, "rgba(255, 250, 245, 1)");
+    ctx.restore();
+  }
+
+  if (s.noseTip > 0) {
+    const a = (s.noseTip / 100) * 0.4;
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = a;
+    softBlob(ctx, g.noseTip, unit * 0.32, "rgba(255, 236, 220, 1)");
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a * 0.25;
+    softBlob(ctx, { x: g.noseTip.x - unit * 0.28, y: g.noseTip.y }, unit * 0.22, "rgba(90, 60, 50, 1)");
+    softBlob(ctx, { x: g.noseTip.x + unit * 0.28, y: g.noseTip.y }, unit * 0.22, "rgba(90, 60, 50, 1)");
+    ctx.restore();
+  }
+}
+
+function applyMouthTools(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  g: ReturnType<typeof geometry>,
+  unit: number,
+  w: number,
+  h: number,
+  s: BeautySettings,
+) {
+  const mouthCx = (g.mouthL.x + g.mouthR.x) / 2;
+  const mouthCy = (g.mouthTop.y + g.mouthBottom.y) / 2;
+  const mouthRx = (Math.abs(g.mouthR.x - g.mouthL.x) / 2) * 1.1;
+  const mouthRy = Math.max(unit * 0.22, (Math.abs(g.mouthBottom.y - g.mouthTop.y) / 2) * 1.5);
+  const mouth = { x: mouthCx, y: mouthCy };
+
+  if (s.lipPlump > 0) {
+    const scale = 1 + (s.lipPlump / 100) * 0.12;
+    localZoom(ctx, source, mouth, Math.max(mouthRx, mouthRy) * 1.35, scale, scale * 1.05, w, h);
+  }
+
+  if (s.lipColor > 0) {
+    const a = (s.lipColor / 100) * 0.45;
+    ctx.save();
+    ctx.globalCompositeOperation = "multiply";
+    ctx.globalAlpha = a;
+    ctx.fillStyle = "rgba(190, 70, 85, 1)";
+    ctx.beginPath();
+    ctx.ellipse(mouthCx, mouthCy, mouthRx, mouthRy, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  if (s.lipBrighten > 0) {
+    const a = (s.lipBrighten / 100) * 0.4;
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.globalAlpha = a * 0.45;
+    softBlob(ctx, mouth, Math.min(mouthRx, mouthRy) * 0.9, "rgba(255, 230, 230, 1)");
+    ctx.restore();
+    ctx.save();
+    ctx.globalCompositeOperation = "soft-light";
+    ctx.globalAlpha = a * 0.5;
+    softBlob(ctx, mouth, Math.max(mouthRx, mouthRy) * 0.85, "rgba(255, 210, 210, 1)");
+    ctx.restore();
+  }
+}
+
 /** Draws one processed frame into `ctx`. `source` can be a live <video> or a frozen
  *  <canvas> snapshot — both work as a canvas drawImage source, which is what lets the
  *  thumbnail generator below reuse this exact function instead of a second copy. */
@@ -380,6 +840,22 @@ function drawBeauty(
     ctx.globalAlpha = Math.min(0.75, 0.25 + settings.contrast / 140);
     ctx.drawImage(source, 0, 0, w, h);
     ctx.restore();
+  }
+
+  if (settings.touchUpMasterOn !== false) {
+    applyTouchUp(ctx, source, g, unit, w, h, settings);
+  }
+  if (settings.faceMasterOn !== false) {
+    applyFaceTools(ctx, source, g, unit, w, h, settings);
+  }
+  if (settings.eyesMasterOn !== false) {
+    applyEyesTools(ctx, source, g, unit, w, h, settings);
+  }
+  if (settings.noseMasterOn !== false) {
+    applyNoseTools(ctx, source, g, unit, w, h, settings);
+  }
+  if (settings.mouthMasterOn !== false) {
+    applyMouthTools(ctx, source, g, unit, w, h, settings);
   }
 
   if (settings.makeupId) {
