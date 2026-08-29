@@ -236,8 +236,13 @@ export default function LiveCameraView({
     if (result === "copied") {
       toast({ title: "Link copied", description: "Share it by text or message so friends can join when you go live." });
     } else if (result === "failed") {
-      toast({ title: "Couldn't share", description: shareUrl, variant: "destructive" });
+      toast({
+        title: "Couldn't open share",
+        description: "Copy this link and send it: " + shareUrl,
+        variant: "destructive",
+      });
     }
+    // "shared" / "cancelled" — no error toast
   };
 
   const handleGoLive = async () => {

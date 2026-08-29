@@ -295,7 +295,11 @@ export default function CircleLiveRoomPage() {
     if (result === "copied") {
       toast({ title: "Live link copied", description: "Send it by text or message so friends can join." });
     } else if (result === "failed") {
-      toast({ title: "Couldn't share", description: url, variant: "destructive" });
+      toast({
+        title: "Couldn't open share",
+        description: "Copy this link and send it: " + url,
+        variant: "destructive",
+      });
     }
   };
 

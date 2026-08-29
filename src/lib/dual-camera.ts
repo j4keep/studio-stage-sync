@@ -170,24 +170,67 @@ export async function shareLiveInvite(opts: {
   url: string;
   title?: string;
   circleScoped?: boolean;
-}): Promise<"shared" | "copied" | "failed"> {
+}): Promise<"shared" | "copied" | "cancelled" | "failed"> {
   const title = opts.title || "Join my live on YAJ";
-  const text = opts.circleScoped
-    ? `I'm live in my Circle on YAJ — join here:\n${opts.url}`
-    : `I'm live on YAJ — watch here:\n${opts.url}`;
-  try {
-    if (navigator.share) {
-      await navigator.share({ title, text, url: opts.url });
-      return "shared";
+  const message = opts.circleScoped
+    ? `I'm live in my Circle on YAJ — join here: ${opts.url}`
+    : `I'm live on YAJ — watch here: ${opts.url}`;
+
+  // iOS Safari is picky: combining title + text (with URL) + url often throws a TypeError
+  // ("Couldn't share"). Try simpler payloads first; treat user dismiss as cancel, not failure.
+  if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    const payloads: ShareData[] = [{ title, url: opts.url }, { text: message }, { title, text: message, url: opts.url }];
+    for (const data of payloads) {
+      try {
+        if (navigator.canShare && !navigator.canShare(data)) continue;
+        await navigator.share(data);
+        return "shared";
+      } catch (e: any) {
+        if (e?.name === "AbortError") return "cancelled";
+        // try next payload
+      }
     }
-  } catch (e: any) {
-    if (e?.name === "AbortError") return "failed";
+  }
+
+  if (await copyTextToClipboard(opts.url)) return "copied";
+
+  // Last resort: open the device Messages composer with the invite prefilled.
+  try {
+    window.location.href = `sms:?&body=${encodeURIComponent(message)}`;
+    return "shared";
+  } catch {
+    /* ignore */
+  }
+
+  return "failed";
+}
+
+async function copyTextToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    /* fall through to execCommand */
   }
   try {
-    await navigator.clipboard.writeText(opts.url);
-    return "copied";
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "fixed";
+    ta.style.top = "0";
+    ta.style.left = "0";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    ta.setSelectionRange(0, text.length);
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
   } catch {
-    return "failed";
+    return false;
   }
 }
 
