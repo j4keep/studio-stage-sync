@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
+import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,14 @@ import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import FaceFilterPanel from "@/components/feed/create/FaceFilterPanel";
 import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
+import DualCameraLayoutSheet, { type DualCameraLayout } from "@/components/feed/create/DualCameraLayoutSheet";
+import {
+  liveWatchUrl,
+  openSecondaryCamera,
+  releaseSecondaryCamera,
+  shareLiveInvite,
+  startDualComposite,
+} from "@/lib/dual-camera";
 import {
   DEFAULT_ENHANCE,
   composeDisplayFilters,
@@ -68,9 +76,16 @@ export default function CircleLiveRoomPage() {
   const [enhance, setEnhance] = useState<EnhanceSettings>(DEFAULT_ENHANCE);
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
+  const [dualLayout, setDualLayout] = useState<DualCameraLayout>("none");
+  const [showDualSheet, setShowDualSheet] = useState(false);
+  const [pipReady, setPipReady] = useState(false);
+  const [mainFacing, setMainFacing] = useState<"user" | "environment">("user");
+  const pipVideoRef = useRef<HTMLVideoElement>(null);
+  const dualMainVideoRef = useRef<HTMLVideoElement>(null);
+  const pipStreamRef = useRef<MediaStream | null>(null);
+  const dualCompositeStopRef = useRef<(() => void) | null>(null);
 
-  // Restore Enhance / Effects / Face chosen on the get-ready camera (LiveCameraView)
-  // so looks survive the LiveKit reconnect after Go Live.
+  // Restore Enhance / Effects / Face / dual layout chosen on the get-ready camera
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("yaj_live_prep_looks");
@@ -79,10 +94,11 @@ export default function CircleLiveRoomPage() {
         faceFilter?: FaceFilterId;
         selectedEffect?: string;
         enhance?: EnhanceSettings;
+        dualLayout?: DualCameraLayout;
+        facing?: "user" | "environment";
         circleId?: string | null;
         at?: number;
       };
-      // Only apply fresh prep (last 10 min) and matching scope (circle vs public).
       if (looks.at && Date.now() - looks.at > 10 * 60 * 1000) return;
       const prepWasCircle = Boolean(looks.circleId);
       if (prepWasCircle !== !isPublicRoute) return;
@@ -90,6 +106,8 @@ export default function CircleLiveRoomPage() {
       if (looks.faceFilter) setFaceFilter(looks.faceFilter);
       if (looks.selectedEffect) setSelectedEffect(looks.selectedEffect);
       if (looks.enhance) setEnhance({ ...DEFAULT_ENHANCE, ...looks.enhance });
+      if (looks.dualLayout) setDualLayout(looks.dualLayout);
+      if (looks.facing) setMainFacing(looks.facing);
       sessionStorage.removeItem("yaj_live_prep_looks");
     } catch {
       /* ignore */
@@ -184,16 +202,107 @@ export default function CircleLiveRoomPage() {
 
   useEffect(() => {
     if (!isHost) return;
+    // Dual composite takes over the published track when enabled.
+    if (dualLayout !== "none") return;
     const target = !hasAnyVideoEffect ? rawHostTrackRef.current : faceFilters.outputTrack;
     if (!target) return;
-    // Was previously fire-and-forget (`void room.replaceVideoTrack(...)`, no .catch) — a
-    // real failure here (e.g. no camera publication yet) would throw and silently vanish
-    // as an unhandled rejection, which looks identical to "nothing happened" from the UI.
     room.replaceVideoTrack(target).catch((e: any) => {
       toast({ title: "Couldn't update your live video", description: e?.message, variant: "destructive" });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, hasAnyVideoEffect, faceFilters.outputTrack]);
+  }, [isHost, hasAnyVideoEffect, faceFilters.outputTrack, dualLayout]);
+
+  // Host dual camera: open secondary facing stream + composite for viewers.
+  useEffect(() => {
+    if (!isHost || dualLayout === "none") {
+      dualCompositeStopRef.current?.();
+      dualCompositeStopRef.current = null;
+      releaseSecondaryCamera(pipStreamRef.current);
+      pipStreamRef.current = null;
+      setPipReady(false);
+      return;
+    }
+
+    let cancelled = false;
+    const pipFacing: "user" | "environment" = mainFacing === "user" ? "environment" : "user";
+
+    (async () => {
+      dualCompositeStopRef.current?.();
+      dualCompositeStopRef.current = null;
+      releaseSecondaryCamera(pipStreamRef.current);
+      pipStreamRef.current = null;
+
+      const pip = await openSecondaryCamera(pipFacing);
+      if (cancelled) {
+        releaseSecondaryCamera(pip);
+        return;
+      }
+      if (!pip) {
+        toast({
+          title: "Dual camera unavailable",
+          description: "This device couldn’t open front and back together.",
+          variant: "destructive",
+        });
+        setDualLayout("none");
+        return;
+      }
+      pipStreamRef.current = pip;
+      if (pipVideoRef.current) {
+        pipVideoRef.current.srcObject = pip;
+        await pipVideoRef.current.play().catch(() => {});
+      }
+      setPipReady(true);
+
+      // Wait for raw host track + attach to hidden main video for compositing
+      const raw = rawHostTrackRef.current;
+      if (!raw || !dualMainVideoRef.current || !pipVideoRef.current) return;
+      dualMainVideoRef.current.srcObject = new MediaStream([raw]);
+      await dualMainVideoRef.current.play().catch(() => {});
+
+      const shape = dualLayout === "circle" ? "circle" : "rectangle";
+      const composite = startDualComposite(dualMainVideoRef.current, pipVideoRef.current, {
+        pipShape: shape,
+        mainMirrored: mainFacing === "user",
+        pipMirrored: pipFacing === "user",
+      });
+      dualCompositeStopRef.current = composite.stop;
+      await room.replaceVideoTrack(composite.track).catch((e: any) => {
+        toast({ title: "Couldn't publish dual camera", description: e?.message, variant: "destructive" });
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      dualCompositeStopRef.current?.();
+      dualCompositeStopRef.current = null;
+      releaseSecondaryCamera(pipStreamRef.current);
+      pipStreamRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHost, dualLayout, mainFacing, room.local?.videoTrack]);
+
+  const handleShareLive = async () => {
+    if (!session) return;
+    const url = liveWatchUrl({
+      circleId: session.circle_id,
+      sessionId: session.circle_id ? null : session.id,
+    });
+    const result = await shareLiveInvite({
+      url,
+      title: "Join my live on YAJ",
+      circleScoped: Boolean(session.circle_id),
+    });
+    if (result === "copied") {
+      toast({ title: "Live link copied", description: "Send it by text or message so friends can join." });
+    } else if (result === "failed") {
+      toast({ title: "Couldn't share", description: url, variant: "destructive" });
+    }
+  };
+
+  const swapDualCameras = () => {
+    if (dualLayout === "none" || !pipReady) return;
+    setMainFacing((f) => (f === "user" ? "environment" : "user"));
+  };
 
   const resolveName = async (userId: string): Promise<string> => {
     const cached = nameCache.current.get(userId);
@@ -459,18 +568,70 @@ export default function CircleLiveRoomPage() {
             >
               <Wand2 className="h-4.5 w-4.5" />
             </button>
+            <button
+              type="button"
+              onClick={() => setShowDualSheet(true)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${dualLayout !== "none" ? "bg-white text-black" : "bg-white/15"}`}
+              aria-label="Dual camera settings"
+            >
+              <Settings className="h-4.5 w-4.5" />
+            </button>
           </div>
         )}
 
-        <button
-          type="button"
-          disabled={ending}
-          onClick={isHost ? handleEndLive : handleLeave}
-          aria-label={isHost ? "End live" : "Leave"}
-          className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] rounded-full bg-black/50 p-2 backdrop-blur-sm disabled:opacity-60"
-        >
-          {ending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <X className="h-4.5 w-4.5" />}
-        </button>
+        <div className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleShareLive()}
+            aria-label="Share live link"
+            className="rounded-full bg-black/50 p-2 backdrop-blur-sm"
+          >
+            <Share2 className="h-4.5 w-4.5" />
+          </button>
+          <button
+            type="button"
+            disabled={ending}
+            onClick={isHost ? handleEndLive : handleLeave}
+            aria-label={isHost ? "End live" : "Leave"}
+            className="rounded-full bg-black/50 p-2 backdrop-blur-sm disabled:opacity-60"
+          >
+            {ending ? <Loader2 className="h-4.5 w-4.5 animate-spin" /> : <X className="h-4.5 w-4.5" />}
+          </button>
+        </div>
+
+        {isHost && (
+          <button
+            type="button"
+            onClick={swapDualCameras}
+            disabled={dualLayout === "none" || !pipReady}
+            aria-label="Swap cameras"
+            className={`absolute z-20 overflow-hidden border-2 border-white/80 shadow-lg transition-opacity ${
+              dualLayout === "circle" ? "rounded-full" : "rounded-2xl"
+            } ${dualLayout !== "none" && pipReady ? "opacity-100" : "pointer-events-none opacity-0"}`}
+            style={{
+              top: "max(calc(env(safe-area-inset-top) + 4.5rem), 5.5rem)",
+              right: "0.75rem",
+              width: dualLayout === "circle" ? "6.5rem" : "7.25rem",
+              height: dualLayout === "circle" ? "6.5rem" : "9.5rem",
+            }}
+          >
+            <video
+              ref={pipVideoRef}
+              playsInline
+              muted
+              autoPlay
+              className="h-full w-full object-cover"
+              style={{
+                transform: (mainFacing === "user" ? "environment" : "user") === "user" ? "scaleX(-1)" : undefined,
+              }}
+            />
+          </button>
+        )}
+
+        {/* Hidden main source for dual composite publish */}
+        {isHost && (
+          <video ref={dualMainVideoRef} playsInline muted autoPlay className="pointer-events-none invisible absolute h-px w-px" />
+        )}
 
         {/* Floating gift animations */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 top-0 flex justify-end pr-4">
@@ -553,6 +714,15 @@ export default function CircleLiveRoomPage() {
               onClose={() => setShowEffects(false)}
               selectedId={selectedEffect}
               onSelect={setSelectedEffect}
+            />
+            <DualCameraLayoutSheet
+              open={showDualSheet}
+              layout={dualLayout}
+              onLayoutChange={(layout) => {
+                setDualLayout(layout);
+                if (layout === "none") setShowDualSheet(false);
+              }}
+              onClose={() => setShowDualSheet(false)}
             />
             {/* Never shown directly — useFaceFilters draws into this canvas, then
                 captureStream() turns it into the track that gets published. Uses
