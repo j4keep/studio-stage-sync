@@ -245,6 +245,15 @@ export async function upsertMeetProfile(
     throw new Error(gate.error || "You must be 18 or older to use Meet on YAJ.");
   }
 
+  const photos = (patch.photo_urls ?? [])
+    .filter((u): u is string => typeof u === "string" && u.trim().length > 0)
+    .map((u) => u.trim())
+    .slice(0, MEET_MAX_PHOTOS);
+  const visible = patch.is_visible !== false;
+  if (visible && photos.length < 1) {
+    throw new Error("Add at least one photo to show your Meet profile.");
+  }
+
   const payload = {
     user_id: userId,
     display_name: patch.display_name,
@@ -254,12 +263,12 @@ export async function upsertMeetProfile(
     gender: patch.gender ?? null,
     looking_for: patch.looking_for ?? null,
     city: patch.city ?? null,
-    photo_urls: patch.photo_urls ?? [],
+    photo_urls: photos,
     interests: patch.interests ?? [],
     prompt_question: patch.prompt_question ?? null,
     prompt_answer: patch.prompt_answer ?? null,
     open_to_interview: patch.open_to_interview !== false,
-    is_visible: patch.is_visible !== false,
+    is_visible: visible,
     updated_at: new Date().toISOString(),
   };
 
