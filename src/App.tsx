@@ -71,6 +71,10 @@ import SafetyRouteShell from "@/components/safety/SafetyRouteShell";
 import SafetyCenterPage from "./pages/safety/SafetyCenterPage";
 import DigitalBalancePage from "./pages/safety/DigitalBalancePage";
 import ParentDashboardPage from "./pages/safety/ParentDashboardPage";
+import MeetHomePage from "./pages/meet/MeetHomePage";
+import MeetSetupPage from "./pages/meet/MeetSetupPage";
+import MeetProfilePage from "./pages/meet/MeetProfilePage";
+import MeetInboxPage from "./pages/meet/MeetInboxPage";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
 import YajAiConversationSettingsPage from "./pages/YajAiConversationSettingsPage";
@@ -347,6 +351,10 @@ const ProtectedRoutes = () => {
         <Route path="/ask-yaj/conversation-settings" element={<YajAiConversationSettingsPage />} />
         <Route path="/ask-yaj/avatar" element={<YajAiAvatarPage />} />
         <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/meet" element={<MeetHomePage />} />
+        <Route path="/meet/setup" element={<MeetSetupPage />} />
+        <Route path="/meet/inbox" element={<MeetInboxPage />} />
+        <Route path="/meet/u/:userId" element={<MeetProfilePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />
         <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />
         <Route path="/local-help/pro/:userId" element={<LocalHelpProPage />} />

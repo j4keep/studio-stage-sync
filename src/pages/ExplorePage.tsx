@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, X } from "lucide-react";
+import { useSafetyBalance } from "@/hooks/useSafetyBalance";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import eventsImage from "@/assets/explore-v6/events.png";
+import meetImage from "@/assets/explore-v6/meet-on-yaj.png";
 import battlesImage from "@/assets/explore-v4/battles.png";
 import careersImage from "@/assets/explore-v6/opportunities.png";
 import gamesImage from "@/assets/explore-v4/games.png";
@@ -20,16 +21,19 @@ type ExploreItem = {
   route?: string;
   image: string;
   keywords?: string[];
+  /** Hide from Youth / when dating_allowed is false */
+  adultsOnly?: boolean;
 };
 
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
-    id: "events",
-    label: "Events",
-    subtitle: "Create & discover what's happening.",
-    route: "/events",
-    image: eventsImage,
-    keywords: ["event", "events", "party", "concert", "meetup", "festival", "going", "tickets", "happening"],
+    id: "meet",
+    label: "Meet on YAJ",
+    subtitle: "Dating profiles, scroll & interview.",
+    route: "/meet",
+    image: meetImage,
+    adultsOnly: true,
+    keywords: ["meet", "dating", "date", "interview", "match", "romance", "single", "connect"],
   },
 
   {
@@ -98,7 +102,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   },
 ];
 
-const ORDER_KEY = "yaj.explore.card-order.v6";
+const ORDER_KEY = "yaj.explore.card-order.v7";
 
 function loadOrder(): string[] {
   try {
@@ -115,6 +119,8 @@ function loadOrder(): string[] {
 
 export default function ExplorePage() {
   const navigate = useNavigate();
+  const { policy } = useSafetyBalance();
+  const datingAllowed = policy?.dating_allowed !== false;
   const [query, setQuery] = useState("");
   const [order, setOrder] = useState<string[]>(loadOrder);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -152,8 +158,9 @@ export default function ExplorePage() {
     () =>
       order
         .map((id) => EXPLORE_ITEMS.find((i) => i.id === id))
-        .filter((i): i is ExploreItem => Boolean(i)),
-    [order],
+        .filter((i): i is ExploreItem => Boolean(i))
+        .filter((i) => (i.adultsOnly ? datingAllowed : true)),
+    [order, datingAllowed],
   );
 
   const filteredItems = useMemo(() => {

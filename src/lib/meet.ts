@@ -1,0 +1,287 @@
+import { supabase } from "@/integrations/supabase/client";
+
+export type MeetProfile = {
+  user_id: string;
+  display_name: string;
+  headline: string | null;
+  bio: string | null;
+  birth_year: number | null;
+  gender: string | null;
+  looking_for: string | null;
+  city: string | null;
+  photo_urls: string[];
+  interests: string[];
+  prompt_question: string | null;
+  prompt_answer: string | null;
+  open_to_interview: boolean;
+  is_visible: boolean;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export type MeetInterviewRequest = {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  message: string | null;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  created_at: string;
+  updated_at?: string;
+};
+
+export const MEET_PROMPT_OPTIONS = [
+  "A perfect first hang looks like…",
+  "I'm looking for someone who…",
+  "My friends would describe me as…",
+  "Ask me about…",
+  "I geek out on…",
+];
+
+export const MEET_LOOKING_OPTIONS = [
+  "Friendship",
+  "Dating",
+  "Something serious",
+  "Not sure yet",
+];
+
+const LOCAL_PROFILES_KEY = "yaj_meet_profiles_v1";
+const LOCAL_REQUESTS_KEY = "yaj_meet_requests_v1";
+
+function readLocalProfiles(): MeetProfile[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_PROFILES_KEY);
+    return raw ? (JSON.parse(raw) as MeetProfile[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalProfiles(rows: MeetProfile[]) {
+  try {
+    localStorage.setItem(LOCAL_PROFILES_KEY, JSON.stringify(rows));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readLocalRequests(): MeetInterviewRequest[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_REQUESTS_KEY);
+    return raw ? (JSON.parse(raw) as MeetInterviewRequest[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalRequests(rows: MeetInterviewRequest[]) {
+  try {
+    localStorage.setItem(LOCAL_REQUESTS_KEY, JSON.stringify(rows));
+  } catch {
+    /* ignore */
+  }
+}
+
+function normalizeProfile(row: any): MeetProfile {
+  const photos = Array.isArray(row.photo_urls)
+    ? row.photo_urls.filter((u: unknown) => typeof u === "string")
+    : [];
+  const interests = Array.isArray(row.interests)
+    ? row.interests.filter((u: unknown) => typeof u === "string")
+    : [];
+  return {
+    user_id: row.user_id,
+    display_name: row.display_name || "Member",
+    headline: row.headline ?? null,
+    bio: row.bio ?? null,
+    birth_year: row.birth_year ?? null,
+    gender: row.gender ?? null,
+    looking_for: row.looking_for ?? null,
+    city: row.city ?? null,
+    photo_urls: photos,
+    interests,
+    prompt_question: row.prompt_question ?? null,
+    prompt_answer: row.prompt_answer ?? null,
+    open_to_interview: row.open_to_interview !== false,
+    is_visible: row.is_visible !== false,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
+export function ageFromBirthYear(year: number | null | undefined): number | null {
+  if (!year || year < 1900) return null;
+  return Math.max(18, new Date().getFullYear() - year);
+}
+
+export async function listMeetProfiles(opts?: {
+  excludeUserId?: string | null;
+  city?: string | null;
+}): Promise<MeetProfile[]> {
+  const { data, error } = await supabase
+    .from("meet_profiles" as any)
+    .select("*")
+    .eq("is_visible", true)
+    .order("updated_at", { ascending: false })
+    .limit(80);
+
+  if (error) {
+    console.warn("[meet] listMeetProfiles fallback", error.message);
+    let rows = readLocalProfiles().filter((p) => p.is_visible);
+    if (opts?.excludeUserId) rows = rows.filter((p) => p.user_id !== opts.excludeUserId);
+    if (opts?.city) {
+      const c = opts.city.toLowerCase();
+      rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
+    }
+    return rows;
+  }
+
+  let rows = (data || []).map(normalizeProfile);
+  if (opts?.excludeUserId) rows = rows.filter((p) => p.user_id !== opts.excludeUserId);
+  if (opts?.city) {
+    const c = opts.city.toLowerCase();
+    rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
+  }
+  return rows;
+}
+
+export async function getMeetProfile(userId: string): Promise<MeetProfile | null> {
+  const { data, error } = await supabase
+    .from("meet_profiles" as any)
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[meet] getMeetProfile fallback", error.message);
+    return readLocalProfiles().find((p) => p.user_id === userId) ?? null;
+  }
+  return data ? normalizeProfile(data) : null;
+}
+
+export async function upsertMeetProfile(
+  userId: string,
+  patch: Partial<MeetProfile> & { display_name: string },
+): Promise<MeetProfile> {
+  const payload = {
+    user_id: userId,
+    display_name: patch.display_name,
+    headline: patch.headline ?? null,
+    bio: patch.bio ?? null,
+    birth_year: patch.birth_year ?? null,
+    gender: patch.gender ?? null,
+    looking_for: patch.looking_for ?? null,
+    city: patch.city ?? null,
+    photo_urls: patch.photo_urls ?? [],
+    interests: patch.interests ?? [],
+    prompt_question: patch.prompt_question ?? null,
+    prompt_answer: patch.prompt_answer ?? null,
+    open_to_interview: patch.open_to_interview !== false,
+    is_visible: patch.is_visible !== false,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error } = await supabase
+    .from("meet_profiles" as any)
+    .upsert(payload as any, { onConflict: "user_id" })
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[meet] upsertMeetProfile fallback", error.message);
+    const rows = readLocalProfiles().filter((p) => p.user_id !== userId);
+    const next = normalizeProfile({ ...payload, created_at: new Date().toISOString() });
+    writeLocalProfiles([next, ...rows]);
+    return next;
+  }
+  return normalizeProfile(data);
+}
+
+export async function requestInterview(opts: {
+  fromUserId: string;
+  toUserId: string;
+  message?: string;
+}): Promise<MeetInterviewRequest> {
+  if (opts.fromUserId === opts.toUserId) throw new Error("You can't interview yourself.");
+
+  const payload = {
+    from_user_id: opts.fromUserId,
+    to_user_id: opts.toUserId,
+    message: opts.message?.trim() || null,
+    status: "pending" as const,
+  };
+
+  const { data, error } = await supabase
+    .from("meet_interview_requests" as any)
+    .upsert(payload as any, { onConflict: "from_user_id,to_user_id" })
+    .select("*")
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[meet] requestInterview fallback", error.message);
+    const rows = readLocalRequests().filter(
+      (r) => !(r.from_user_id === opts.fromUserId && r.to_user_id === opts.toUserId),
+    );
+    const next: MeetInterviewRequest = {
+      id: crypto.randomUUID(),
+      ...payload,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    writeLocalRequests([next, ...rows]);
+    return next;
+  }
+  return data as MeetInterviewRequest;
+}
+
+export async function listMyInterviewInbox(userId: string): Promise<MeetInterviewRequest[]> {
+  const { data, error } = await supabase
+    .from("meet_interview_requests" as any)
+    .select("*")
+    .or(`to_user_id.eq.${userId},from_user_id.eq.${userId}`)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.warn("[meet] listMyInterviewInbox fallback", error.message);
+    return readLocalRequests().filter((r) => r.to_user_id === userId || r.from_user_id === userId);
+  }
+  return (data || []) as MeetInterviewRequest[];
+}
+
+export async function respondToInterview(
+  requestId: string,
+  status: "accepted" | "declined" | "cancelled",
+): Promise<void> {
+  const { error } = await supabase
+    .from("meet_interview_requests" as any)
+    .update({ status, updated_at: new Date().toISOString() } as any)
+    .eq("id", requestId);
+
+  if (error) {
+    console.warn("[meet] respondToInterview fallback", error.message);
+    const rows = readLocalRequests().map((r) =>
+      r.id === requestId ? { ...r, status, updated_at: new Date().toISOString() } : r,
+    );
+    writeLocalRequests(rows);
+  }
+}
+
+export async function getInterviewBetween(
+  fromUserId: string,
+  toUserId: string,
+): Promise<MeetInterviewRequest | null> {
+  const { data, error } = await supabase
+    .from("meet_interview_requests" as any)
+    .select("*")
+    .eq("from_user_id", fromUserId)
+    .eq("to_user_id", toUserId)
+    .maybeSingle();
+
+  if (error) {
+    return (
+      readLocalRequests().find((r) => r.from_user_id === fromUserId && r.to_user_id === toUserId) ??
+      null
+    );
+  }
+  return (data as MeetInterviewRequest) || null;
+}
