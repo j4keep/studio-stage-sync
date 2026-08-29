@@ -409,6 +409,22 @@ const MessagesPage = () => {
     }
     const peerRole = opts?.marketplacePeerRole || "seller";
     const existing = conversations.find((c) => c.other_user?.user_id === otherUser.user_id);
+    if (!existing) {
+      const { assertYouthDmAllowed } = await import("@/lib/safety-dm");
+      const gate = await assertYouthDmAllowed({
+        fromUserId: user.id,
+        toUserId: otherUser.user_id,
+        context: opts?.openMarketplaceProfile
+          ? "marketplace"
+          : opts?.openBusinessProfile
+            ? "local_help"
+            : null,
+      });
+      if (!gate.ok) {
+        toast({ title: "Messaging restricted", description: gate.reason, variant: "destructive" });
+        return;
+      }
+    }
     if (existing) {
       if (opts?.introMessage?.trim()) {
         await supabase.from("messages").insert({

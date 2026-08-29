@@ -66,6 +66,11 @@ import CommunityTimeoutScreen from "./components/CommunityTimeoutScreen";
 import LocationGate from "@/components/location/LocationGate";
 import ModerationBanner from "./components/ModerationBanner";
 import { useModerationStatus } from "./hooks/use-moderation-status";
+import { SafetyBalanceProvider } from "@/contexts/SafetyBalanceContext";
+import SafetyRouteShell from "@/components/safety/SafetyRouteShell";
+import SafetyCenterPage from "./pages/safety/SafetyCenterPage";
+import DigitalBalancePage from "./pages/safety/DigitalBalancePage";
+import ParentDashboardPage from "./pages/safety/ParentDashboardPage";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
 import YajAiConversationSettingsPage from "./pages/YajAiConversationSettingsPage";
@@ -162,7 +167,6 @@ import DealBecomeBusinessPage from "./pages/deals/DealBecomeBusinessPage";
 import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
-import ThemePickerSheet from "./components/ThemePickerSheet";
 import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 
@@ -176,35 +180,6 @@ const ComingSoonPage = ({ title }: { title: string }) => (
   </div>
 );
 const STARTUP_TIMEOUT_MS = 2500;
-
-// Take A Break guard: blocks Feed / Battles / social discovery while toggle is ON.
-const BreakGuard = ({ children }: { children: JSX.Element }) => {
-  const [onBreak, setOnBreak] = useState(() => localStorage.getItem("wheuat_take_a_break") === "true");
-  useEffect(() => {
-    const h = () => setOnBreak(localStorage.getItem("wheuat_take_a_break") === "true");
-    window.addEventListener("wheuat-take-a-break-changed", h);
-    window.addEventListener("storage", h);
-    return () => {
-      window.removeEventListener("wheuat-take-a-break-changed", h);
-      window.removeEventListener("storage", h);
-    };
-  }, []);
-  if (onBreak) {
-    return (
-      <div className="px-6 pt-16 pb-24 max-w-md mx-auto text-center">
-        <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4 flex items-center justify-center text-2xl">☕</div>
-        <h2 className="text-lg font-display font-bold text-foreground mb-2">You're on a break</h2>
-        <p className="text-sm text-muted-foreground mb-4">
-          Feed, Battles and social discovery are paused. Podcast, Radio, Studio and Profile are still available.
-        </p>
-        <a href="#/settings" className="inline-block px-4 py-2 rounded-full bg-primary text-primary-foreground text-sm font-semibold">
-          Manage in Settings
-        </a>
-      </div>
-    );
-  }
-  return children;
-};
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
@@ -324,23 +299,22 @@ const ProtectedRoutes = () => {
     );
   }
 
-  // Show theme picker onboarding – always dark
-  if (showThemePicker) {
-    return (
-      <div className="min-h-screen bg-black text-white max-w-lg mx-auto relative flex items-center justify-center px-6 dark">
-        <ThemePickerSheet isOnboarding onComplete={() => setShowThemePicker(false)} />
-      </div>
-    );
-  }
-
   return (
     <SessionProvider>
+    <SafetyBalanceProvider>
+    <SafetyRouteShell
+      showThemePicker={showThemePicker}
+      onThemeComplete={() => setShowThemePicker(false)}
+    >
     <AppLayout>
       <ModerationBanner />
       <LocationGate />
       <Routes>
 
         <Route path="/" element={<HomePage />} />
+        <Route path="/safety" element={<SafetyCenterPage />} />
+        <Route path="/safety/balance" element={<DigitalBalancePage />} />
+        <Route path="/safety/parent" element={<ParentDashboardPage />} />
         <Route path="/radio" element={<RadioPage />} />
         <Route path="/projects" element={<Navigate to="/my-projects" replace />} />
         <Route path="/profile" element={<ProfilePage />} />
@@ -350,6 +324,7 @@ const ProtectedRoutes = () => {
         <Route path="/library" element={<PlaylistsPage />} />
         <Route path="/playlists" element={<PlaylistsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/settings/balance" element={<DigitalBalancePage />} />
         <Route path="/my-songs" element={<MySongsPage />} />
         <Route path="/my-videos" element={<MyVideosPage />} />
 
@@ -483,14 +458,16 @@ const ProtectedRoutes = () => {
         <Route path="/admin/deals-verification" element={<AdminDealsVerificationPage />} />
         <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
-        <Route path="/battles" element={<BreakGuard><BattlesPage /></BreakGuard>} />
-        <Route path="/battle/:battleId" element={<BreakGuard><MusicBattlePlayerPage /></BreakGuard>} />
-        <Route path="/feed" element={<BreakGuard><FeedPage /></BreakGuard>} />
-        <Route path="/artist/:userId" element={<BreakGuard><ArtistProfilePage /></BreakGuard>} />
+        <Route path="/battles" element={<BattlesPage />} />
+        <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
+        <Route path="/feed" element={<FeedPage />} />
+        <Route path="/artist/:userId" element={<ArtistProfilePage />} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
+    </SafetyRouteShell>
+    </SafetyBalanceProvider>
     </SessionProvider>
   );
 };

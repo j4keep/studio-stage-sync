@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { ageBandFromDob } from "@/lib/safety-balance";
 import yajLogo from "@/assets/yaj-logo.png";
 
 type AuthView = "splash" | "welcome" | "login" | "signup" | "forgot";
@@ -68,6 +69,19 @@ const AuthPage = () => {
       toast({ title: "All fields required", description: "Please fill in all fields.", variant: "destructive" });
       return;
     }
+    const band = ageBandFromDob(dob);
+    if (band === "under_13") {
+      toast({
+        title: "Age requirement",
+        description: "YAJ social accounts are currently available for users 13 and older.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (band === "unknown") {
+      toast({ title: "Invalid date of birth", description: "Please enter a valid date of birth.", variant: "destructive" });
+      return;
+    }
     setIsSubmitting(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -76,14 +90,25 @@ const AuthPage = () => {
         emailRedirectTo: nextPath
           ? `${window.location.origin}/#/auth?next=${encodeURIComponent(nextPath)}`
           : `${window.location.origin}/auth`,
-        data: { full_name: fullName, date_of_birth: dob },
+        data: {
+          full_name: fullName,
+          display_name: fullName,
+          date_of_birth: dob,
+          age_band: band,
+        },
       },
     });
     setIsSubmitting(false);
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Check your email", description: "We sent you a confirmation link to verify your account." });
+      toast({
+        title: band === "teen" ? "Youth account created" : "Check your email",
+        description:
+          band === "teen"
+            ? "We sent a confirmation link. YAJ Youth protections will apply automatically after you verify."
+            : "We sent you a confirmation link to verify your account.",
+      });
       setView("login");
     }
   };
@@ -247,10 +272,14 @@ const AuthPage = () => {
                   type="date"
                   placeholder="Date of birth"
                   value={dob}
+                  max={new Date().toISOString().slice(0, 10)}
                   onChange={(e) => setDob(e.target.value)}
                   className="pl-10 bg-card border-border"
                 />
               </div>
+              <p className="text-[10px] text-muted-foreground -mt-2">
+                Required for YAJ Youth / Safety Mode. Accounts under 13 are not available at launch.
+              </p>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban, UserRound } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban, UserRound, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useSafetyBalance } from "@/hooks/useSafetyBalance";
+import { isDetoxActive } from "@/lib/safety-balance";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +24,7 @@ import {
 const SettingsPage = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { policy, updatePolicy } = useSafetyBalance();
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [showSkinPicker, setShowSkinPicker] = useState(false);
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, deactivatePro } = useProGate();
@@ -34,9 +37,20 @@ const SettingsPage = () => {
   const [newReleaseAlerts, setNewReleaseAlerts] = useState(() => localStorage.getItem("wheuat_release_alerts") !== "false");
   const [autoplay, setAutoplay] = useState(() => localStorage.getItem("wheuat_autoplay") !== "false");
   const [streamingQuality, setStreamingQuality] = useState(() => localStorage.getItem("wheuat_quality") || "high");
-  const [privateProfile, setPrivateProfile] = useState(() => localStorage.getItem("wheuat_private") === "true");
+  const [privateProfile, setPrivateProfile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const youthPrivate = localStorage.getItem("wheuat_private") === "true";
+    return youthPrivate;
+  });
   const [showActivity, setShowActivity] = useState(() => localStorage.getItem("wheuat_show_activity") !== "false");
-  const [takeABreak, setTakeABreak] = useState(() => localStorage.getItem("wheuat_take_a_break") === "true");
+
+  const detoxOn = policy ? isDetoxActive(policy) : localStorage.getItem("wheuat_take_a_break") === "true";
+  const youthLockedPrivate = Boolean(policy?.youth_mode);
+
+  useEffect(() => {
+    if (policy?.profile_privacy === "private") setPrivateProfile(true);
+    else if (policy && !policy.youth_mode) setPrivateProfile(policy.profile_privacy === "private");
+  }, [policy?.profile_privacy, policy?.youth_mode]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -48,12 +62,30 @@ const SettingsPage = () => {
   useEffect(() => { localStorage.setItem("wheuat_release_alerts", String(newReleaseAlerts)); }, [newReleaseAlerts]);
   useEffect(() => { localStorage.setItem("wheuat_autoplay", String(autoplay)); }, [autoplay]);
   useEffect(() => { localStorage.setItem("wheuat_quality", streamingQuality); }, [streamingQuality]);
-  useEffect(() => { localStorage.setItem("wheuat_private", String(privateProfile)); }, [privateProfile]);
-  useEffect(() => { localStorage.setItem("wheuat_show_activity", String(showActivity)); }, [showActivity]);
   useEffect(() => {
-    localStorage.setItem("wheuat_take_a_break", String(takeABreak));
-    window.dispatchEvent(new Event("wheuat-take-a-break-changed"));
-  }, [takeABreak]);
+    localStorage.setItem("wheuat_private", String(privateProfile || youthLockedPrivate));
+  }, [privateProfile, youthLockedPrivate]);
+  useEffect(() => { localStorage.setItem("wheuat_show_activity", String(showActivity)); }, [showActivity]);
+
+  const onPrivateToggle = (v: boolean) => {
+    if (youthLockedPrivate && !v) {
+      toast({ title: "Youth accounts stay private", description: "A connected parent can review profile visibility later." });
+      return;
+    }
+    setPrivateProfile(v);
+    void updatePolicy({ profile_privacy: v ? "private" : "public" });
+  };
+
+  const onDetoxToggle = (v: boolean) => {
+    if (v) {
+      const until = new Date();
+      until.setDate(until.getDate() + 1);
+      until.setHours(6, 0, 0, 0);
+      void updatePolicy({ detox_until: until.toISOString() });
+    } else {
+      void updatePolicy({ detox_until: null });
+    }
+  };
 
   return (
     <div className="px-4 pt-6 pb-24">
@@ -137,8 +169,12 @@ const SettingsPage = () => {
 
       {/* Privacy & Visibility */}
       <Section title="Privacy & Visibility">
-        <SettingRow icon={<Lock className="w-4 h-4" />} label="Private Profile" description="Only followers can see your content">
-          <Switch checked={privateProfile} onCheckedChange={setPrivateProfile} />
+        <SettingRow
+          icon={<Lock className="w-4 h-4" />}
+          label="Private Profile"
+          description={youthLockedPrivate ? "Required for YAJ Youth accounts" : "Only followers can see your content"}
+        >
+          <Switch checked={privateProfile || youthLockedPrivate} onCheckedChange={onPrivateToggle} />
         </SettingRow>
         <SettingRow icon={<Eye className="w-4 h-4" />} label="Show Activity Status" description="Let others see when you're online">
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
@@ -146,14 +182,24 @@ const SettingsPage = () => {
         <ActionRow icon={<Ban className="w-4 h-4" />} label="Blocking" onClick={() => navigate("/settings/blocking")} />
       </Section>
 
-      {/* Take A Break */}
-      <Section title="Wellness">
+      {/* Safety & Balance */}
+      <Section title="Safety & Balance">
+        <ActionRow
+          icon={<Shield className="w-4 h-4" />}
+          label="YAJ Safety Center"
+          onClick={() => navigate("/safety")}
+        />
+        <ActionRow
+          icon={<Coffee className="w-4 h-4" />}
+          label={policy?.youth_mode ? "Youth Balance" : "Digital Balance"}
+          onClick={() => navigate("/safety/balance")}
+        />
         <SettingRow
           icon={<Coffee className="w-4 h-4" />}
-          label="Take A Break"
-          description="Pause Feed, Battles & social discovery. Podcast, Radio, Studio & Profile stay on."
+          label="Social Detox"
+          description="Pause Feed, Battles & social discovery. Marketplace, Jobs & Profile stay on."
         >
-          <Switch checked={takeABreak} onCheckedChange={setTakeABreak} />
+          <Switch checked={detoxOn} onCheckedChange={onDetoxToggle} />
         </SettingRow>
       </Section>
 
