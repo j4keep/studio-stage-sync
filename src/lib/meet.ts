@@ -110,7 +110,37 @@ function normalizeProfile(row: any): MeetProfile {
 
 export function ageFromBirthYear(year: number | null | undefined): number | null {
   if (!year || year < 1900) return null;
-  return Math.max(18, new Date().getFullYear() - year);
+  const now = new Date();
+  // Treat birth year as Jan 1 for Meet display age (year-of-birth UX).
+  return Math.max(0, now.getFullYear() - year);
+}
+
+/** Meet is 18+. Birth year is required; under-18 cannot create or keep a visible profile. */
+export function meetAgeGate(birthYear: number | null | undefined): {
+  ok: boolean;
+  age: number | null;
+  error: string | null;
+} {
+  if (birthYear == null || birthYear === ("" as unknown) || !Number.isFinite(Number(birthYear))) {
+    return { ok: false, age: null, error: "Enter the year you were born. Meet on YAJ is 18+ only." };
+  }
+  const y = Math.floor(Number(birthYear));
+  const currentYear = new Date().getFullYear();
+  if (!Number.isFinite(y) || y < 1900 || y > currentYear) {
+    return { ok: false, age: null, error: "Enter a valid birth year." };
+  }
+  const age = currentYear - y;
+  if (age < 18) {
+    return {
+      ok: false,
+      age,
+      error: "You must be 18 or older to use Meet on YAJ. Under-18 profiles are not allowed.",
+    };
+  }
+  if (age > 120) {
+    return { ok: false, age, error: "Enter a valid birth year." };
+  }
+  return { ok: true, age, error: null };
 }
 
 export async function listMeetProfiles(opts?: {
@@ -132,7 +162,7 @@ export async function listMeetProfiles(opts?: {
       const c = opts.city.toLowerCase();
       rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
     }
-    return rows;
+    return rows.filter((p) => meetAgeGate(p.birth_year).ok);
   }
 
   let rows = (data || []).map(normalizeProfile);
@@ -141,6 +171,8 @@ export async function listMeetProfiles(opts?: {
     const c = opts.city.toLowerCase();
     rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
   }
+  // Never surface under-18 or missing-age profiles in the dating scroll.
+  rows = rows.filter((p) => meetAgeGate(p.birth_year).ok);
   return rows;
 }
 
@@ -160,14 +192,19 @@ export async function getMeetProfile(userId: string): Promise<MeetProfile | null
 
 export async function upsertMeetProfile(
   userId: string,
-  patch: Partial<MeetProfile> & { display_name: string },
+  patch: Partial<MeetProfile> & { display_name: string; birth_year: number },
 ): Promise<MeetProfile> {
+  const gate = meetAgeGate(patch.birth_year);
+  if (!gate.ok) {
+    throw new Error(gate.error || "You must be 18 or older to use Meet on YAJ.");
+  }
+
   const payload = {
     user_id: userId,
     display_name: patch.display_name,
     headline: patch.headline ?? null,
     bio: patch.bio ?? null,
-    birth_year: patch.birth_year ?? null,
+    birth_year: Math.floor(Number(patch.birth_year)),
     gender: patch.gender ?? null,
     looking_for: patch.looking_for ?? null,
     city: patch.city ?? null,

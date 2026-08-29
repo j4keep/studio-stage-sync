@@ -55,6 +55,19 @@ function MeetProfileInner() {
   const age = ageFromBirthYear(profile.birth_year);
   const photo = profile.photo_urls[0];
   const isSelf = user?.id === profile.user_id;
+  const ageOk = age != null && age >= 18;
+
+  if (!ageOk && !isSelf) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="font-bold">This profile isn’t available</p>
+        <p className="text-sm text-muted-foreground">Meet on YAJ only shows adults 18+.</p>
+        <button type="button" onClick={() => nav("/meet")} className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+          Back to Meet
+        </button>
+      </div>
+    );
+  }
 
   const askInterview = async () => {
     if (!user?.id) return;

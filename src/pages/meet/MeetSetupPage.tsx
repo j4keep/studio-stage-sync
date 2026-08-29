@@ -1,6 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { ArrowLeft, Plus, ShieldAlert, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import MeetAdultGate, { MeetBrandMark } from "@/components/meet/MeetAdultGate";
@@ -8,6 +8,7 @@ import {
   MEET_LOOKING_OPTIONS,
   MEET_PROMPT_OPTIONS,
   getMeetProfile,
+  meetAgeGate,
   upsertMeetProfile,
   type MeetProfile,
 } from "@/lib/meet";
@@ -31,6 +32,14 @@ function MeetSetupInner() {
   const [promptAnswer, setPromptAnswer] = useState("");
   const [openToInterview, setOpenToInterview] = useState(true);
   const [isVisible, setIsVisible] = useState(true);
+
+  const maxAdultBirthYear = new Date().getFullYear() - 18;
+  const ageGate = useMemo(() => {
+    if (!birthYear.trim()) {
+      return meetAgeGate(null);
+    }
+    return meetAgeGate(Number(birthYear));
+  }, [birthYear]);
 
   useEffect(() => {
     if (!user?.id) {
@@ -80,23 +89,21 @@ function MeetSetupInner() {
     setInterestInput("");
   };
 
+  const canSave = Boolean(displayName.trim()) && ageGate.ok;
+
   const save = async () => {
     if (!user?.id) return;
     if (!displayName.trim()) {
       toast({ title: "Name required", description: "Add a display name for your Meet profile.", variant: "destructive" });
       return;
     }
-    const year = birthYear ? Number(birthYear) : null;
-    if (year != null) {
-      const age = new Date().getFullYear() - year;
-      if (age < 18) {
-        toast({
-          title: "18+ only",
-          description: "Meet on YAJ is for adults. Check your birth year.",
-          variant: "destructive",
-        });
-        return;
-      }
+    if (!ageGate.ok) {
+      toast({
+        title: "Age restricted",
+        description: ageGate.error || "You must be 18 or older to continue.",
+        variant: "destructive",
+      });
+      return;
     }
     setSaving(true);
     try {
@@ -104,7 +111,7 @@ function MeetSetupInner() {
         display_name: displayName.trim(),
         headline: headline.trim() || null,
         bio: bio.trim() || null,
-        birth_year: year,
+        birth_year: Math.floor(Number(birthYear)),
         gender: gender.trim() || null,
         looking_for: lookingFor,
         city: city.trim() || null,
@@ -115,7 +122,7 @@ function MeetSetupInner() {
         open_to_interview: openToInterview,
         is_visible: isVisible,
       });
-      toast({ title: "Profile saved", description: "You're on Meet on YAJ." });
+      toast({ title: "Profile saved", description: `You're on Meet on YAJ · age ${ageGate.age}` });
       nav("/meet");
     } catch (e: any) {
       toast({ title: "Couldn't save", description: e?.message, variant: "destructive" });
@@ -176,16 +183,33 @@ function MeetSetupInner() {
           />
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Birth year">
+          <Field label="Birth year (required)">
             <input
               type="number"
+              inputMode="numeric"
               value={birthYear}
-              onChange={(e) => setBirthYear(e.target.value)}
+              onChange={(e) => setBirthYear(e.target.value.replace(/[^\d]/g, "").slice(0, 4))}
               className="input"
-              placeholder="1998"
-              min={1940}
-              max={new Date().getFullYear() - 18}
+              placeholder={`e.g. ${maxAdultBirthYear}`}
+              min={1900}
+              max={maxAdultBirthYear}
+              required
+              aria-required="true"
             />
+            {ageGate.ok && ageGate.age != null ? (
+              <p className="mt-1 text-[11px] font-semibold text-primary">
+                Your profile will show: age {ageGate.age}
+              </p>
+            ) : birthYear.trim() ? (
+              <p className="mt-1 flex items-start gap-1 text-[11px] font-semibold text-destructive">
+                <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                {ageGate.error}
+              </p>
+            ) : (
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Required. Must be 18+. Age appears on your Meet profile.
+              </p>
+            )}
           </Field>
           <Field label="Gender">
             <input
@@ -196,6 +220,16 @@ function MeetSetupInner() {
             />
           </Field>
         </div>
+
+        {!ageGate.ok && (
+          <div className="flex items-start gap-2 rounded-2xl border border-destructive/30 bg-destructive/10 px-3.5 py-3 text-[12px] text-destructive">
+            <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>
+              Meet on YAJ is restricted to ages 18 and older. Enter a valid birth year to continue — you
+              can’t save a dating profile if you’re under 18.
+            </p>
+          </div>
+        )}
         <Field label="Looking for">
           <div className="flex flex-wrap gap-2">
             {MEET_LOOKING_OPTIONS.map((opt) => (
@@ -297,11 +331,15 @@ function MeetSetupInner() {
 
         <button
           type="button"
-          disabled={saving}
+          disabled={saving || !canSave}
           onClick={() => void save()}
           className="w-full rounded-2xl gradient-primary py-3.5 text-sm font-black text-primary-foreground disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save Meet profile"}
+          {saving
+            ? "Saving…"
+            : !ageGate.ok
+              ? "Enter a valid 18+ birth year to continue"
+              : "Save Meet profile"}
         </button>
       </div>
 
