@@ -26,23 +26,25 @@ export default function FaceFilterPanel({ open, onClose, selectedId, onSelect, l
       {loading && <p className="px-3 pt-2 text-[11px] text-white/50">Loading filter…</p>}
       {error && <p className="px-3 pt-2 text-[11px] text-red-400">{error}</p>}
 
-      <div className="grid grid-cols-4 gap-2 p-3">
-        {FACE_FILTERS.map((f) => {
-          const active = selectedId === f.id;
-          return (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() => onSelect(f.id)}
-              className={`flex flex-col items-center gap-1 rounded-xl p-2 transition-all ${active ? "bg-white/15" : "bg-white/5"}`}
-            >
-              <span className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-2xl ${active ? "border-white" : "border-white/10"}`}>
-                {f.emoji}
-              </span>
-              <span className="text-[10px] text-white/90 text-center leading-tight truncate w-full">{f.label}</span>
-            </button>
-          );
-        })}
+      <div className="max-h-[42dvh] overflow-y-auto">
+        <div className="grid grid-cols-4 gap-2 p-3">
+          {FACE_FILTERS.map((f) => {
+            const active = selectedId === f.id;
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => onSelect(f.id)}
+                className={`flex flex-col items-center gap-1 rounded-xl p-2 transition-all ${active ? "bg-white/15" : "bg-white/5"}`}
+              >
+                <span className={`flex h-11 w-11 items-center justify-center rounded-full border-2 text-2xl ${active ? "border-white" : "border-white/10"}`}>
+                  {f.emoji}
+                </span>
+                <span className="text-[10px] text-white/90 text-center leading-tight truncate w-full">{f.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

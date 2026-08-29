@@ -14,16 +14,52 @@ import {
   type EnhanceSettings,
 } from "@/lib/create-modes";
 
-export type FaceFilterId = "none" | "dog" | "cat" | "bunny" | "glasses" | "crown" | "hearts";
+export type FaceFilterId =
+  | "none"
+  | "dog"
+  | "cat"
+  | "bunny"
+  | "bear"
+  | "fox"
+  | "frog"
+  | "chick"
+  | "glasses"
+  | "crown"
+  | "hearts"
+  | "star"
+  | "fire"
+  | "flower"
+  | "rainbow"
+  | "sparkle"
+  | "angel"
+  | "devil"
+  | "party"
+  | "alien"
+  | "clown";
 
+/** Catalog shown in Face Filters — emoji sticker AR, not bulky drawn shapes. */
 export const FACE_FILTERS: { id: FaceFilterId; label: string; emoji: string }[] = [
   { id: "none", label: "None", emoji: "🚫" },
   { id: "dog", label: "Puppy", emoji: "🐶" },
   { id: "cat", label: "Kitty", emoji: "🐱" },
   { id: "bunny", label: "Bunny", emoji: "🐰" },
+  { id: "bear", label: "Bear", emoji: "🐻" },
+  { id: "fox", label: "Fox", emoji: "🦊" },
+  { id: "frog", label: "Frog", emoji: "🐸" },
+  { id: "chick", label: "Chick", emoji: "🐤" },
   { id: "glasses", label: "Shades", emoji: "😎" },
   { id: "crown", label: "Crown", emoji: "👑" },
   { id: "hearts", label: "Hearts", emoji: "🥰" },
+  { id: "star", label: "Star Eyes", emoji: "🤩" },
+  { id: "fire", label: "Fire", emoji: "🔥" },
+  { id: "flower", label: "Flower", emoji: "🌸" },
+  { id: "rainbow", label: "Rainbow", emoji: "🌈" },
+  { id: "sparkle", label: "Sparkle", emoji: "✨" },
+  { id: "angel", label: "Angel", emoji: "😇" },
+  { id: "devil", label: "Devil", emoji: "😈" },
+  { id: "party", label: "Party", emoji: "🥳" },
+  { id: "alien", label: "Alien", emoji: "👽" },
+  { id: "clown", label: "Clown", emoji: "🤡" },
 ];
 
 const CDN_BASE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.17";
@@ -120,83 +156,89 @@ function drawEmoji(ctx: CanvasRenderingContext2D, at: Pt, size: number, angle: n
   ctx.save();
   ctx.translate(at.x, at.y);
   ctx.rotate(angle);
-  ctx.font = `${size}px "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+  ctx.font = `${Math.max(8, size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(emoji, 0, offsetY);
   ctx.restore();
 }
 
-function drawEllipseEar(ctx: CanvasRenderingContext2D, at: Pt, size: number, angle: number, fill: string, innerFill: string) {
-  ctx.save();
-  ctx.translate(at.x, at.y);
-  ctx.rotate(angle);
-  ctx.fillStyle = fill;
-  ctx.beginPath();
-  ctx.ellipse(0, 0, size * 0.4, size * 0.65, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = innerFill;
-  ctx.beginPath();
-  ctx.ellipse(0, size * 0.08, size * 0.2, size * 0.38, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawTriangleEar(ctx: CanvasRenderingContext2D, at: Pt, size: number, angle: number, mirror: boolean, fill: string, innerFill: string) {
-  ctx.save();
-  ctx.translate(at.x, at.y);
-  ctx.rotate(angle);
-  const s = mirror ? -1 : 1;
-  ctx.fillStyle = fill;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.35, size * 0.55);
-  ctx.lineTo(s * size * 0.15, -size * 0.55);
-  ctx.lineTo(size * 0.35, size * 0.55);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = innerFill;
-  ctx.beginPath();
-  ctx.moveTo(-size * 0.2, size * 0.42);
-  ctx.lineTo(s * size * 0.1, -size * 0.28);
-  ctx.lineTo(size * 0.2, size * 0.42);
-  ctx.closePath();
-  ctx.fill();
-  ctx.restore();
-}
-
+/** Snapchat/IG-style face stickers — emoji only, sized to the face. No bulky painted ears. */
 function drawFilter(ctx: CanvasRenderingContext2D, lm: { x: number; y: number }[], w: number, h: number, filterId: FaceFilterId) {
+  if (filterId === "none") return;
   const g = faceGeometry(lm, w, h);
-  const unit = g.eyeDist; // baseline scale — everything below is proportional to eye distance
-  const earY = g.forehead.y - unit * 0.35;
-  const leftAnchor: Pt = { x: g.forehead.x - unit * 0.95, y: earY };
-  const rightAnchor: Pt = { x: g.forehead.x + unit * 0.95, y: earY };
+  const unit = g.eyeDist;
+  const brow = { x: g.forehead.x, y: g.forehead.y - unit * 0.15 };
+  const above = { x: g.forehead.x, y: g.forehead.y - unit * 0.85 };
+  const leftCheek = { x: g.leftCheek.x - unit * 0.15, y: g.leftCheek.y };
+  const rightCheek = { x: g.rightCheek.x + unit * 0.15, y: g.rightCheek.y };
 
   switch (filterId) {
     case "dog":
-      drawEllipseEar(ctx, leftAnchor, unit * 1.5, g.angle, "#7a4a2b", "#c98a58");
-      drawEllipseEar(ctx, rightAnchor, unit * 1.5, g.angle, "#7a4a2b", "#c98a58");
-      drawEmoji(ctx, g.nose, unit * 1.1, g.angle, "🐽");
+      drawEmoji(ctx, brow, unit * 1.55, g.angle, "🐶", -unit * 0.15);
       break;
     case "cat":
-      drawTriangleEar(ctx, leftAnchor, unit * 1.7, g.angle, false, "#4a4a4a", "#f2b6c6");
-      drawTriangleEar(ctx, rightAnchor, unit * 1.7, g.angle, true, "#4a4a4a", "#f2b6c6");
-      drawEmoji(ctx, g.nose, unit * 0.8, g.angle, "🐽");
+      drawEmoji(ctx, brow, unit * 1.55, g.angle, "🐱", -unit * 0.15);
       break;
-    case "bunny": {
-      const bunnyY = g.forehead.y - unit * 1.1;
-      drawEllipseEar(ctx, { x: g.forehead.x - unit * 0.4, y: bunnyY }, unit * 2.2, g.angle, "#f4f1ea", "#f2b6c6");
-      drawEllipseEar(ctx, { x: g.forehead.x + unit * 0.4, y: bunnyY }, unit * 2.2, g.angle, "#f4f1ea", "#f2b6c6");
+    case "bunny":
+      drawEmoji(ctx, brow, unit * 1.55, g.angle, "🐰", -unit * 0.2);
       break;
-    }
+    case "bear":
+      drawEmoji(ctx, brow, unit * 1.55, g.angle, "🐻", -unit * 0.15);
+      break;
+    case "fox":
+      drawEmoji(ctx, brow, unit * 1.55, g.angle, "🦊", -unit * 0.15);
+      break;
+    case "frog":
+      drawEmoji(ctx, brow, unit * 1.5, g.angle, "🐸", -unit * 0.1);
+      break;
+    case "chick":
+      drawEmoji(ctx, brow, unit * 1.45, g.angle, "🐤", -unit * 0.1);
+      break;
     case "glasses":
-      drawEmoji(ctx, g.eyeCenter, unit * 3.1, g.angle, "😎");
+      drawEmoji(ctx, g.eyeCenter, unit * 2.15, g.angle, "😎");
       break;
     case "crown":
-      drawEmoji(ctx, g.forehead, unit * 2.2, g.angle, "👑", -unit * 0.9);
+      drawEmoji(ctx, above, unit * 1.5, g.angle, "👑");
       break;
     case "hearts":
-      drawEmoji(ctx, { x: g.eyeCenter.x - unit * 0.85, y: g.eyeCenter.y }, unit * 0.9, g.angle, "❤️");
-      drawEmoji(ctx, { x: g.eyeCenter.x + unit * 0.85, y: g.eyeCenter.y }, unit * 0.9, g.angle, "❤️");
+      drawEmoji(ctx, leftCheek, unit * 0.7, g.angle, "💕");
+      drawEmoji(ctx, rightCheek, unit * 0.7, g.angle, "💕");
+      break;
+    case "star":
+      drawEmoji(ctx, g.eyeCenter, unit * 2.05, g.angle, "🤩");
+      break;
+    case "fire":
+      drawEmoji(ctx, leftCheek, unit * 0.75, g.angle, "🔥");
+      drawEmoji(ctx, rightCheek, unit * 0.75, g.angle, "🔥");
+      break;
+    case "flower":
+      drawEmoji(ctx, { x: g.forehead.x - unit * 0.7, y: g.forehead.y - unit * 0.35 }, unit * 0.7, g.angle, "🌸");
+      drawEmoji(ctx, { x: g.forehead.x + unit * 0.7, y: g.forehead.y - unit * 0.35 }, unit * 0.7, g.angle, "🌸");
+      drawEmoji(ctx, above, unit * 0.75, g.angle, "🌺");
+      break;
+    case "rainbow":
+      drawEmoji(ctx, above, unit * 1.6, g.angle, "🌈");
+      break;
+    case "sparkle":
+      drawEmoji(ctx, { x: g.leftEye.x - unit * 0.55, y: g.leftEye.y - unit * 0.45 }, unit * 0.65, g.angle, "✨");
+      drawEmoji(ctx, { x: g.rightEye.x + unit * 0.55, y: g.rightEye.y - unit * 0.45 }, unit * 0.65, g.angle, "✨");
+      drawEmoji(ctx, above, unit * 0.7, g.angle, "⭐");
+      break;
+    case "angel":
+      drawEmoji(ctx, brow, unit * 1.7, g.angle, "😇", -unit * 0.1);
+      break;
+    case "devil":
+      drawEmoji(ctx, brow, unit * 1.7, g.angle, "😈", -unit * 0.1);
+      break;
+    case "party":
+      drawEmoji(ctx, brow, unit * 1.7, g.angle, "🥳", -unit * 0.1);
+      break;
+    case "alien":
+      drawEmoji(ctx, brow, unit * 1.65, g.angle, "👽", -unit * 0.1);
+      break;
+    case "clown":
+      drawEmoji(ctx, brow, unit * 1.65, g.angle, "🤡", -unit * 0.1);
       break;
   }
 }
