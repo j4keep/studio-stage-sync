@@ -68,6 +68,34 @@ export default function CircleLiveRoomPage() {
   const [enhance, setEnhance] = useState<EnhanceSettings>(DEFAULT_ENHANCE);
   const [effectCategory, setEffectCategory] = useState("Trending");
   const [selectedEffect, setSelectedEffect] = useState("none");
+
+  // Restore Enhance / Effects / Face chosen on the get-ready camera (LiveCameraView)
+  // so looks survive the LiveKit reconnect after Go Live.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("yaj_live_prep_looks");
+      if (!raw) return;
+      const looks = JSON.parse(raw) as {
+        faceFilter?: FaceFilterId;
+        selectedEffect?: string;
+        enhance?: EnhanceSettings;
+        circleId?: string | null;
+        at?: number;
+      };
+      // Only apply fresh prep (last 10 min) and matching scope (circle vs public).
+      if (looks.at && Date.now() - looks.at > 10 * 60 * 1000) return;
+      const prepWasCircle = Boolean(looks.circleId);
+      if (prepWasCircle !== !isPublicRoute) return;
+      if (prepWasCircle && looks.circleId && id && looks.circleId !== id) return;
+      if (looks.faceFilter) setFaceFilter(looks.faceFilter);
+      if (looks.selectedEffect) setSelectedEffect(looks.selectedEffect);
+      if (looks.enhance) setEnhance({ ...DEFAULT_ENHANCE, ...looks.enhance });
+      sessionStorage.removeItem("yaj_live_prep_looks");
+    } catch {
+      /* ignore */
+    }
+  }, [isPublicRoute, id]);
+
   // Captured once — the host's ORIGINAL camera track, before any face-filter swap. Needed
   // to revert cleanly back to "none": once a filtered canvas track is published, the
   // room's own "current local video track" IS that canvas, so it can no longer serve as

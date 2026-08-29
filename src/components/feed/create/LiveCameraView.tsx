@@ -39,6 +39,14 @@ interface Props {
   onModeChange: (mode: CreateMode) => void;
   onClose: () => void;
   initialStream?: MediaStream | null;
+  /**
+   * When set, this prep starts a Circle-scoped live (members only) and navigates to
+   * `/circle/c/:id/live`. When omitted/null, Go Live creates a public feed live at
+   * `/live/:sessionId` — same prep UI, deliberately different destinations.
+   */
+  circleId?: string | null;
+  /** Hide POST / LIVE mode tabs when opened from My Circle (Circle-only prep). */
+  hideModeTabs?: boolean;
 }
 
 const CAMERA_RETRY_ATTEMPTS = 6;
@@ -68,7 +76,14 @@ const PREP_TOOLS: { id: PrepToolId; label: string; icon: typeof Sparkles }[] = [
 ];
 
 /** Pre-live camera check — flip camera, Enhance/Effects/Face (shared with Post), then go live. */
-export default function LiveCameraView({ createMode, onModeChange, onClose, initialStream }: Props) {
+export default function LiveCameraView({
+  createMode,
+  onModeChange,
+  onClose,
+  initialStream,
+  circleId = null,
+  hideModeTabs = false,
+}: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -160,16 +175,39 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
     }
     setStartingLive(true);
     try {
-      // Same live infrastructure as My Circle's Go Live (LiveKit room, gifts, comments,
-      // face filters) — circleId: null makes this a public, feed-facing live instead of
-      // Circle-gated: anyone can watch, not just approved Circle members.
-      const session = await startCircleLive(null, user.id);
-      navigate(`/live/${session.id}`);
+      // Persist get-ready looks so CircleLiveRoomPage / public live room can restore them
+      // after the LiveKit camera restarts (prep stream is released on navigate).
+      try {
+        sessionStorage.setItem(
+          "yaj_live_prep_looks",
+          JSON.stringify({
+            faceFilter,
+            selectedEffect,
+            enhance,
+            facing,
+            circleId: circleId ?? null,
+            at: Date.now(),
+          }),
+        );
+      } catch {
+        /* ignore quota / private mode */
+      }
+
+      // circleId set → Circle-only room (not listed on Home Live Now).
+      // circleId null → public feed-facing live (anyone can watch).
+      const session = await startCircleLive(circleId ?? null, user.id);
+      if (circleId) {
+        navigate(`/circle/c/${circleId}/live`);
+      } else {
+        navigate(`/live/${session.id}`);
+      }
     } catch (e: any) {
       toast({ title: "Couldn't go live", description: e.message, variant: "destructive" });
       setStartingLive(false);
     }
   };
+
+  const isCircleScoped = Boolean(circleId);
 
   const looksActive = needsCanvas && faceFilters.active;
 
@@ -230,7 +268,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           <X className="w-7 h-7" />
         </button>
         <span className="text-xs font-bold text-white/80 px-3 py-1 rounded-full bg-black/40">
-          {startingLive ? "Starting…" : "Go Live"}
+          {startingLive ? "Starting…" : isCircleScoped ? "Circle Live" : "Go Live"}
         </span>
         <button type="button" onClick={flipCamera} className="w-11 h-11 flex items-center justify-center text-white" aria-label="Flip camera">
           <SwitchCamera className="w-6 h-6" />
@@ -355,7 +393,9 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
         error={faceFilters.error}
       />
 
-      <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
+      {!hideModeTabs && !isCircleScoped && (
+        <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
+      )}
     </div>
   );
 }

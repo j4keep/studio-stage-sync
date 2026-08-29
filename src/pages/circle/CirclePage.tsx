@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2, Lock, Radio, Settings, Users } from "lucide-react";
+import { ArrowLeft, Lock, Radio, Settings, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Circle, CircleMember, getMyMembership, getCircle, updateCircle, countPendingMembers } from "@/lib/circles";
 import { CIRCLE_TYPE_META } from "@/lib/circles";
-import { CircleLiveSession, getActiveLiveSession, startCircleLive } from "@/lib/circle-live";
+import { CircleLiveSession, getActiveLiveSession } from "@/lib/circle-live";
 import { supabase } from "@/integrations/supabase/client";
 import CircleJoinButton from "@/components/circle/CircleJoinButton";
 import CircleTopFansWheel from "@/components/circle/CircleTopFansWheel";
 import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
 import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
+import LiveCameraView from "@/components/feed/create/LiveCameraView";
 
 type Tab = "home" | "posts" | "videos" | "members" | "about";
 
@@ -23,7 +24,8 @@ export default function CirclePage() {
   const [tab, setTab] = useState<Tab>("home");
   const [pendingCount, setPendingCount] = useState(0);
   const [liveSession, setLiveSession] = useState<CircleLiveSession | null>(null);
-  const [goingLive, setGoingLive] = useState(false);
+  /** Owner prep overlay — same get-ready camera as Post → Live, scoped to this Circle. */
+  const [showLivePrep, setShowLivePrep] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -101,17 +103,14 @@ export default function CirclePage() {
     );
   }
 
-  const handleGoLive = async () => {
-    if (!user?.id) return;
-    setGoingLive(true);
-    try {
-      await startCircleLive(circle.id, user.id);
-      navigate(`/circle/c/${circle.id}/live`);
-    } catch (e: any) {
-      toast({ title: "Couldn't go live", description: e.message, variant: "destructive" });
-    } finally {
-      setGoingLive(false);
+  const handleGoLive = () => {
+    if (!user?.id) {
+      toast({ title: "Sign in required", description: "Log in to go live from your Circle.", variant: "destructive" });
+      return;
     }
+    // Open get-ready camera (Flip / Enhance / Effects / Face) — do NOT start the
+    // session until the user confirms Go Live inside LiveCameraView with this circleId.
+    setShowLivePrep(true);
   };
 
   const tabs: { id: Tab; label: string }[] = [
@@ -172,11 +171,10 @@ export default function CirclePage() {
           {isOwner && !liveSession && (
             <button
               type="button"
-              disabled={goingLive}
               onClick={handleGoLive}
-              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95 disabled:opacity-60"
+              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
             >
-              {goingLive ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Radio className="h-3.5 w-3.5" />}
+              <Radio className="h-3.5 w-3.5" />
               Go Live
             </button>
           )}
@@ -248,6 +246,20 @@ export default function CirclePage() {
             </div>
           )}
         </>
+      )}
+
+      {showLivePrep && (
+        <div className="fixed inset-0 z-[90] bg-black">
+          <LiveCameraView
+            createMode="live"
+            onModeChange={() => {
+              /* Circle prep stays on Live — no switch to public Post create */
+            }}
+            onClose={() => setShowLivePrep(false)}
+            circleId={circle.id}
+            hideModeTabs
+          />
+        </div>
       )}
     </div>
   );
