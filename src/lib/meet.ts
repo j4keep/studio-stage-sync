@@ -1,4 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
+import { compressImage } from "@/lib/marketplace-api";
+import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
+
+export const MEET_MAX_PHOTOS = 4;
 
 export type MeetProfile = {
   user_id: string;
@@ -143,10 +147,49 @@ export function meetAgeGate(birthYear: number | null | undefined): {
   return { ok: true, age, error: null };
 }
 
+export async function uploadMeetPhoto(userId: string, file: File): Promise<string> {
+  if (!file.type.startsWith("image/")) {
+    throw new Error("Please choose a photo (JPG, PNG, or HEIC).");
+  }
+  const compressed = await compressImage(file, 1600, 0.84);
+  const ext =
+    (compressed.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const safeName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${
+    ext === "heic" || ext === "heif" ? "jpg" : ext
+  }`;
+  const mime = compressed.type || "image/jpeg";
+  const path = `meet/${userId}/${safeName}`;
+
+  try {
+    const { error } = await supabase.storage.from("media").upload(path, compressed, {
+      upsert: true,
+      contentType: mime,
+    });
+    if (!error) {
+      const { data: pub } = supabase.storage.from("media").getPublicUrl(path);
+      if (pub?.publicUrl) return pub.publicUrl;
+    }
+  } catch {
+    /* fall through to R2 */
+  }
+
+  const res = await uploadToR2(compressed, {
+    folder: "meet",
+    fileName: `${userId}/${safeName}`,
+    mimeType: mime,
+  });
+  if (!res.success || !res.data?.key) throw new Error(res.error || "Photo upload failed");
+  return getR2DownloadUrl(res.data.key);
+}
+
 export async function listMeetProfiles(opts?: {
   excludeUserId?: string | null;
   city?: string | null;
+  /** When true (default), only profiles with at least one photo appear in the browse grid. */
+  requirePhotos?: boolean;
 }): Promise<MeetProfile[]> {
+  const requirePhotos = opts?.requirePhotos !== false;
+
   const { data, error } = await supabase
     .from("meet_profiles" as any)
     .select("*")
@@ -162,7 +205,9 @@ export async function listMeetProfiles(opts?: {
       const c = opts.city.toLowerCase();
       rows = rows.filter((p) => (p.city || "").toLowerCase().includes(c));
     }
-    return rows.filter((p) => meetAgeGate(p.birth_year).ok);
+    rows = rows.filter((p) => meetAgeGate(p.birth_year).ok);
+    if (requirePhotos) rows = rows.filter((p) => p.photo_urls.length > 0);
+    return rows;
   }
 
   let rows = (data || []).map(normalizeProfile);
@@ -173,6 +218,7 @@ export async function listMeetProfiles(opts?: {
   }
   // Never surface under-18 or missing-age profiles in the dating scroll.
   rows = rows.filter((p) => meetAgeGate(p.birth_year).ok);
+  if (requirePhotos) rows = rows.filter((p) => p.photo_urls.length > 0);
   return rows;
 }
 

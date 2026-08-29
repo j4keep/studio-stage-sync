@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, Inbox, MapPin, Search, Sparkles, UserRound } from "lucide-react";
+import { ArrowLeft, Heart, Inbox, Pencil, Search, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import MeetAdultGate, { MeetBrandMark } from "@/components/meet/MeetAdultGate";
-import {
-  ageFromBirthYear,
-  getMeetProfile,
-  listMeetProfiles,
-  type MeetProfile,
-} from "@/lib/meet";
+import MeetProfileCard, { MeetProfileCardSkeleton } from "@/components/meet/MeetProfileCard";
+import { getMeetProfile, listMeetProfiles, type MeetProfile } from "@/lib/meet";
 
 function MeetHomeInner() {
   const nav = useNavigate();
@@ -21,8 +17,9 @@ function MeetHomeInner() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
+      // Include everyone (including you) so a newly created profile appears on the grid.
       const [list, me] = await Promise.all([
-        listMeetProfiles({ excludeUserId: user?.id }),
+        listMeetProfiles({ requirePhotos: true }),
         user?.id ? getMeetProfile(user.id) : Promise.resolve(null),
       ]);
       setProfiles(list);
@@ -102,16 +99,44 @@ function MeetHomeInner() {
           <span>
             <p className="text-sm font-bold">Create your Meet profile</p>
             <p className="text-[12px] text-muted-foreground">
-              Show up in the scroll so people can ask to interview you — or browse first.
+              Add photos and show up in the grid so people can ask to interview you.
             </p>
           </span>
         </button>
       )}
 
-      <section className="space-y-4 px-4 pt-4">
+      {mine && (!mine.photo_urls?.length || !mine.is_visible) && (
+        <button
+          type="button"
+          onClick={() => nav("/meet/setup")}
+          className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-left"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300">
+            <Heart className="h-5 w-5" />
+          </span>
+          <span>
+            <p className="text-sm font-bold">
+              {!mine.photo_urls?.length ? "Add photos to appear in Meet" : "Your profile is hidden"}
+            </p>
+            <p className="text-[12px] text-muted-foreground">
+              {!mine.photo_urls?.length
+                ? "Upload at least one photo so your card shows on this page."
+                : "Turn on “Show my profile in the scroll” in setup to appear here."}
+            </p>
+          </span>
+        </button>
+      )}
+
+      <section className="px-4 pt-4">
+        {!loading && filtered.length > 0 && (
+          <h2 className="mb-3 text-[13px] font-bold text-foreground">People near you</h2>
+        )}
+
         {loading && (
-          <div className="flex justify-center py-16">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+          <div className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <MeetProfileCardSkeleton key={i} />
+            ))}
           </div>
         )}
 
@@ -120,7 +145,7 @@ function MeetHomeInner() {
             <Heart className="mx-auto mb-3 h-8 w-8 text-primary/50" />
             <p className="text-sm font-bold">Nobody here yet</p>
             <p className="mt-1 text-[12px] text-muted-foreground">
-              Be the first to create a Meet profile and open the floor for interviews.
+              Be the first to create a Meet profile with photos and open the floor for interviews.
             </p>
             <button
               type="button"
@@ -132,62 +157,23 @@ function MeetHomeInner() {
           </div>
         )}
 
-        {filtered.map((p) => {
-          const age = ageFromBirthYear(p.birth_year);
-          const photo = p.photo_urls[0];
-          return (
-            <button
-              key={p.user_id}
-              type="button"
-              onClick={() => nav(`/meet/u/${p.user_id}`)}
-              className="w-full overflow-hidden rounded-3xl border border-border bg-card text-left shadow-sm"
-            >
-              <div className="relative aspect-[4/5] w-full bg-muted">
-                {photo ? (
-                  <img src={photo} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 text-muted-foreground">
-                    <UserRound className="h-12 w-12 opacity-40" />
-                    <span className="text-xs font-semibold">Photo coming soon</span>
-                  </div>
-                )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/30 to-transparent p-4 pt-16 text-white">
-                  <p className="text-lg font-black">
-                    {p.display_name}
-                    {age != null ? <span className="font-semibold opacity-90">, {age}</span> : null}
-                  </p>
-                  {p.headline && <p className="text-[13px] text-white/90">{p.headline}</p>}
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] font-semibold text-white/85">
-                    {p.city && (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5">
-                        <MapPin className="h-3 w-3" /> {p.city}
-                      </span>
-                    )}
-                    {p.looking_for && (
-                      <span className="rounded-full bg-white/15 px-2 py-0.5">{p.looking_for}</span>
-                    )}
-                    {p.open_to_interview && (
-                      <span className="rounded-full bg-rose-500/90 px-2 py-0.5">Open to interview</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-              {p.interests?.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 px-3 py-3">
-                  {p.interests.slice(0, 5).map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-secondary px-2.5 py-1 text-[10px] font-semibold text-muted-foreground"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </button>
-          );
-        })}
+        {!loading && filtered.length > 0 && (
+          <div className="grid grid-cols-2 gap-3">
+            {filtered.map((p) => (
+              <MeetProfileCard key={p.user_id} profile={p} isYou={p.user_id === user?.id} />
+            ))}
+          </div>
+        )}
       </section>
+
+      <button
+        type="button"
+        onClick={() => nav("/meet/setup")}
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-30 inline-flex items-center gap-2 rounded-full gradient-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-lg"
+      >
+        <Pencil className="h-4 w-4" />
+        {mine ? "Edit profile" : "Create profile"}
+      </button>
     </div>
   );
 }

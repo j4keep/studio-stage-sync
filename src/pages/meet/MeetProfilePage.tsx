@@ -22,10 +22,14 @@ function MeetProfileInner() {
   const [existing, setExisting] = useState<MeetInterviewRequest | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [photoIndex, setPhotoIndex] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
-    void getMeetProfile(userId).then(setProfile);
+    void getMeetProfile(userId).then((p) => {
+      setProfile(p);
+      setPhotoIndex(0);
+    });
   }, [userId]);
 
   useEffect(() => {
@@ -45,7 +49,11 @@ function MeetProfileInner() {
     return (
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="font-bold">Profile not found</p>
-        <button type="button" onClick={() => nav("/meet")} className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+        <button
+          type="button"
+          onClick={() => nav("/meet")}
+          className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+        >
           Back to Meet
         </button>
       </div>
@@ -53,7 +61,8 @@ function MeetProfileInner() {
   }
 
   const age = ageFromBirthYear(profile.birth_year);
-  const photo = profile.photo_urls[0];
+  const photos = profile.photo_urls || [];
+  const photo = photos[photoIndex] || photos[0];
   const isSelf = user?.id === profile.user_id;
   const ageOk = age != null && age >= 18;
 
@@ -62,7 +71,11 @@ function MeetProfileInner() {
       <div className="flex min-h-[70vh] flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="font-bold">This profile isn’t available</p>
         <p className="text-sm text-muted-foreground">Meet on YAJ only shows adults 18+.</p>
-        <button type="button" onClick={() => nav("/meet")} className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground">
+        <button
+          type="button"
+          onClick={() => nav("/meet")}
+          className="rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+        >
           Back to Meet
         </button>
       </div>
@@ -97,6 +110,11 @@ function MeetProfileInner() {
     }
   };
 
+  const cyclePhoto = (dir: 1 | -1) => {
+    if (photos.length <= 1) return;
+    setPhotoIndex((i) => (i + dir + photos.length) % photos.length);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
       <div className="relative aspect-[4/5] w-full bg-muted">
@@ -107,10 +125,37 @@ function MeetProfileInner() {
             <UserRound className="h-16 w-16 opacity-30" />
           </div>
         )}
+
+        {/* Tap zones to flip through photos */}
+        {photos.length > 1 && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous photo"
+              className="absolute inset-y-0 left-0 w-1/3"
+              onClick={() => cyclePhoto(-1)}
+            />
+            <button
+              type="button"
+              aria-label="Next photo"
+              className="absolute inset-y-0 right-0 w-1/3"
+              onClick={() => cyclePhoto(1)}
+            />
+            <div className="absolute left-3 right-3 top-[max(env(safe-area-inset-top),0.75rem)] flex gap-1">
+              {photos.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-0.5 flex-1 rounded-full ${i === photoIndex ? "bg-white" : "bg-white/35"}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
         <button
           type="button"
           onClick={() => nav(-1)}
-          className="absolute left-3 top-[max(env(safe-area-inset-top),0.75rem)] rounded-full bg-black/50 p-2 text-white backdrop-blur"
+          className="absolute left-3 top-[max(env(safe-area-inset-top),2.25rem)] rounded-full bg-black/50 p-2 text-white backdrop-blur"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
@@ -123,6 +168,23 @@ function MeetProfileInner() {
           {profile.headline && <p className="text-sm text-white/90">{profile.headline}</p>}
         </div>
       </div>
+
+      {photos.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto px-4 pt-3 scrollbar-none">
+          {photos.map((url, i) => (
+            <button
+              key={url + i}
+              type="button"
+              onClick={() => setPhotoIndex(i)}
+              className={`h-14 w-14 shrink-0 overflow-hidden rounded-lg ring-2 ${
+                i === photoIndex ? "ring-primary" : "ring-transparent"
+              }`}
+            >
+              <img src={url} alt="" className="h-full w-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-4 px-4 pt-4">
         <div className="flex flex-wrap gap-2 text-[11px] font-semibold">

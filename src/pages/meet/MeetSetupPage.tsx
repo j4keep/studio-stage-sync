@@ -1,14 +1,16 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Plus, ShieldAlert, X } from "lucide-react";
+import { ArrowLeft, Camera, ImagePlus, Plus, ShieldAlert, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import MeetAdultGate, { MeetBrandMark } from "@/components/meet/MeetAdultGate";
 import {
   MEET_LOOKING_OPTIONS,
+  MEET_MAX_PHOTOS,
   MEET_PROMPT_OPTIONS,
   getMeetProfile,
   meetAgeGate,
+  uploadMeetPhoto,
   upsertMeetProfile,
   type MeetProfile,
 } from "@/lib/meet";
@@ -16,8 +18,11 @@ import {
 function MeetSetupInner() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const libraryRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [displayName, setDisplayName] = useState("");
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
@@ -25,7 +30,7 @@ function MeetSetupInner() {
   const [gender, setGender] = useState("");
   const [lookingFor, setLookingFor] = useState(MEET_LOOKING_OPTIONS[1]);
   const [city, setCity] = useState("");
-  const [photoUrl, setPhotoUrl] = useState("");
+  const [photoUrls, setPhotoUrls] = useState<string[]>([]);
   const [interestInput, setInterestInput] = useState("");
   const [interests, setInterests] = useState<string[]>([]);
   const [promptQuestion, setPromptQuestion] = useState(MEET_PROMPT_OPTIONS[0]);
@@ -70,7 +75,7 @@ function MeetSetupInner() {
     setGender(p.gender || "");
     setLookingFor(p.looking_for || MEET_LOOKING_OPTIONS[1]);
     setCity(p.city || "");
-    setPhotoUrl(p.photo_urls[0] || "");
+    setPhotoUrls(p.photo_urls || []);
     setInterests(p.interests || []);
     setPromptQuestion(p.prompt_question || MEET_PROMPT_OPTIONS[0]);
     setPromptAnswer(p.prompt_answer || "");
@@ -89,7 +94,58 @@ function MeetSetupInner() {
     setInterestInput("");
   };
 
-  const canSave = Boolean(displayName.trim()) && ageGate.ok;
+  const onPickFiles = async (files: FileList | null) => {
+    if (!user?.id || !files?.length) return;
+    const remaining = MEET_MAX_PHOTOS - photoUrls.length;
+    if (remaining <= 0) {
+      toast({
+        title: "Photo limit reached",
+        description: `You can add up to ${MEET_MAX_PHOTOS} photos.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    const picks = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .slice(0, remaining);
+    if (!picks.length) {
+      toast({ title: "Choose a photo", description: "Only image files are supported.", variant: "destructive" });
+      return;
+    }
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of picks) {
+        const url = await uploadMeetPhoto(user.id, file);
+        uploaded.push(url);
+      }
+      setPhotoUrls((prev) => [...prev, ...uploaded].slice(0, MEET_MAX_PHOTOS));
+      toast({
+        title: uploaded.length === 1 ? "Photo added" : `${uploaded.length} photos added`,
+        description: "First photo is your cover on the Meet grid.",
+      });
+    } catch (e: any) {
+      toast({ title: "Upload failed", description: e?.message || "Try another photo.", variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removePhoto = (index: number) => {
+    setPhotoUrls((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const movePhoto = (from: number, to: number) => {
+    setPhotoUrls((prev) => {
+      if (to < 0 || to >= prev.length) return prev;
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  };
+
+  const canSave = Boolean(displayName.trim()) && ageGate.ok && photoUrls.length >= 1 && !uploading;
 
   const save = async () => {
     if (!user?.id) return;
@@ -105,6 +161,14 @@ function MeetSetupInner() {
       });
       return;
     }
+    if (photoUrls.length < 1) {
+      toast({
+        title: "Add a photo",
+        description: "Upload at least one photo so you appear in the Meet grid.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSaving(true);
     try {
       await upsertMeetProfile(user.id, {
@@ -115,7 +179,7 @@ function MeetSetupInner() {
         gender: gender.trim() || null,
         looking_for: lookingFor,
         city: city.trim() || null,
-        photo_urls: photoUrl.trim() ? [photoUrl.trim()] : [],
+        photo_urls: photoUrls.slice(0, MEET_MAX_PHOTOS),
         interests,
         prompt_question: promptQuestion,
         prompt_answer: promptAnswer.trim() || null,
@@ -156,6 +220,97 @@ function MeetSetupInner() {
       </header>
 
       <div className="space-y-4 px-4 pt-4">
+        <Field label={`Photos (${photoUrls.length}/${MEET_MAX_PHOTOS})`}>
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            Upload 1–{MEET_MAX_PHOTOS} photos from your phone. The first photo is your cover on the dating grid.
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              disabled={uploading || photoUrls.length >= MEET_MAX_PHOTOS}
+              onClick={() => libraryRef.current?.click()}
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-7 disabled:opacity-50"
+            >
+              <ImagePlus className="h-7 w-7 text-primary" />
+              <span className="text-[13px] font-bold">Upload photos</span>
+              <span className="text-[10.5px] text-muted-foreground">From your library</span>
+            </button>
+            <button
+              type="button"
+              disabled={uploading || photoUrls.length >= MEET_MAX_PHOTOS}
+              onClick={() => cameraRef.current?.click()}
+              className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-muted/50 py-7 disabled:opacity-50"
+            >
+              <Camera className="h-7 w-7 text-primary" />
+              <span className="text-[13px] font-bold">Take a photo</span>
+              <span className="text-[10.5px] text-muted-foreground">Use your camera</span>
+            </button>
+          </div>
+          <input
+            ref={libraryRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              void onPickFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={cameraRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              void onPickFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+          {uploading && (
+            <p className="mt-2 text-[12px] font-semibold text-primary">Uploading…</p>
+          )}
+          {photoUrls.length === 0 && (
+            <p className="mt-2 text-[12px] font-semibold text-destructive">
+              At least one photo is required to appear on Meet.
+            </p>
+          )}
+          {photoUrls.length > 0 && (
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              {photoUrls.map((url, i) => (
+                <div key={url + i} className="relative aspect-square overflow-hidden rounded-xl bg-muted">
+                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  {i === 0 && (
+                    <span className="absolute left-1 top-1 rounded bg-primary px-1.5 py-0.5 text-[9px] font-bold text-primary-foreground">
+                      Cover
+                    </span>
+                  )}
+                  <div className="absolute bottom-1 right-1 flex gap-1">
+                    {i > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => movePhoto(i, i - 1)}
+                        className="rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-bold text-white"
+                      >
+                        Cover
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(i)}
+                      className="rounded bg-black/55 p-1 text-white"
+                      aria-label="Remove photo"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Field>
+
         <Field label="Display name">
           <input
             value={displayName}
@@ -254,17 +409,6 @@ function MeetSetupInner() {
             placeholder="Miami, FL"
           />
         </Field>
-        <Field label="Photo URL">
-          <input
-            value={photoUrl}
-            onChange={(e) => setPhotoUrl(e.target.value)}
-            className="input"
-            placeholder="https://… (upload coming soon)"
-          />
-          <p className="mt-1 text-[10px] text-muted-foreground">
-            Paste a photo link for now — in-app upload lands in a later pass.
-          </p>
-        </Field>
         <Field label="Interests">
           <div className="flex gap-2">
             <input
@@ -337,9 +481,13 @@ function MeetSetupInner() {
         >
           {saving
             ? "Saving…"
-            : !ageGate.ok
-              ? "Enter a valid 18+ birth year to continue"
-              : "Save Meet profile"}
+            : uploading
+              ? "Wait for photos to finish…"
+              : !ageGate.ok
+                ? "Enter a valid 18+ birth year to continue"
+                : photoUrls.length < 1
+                  ? "Add at least one photo to continue"
+                  : "Save Meet profile"}
         </button>
       </div>
 
