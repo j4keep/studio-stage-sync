@@ -71,10 +71,7 @@ const MOUTH_L = 61;
 const MOUTH_R = 291;
 const MOUTH_TOP = 13;
 const MOUTH_BOTTOM = 14;
-/** Outer lip ring — keeps lipstick on the mouth instead of a giant oval. */
 const OUTER_LIP = [61, 185, 40, 39, 37, 0, 267, 269, 270, 409, 291, 375, 321, 405, 314, 17, 84, 181, 91, 146];
-const LEFT_BROW = [70, 63, 105, 66, 107];
-const RIGHT_BROW = [300, 293, 334, 296, 336];
 
 type Pt = { x: number; y: number };
 
@@ -117,47 +114,6 @@ function softBlob(ctx: CanvasRenderingContext2D, at: Pt, radius: number, color: 
   ctx.beginPath();
   ctx.arc(at.x, at.y, r, 0, Math.PI * 2);
   ctx.fill();
-}
-
-function fillLandmarkPath(
-  ctx: CanvasRenderingContext2D,
-  lm: { x: number; y: number }[],
-  indices: number[],
-  w: number,
-  h: number,
-) {
-  if (indices.length < 2) return;
-  ctx.beginPath();
-  indices.forEach((idx, i) => {
-    const x = lm[idx].x * w;
-    const y = lm[idx].y * h;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.closePath();
-  ctx.fill();
-}
-
-function strokeLandmarkPoly(
-  ctx: CanvasRenderingContext2D,
-  lm: { x: number; y: number }[],
-  indices: number[],
-  w: number,
-  h: number,
-  lineWidth: number,
-) {
-  if (indices.length < 2) return;
-  ctx.beginPath();
-  indices.forEach((idx, i) => {
-    const x = lm[idx].x * w;
-    const y = lm[idx].y * h;
-    if (i === 0) ctx.moveTo(x, y);
-    else ctx.lineTo(x, y);
-  });
-  ctx.lineWidth = lineWidth;
-  ctx.lineCap = "round";
-  ctx.lineJoin = "round";
-  ctx.stroke();
 }
 
 function drawEmoji(ctx: CanvasRenderingContext2D, at: Pt, size: number, angle: number, emoji: string, offsetY = 0) {
@@ -276,8 +232,8 @@ function applyEnhanceLooks(
       Math.PI * 2,
     );
     ctx.clip("evenodd");
-    ctx.filter = `blur(${2 + t * 5}px)`;
-    ctx.globalAlpha = 0.35 + t * 0.45;
+    ctx.filter = `blur(${2.5 + t * 6}px)`;
+    ctx.globalAlpha = 0.4 + t * 0.45;
     ctx.drawImage(source, 0, 0, w, h);
     ctx.filter = "none";
     ctx.restore();
@@ -314,40 +270,56 @@ function applyEnhanceLooks(
   if (enhance.makeupId) {
     const look = MAKEUP_PRESETS.find((m) => m.id === enhance.makeupId);
     if (look) {
-      // Soft face glow / foundation
+      // Soft foundation glow — no hard shapes
       ctx.save();
       ctx.globalCompositeOperation = "soft-light";
+      ctx.globalAlpha = 0.28;
+      softBlob(ctx, g.faceCenter, Math.max(g.faceRx, g.faceRy) * 0.8, look.highlight);
+      ctx.restore();
+
+      // Blush — soft cheek wash only
+      ctx.save();
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.globalAlpha = 0.55;
+      softBlob(ctx, g.leftCheek, unit * 0.7, look.blush);
+      softBlob(ctx, g.rightCheek, unit * 0.7, look.blush);
+      ctx.restore();
+
+      // Eyeshadow — subtle lid tint (no drawn strokes)
+      ctx.save();
+      ctx.globalCompositeOperation = "multiply";
       ctx.globalAlpha = 0.35;
-      softBlob(ctx, g.faceCenter, Math.max(g.faceRx, g.faceRy) * 0.85, look.highlight);
+      softBlob(ctx, { x: g.leftEye.x, y: g.leftEye.y - unit * 0.08 }, unit * 0.38, look.eyeshadow);
+      softBlob(ctx, { x: g.rightEye.x, y: g.rightEye.y - unit * 0.08 }, unit * 0.38, look.eyeshadow);
       ctx.restore();
 
-      // Blush
+      // Soft lash line hint under the lid (tiny blur, not drawn lashes)
       ctx.save();
       ctx.globalCompositeOperation = "multiply";
-      softBlob(ctx, g.leftCheek, unit * 0.75, look.blush);
-      softBlob(ctx, g.rightCheek, unit * 0.75, look.blush);
+      ctx.globalAlpha = 0.22;
+      softBlob(ctx, { x: g.leftEye.x, y: g.leftEye.y + unit * 0.12 }, unit * 0.32, "rgba(40,25,30,1)");
+      softBlob(ctx, { x: g.rightEye.x, y: g.rightEye.y + unit * 0.12 }, unit * 0.32, "rgba(40,25,30,1)");
       ctx.restore();
 
-      // Eyeshadow
+      // Lips — soft tint clipped to mouth landmarks (no opaque sticker oval / brow drawings)
       ctx.save();
-      ctx.globalCompositeOperation = "multiply";
-      softBlob(ctx, { x: g.leftEye.x, y: g.leftEye.y - unit * 0.12 }, unit * 0.48, look.eyeshadow);
-      softBlob(ctx, { x: g.rightEye.x, y: g.rightEye.y - unit * 0.12 }, unit * 0.48, look.eyeshadow);
-      ctx.restore();
-
-      // Brows
-      ctx.save();
-      ctx.strokeStyle = look.brow;
-      ctx.globalAlpha = 0.85;
-      strokeLandmarkPoly(ctx, lm, LEFT_BROW, w, h, Math.max(1.5, unit * 0.07));
-      strokeLandmarkPoly(ctx, lm, RIGHT_BROW, w, h, Math.max(1.5, unit * 0.07));
-      ctx.restore();
-
-      // Lips — landmark path, not an oversized ellipse
-      ctx.save();
-      ctx.globalCompositeOperation = "multiply";
+      ctx.beginPath();
+      OUTER_LIP.forEach((idx, i) => {
+        const x = lm[idx].x * w;
+        const y = lm[idx].y * h;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.clip();
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.globalAlpha = 0.65;
       ctx.fillStyle = look.lip;
-      fillLandmarkPath(ctx, lm, OUTER_LIP, w, h);
+      ctx.fill();
+      ctx.globalCompositeOperation = "multiply";
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = look.lip;
+      ctx.fill();
       ctx.restore();
     }
   }

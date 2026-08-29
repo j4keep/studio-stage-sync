@@ -114,17 +114,10 @@ export default function CreateCameraView({
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
   const displayFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
-  // Canvas whenever Face / Appearance / Makeup / any color filter is on — Filters+Effects
-  // bake into the canvas so capture/preview stay in sync (CSS-only was invisible on some paths).
-  const needsCanvas =
-    faceFilter !== "none" || enhanceNeedsCanvas(enhance) || displayFilter !== "none";
-  const faceFilters = useFaceFilters(
-    rawVideoTrack,
-    faceFilter,
-    needsCanvas,
-    displayFilter !== "none" ? displayFilter : undefined,
-    enhance,
-  );
+  // Canvas only for Face stickers / Appearance / Makeup. Effects + Enhance Filters use CSS
+  // on the visible video/canvas — baking them via ctx.filter broke Effects on mobile.
+  const needsCanvas = faceFilter !== "none" || enhanceNeedsCanvas(enhance);
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, needsCanvas, undefined, enhance);
 
   const stopStream = useCallback((forceRelease = false) => {
     if (ownsStreamRef.current || forceRelease) {
@@ -670,8 +663,8 @@ export default function CreateCameraView({
             // behind the filter canvas once enhance / face looks are drawing.
             visibility: looksActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            // While canvas boots, CSS still shows Filters/Effects on the raw video.
-            filter: looksActive ? "none" : displayFilter,
+            // Effects + Enhance Filters — CSS on the element (this is what used to work).
+            filter: displayFilter,
           }}
         />
       )}
@@ -683,6 +676,7 @@ export default function CreateCameraView({
           style={{
             visibility: faceFilters.active ? "visible" : "hidden",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: displayFilter,
           }}
         />
       )}

@@ -92,15 +92,9 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
   const [rawVideoTrack, setRawVideoTrack] = useState<MediaStreamTrack | null>(null);
 
   const displayFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
-  const needsCanvas =
-    faceFilter !== "none" || enhanceNeedsCanvas(enhance) || displayFilter !== "none";
-  const faceFilters = useFaceFilters(
-    rawVideoTrack,
-    faceFilter,
-    needsCanvas,
-    displayFilter !== "none" ? displayFilter : undefined,
-    enhance,
-  );
+  // Canvas only for Face / Appearance / Makeup. Effects + Enhance Filters stay CSS.
+  const needsCanvas = faceFilter !== "none" || enhanceNeedsCanvas(enhance);
+  const faceFilters = useFaceFilters(rawVideoTrack, faceFilter, needsCanvas, undefined, enhance);
 
   const closeEffectSheets = () => {
     setShowEnhance(false);
@@ -193,8 +187,8 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
             // behind the filter canvas once enhance / face looks are drawing.
             visibility: looksActive ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
-            // While canvas boots, CSS still shows Filters/Effects on the raw video.
-            filter: looksActive ? "none" : displayFilter,
+            // Effects + Enhance Filters — CSS on the element (reliable on mobile).
+            filter: displayFilter,
           }}
         />
       )}
@@ -206,6 +200,7 @@ export default function LiveCameraView({ createMode, onModeChange, onClose, init
           style={{
             visibility: faceFilters.active ? "visible" : "hidden",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
+            filter: displayFilter,
           }}
         />
       )}
