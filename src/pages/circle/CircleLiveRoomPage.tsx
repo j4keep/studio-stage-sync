@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, Gift, Hand, Heart, Loader2, LogOut, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -54,6 +54,26 @@ import {
 const sb = supabase as any;
 const ALL_GIFTS = [...GIFT_CATALOG, LIKE_GIFT];
 const GIFT_EMOJI: Record<GiftType, string> = Object.fromEntries(ALL_GIFTS.map((g) => [g.type, g.emoji])) as Record<GiftType, string>;
+
+/** Debounced host leave → end session (avoids React Strict Mode remount ending a brand-new live). */
+const pendingHostEndTimers = new Map<string, number>();
+
+function cancelPendingHostEnd(sessionId: string) {
+  const t = pendingHostEndTimers.get(sessionId);
+  if (t) {
+    window.clearTimeout(t);
+    pendingHostEndTimers.delete(sessionId);
+  }
+}
+
+function scheduleHostEnd(sessionId: string, delayMs = 600) {
+  cancelPendingHostEnd(sessionId);
+  const t = window.setTimeout(() => {
+    pendingHostEndTimers.delete(sessionId);
+    void endCircleLive(sessionId).catch(() => {});
+  }, delayMs);
+  pendingHostEndTimers.set(sessionId, t);
+}
 
 /** A Circle's live broadcast room — reuses the same LiveKit connection hook the Podcast
  *  rooms run on (usePodcastLiveRoom), just with the host publishing and everyone else
@@ -415,7 +435,115 @@ export default function CircleLiveRoomPage() {
     }
   };
 
+  // —— Motor / stage derived state MUST stay above early returns (Rules of Hooks). ——
+  const host = room.participants.find((p) => p.isHost);
+  const stagePeople = useMemo(() => {
+    if (isMultiMotor) return stageParticipantsFromRoom(room.participants);
+    const h = room.participants.find((p) => p.isHost);
+    return h ? [h] : [];
+  }, [isMultiMotor, room.participants]);
+  const onStage =
+    !!room.local && (room.local.isHost || room.local.camOn || room.local.micOn || !!room.local.videoTrack);
+  const seatsLeft = Math.max(0, LIVE_MOTOR_MAX_ON_STAGE - stagePeople.length);
+  const viewerCount = Math.max(room.participants.length - 1, 0);
+  const canvasIsLive = !!faceFilters.outputTrack && host?.videoTrack === faceFilters.outputTrack;
+  const stageIdsKey = stagePeople.map((p) => p.id).join(",");
+
+  useEffect(() => {
+    if (focusedStageId && !stagePeople.some((p) => p.id === focusedStageId)) {
+      setFocusedStageId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedStageId, stageIdsKey]);
+
+  const hostEndedRef = useRef(false);
+
+  const endHostSessionNow = useCallback(async () => {
+    if (!session || !isHost || hostEndedRef.current) return;
+    hostEndedRef.current = true;
+    cancelPendingHostEnd(session.id);
+    try {
+      await endCircleLive(session.id);
+    } catch {
+      /* ignore — still leave the room */
+    }
+    try {
+      room.disconnect();
+    } catch {
+      /* ignore */
+    }
+  }, [session, isHost, room]);
+
+  // Cancel any pending end while this room stays mounted (Strict Mode remount-safe).
+  useEffect(() => {
+    if (!session?.id || !isHost) return;
+    cancelPendingHostEnd(session.id);
+    hostEndedRef.current = false;
+    return () => {
+      // Leaving the live screen as host must kill the session so it doesn't stay on Home.
+      scheduleHostEnd(session.id, 700);
+      try {
+        room.disconnect();
+      } catch {
+        /* ignore */
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, isHost]);
+
+  // Tab close / iOS swipe-away — end immediately.
+  useEffect(() => {
+    if (!session?.id || !isHost) return;
+    const kill = () => {
+      hostEndedRef.current = true;
+      cancelPendingHostEnd(session.id);
+      void endCircleLive(session.id).catch(() => {});
+    };
+    window.addEventListener("pagehide", kill);
+    window.addEventListener("beforeunload", kill);
+    return () => {
+      window.removeEventListener("pagehide", kill);
+      window.removeEventListener("beforeunload", kill);
+    };
+  }, [session?.id, isHost]);
+
+  const handleJoinStage = async () => {
+    if (!isMultiMotor || isHost || joiningStage) return;
+    if (seatsLeft <= 0 && !onStage) {
+      toast({ title: "Stage is full", description: `Up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on motor view.` });
+      return;
+    }
+    setJoiningStage(true);
+    try {
+      await room.startPublishing();
+      toast({ title: "You're on stage", description: "Tap any person to see them full screen." });
+    } catch (e: any) {
+      toast({ title: "Couldn't join stage", description: e?.message, variant: "destructive" });
+    } finally {
+      setJoiningStage(false);
+    }
+  };
+
+  const handleLeaveStage = async () => {
+    if (isHost) return;
+    try {
+      await room.stopPublishing();
+      setFocusedStageId(null);
+      toast({ title: "Left the stage" });
+    } catch (e: any) {
+      toast({ title: "Couldn't leave stage", description: e?.message, variant: "destructive" });
+    }
+  };
+
   const handleLeave = () => {
+    // Viewers just leave; hosts ending via X must kill the session.
+    if (isHost) {
+      setEnding(true);
+      void endHostSessionNow().finally(() => {
+        navigate(backPath, { replace: true });
+      });
+      return;
+    }
     room.disconnect();
     navigate(backPath, { replace: true });
   };
@@ -424,8 +552,7 @@ export default function CircleLiveRoomPage() {
     if (!session) return;
     setEnding(true);
     try {
-      await endCircleLive(session.id);
-      room.disconnect();
+      await endHostSessionNow();
       navigate(backPath, { replace: true });
     } catch (e: any) {
       toast({ title: "Couldn't end the live", description: e.message, variant: "destructive" });
@@ -473,60 +600,6 @@ export default function CircleLiveRoomPage() {
       </div>
     );
   }
-
-  const host = room.participants.find((p) => p.isHost);
-  const stagePeople = useMemo(() => {
-    if (isMultiMotor) return stageParticipantsFromRoom(room.participants);
-    const h = room.participants.find((p) => p.isHost);
-    return h ? [h] : [];
-  }, [isMultiMotor, room.participants]);
-  const onStage =
-    !!room.local && (room.local.isHost || room.local.camOn || room.local.micOn || !!room.local.videoTrack);
-  const seatsLeft = Math.max(0, LIVE_MOTOR_MAX_ON_STAGE - stagePeople.length);
-  const viewerCount = Math.max(room.participants.length - 1, 0);
-  // Gate the instant CSS fallback on the *published* track actually being the filtered
-  // canvas output (reference equality with what useFaceFilters captured) — not on
-  // faceFilters.active (the canvas is drawing locally), which can flip true well before
-  // replaceVideoTrack's real network-level swap has landed. Gating on .active alone left
-  // a window where the CSS fallback was already suppressed but the live-visible video
-  // hadn't actually swapped yet, so neither was showing anything.
-  const canvasIsLive = !!faceFilters.outputTrack && host?.videoTrack === faceFilters.outputTrack;
-
-  const stageIdsKey = stagePeople.map((p) => p.id).join(",");
-  useEffect(() => {
-    if (focusedStageId && !stagePeople.some((p) => p.id === focusedStageId)) {
-      setFocusedStageId(null);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusedStageId, stageIdsKey]);
-
-  const handleJoinStage = async () => {
-    if (!isMultiMotor || isHost || joiningStage) return;
-    if (seatsLeft <= 0 && !onStage) {
-      toast({ title: "Stage is full", description: `Up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on motor view.` });
-      return;
-    }
-    setJoiningStage(true);
-    try {
-      await room.startPublishing();
-      toast({ title: "You're on stage", description: "Tap any person to see them full screen." });
-    } catch (e: any) {
-      toast({ title: "Couldn't join stage", description: e?.message, variant: "destructive" });
-    } finally {
-      setJoiningStage(false);
-    }
-  };
-
-  const handleLeaveStage = async () => {
-    if (isHost) return;
-    try {
-      await room.stopPublishing();
-      setFocusedStageId(null);
-      toast({ title: "Left the stage" });
-    } catch (e: any) {
-      toast({ title: "Couldn't leave stage", description: e?.message, variant: "destructive" });
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black text-white">
@@ -712,7 +785,7 @@ export default function CircleLiveRoomPage() {
           <button
             type="button"
             disabled={ending}
-            onClick={isHost ? handleEndLive : handleLeave}
+            onClick={() => void (isHost ? handleEndLive() : handleLeave())}
             aria-label={isHost ? "End live" : "Leave"}
             className="rounded-full bg-black/50 p-2 backdrop-blur-sm disabled:opacity-60"
           >

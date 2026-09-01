@@ -19,6 +19,49 @@ export type CircleLiveSession = {
   ended_at: string | null;
 };
 
+export async function endCircleLive(sessionId: string): Promise<void> {
+  const { error } = await sb
+    .from("circle_live_sessions")
+    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .eq("id", sessionId);
+  if (error) throw error;
+}
+
+/** End every still-`live` session for a host (optionally scoped to one Circle or public). */
+export async function endActiveLivesForHost(
+  hostUserId: string,
+  opts?: { circleId?: string | null; exceptSessionId?: string | null },
+): Promise<number> {
+  let q = sb
+    .from("circle_live_sessions")
+    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .eq("host_user_id", hostUserId)
+    .eq("status", "live");
+
+  if (opts && "circleId" in (opts || {})) {
+    if (opts?.circleId == null) q = q.is("circle_id", null);
+    else q = q.eq("circle_id", opts.circleId);
+  }
+  if (opts?.exceptSessionId) q = q.neq("id", opts.exceptSessionId);
+
+  const { data, error } = await q.select("id");
+  if (error) {
+    console.warn("[circle-live] endActiveLivesForHost", error.message);
+    return 0;
+  }
+  return (data || []).length;
+}
+
+export async function endCircleLivesByIds(sessionIds: string[]): Promise<void> {
+  const ids = sessionIds.filter(Boolean);
+  if (!ids.length) return;
+  const { error } = await sb
+    .from("circle_live_sessions")
+    .update({ status: "ended", ended_at: new Date().toISOString() })
+    .in("id", ids);
+  if (error) console.warn("[circle-live] endCircleLivesByIds", error.message);
+}
+
 /** The room name doubles as the LiveKit room id — must match the livekit-token edge
  *  function's `^[a-zA-Z0-9_-]+$` validation, which a raw circle/user uuid already
  *  satisfies. Pass circleId: null for a public live (posted to the feed, open to anyone)
@@ -28,6 +71,9 @@ export async function startCircleLive(
   hostUserId: string,
   layoutMode: CircleLiveLayoutMode = "live",
 ): Promise<CircleLiveSession> {
+  // One live at a time per host — kill ghost sessions left behind by a closed tab / white screen.
+  await endActiveLivesForHost(hostUserId);
+
   const room = `${circleId ? "circle" : "user"}_${circleId ?? hostUserId}_${Date.now()}`;
   const mode: CircleLiveLayoutMode =
     layoutMode === "multi" || layoutMode === "virtual" ? layoutMode : "live";
@@ -56,14 +102,6 @@ export async function startCircleLive(
   return data as CircleLiveSession;
 }
 
-export async function endCircleLive(sessionId: string): Promise<void> {
-  const { error } = await sb
-    .from("circle_live_sessions")
-    .update({ status: "ended", ended_at: new Date().toISOString() })
-    .eq("id", sessionId);
-  if (error) throw error;
-}
-
 export async function getActiveLiveSession(circleId: string): Promise<CircleLiveSession | null> {
   const { data, error } = await sb
     .from("circle_live_sessions")
@@ -80,7 +118,11 @@ export async function getActiveLiveSession(circleId: string): Promise<CircleLive
 export async function getLiveSession(sessionId: string): Promise<CircleLiveSession | null> {
   const { data, error } = await sb.from("circle_live_sessions").select("*").eq("id", sessionId).maybeSingle();
   if (error) throw error;
-  return data as CircleLiveSession | null;
+  const row = data as CircleLiveSession | null;
+  if (!row) return null;
+  // Treat ended rows as missing so the room page shows "ended" instead of a white/broken room.
+  if (row.status !== "live") return null;
+  return row;
 }
 
 /** The active public (circle_id null) live for a given host, if any — mirrors
@@ -114,17 +156,32 @@ export async function listActivePublicLiveSessions(limit = 20): Promise<PublicLi
     .is("circle_id", null)
     .eq("status", "live")
     .order("started_at", { ascending: false })
-    .limit(limit);
+    .limit(Math.max(limit * 3, 20));
   if (error) throw error;
   const rows = (sessions as CircleLiveSession[]) || [];
   if (!rows.length) return [];
 
-  const ids = Array.from(new Set(rows.map((r) => r.host_user_id)));
+  // One card / pitch bubble per host — heal older duplicate "still live" ghosts.
+  const seen = new Set<string>();
+  const unique: CircleLiveSession[] = [];
+  const duplicateIds: string[] = [];
+  for (const row of rows) {
+    if (seen.has(row.host_user_id)) {
+      duplicateIds.push(row.id);
+      continue;
+    }
+    seen.add(row.host_user_id);
+    if (unique.length < limit) unique.push(row);
+    // Else: another host past the display limit — leave them live, just don't show.
+  }
+  if (duplicateIds.length) void endCircleLivesByIds(duplicateIds);
+
+  const ids = Array.from(new Set(unique.map((r) => r.host_user_id)));
   const { data: profiles } = await sb.from("profiles").select("user_id, display_name, avatar_url").in("user_id", ids);
   const byId = new Map<string, { display_name: string | null; avatar_url: string | null }>(
     (profiles || []).map((p: any) => [p.user_id, p]),
   );
-  return rows.map((r) => ({
+  return unique.map((r) => ({
     ...r,
     host_display_name: byId.get(r.host_user_id)?.display_name ?? null,
     host_avatar_url: byId.get(r.host_user_id)?.avatar_url ?? null,
