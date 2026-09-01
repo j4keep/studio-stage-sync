@@ -245,6 +245,7 @@ export default function MyJobsPage() {
                       if (!confirm("Withdraw this application?")) return;
                       const { error } = await supabase.from("job_applications").update({ status: "withdrawn" }).eq("id", a.id);
                       if (error) return;
+                      void notifyJobEmployer(a.id, "withdrawn");
                       setApplied((prev) => prev.map((x) => x.id === a.id ? { ...x, status: "withdrawn" } : x));
                     }}
                     className="mt-2 text-[11px] font-semibold text-rose-500"
