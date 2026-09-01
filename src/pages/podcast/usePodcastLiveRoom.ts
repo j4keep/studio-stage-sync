@@ -1,9 +1,11 @@
-// LiveKit room hook for the W.STUDIO Podcast Room.
+// LiveKit room hook for the W.STUDIO Podcast Room + Circle / public lives.
 // - Connects to a LiveKit room using a token from the `livekit-token` edge function.
-// - Exposes participants (local + remote, capped at 6 total), with mic/cam state,
+// - Exposes participants (local + remote), with mic/cam state,
 //   audio level (0..1), and connection quality (Excellent/Good/Weak/Poor/Unknown).
 // - Returns the local MediaStream (audio+video tracks) so MediaRecorder can record
 //   the user's OWN isolated audio+video locally.
+// - Multi / motor lives: guests connect with canPublish but publish=false, then call
+//   startPublishing() when they join a stage seat.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -20,28 +22,35 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 
 export type RoomParticipant = {
-  id: string;          // LiveKit identity
+  id: string; // LiveKit identity
   name: string;
   isLocal: boolean;
   isHost: boolean;
   micOn: boolean;
   camOn: boolean;
-  level: number;       // 0..1
+  level: number; // 0..1
   quality: "excellent" | "good" | "weak" | "poor" | "unknown";
   // For rendering video tile:
   videoTrack?: MediaStreamTrack;
   audioTrack?: MediaStreamTrack;
 };
 
-const MAX_PARTICIPANTS = 6;
+const DEFAULT_MAX_PARTICIPANTS = 6;
+/** Multi / motor lives — host + up to 8 guests on stage (Bigo-style 3×3). */
+export const LIVE_MOTOR_MAX_ON_STAGE = 9;
 
 function mapQuality(q: ConnectionQuality | undefined): RoomParticipant["quality"] {
   switch (q) {
-    case ConnectionQuality.Excellent: return "excellent";
-    case ConnectionQuality.Good: return "good";
-    case ConnectionQuality.Poor: return "weak";
-    case ConnectionQuality.Lost: return "poor";
-    default: return "unknown";
+    case ConnectionQuality.Excellent:
+      return "excellent";
+    case ConnectionQuality.Good:
+      return "good";
+    case ConnectionQuality.Poor:
+      return "weak";
+    case ConnectionQuality.Lost:
+      return "poor";
+    default:
+      return "unknown";
   }
 }
 
@@ -73,19 +82,37 @@ function snapshot(p: Participant, hostIdentity: string): RoomParticipant {
   };
 }
 
+/** People currently on the motor stage (host always; guests when cam/mic is live). */
+export function stageParticipantsFromRoom(list: RoomParticipant[]): RoomParticipant[] {
+  const onStage = list.filter((p) => p.isHost || p.camOn || p.micOn || !!p.videoTrack);
+  // Host first, then guests by join order (list order from LiveKit snapshot).
+  return [
+    ...onStage.filter((p) => p.isHost),
+    ...onStage.filter((p) => !p.isHost),
+  ].slice(0, LIVE_MOTOR_MAX_ON_STAGE);
+}
+
 export function usePodcastLiveRoom(opts: {
   roomName: string;
   displayName: string;
   hostIdentity?: string; // identity considered host (defaults to first joiner = self if not set)
   enabled: boolean;
   /** Defaults to true (existing Podcast behavior: everyone publishes). Pass false for a
-   *  view-only participant (e.g. a Circle-live viewer) — skips requesting publish
-   *  permission and never turns on their camera/mic. */
+   *  view-only participant (e.g. a Circle-live viewer) — skips auto-enabling camera/mic. */
   publish?: boolean;
+  /** Token permission to publish. Defaults to `publish`. Multi guests use
+   *  `canPublish: true` + `publish: false` so they can join the motor stage later. */
+  canPublish?: boolean;
+  /** Cap on tracked LiveKit participants (room presence). Defaults to 6. */
+  maxParticipants?: number;
 }) {
   const { roomName, displayName, enabled, publish = true } = opts;
+  const canPublish = opts.canPublish ?? publish;
+  const maxParticipants = opts.maxParticipants ?? DEFAULT_MAX_PARTICIPANTS;
   const roomRef = useRef<Room | null>(null);
-  const [connState, setConnState] = useState<"idle" | "connecting" | "connected" | "error" | "disconnected">("idle");
+  const [connState, setConnState] = useState<
+    "idle" | "connecting" | "connected" | "error" | "disconnected"
+  >("idle");
   const [error, setError] = useState<string | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -95,17 +122,25 @@ export function usePodcastLiveRoom(opts: {
   // retroactively update already-bound listener closures). A ref sidesteps that — every
   // call to `refresh`, however it was bound, reads the live value at call time.
   const hostIdentityRef = useRef<string>(opts.hostIdentity ?? "");
+  const maxParticipantsRef = useRef(maxParticipants);
 
   useEffect(() => {
     if (opts.hostIdentity) hostIdentityRef.current = opts.hostIdentity;
   }, [opts.hostIdentity]);
 
+  useEffect(() => {
+    maxParticipantsRef.current = maxParticipants;
+  }, [maxParticipants]);
+
   const refresh = useCallback(() => {
     const room = roomRef.current;
     if (!room) return;
-    const list: Participant[] = [room.localParticipant, ...Array.from(room.remoteParticipants.values())];
+    const list: Participant[] = [
+      room.localParticipant,
+      ...Array.from(room.remoteParticipants.values()),
+    ];
     const h = hostIdentityRef.current || room.localParticipant.identity;
-    setParticipants(list.slice(0, MAX_PARTICIPANTS).map((p) => snapshot(p, h)));
+    setParticipants(list.slice(0, maxParticipantsRef.current).map((p) => snapshot(p, h)));
 
     // Build a fresh local MediaStream from currently-published local tracks.
     const lp = room.localParticipant;
@@ -135,7 +170,7 @@ export function usePodcastLiveRoom(opts: {
       setError(null);
       try {
         const { data, error: fnErr } = await supabase.functions.invoke("livekit-token", {
-          body: { room: roomName, name: displayName, canPublish: publish },
+          body: { room: roomName, name: displayName, canPublish },
         });
         if (fnErr) throw fnErr;
         if (!data?.token || !data?.url) throw new Error("No token returned");
@@ -173,7 +208,10 @@ export function usePodcastLiveRoom(opts: {
             room.localParticipant.setCameraEnabled(true),
           ]);
         }
-        if (cancelled) { room.disconnect(); return; }
+        if (cancelled) {
+          room.disconnect();
+          return;
+        }
         setConnState("connected");
         refresh();
 
@@ -194,33 +232,62 @@ export function usePodcastLiveRoom(opts: {
       r?.disconnect().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, roomName, displayName, publish]);
+  }, [enabled, roomName, displayName, publish, canPublish]);
 
-  const setMic = useCallback(async (on: boolean) => {
-    await roomRef.current?.localParticipant.setMicrophoneEnabled(on);
+  const setMic = useCallback(
+    async (on: boolean) => {
+      await roomRef.current?.localParticipant.setMicrophoneEnabled(on);
+      refresh();
+    },
+    [refresh],
+  );
+  const setCam = useCallback(
+    async (on: boolean) => {
+      await roomRef.current?.localParticipant.setCameraEnabled(on);
+      refresh();
+    },
+    [refresh],
+  );
+  const setScreen = useCallback(
+    async (on: boolean) => {
+      await roomRef.current?.localParticipant.setScreenShareEnabled(on);
+      refresh();
+    },
+    [refresh],
+  );
+
+  /** Guest joins the motor stage — turns on cam + mic (token must allow publish). */
+  const startPublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) throw new Error("Not connected to the live room yet");
+    await lp.enableCameraAndMicrophone();
+    await Promise.all([lp.setMicrophoneEnabled(true), lp.setCameraEnabled(true)]);
     refresh();
   }, [refresh]);
-  const setCam = useCallback(async (on: boolean) => {
-    await roomRef.current?.localParticipant.setCameraEnabled(on);
-    refresh();
-  }, [refresh]);
-  const setScreen = useCallback(async (on: boolean) => {
-    await roomRef.current?.localParticipant.setScreenShareEnabled(on);
+
+  /** Leave the motor stage — stay in the room as a viewer. */
+  const stopPublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) return;
+    await Promise.all([lp.setMicrophoneEnabled(false), lp.setCameraEnabled(false)]);
     refresh();
   }, [refresh]);
 
   /** Swaps the published camera track's underlying pixels without unpublish/republish
    *  (no renegotiation flicker for remote viewers) — used to switch a Circle live host
    *  between their raw camera and a face-filter canvas mid-broadcast. */
-  const replaceVideoTrack = useCallback(async (track: MediaStreamTrack) => {
-    const room = roomRef.current;
-    if (!room) throw new Error("Not connected to the live room yet");
-    const pub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
-    const localTrack = pub?.track as LocalVideoTrack | undefined;
-    if (!localTrack) throw new Error("No camera track published yet");
-    await localTrack.replaceTrack(track);
-    refresh();
-  }, [refresh]);
+  const replaceVideoTrack = useCallback(
+    async (track: MediaStreamTrack) => {
+      const room = roomRef.current;
+      if (!room) throw new Error("Not connected to the live room yet");
+      const pub = Array.from(room.localParticipant.videoTrackPublications.values())[0];
+      const localTrack = pub?.track as LocalVideoTrack | undefined;
+      if (!localTrack) throw new Error("No camera track published yet");
+      await localTrack.replaceTrack(track);
+      refresh();
+    },
+    [refresh],
+  );
 
   const local = useMemo(() => participants.find((p) => p.isLocal), [participants]);
 
@@ -233,6 +300,8 @@ export function usePodcastLiveRoom(opts: {
     setMic,
     setCam,
     setScreen,
+    startPublishing,
+    stopPublishing,
     replaceVideoTrack,
     disconnect: () => roomRef.current?.disconnect(),
   };
