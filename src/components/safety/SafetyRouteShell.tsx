@@ -70,7 +70,7 @@ const SafetyRouteShell = ({ children, showThemePicker, onThemeComplete }: Props)
   }
 
   if (policy.youth_mode && !policy.youth_welcome_seen_at) {
-    return <YouthWelcomeGate onContinue={() => markYouthWelcomeSeen()} />;
+    return <YouthWelcomeGate onContinue={() => { void markYouthWelcomeSeen(); }} />;
   }
 
   if (showThemePicker) {
