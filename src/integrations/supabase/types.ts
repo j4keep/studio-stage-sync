@@ -5320,6 +5320,10 @@ export type Database = {
         Args: { _game_id: string; _user_id: string }
         Returns: boolean
       }
+      is_live_session_member: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_podcast_participant: {
         Args: { _episode: string; _user: string }
         Returns: boolean
@@ -5343,6 +5347,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      lookup_live_session_by_code: { Args: { _code: string }; Returns: string }
       mark_deal_used: {
         Args: { p_claim_id: string }
         Returns: {
@@ -5400,6 +5405,7 @@ export type Database = {
             }
             Returns: undefined
           }
+      my_profile_email: { Args: never; Returns: string }
       notify_circle_join_approved: {
         Args: { p_member_id: string }
         Returns: undefined
