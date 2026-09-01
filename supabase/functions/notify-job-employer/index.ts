@@ -20,7 +20,8 @@ Deno.serve(async (req) => {
 
     const { application_id, event } = await req.json();
     const kind = event === "interview_accepted" ? "interview_accepted"
-      : event === "interview_declined" ? "interview_declined" : "applied";
+      : event === "interview_declined" ? "interview_declined"
+      : event === "withdrawn" ? "withdrawn" : "applied";
     if (!application_id || typeof application_id !== "string") {
       return json({ error: "application_id required" }, 400);
     }
@@ -69,6 +70,9 @@ Deno.serve(async (req) => {
     } else if (kind === "interview_declined") {
       title = "Interview declined";
       body = `${who} declined the interview for ${job.title || "your job post"}.`;
+    } else if (kind === "withdrawn") {
+      title = "Application withdrawn";
+      body = `${who} withdrew their application for ${job.title || "your job post"}.`;
     }
 
     const since = new Date(Date.now() - 20_000).toISOString();
