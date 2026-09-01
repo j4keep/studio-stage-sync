@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Heart, Loader2, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
+import { ChevronDown, Gift, Hand, Heart, Loader2, LogOut, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,14 +17,21 @@ import {
   listCircleLiveComments,
   sendCircleLiveComment,
   sendCircleLiveGift,
+  type CircleLiveLayoutMode,
   type GiftType,
 } from "@/lib/circle-live";
-import { usePodcastLiveRoom, type RoomParticipant } from "@/pages/podcast/usePodcastLiveRoom";
+import {
+  LIVE_MOTOR_MAX_ON_STAGE,
+  stageParticipantsFromRoom,
+  usePodcastLiveRoom,
+  type RoomParticipant,
+} from "@/pages/podcast/usePodcastLiveRoom";
 import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import FaceFilterPanel from "@/components/feed/create/FaceFilterPanel";
 import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
 import DualCameraLayoutSheet, { type DualCameraLayout } from "@/components/feed/create/DualCameraLayoutSheet";
+import LiveMotorGrid from "@/components/live/LiveMotorGrid";
 import {
   liveWatchUrl,
   openSecondaryCamera,
@@ -80,12 +87,15 @@ export default function CircleLiveRoomPage() {
   const [showDualSheet, setShowDualSheet] = useState(false);
   const [pipReady, setPipReady] = useState(false);
   const [mainFacing, setMainFacing] = useState<"user" | "environment">("user");
+  const [prepLayoutMode, setPrepLayoutMode] = useState<CircleLiveLayoutMode | null>(null);
+  const [focusedStageId, setFocusedStageId] = useState<string | null>(null);
+  const [joiningStage, setJoiningStage] = useState(false);
   const pipVideoRef = useRef<HTMLVideoElement>(null);
   const dualMainVideoRef = useRef<HTMLVideoElement>(null);
   const pipStreamRef = useRef<MediaStream | null>(null);
   const dualCompositeStopRef = useRef<(() => void) | null>(null);
 
-  // Restore Enhance / Effects / Face / dual layout chosen on the get-ready camera
+  // Restore Enhance / Effects / Face / dual layout / Multi mode chosen on the get-ready camera
   useEffect(() => {
     try {
       const raw = sessionStorage.getItem("yaj_live_prep_looks");
@@ -96,6 +106,7 @@ export default function CircleLiveRoomPage() {
         enhance?: EnhanceSettings;
         dualLayout?: DualCameraLayout;
         facing?: "user" | "environment";
+        viewMode?: CircleLiveLayoutMode;
         circleId?: string | null;
         at?: number;
       };
@@ -108,6 +119,9 @@ export default function CircleLiveRoomPage() {
       if (looks.enhance) setEnhance({ ...DEFAULT_ENHANCE, ...looks.enhance });
       if (looks.dualLayout) setDualLayout(looks.dualLayout);
       if (looks.facing) setMainFacing(looks.facing);
+      if (looks.viewMode === "multi" || looks.viewMode === "virtual" || looks.viewMode === "live") {
+        setPrepLayoutMode(looks.viewMode);
+      }
       sessionStorage.removeItem("yaj_live_prep_looks");
     } catch {
       /* ignore */
@@ -172,12 +186,19 @@ export default function CircleLiveRoomPage() {
     }
   };
 
+  const layoutMode: CircleLiveLayoutMode =
+    session?.layout_mode || prepLayoutMode || "live";
+  const isMultiMotor = layoutMode === "multi";
+
   const room = usePodcastLiveRoom({
     roomName: session?.room ?? "",
     displayName,
     hostIdentity: session?.host_user_id,
     enabled: !!session && isApprovedMember,
+    // Host always publishes. Multi guests get publish permission but join stage on demand.
     publish: isHost,
+    canPublish: isHost || isMultiMotor,
+    maxParticipants: isMultiMotor ? 40 : 6,
   });
 
   // Capture the raw camera track exactly once, before any filter is ever applied —
@@ -454,6 +475,14 @@ export default function CircleLiveRoomPage() {
   }
 
   const host = room.participants.find((p) => p.isHost);
+  const stagePeople = useMemo(() => {
+    if (isMultiMotor) return stageParticipantsFromRoom(room.participants);
+    const h = room.participants.find((p) => p.isHost);
+    return h ? [h] : [];
+  }, [isMultiMotor, room.participants]);
+  const onStage =
+    !!room.local && (room.local.isHost || room.local.camOn || room.local.micOn || !!room.local.videoTrack);
+  const seatsLeft = Math.max(0, LIVE_MOTOR_MAX_ON_STAGE - stagePeople.length);
   const viewerCount = Math.max(room.participants.length - 1, 0);
   // Gate the instant CSS fallback on the *published* track actually being the filtered
   // canvas output (reference equality with what useFaceFilters captured) — not on
@@ -463,13 +492,74 @@ export default function CircleLiveRoomPage() {
   // hadn't actually swapped yet, so neither was showing anything.
   const canvasIsLive = !!faceFilters.outputTrack && host?.videoTrack === faceFilters.outputTrack;
 
+  const stageIdsKey = stagePeople.map((p) => p.id).join(",");
+  useEffect(() => {
+    if (focusedStageId && !stagePeople.some((p) => p.id === focusedStageId)) {
+      setFocusedStageId(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedStageId, stageIdsKey]);
+
+  const handleJoinStage = async () => {
+    if (!isMultiMotor || isHost || joiningStage) return;
+    if (seatsLeft <= 0 && !onStage) {
+      toast({ title: "Stage is full", description: `Up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on motor view.` });
+      return;
+    }
+    setJoiningStage(true);
+    try {
+      await room.startPublishing();
+      toast({ title: "You're on stage", description: "Tap any person to see them full screen." });
+    } catch (e: any) {
+      toast({ title: "Couldn't join stage", description: e?.message, variant: "destructive" });
+    } finally {
+      setJoiningStage(false);
+    }
+  };
+
+  const handleLeaveStage = async () => {
+    if (isHost) return;
+    try {
+      await room.stopPublishing();
+      setFocusedStageId(null);
+      toast({ title: "Left the stage" });
+    } catch (e: any) {
+      toast({ title: "Couldn't leave stage", description: e?.message, variant: "destructive" });
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col overflow-hidden bg-black text-white">
       {/* min-h-0 is load-bearing here — without it a flex child can't shrink below its
           content size, and the whole fixed page would grow and start scrolling instead
           of the video area just clipping its own overflow. */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {isHost ? (
+        {isMultiMotor ? (
+          stagePeople.length > 0 || seatsLeft > 0 ? (
+            <LiveMotorGrid
+              participants={stagePeople}
+              hostCssFilter={!canvasIsLive ? colorFilter : undefined}
+              canvasIsLive={canvasIsLive}
+              focusedId={focusedStageId}
+              onFocusChange={setFocusedStageId}
+              emptySeatCount={seatsLeft > 0 ? 1 : 0}
+              onEmptySeatTap={
+                isHost
+                  ? () => void handleShareLive()
+                  : onStage
+                    ? undefined
+                    : () => void handleJoinStage()
+              }
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-white/60">
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <p className="text-[13px] font-semibold">
+                {room.connState === "connecting" ? "Connecting…" : "Waiting for people on stage…"}
+              </p>
+            </div>
+          )
+        ) : isHost ? (
           host && (
             <ParticipantVideo
               participant={host}
@@ -492,6 +582,11 @@ export default function CircleLiveRoomPage() {
           <span className="flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Live
           </span>
+          {isMultiMotor && (
+            <span className="rounded-full bg-fuchsia-600/90 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
+              Multi · {stagePeople.length}/{LIVE_MOTOR_MAX_ON_STAGE}
+            </span>
+          )}
           <span className="flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm">
             <Users className="h-3 w-3" /> {viewerCount}
           </span>
@@ -583,6 +678,28 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
+        {/* Guest on motor stage — mic / cam only */}
+        {isMultiMotor && onStage && !isHost && (
+          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
+            <button
+              type="button"
+              onClick={() => room.setMic(!room.local?.micOn)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.micOn ? "bg-white/15" : "bg-white text-black"}`}
+              aria-label="Toggle microphone"
+            >
+              {room.local?.micOn ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => room.setCam(!room.local?.camOn)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.camOn ? "bg-white/15" : "bg-white text-black"}`}
+              aria-label="Toggle camera"
+            >
+              {room.local?.camOn ? <Video className="h-4.5 w-4.5" /> : <VideoOff className="h-4.5 w-4.5" />}
+            </button>
+          </div>
+        )}
+
         <div className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] flex items-center gap-2">
           <button
             type="button"
@@ -654,6 +771,23 @@ export default function CircleLiveRoomPage() {
             </p>
           ))}
         </div>
+
+        {/* Multi join banner — Bigo-style “get on mic” CTA above chat */}
+        {isMultiMotor && !isHost && !onStage && seatsLeft > 0 && (
+          <div className="absolute bottom-[13.5rem] left-3 right-3 z-20 flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/65 px-3 py-2.5 backdrop-blur-md">
+            <p className="min-w-0 text-[12px] font-semibold leading-snug text-white/90">
+              Join as guest on stage — get noticed by the host
+            </p>
+            <button
+              type="button"
+              disabled={joiningStage}
+              onClick={() => void handleJoinStage()}
+              className="shrink-0 rounded-full bg-teal-500 px-3.5 py-1.5 text-[12px] font-black text-white disabled:opacity-50"
+            >
+              {joiningStage ? "…" : "Join"}
+            </button>
+          </div>
+        )}
 
         {/* Comment feed — holds the last 7 on screen before the oldest scrolls out. */}
         <div className="pointer-events-none absolute bottom-0 left-0 flex max-h-48 w-[70%] flex-col justify-end gap-1 overflow-hidden px-3 pb-2">
@@ -740,8 +874,7 @@ export default function CircleLiveRoomPage() {
         )}
       </div>
 
-      {/* One fixed-height bottom row — comment input plus (viewer) Like/Gift, so nothing
-          ever pushes the page taller than the screen. */}
+      {/* One fixed-height bottom row — comment input plus (viewer) Like/Gift / Join stage */}
       <div
         className="flex shrink-0 items-center gap-2 border-t border-white/10 bg-black/90 px-3 py-2"
         style={{ paddingBottom: "max(env(safe-area-inset-bottom), 0.5rem)" }}
@@ -763,6 +896,27 @@ export default function CircleLiveRoomPage() {
         >
           <Send className="h-4 w-4" />
         </button>
+        {isMultiMotor && !isHost && (
+          onStage ? (
+            <button
+              type="button"
+              onClick={() => void handleLeaveStage()}
+              className="flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-3 py-2 text-[12px] font-black"
+            >
+              <LogOut className="h-3.5 w-3.5" /> Leave
+            </button>
+          ) : (
+            <button
+              type="button"
+              disabled={joiningStage || seatsLeft <= 0}
+              onClick={() => void handleJoinStage()}
+              className="flex shrink-0 items-center gap-1 rounded-full bg-teal-500 px-3 py-2 text-[12px] font-black text-white disabled:opacity-40"
+            >
+              {joiningStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Hand className="h-3.5 w-3.5" />}
+              Join
+            </button>
+          )
+        )}
         {!isHost && (
           <>
             <button
