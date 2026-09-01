@@ -34,12 +34,10 @@ export async function upsertLiveSession(
   if (error) {
     // Race condition: another tab/user created it between our select and insert
     if (error.code === "23505") {
-      const { data: retry } = await supabase
-        .from("live_sessions")
-        .select("id")
-        .eq("session_code", sessionCode)
-        .single();
-      return retry?.id ?? null;
+      const { data: retry } = await (supabase as any).rpc("lookup_live_session_by_code", {
+        _code: sessionCode.toUpperCase(),
+      });
+      return (retry as string) ?? null;
     }
     console.error("[sessionDb] upsertLiveSession error:", error.message);
     return null;
