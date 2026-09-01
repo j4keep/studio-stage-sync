@@ -11,13 +11,13 @@ export async function upsertLiveSession(
   bookingId?: string | null,
 ): Promise<string | null> {
   // Try to find existing session first
-  const { data: existing } = await supabase
-    .from("live_sessions")
-    .select("id")
-    .eq("session_code", sessionCode)
-    .maybeSingle();
+  // Sessions are only readable by their creator/participants, so resolve the
+  // code through the secure lookup function (works for invited guests too).
+  const { data: existingId } = await (supabase as any).rpc("lookup_live_session_by_code", {
+    _code: sessionCode.toUpperCase(),
+  });
 
-  if (existing) return existing.id;
+  if (existingId) return existingId as string;
 
   // Create new session
   const { data, error } = await supabase
