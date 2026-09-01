@@ -49,7 +49,7 @@ const SettingsPage = () => {
 
   useEffect(() => {
     if (policy?.profile_privacy === "private") setPrivateProfile(true);
-    else if (policy && !policy.youth_mode) setPrivateProfile(policy.profile_privacy === "private");
+    else if (policy && !policy.youth_mode) setPrivateProfile(false);
   }, [policy?.profile_privacy, policy?.youth_mode]);
 
   useEffect(() => {

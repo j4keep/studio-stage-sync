@@ -1,2 +1,3 @@
 - [x] Job notifications: employer notified on apply / interview accept / decline / withdraw; applicant notified on every status change + interview invite
 - [ ] Fix publishing failure (security findings / build gate)
+- [x] Clear preexisting typecheck errors (safety context, meet.ts, MessagesPage, SettingsPage)

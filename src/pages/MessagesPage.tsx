@@ -421,7 +421,7 @@ const MessagesPage = () => {
             : null,
       });
       if (!gate.ok) {
-        toast({ title: "Messaging restricted", description: gate.reason, variant: "destructive" });
+        toast({ title: "Messaging restricted", description: "reason" in gate ? gate.reason : undefined, variant: "destructive" });
         return;
       }
     }

@@ -2,8 +2,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 const sb = supabase as any;
 
-export type CircleLiveLayoutMode = "live" | "multi" | "virtual";
-
 export type CircleLiveSession = {
   id: string;
   /** null = a public live tied directly to host_user_id (shows on the feed, anyone can
@@ -13,8 +11,6 @@ export type CircleLiveSession = {
   host_user_id: string;
   room: string;
   status: "live" | "ended";
-  /** Prep picker: Live (solo host) | Multi (motor / guest grid) | Virtual. */
-  layout_mode?: CircleLiveLayoutMode;
   started_at: string;
   ended_at: string | null;
 };
@@ -23,35 +19,13 @@ export type CircleLiveSession = {
  *  function's `^[a-zA-Z0-9_-]+$` validation, which a raw circle/user uuid already
  *  satisfies. Pass circleId: null for a public live (posted to the feed, open to anyone)
  *  instead of a Circle-gated one. */
-export async function startCircleLive(
-  circleId: string | null,
-  hostUserId: string,
-  layoutMode: CircleLiveLayoutMode = "live",
-): Promise<CircleLiveSession> {
+export async function startCircleLive(circleId: string | null, hostUserId: string): Promise<CircleLiveSession> {
   const room = `${circleId ? "circle" : "user"}_${circleId ?? hostUserId}_${Date.now()}`;
-  const mode: CircleLiveLayoutMode =
-    layoutMode === "multi" || layoutMode === "virtual" ? layoutMode : "live";
-  const base = {
-    circle_id: circleId,
-    host_user_id: hostUserId,
-    room,
-    status: "live" as const,
-  };
-
-  // Prefer writing layout_mode; if the column isn't migrated yet, fall back so Go Live
-  // still works and Multi is recovered from sessionStorage prep looks.
-  let { data, error } = await sb
+  const { data, error } = await sb
     .from("circle_live_sessions")
-    .insert({ ...base, layout_mode: mode })
+    .insert({ circle_id: circleId, host_user_id: hostUserId, room, status: "live" })
     .select("*")
     .single();
-
-  if (error && /layout_mode/i.test(error.message || "")) {
-    ({ data, error } = await sb.from("circle_live_sessions").insert(base).select("*").single());
-    if (!error && data) {
-      return { ...(data as CircleLiveSession), layout_mode: mode };
-    }
-  }
   if (error) throw error;
   return data as CircleLiveSession;
 }

@@ -260,7 +260,6 @@ export default function LiveCameraView({
             enhance,
             facing,
             dualLayout,
-            viewMode,
             circleId: circleId ?? null,
             at: Date.now(),
           }),
@@ -269,7 +268,7 @@ export default function LiveCameraView({
         /* ignore */
       }
 
-      const session = await startCircleLive(circleId ?? null, user.id, viewMode);
+      const session = await startCircleLive(circleId ?? null, user.id);
       if (circleId) {
         navigate(`/circle/c/${circleId}/live`);
       } else {

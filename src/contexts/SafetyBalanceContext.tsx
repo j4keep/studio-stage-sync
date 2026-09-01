@@ -30,7 +30,7 @@ function readLocalPolicy(userId: string): AccountSafetyPolicy | null {
   try {
     const raw = localStorage.getItem(localKey(userId));
     if (!raw) return null;
-    return normalizePolicyRow(JSON.parse(raw) as Record<string, unknown>, userId);
+    return normalizePolicyRow(JSON.parse(raw) as unknown as Record<string, unknown>, userId);
   } catch {
     return null;
   }
@@ -80,14 +80,14 @@ async function fetchPolicy(userId: string): Promise<AccountSafetyPolicy | null> 
     return readLocalPolicy(userId);
   }
   if (!data) return readLocalPolicy(userId);
-  const normalized = normalizePolicyRow(data as Record<string, unknown>, userId);
+  const normalized = normalizePolicyRow(data as unknown as Record<string, unknown>, userId);
   writeLocalPolicy(normalized);
   return normalized;
 }
 
 async function upsertPolicy(policy: Partial<AccountSafetyPolicy> & { user_id: string }) {
   const existing = (await fetchPolicy(policy.user_id)) || adultDefaults(policy.user_id, policy.date_of_birth ?? null);
-  const merged = normalizePolicyRow({ ...existing, ...policy } as Record<string, unknown>, policy.user_id);
+  const merged = normalizePolicyRow({ ...existing, ...policy } as unknown as Record<string, unknown>, policy.user_id);
 
   const { data, error } = await supabase
     .from("account_safety_policies" as any)
@@ -101,7 +101,7 @@ async function upsertPolicy(policy: Partial<AccountSafetyPolicy> & { user_id: st
     return merged;
   }
   const normalized = data
-    ? normalizePolicyRow(data as Record<string, unknown>, policy.user_id)
+    ? normalizePolicyRow(data as unknown as Record<string, unknown>, policy.user_id)
     : merged;
   writeLocalPolicy(normalized);
   return normalized;
@@ -232,7 +232,7 @@ export function SafetyBalanceProvider({ children }: { children: ReactNode }) {
         .select("*")
         .maybeSingle();
       if (upError) throw upError;
-      return data ? normalizePolicyRow(data as Record<string, unknown>, teenUserId) : null;
+      return data ? normalizePolicyRow(data as unknown as Record<string, unknown>, teenUserId) : null;
     },
     [],
   );
@@ -245,7 +245,7 @@ export function SafetyBalanceProvider({ children }: { children: ReactNode }) {
         .eq("user_id", teenUserId)
         .maybeSingle();
       if (!row) return null;
-      const teen = normalizePolicyRow(row as Record<string, unknown>, teenUserId);
+      const teen = normalizePolicyRow(row as unknown as Record<string, unknown>, teenUserId);
       const today = localDateString();
       const used = teen.social_usage_date === today ? teen.social_minutes_used_today : 0;
       const limit = teen.daily_social_limit_minutes ?? 90;

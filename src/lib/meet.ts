@@ -322,7 +322,7 @@ export async function requestInterview(opts: {
     writeLocalRequests([next, ...rows]);
     return next;
   }
-  return data as MeetInterviewRequest;
+  return data as unknown as MeetInterviewRequest;
 }
 
 export async function listMyInterviewInbox(userId: string): Promise<MeetInterviewRequest[]> {
@@ -337,7 +337,7 @@ export async function listMyInterviewInbox(userId: string): Promise<MeetIntervie
     console.warn("[meet] listMyInterviewInbox fallback", error.message);
     return readLocalRequests().filter((r) => r.to_user_id === userId || r.from_user_id === userId);
   }
-  return (data || []) as MeetInterviewRequest[];
+  return (data || []) as unknown as MeetInterviewRequest[];
 }
 
 export async function respondToInterview(
@@ -375,5 +375,5 @@ export async function getInterviewBetween(
       null
     );
   }
-  return (data as MeetInterviewRequest) || null;
+  return (data as unknown as MeetInterviewRequest) || null;
 }
