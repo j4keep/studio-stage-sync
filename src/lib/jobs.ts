@@ -243,7 +243,7 @@ export async function notifyJobApplicant(applicationId: string): Promise<{ ok: b
 /** Notify the employer about an application event (new application, interview accepted, etc.). */
 export async function notifyJobEmployer(
   applicationId: string,
-  event: "applied" | "interview_accepted" | "interview_declined" = "applied",
+  event: "applied" | "interview_accepted" | "interview_declined" | "withdrawn" = "applied",
 ): Promise<{ ok: boolean; error?: string }> {
   const { data, error } = await supabase.functions.invoke("notify-job-employer", {
     body: { application_id: applicationId, event },
