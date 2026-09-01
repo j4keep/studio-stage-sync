@@ -10,88 +10,10 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
-      account_safety_policies: {
-        Row: {
-          user_id: string
-          date_of_birth: string | null
-          age_band: string
-          youth_mode: boolean
-          youth_welcome_seen_at: string | null
-          daily_social_limit_minutes: number | null
-          social_minutes_used_today: number
-          social_usage_date: string | null
-          continuous_reminder_minutes: number | null
-          quiet_hours_enabled: boolean
-          quiet_hours_start: string | null
-          quiet_hours_end: string | null
-          parent_account_id: string | null
-          parent_link_code: string | null
-          parent_link_code_expires_at: string | null
-          profile_privacy: string
-          dm_permission: string
-          location_permission: string
-          detox_until: string | null
-          games_daily_limit_minutes: number | null
-          dating_allowed: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          user_id: string
-          date_of_birth?: string | null
-          age_band?: string
-          youth_mode?: boolean
-          youth_welcome_seen_at?: string | null
-          daily_social_limit_minutes?: number | null
-          social_minutes_used_today?: number
-          social_usage_date?: string | null
-          continuous_reminder_minutes?: number | null
-          quiet_hours_enabled?: boolean
-          quiet_hours_start?: string | null
-          quiet_hours_end?: string | null
-          parent_account_id?: string | null
-          parent_link_code?: string | null
-          parent_link_code_expires_at?: string | null
-          profile_privacy?: string
-          dm_permission?: string
-          location_permission?: string
-          detox_until?: string | null
-          games_daily_limit_minutes?: number | null
-          dating_allowed?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          user_id?: string
-          date_of_birth?: string | null
-          age_band?: string
-          youth_mode?: boolean
-          youth_welcome_seen_at?: string | null
-          daily_social_limit_minutes?: number | null
-          social_minutes_used_today?: number
-          social_usage_date?: string | null
-          continuous_reminder_minutes?: number | null
-          quiet_hours_enabled?: boolean
-          quiet_hours_start?: string | null
-          quiet_hours_end?: string | null
-          parent_account_id?: string | null
-          parent_link_code?: string | null
-          parent_link_code_expires_at?: string | null
-          profile_privacy?: string
-          dm_permission?: string
-          location_permission?: string
-          detox_until?: string | null
-          games_daily_limit_minutes?: number | null
-          dating_allowed?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       ai_generations: {
         Row: {
           audio_url: string | null
@@ -425,6 +347,253 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      circle_live_comments: {
+        Row: {
+          circle_id: string | null
+          created_at: string
+          id: string
+          sender_id: string
+          session_id: string
+          text: string
+        }
+        Insert: {
+          circle_id?: string | null
+          created_at?: string
+          id?: string
+          sender_id: string
+          session_id: string
+          text: string
+        }
+        Update: {
+          circle_id?: string | null
+          created_at?: string
+          id?: string
+          sender_id?: string
+          session_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_live_comments_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_live_comments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "circle_live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_live_gifts: {
+        Row: {
+          circle_id: string | null
+          created_at: string
+          gift_type: string
+          id: string
+          sender_id: string
+          session_id: string
+        }
+        Insert: {
+          circle_id?: string | null
+          created_at?: string
+          gift_type: string
+          id?: string
+          sender_id: string
+          session_id: string
+        }
+        Update: {
+          circle_id?: string | null
+          created_at?: string
+          gift_type?: string
+          id?: string
+          sender_id?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_live_gifts_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "circle_live_gifts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "circle_live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_live_sessions: {
+        Row: {
+          circle_id: string | null
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          room: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          circle_id?: string | null
+          ended_at?: string | null
+          host_user_id: string
+          id?: string
+          room: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          circle_id?: string | null
+          ended_at?: string | null
+          host_user_id?: string
+          id?: string
+          room?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_live_sessions_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_members: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          circle_id: string
+          id: string
+          requested_at: string
+          role: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          circle_id: string
+          id?: string
+          requested_at?: string
+          role?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          circle_id?: string
+          id?: string
+          requested_at?: string
+          role?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_members_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circles: {
+        Row: {
+          avatar_url: string | null
+          category: string | null
+          city: string | null
+          cover_url: string | null
+          created_at: string
+          default_post_visibility: string
+          description: string | null
+          id: string
+          is_discoverable: boolean
+          is_paid: boolean
+          is_personal: boolean
+          is_private: boolean
+          member_comments_allowed: boolean
+          member_count: number
+          member_invites_allowed: boolean
+          member_posting_allowed: boolean
+          name: string
+          notify_new_members: boolean
+          notify_new_requests: boolean
+          owner_id: string
+          price_cents: number | null
+          requires_approval: boolean
+          type: string
+          updated_at: string
+          welcome_message: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          category?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          default_post_visibility?: string
+          description?: string | null
+          id?: string
+          is_discoverable?: boolean
+          is_paid?: boolean
+          is_personal?: boolean
+          is_private?: boolean
+          member_comments_allowed?: boolean
+          member_count?: number
+          member_invites_allowed?: boolean
+          member_posting_allowed?: boolean
+          name: string
+          notify_new_members?: boolean
+          notify_new_requests?: boolean
+          owner_id: string
+          price_cents?: number | null
+          requires_approval?: boolean
+          type?: string
+          updated_at?: string
+          welcome_message?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          category?: string | null
+          city?: string | null
+          cover_url?: string | null
+          created_at?: string
+          default_post_visibility?: string
+          description?: string | null
+          id?: string
+          is_discoverable?: boolean
+          is_paid?: boolean
+          is_personal?: boolean
+          is_private?: boolean
+          member_comments_allowed?: boolean
+          member_count?: number
+          member_invites_allowed?: boolean
+          member_posting_allowed?: boolean
+          name?: string
+          notify_new_members?: boolean
+          notify_new_requests?: boolean
+          owner_id?: string
+          price_cents?: number | null
+          requires_approval?: boolean
+          type?: string
+          updated_at?: string
+          welcome_message?: string | null
         }
         Relationships: []
       }
@@ -3528,6 +3697,7 @@ export type Database = {
           background_image_url: string | null
           banner_url: string | null
           bio: string | null
+          character_skin_tone: string | null
           country_flag: string | null
           created_at: string
           custom_accent_color: string | null
@@ -3552,6 +3722,7 @@ export type Database = {
           background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          character_skin_tone?: string | null
           country_flag?: string | null
           created_at?: string
           custom_accent_color?: string | null
@@ -3576,6 +3747,7 @@ export type Database = {
           background_image_url?: string | null
           banner_url?: string | null
           bio?: string | null
+          character_skin_tone?: string | null
           country_flag?: string | null
           created_at?: string
           custom_accent_color?: string | null
@@ -4993,14 +5165,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      get_peer_age_band: {
-        Args: { p_user_id: string }
-        Returns: string
-      }
-      link_parent_to_teen: {
-        Args: { p_code: string }
-        Returns: string
-      }
       apply_moderation_action: {
         Args: {
           p_action_type: string
@@ -5089,6 +5253,42 @@ export type Database = {
       }
       expire_pending_bookings: { Args: never; Returns: number }
       expire_stale_deals: { Args: never; Returns: undefined }
+      get_or_create_personal_circle: {
+        Args: { p_display_name?: string; p_user_id: string }
+        Returns: {
+          avatar_url: string | null
+          category: string | null
+          city: string | null
+          cover_url: string | null
+          created_at: string
+          default_post_visibility: string
+          description: string | null
+          id: string
+          is_discoverable: boolean
+          is_paid: boolean
+          is_personal: boolean
+          is_private: boolean
+          member_comments_allowed: boolean
+          member_count: number
+          member_invites_allowed: boolean
+          member_posting_allowed: boolean
+          name: string
+          notify_new_members: boolean
+          notify_new_requests: boolean
+          owner_id: string
+          price_cents: number | null
+          requires_approval: boolean
+          type: string
+          updated_at: string
+          welcome_message: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "circles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       has_role: { Args: { _role: string; _user_id: string }; Returns: boolean }
       increment_battle_views: {
         Args: { battle_id: string }
@@ -5122,6 +5322,14 @@ export type Database = {
       }
       is_podcast_participant: {
         Args: { _episode: string; _user: string }
+        Returns: boolean
+      }
+      is_social_circle_admin: {
+        Args: { p_circle_id: string; p_user_id?: string }
+        Returns: boolean
+      }
+      is_social_circle_member: {
+        Args: { p_circle_id: string; p_user_id?: string }
         Returns: boolean
       }
       lookup_booking_by_session_code: {
@@ -5192,6 +5400,14 @@ export type Database = {
             }
             Returns: undefined
           }
+      notify_circle_join_approved: {
+        Args: { p_member_id: string }
+        Returns: undefined
+      }
+      notify_circle_join_request: {
+        Args: { p_circle_id: string }
+        Returns: undefined
+      }
       refresh_moderation_status: {
         Args: { p_user_id?: string }
         Returns: {
