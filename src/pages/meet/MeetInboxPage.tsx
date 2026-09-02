@@ -137,13 +137,24 @@ function MeetInboxInner() {
                   </button>
                 )}
                 {r.status === "accepted" && (
-                  <button
-                    type="button"
-                    onClick={() => void openChat(otherId)}
-                    className="inline-flex items-center gap-1 rounded-full gradient-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5" /> Message
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => void openChat(otherId)}
+                      className="inline-flex items-center gap-1 rounded-full gradient-primary px-3 py-1.5 text-[11px] font-bold text-primary-foreground"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" /> Message
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        nav(`/meet/stage/${incoming ? user?.id : r.to_user_id}`)
+                      }
+                      className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-[11px] font-bold"
+                    >
+                      <Users className="h-3.5 w-3.5" /> Interview stage
+                    </button>
+                  </>
                 )}
               </div>
             </div>
