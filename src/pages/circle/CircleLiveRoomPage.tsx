@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ChevronDown, Gift, Hand, Heart, Loader2, LogOut, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
+import { Check, ChevronDown, Gift, Hand, Heart, Loader2, LogOut, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -32,6 +32,7 @@ import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
 import DualCameraLayoutSheet, { type DualCameraLayout } from "@/components/feed/create/DualCameraLayoutSheet";
 import LiveMotorGrid from "@/components/live/LiveMotorGrid";
+import { useLiveStageDoor } from "@/hooks/useLiveStageDoor";
 import {
   liveWatchUrl,
   openSecondaryCamera,
@@ -209,16 +210,26 @@ export default function CircleLiveRoomPage() {
   const layoutMode: CircleLiveLayoutMode =
     session?.layout_mode || prepLayoutMode || "live";
   const isMultiMotor = layoutMode === "multi";
+  // Guests may request a stage seat on Multi lives (and once anyone is on stage, grid shows).
+  const stageJoinEnabled = isMultiMotor;
 
   const room = usePodcastLiveRoom({
     roomName: session?.room ?? "",
     displayName,
     hostIdentity: session?.host_user_id,
     enabled: !!session && isApprovedMember,
-    // Host always publishes. Multi guests get publish permission but join stage on demand.
+    // Host always publishes. Multi guests get publish permission but only go live after host accepts.
     publish: isHost,
-    canPublish: isHost || isMultiMotor,
-    maxParticipants: isMultiMotor ? 40 : 6,
+    canPublish: isHost || stageJoinEnabled,
+    maxParticipants: stageJoinEnabled ? 40 : 6,
+  });
+
+  const stageDoor = useLiveStageDoor({
+    sessionId: session?.id,
+    enabled: !!session && isApprovedMember && stageJoinEnabled,
+    isHost,
+    userId: user?.id,
+    displayName,
   });
 
   // Capture the raw camera track exactly once, before any filter is ever applied —
@@ -508,9 +519,13 @@ export default function CircleLiveRoomPage() {
   }, [session?.id, isHost]);
 
   const handleJoinStage = async () => {
-    if (!isMultiMotor || isHost || joiningStage) return;
-    if (seatsLeft <= 0 && !onStage) {
-      toast({ title: "Stage is full", description: `Up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on motor view.` });
+    if (!stageJoinEnabled || isHost || joiningStage) return;
+    // Host already gated Accept when full; guests who were accepted should still publish.
+    if (seatsLeft <= 0 && !onStage && stageDoor.status !== "accepted") {
+      toast({
+        title: "Stage is full",
+        description: `No space available — up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on stage.`,
+      });
       return;
     }
     setJoiningStage(true);
@@ -519,9 +534,62 @@ export default function CircleLiveRoomPage() {
       toast({ title: "You're on stage", description: "Tap any person to see them full screen." });
     } catch (e: any) {
       toast({ title: "Couldn't join stage", description: e?.message, variant: "destructive" });
+      stageDoor.resetToIdle();
     } finally {
       setJoiningStage(false);
     }
+  };
+
+  // Host accepted → guest publishes onto the motor stage.
+  useEffect(() => {
+    if (isHost || !stageJoinEnabled) return;
+    if (stageDoor.status !== "accepted") return;
+    if (onStage || joiningStage) return;
+    void handleJoinStage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageDoor.status, isHost, stageJoinEnabled, onStage]);
+
+  useEffect(() => {
+    if (stageDoor.status === "declined" && stageDoor.declineReason) {
+      toast({ title: "Request declined", description: stageDoor.declineReason, variant: "destructive" });
+    }
+    if (stageDoor.status === "full") {
+      toast({
+        title: "Stage is full",
+        description: stageDoor.declineReason || "No space available to join right now.",
+        variant: "destructive",
+      });
+    }
+  }, [stageDoor.status, stageDoor.declineReason]);
+
+  const handleRequestJoin = () => {
+    if (!stageJoinEnabled || isHost || onStage) return;
+    if (seatsLeft <= 0) {
+      toast({
+        title: "Stage is full",
+        description: `No space available — up to ${LIVE_MOTOR_MAX_ON_STAGE} people can be on stage.`,
+      });
+      return;
+    }
+    if (stageDoor.status === "requesting") {
+      stageDoor.cancelRequest();
+      return;
+    }
+    stageDoor.requestJoin();
+    toast({ title: "Request sent", description: "Waiting for the host to accept…" });
+  };
+
+  const handleAcceptRequest = (reqId: string) => {
+    if (seatsLeft <= 0) {
+      stageDoor.notifyFull(reqId);
+      toast({
+        title: "Stage is full",
+        description: `No space available — up to ${LIVE_MOTOR_MAX_ON_STAGE} people on stage.`,
+      });
+      return;
+    }
+    stageDoor.accept(reqId);
+    toast({ title: "Accepted", description: "They’re joining the stage." });
   };
 
   const handleLeaveStage = async () => {
@@ -529,6 +597,7 @@ export default function CircleLiveRoomPage() {
     try {
       await room.stopPublishing();
       setFocusedStageId(null);
+      stageDoor.resetToIdle();
       toast({ title: "Left the stage" });
     } catch (e: any) {
       toast({ title: "Couldn't leave stage", description: e?.message, variant: "destructive" });
@@ -616,12 +685,21 @@ export default function CircleLiveRoomPage() {
               focusedId={focusedStageId}
               onFocusChange={setFocusedStageId}
               emptySeatCount={seatsLeft > 0 ? 1 : 0}
+              emptySeatLabel={
+                isHost ? "Invite" : seatsLeft <= 0 ? "Full" : "Ask to join"
+              }
               onEmptySeatTap={
                 isHost
                   ? () => void handleShareLive()
                   : onStage
                     ? undefined
-                    : () => void handleJoinStage()
+                    : seatsLeft <= 0
+                      ? () =>
+                          toast({
+                            title: "Stage is full",
+                            description: "No space available to join right now.",
+                          })
+                      : handleRequestJoin
               }
             />
           ) : (
@@ -845,20 +923,73 @@ export default function CircleLiveRoomPage() {
           ))}
         </div>
 
-        {/* Multi join banner — Bigo-style “get on mic” CTA above chat */}
-        {isMultiMotor && !isHost && !onStage && seatsLeft > 0 && (
+        {/* Host: pending join requests */}
+        {stageJoinEnabled && isHost && stageDoor.pending.length > 0 && (
+          <div className="absolute right-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+3rem)] z-30 flex w-[min(100%-1.5rem,18rem)] flex-col gap-2">
+            {stageDoor.pending.map((req) => (
+              <div
+                key={req.reqId}
+                className="rounded-2xl border border-white/15 bg-black/75 p-3 shadow-lg backdrop-blur-md"
+              >
+                <p className="text-[12px] font-bold text-white">
+                  <span className="text-teal-300">{req.name}</span> wants to join
+                </p>
+                <p className="mt-0.5 text-[10px] text-white/55">
+                  {seatsLeft > 0
+                    ? `${seatsLeft} seat${seatsLeft === 1 ? "" : "s"} left`
+                    : "Stage is full"}
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleAcceptRequest(req.reqId)}
+                    disabled={seatsLeft <= 0}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-full bg-teal-500 py-1.5 text-[11px] font-black text-white disabled:opacity-40"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                    {seatsLeft <= 0 ? "Full" : "Accept"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => stageDoor.decline(req.reqId)}
+                    className="flex flex-1 items-center justify-center gap-1 rounded-full bg-white/15 py-1.5 text-[11px] font-black text-white"
+                  >
+                    <X className="h-3.5 w-3.5" /> Decline
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Multi join banner — request to join (host must accept) */}
+        {stageJoinEnabled && !isHost && !onStage && (
           <div className="absolute bottom-[13.5rem] left-3 right-3 z-20 flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/65 px-3 py-2.5 backdrop-blur-md">
             <p className="min-w-0 text-[12px] font-semibold leading-snug text-white/90">
-              Join as guest on stage — get noticed by the host
+              {seatsLeft <= 0
+                ? "Stage is full — no space available to join"
+                : stageDoor.status === "requesting"
+                  ? "Waiting for the host to accept your request…"
+                  : stageDoor.status === "declined"
+                    ? "Request declined — you can ask again"
+                    : "Ask to join the stage — host will accept or decline"}
             </p>
-            <button
-              type="button"
-              disabled={joiningStage}
-              onClick={() => void handleJoinStage()}
-              className="shrink-0 rounded-full bg-teal-500 px-3.5 py-1.5 text-[12px] font-black text-white disabled:opacity-50"
-            >
-              {joiningStage ? "…" : "Join"}
-            </button>
+            {seatsLeft <= 0 ? (
+              <span className="shrink-0 rounded-full bg-white/15 px-3.5 py-1.5 text-[12px] font-black text-white/70">
+                Full
+              </span>
+            ) : (
+              <button
+                type="button"
+                disabled={joiningStage || stageDoor.status === "accepted"}
+                onClick={handleRequestJoin}
+                className={`shrink-0 rounded-full px-3.5 py-1.5 text-[12px] font-black text-white disabled:opacity-50 ${
+                  stageDoor.status === "requesting" ? "bg-white/20" : "bg-teal-500"
+                }`}
+              >
+                {stageDoor.status === "requesting" ? "Cancel" : "Request"}
+              </button>
+            )}
           </div>
         )}
 
@@ -969,7 +1100,7 @@ export default function CircleLiveRoomPage() {
         >
           <Send className="h-4 w-4" />
         </button>
-        {isMultiMotor && !isHost && (
+        {stageJoinEnabled && !isHost && (
           onStage ? (
             <button
               type="button"
@@ -978,15 +1109,25 @@ export default function CircleLiveRoomPage() {
             >
               <LogOut className="h-3.5 w-3.5" /> Leave
             </button>
+          ) : seatsLeft <= 0 ? (
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/10 px-3 py-2 text-[12px] font-black text-white/60">
+              Full
+            </span>
           ) : (
             <button
               type="button"
-              disabled={joiningStage || seatsLeft <= 0}
-              onClick={() => void handleJoinStage()}
-              className="flex shrink-0 items-center gap-1 rounded-full bg-teal-500 px-3 py-2 text-[12px] font-black text-white disabled:opacity-40"
+              disabled={joiningStage || stageDoor.status === "accepted"}
+              onClick={handleRequestJoin}
+              className={`flex shrink-0 items-center gap-1 rounded-full px-3 py-2 text-[12px] font-black text-white disabled:opacity-40 ${
+                stageDoor.status === "requesting" ? "bg-white/20" : "bg-teal-500"
+              }`}
             >
-              {joiningStage ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Hand className="h-3.5 w-3.5" />}
-              Join
+              {joiningStage ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Hand className="h-3.5 w-3.5" />
+              )}
+              {stageDoor.status === "requesting" ? "Cancel" : "Ask"}
             </button>
           )
         )}

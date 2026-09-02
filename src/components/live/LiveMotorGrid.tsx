@@ -13,6 +13,7 @@ type Props = {
   /** Empty + seats viewers/host can tap (join stage or invite). */
   emptySeatCount?: number;
   onEmptySeatTap?: () => void;
+  emptySeatLabel?: string;
 };
 
 /**
@@ -27,6 +28,7 @@ export default function LiveMotorGrid({
   onFocusChange,
   emptySeatCount = 0,
   onEmptySeatTap,
+  emptySeatLabel = "Open seat",
 }: Props) {
   const count = participants.length;
   const focused = focusedId ? participants.find((p) => p.id === focusedId) : null;
@@ -71,6 +73,7 @@ export default function LiveMotorGrid({
         <EmptySeatTile
           key={`empty-${i}`}
           slotNumber={count + i}
+          label={emptySeatLabel}
           onTap={onEmptySeatTap}
         />
       ))}
@@ -99,9 +102,11 @@ function motorGridClass(tileCount: number, peopleCount: number): string {
 
 function EmptySeatTile({
   slotNumber,
+  label,
   onTap,
 }: {
   slotNumber: number;
+  label: string;
   onTap?: () => void;
 }) {
   return (
@@ -117,7 +122,7 @@ function EmptySeatTile({
       <span className="flex h-11 w-11 items-center justify-center rounded-full border border-dashed border-white/35 bg-white/5">
         <Plus className="h-5 w-5" />
       </span>
-      <span className="text-[11px] font-bold text-white/55">Open seat</span>
+      <span className="px-2 text-center text-[11px] font-bold text-white/55">{label}</span>
     </button>
   );
 }
