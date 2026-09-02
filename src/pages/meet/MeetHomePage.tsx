@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Heart, Inbox, Pencil, Search, Sparkles } from "lucide-react";
+import { ArrowLeft, Heart, Inbox, Pencil, Search, Sparkles, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import MeetAdultGate, { MeetBrandMark } from "@/components/meet/MeetAdultGate";
 import MeetProfileCard, { MeetProfileCardSkeleton } from "@/components/meet/MeetProfileCard";
@@ -68,6 +68,17 @@ function MeetHomeInner() {
           >
             <Inbox className="h-4 w-4" />
           </button>
+          {user?.id && (
+            <button
+              type="button"
+              onClick={() => nav(`/meet/stage/${user.id}`)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+              aria-label="Interview stage"
+              title="Interview stage"
+            >
+              <Users className="h-4 w-4" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() => nav("/meet/setup")}

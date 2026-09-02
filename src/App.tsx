@@ -75,6 +75,7 @@ import MeetHomePage from "./pages/meet/MeetHomePage";
 import MeetSetupPage from "./pages/meet/MeetSetupPage";
 import MeetProfilePage from "./pages/meet/MeetProfilePage";
 import MeetInboxPage from "./pages/meet/MeetInboxPage";
+import MeetInterviewStagePage from "./pages/meet/MeetInterviewStagePage";
 import AskYajPage from "./pages/AskYajPage";
 import YajAiSettingsPage from "./pages/YajAiSettingsPage";
 import YajAiConversationSettingsPage from "./pages/YajAiConversationSettingsPage";
@@ -354,6 +355,7 @@ const ProtectedRoutes = () => {
         <Route path="/meet" element={<MeetHomePage />} />
         <Route path="/meet/setup" element={<MeetSetupPage />} />
         <Route path="/meet/inbox" element={<MeetInboxPage />} />
+        <Route path="/meet/stage/:hostUserId" element={<MeetInterviewStagePage />} />
         <Route path="/meet/u/:userId" element={<MeetProfilePage />} />
         <Route path="/local-help" element={<LocalHelpHomePage />} />
         <Route path="/local-help/business" element={<LocalHelpBusinessPage />} />

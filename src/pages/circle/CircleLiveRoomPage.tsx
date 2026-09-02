@@ -560,7 +560,31 @@ export default function CircleLiveRoomPage() {
         variant: "destructive",
       });
     }
+    if (stageDoor.status === "kicked") {
+      toast({
+        title: "Removed from stage",
+        description: stageDoor.declineReason || "The host removed you from the stage.",
+        variant: "destructive",
+      });
+      void (async () => {
+        try {
+          await room.stopPublishing();
+        } catch {
+          /* ignore */
+        }
+        setFocusedStageId(null);
+        stageDoor.resetToIdle();
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stageDoor.status, stageDoor.declineReason]);
+
+  const handleKickGuest = (participantId: string) => {
+    if (!isHost || !participantId) return;
+    stageDoor.kick(participantId);
+    if (focusedStageId === participantId) setFocusedStageId(null);
+    toast({ title: "Removed from stage", description: "That seat is open again." });
+  };
 
   const handleRequestJoin = () => {
     if (!stageJoinEnabled || isHost || onStage) return;
@@ -688,6 +712,8 @@ export default function CircleLiveRoomPage() {
               emptySeatLabel={
                 isHost ? "Invite" : seatsLeft <= 0 ? "Full" : "Ask to join"
               }
+              showHostKick={isHost}
+              onKick={handleKickGuest}
               onEmptySeatTap={
                 isHost
                   ? () => void handleShareLive()

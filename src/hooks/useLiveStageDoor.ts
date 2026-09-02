@@ -24,7 +24,8 @@ export type LiveStageRequestStatus =
   | "requesting"
   | "accepted"
   | "declined"
-  | "full";
+  | "full"
+  | "kicked";
 
 type OutMsg = { type: string; [k: string]: unknown };
 
@@ -132,6 +133,10 @@ export function useLiveStageDoor({ sessionId, enabled, isHost, userId, displayNa
           setStatus("full");
           setDeclineReason("Stage is full — no seats available right now.");
         }
+        if (data.type === "kick" && data.userId && data.userId === userIdRef.current) {
+          setStatus("kicked");
+          setDeclineReason(String(data.reason || "The host removed you from the stage."));
+        }
       }
     });
 
@@ -194,6 +199,20 @@ export function useLiveStageDoor({ sessionId, enabled, isHost, userId, displayNa
     [isHost, send],
   );
 
+  /** Host removes a guest from the stage — opens a seat. */
+  const kick = useCallback(
+    (targetUserId: string, reason?: string) => {
+      if (!isHost || !targetUserId) return;
+      send({
+        type: "kick",
+        userId: targetUserId,
+        reason: reason || "The host removed you from the stage.",
+      });
+      setPending((prev) => prev.filter((x) => x.userId !== targetUserId));
+    },
+    [isHost, send],
+  );
+
   const resetToIdle = useCallback(() => {
     if (isHost) return;
     setStatus("idle");
@@ -209,6 +228,7 @@ export function useLiveStageDoor({ sessionId, enabled, isHost, userId, displayNa
     accept,
     decline,
     notifyFull,
+    kick,
     resetToIdle,
   };
 }

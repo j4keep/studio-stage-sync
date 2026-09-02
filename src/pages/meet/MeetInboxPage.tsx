@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, MessageCircle, X } from "lucide-react";
+import { ArrowLeft, Check, MessageCircle, Users, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import MeetAdultGate, { MeetBrandMark } from "@/components/meet/MeetAdultGate";
