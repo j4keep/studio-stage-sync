@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Heart, Package, Receipt, Settings, Shield, ShoppingBag, Store, Tag } from "lucide-react";
+import { ArrowLeft, ChevronRight, Heart, Package, Receipt, Settings, ShoppingBag, Store, Tag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
@@ -68,6 +68,10 @@ export default function MarketplaceAccountPage() {
             </button>
           );
         })}
+      </div>
+
+      <div className="px-3 pt-3">
+        <MarketplaceSafetyTips variant="card" />
       </div>
 
       <section className="mt-4 px-3">
