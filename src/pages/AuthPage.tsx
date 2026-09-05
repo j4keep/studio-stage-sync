@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { ageBandFromDob } from "@/lib/safety-balance";
+import { formatAuthError, isAuthNetworkError, probeSupabaseAuthReachable } from "@/lib/auth-errors";
 import yajLogo from "@/assets/yaj-logo.png";
 
 type AuthView = "splash" | "welcome" | "login" | "signup" | "forgot";
@@ -18,6 +19,7 @@ const AuthPage = () => {
   const [dob, setDob] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [backendDown, setBackendDown] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -45,6 +47,17 @@ const AuthPage = () => {
     }
   }, [view]);
 
+  // Detect unreachable Cloud/Supabase so "Load failed" isn't cryptic.
+  useEffect(() => {
+    let cancelled = false;
+    void probeSupabaseAuthReachable().then((ok) => {
+      if (!cancelled) setBackendDown(!ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Play pop sound on splash
   useEffect(() => {
     if (view === "splash") {
@@ -60,7 +73,9 @@ const AuthPage = () => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setIsSubmitting(false);
     if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      const formatted = formatAuthError(error.message, "login");
+      if (isAuthNetworkError(error.message)) setBackendDown(true);
+      toast({ title: formatted.title, description: formatted.description, variant: "destructive" });
     }
   };
 
@@ -100,7 +115,9 @@ const AuthPage = () => {
     });
     setIsSubmitting(false);
     if (error) {
-      toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+      const formatted = formatAuthError(error.message, "signup");
+      if (isAuthNetworkError(error.message)) setBackendDown(true);
+      toast({ title: formatted.title, description: formatted.description, variant: "destructive" });
     } else {
       toast({
         title: band === "teen" ? "Youth account created" : "Check your email",
@@ -124,7 +141,9 @@ const AuthPage = () => {
     });
     setIsSubmitting(false);
     if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      const formatted = formatAuthError(error.message, "reset");
+      if (isAuthNetworkError(error.message)) setBackendDown(true);
+      toast({ title: formatted.title, description: formatted.description, variant: "destructive" });
     } else {
       toast({ title: "Email sent", description: "Check your inbox for a password reset link." });
       setView("login");
@@ -133,6 +152,16 @@ const AuthPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col items-center justify-center px-6 max-w-lg mx-auto relative overflow-hidden">
+      {backendDown && view !== "splash" && (
+        <div className="absolute left-4 right-4 top-[max(0.75rem,env(safe-area-inset-top))] z-20 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2.5 text-left">
+          <p className="text-xs font-bold text-destructive">Can't reach YAJ servers</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">
+            Backend host is unreachable. In Lovable open <span className="font-semibold text-foreground">Cloud</span> and
+            confirm your project is active (not paused) and connected, then refresh.
+          </p>
+        </div>
+      )}
+
       {/* SPLASH */}
       {view === "splash" && (
         <div className="flex flex-col items-center justify-center">
