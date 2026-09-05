@@ -11,6 +11,7 @@ import {
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
 import fiveUnderBanner from "@/assets/five-under-banner-v3.png.asset.json";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
 
@@ -218,8 +219,9 @@ export default function MarketplaceHomePage() {
         </button>
       </div>
 
-
-
+      <div className="px-3 pt-3">
+        <MarketplaceSafetyTips variant="card" />
+      </div>
 
       {setupNeeded && (
         <div className="mx-4 mt-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm">

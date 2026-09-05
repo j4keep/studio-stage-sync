@@ -23,6 +23,7 @@ import {
   isDetoxActive,
   isWithinQuietHours,
 } from "@/lib/safety-balance";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 
 const SafetyCenterPage = () => {
   const navigate = useNavigate();
@@ -126,6 +127,10 @@ const SafetyCenterPage = () => {
           </p>
         </div>
       )}
+
+      <div className="mb-5">
+        <MarketplaceSafetyTips variant="panel" defaultOpen />
+      </div>
 
       <div className="space-y-2">
         {rows.map((row) => (

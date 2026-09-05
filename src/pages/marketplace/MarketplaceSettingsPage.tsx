@@ -8,6 +8,7 @@ import {
   getMarketplaceProfile,
   updateMarketplaceProfile,
 } from "@/lib/marketplace-api";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 
 export default function MarketplaceSettingsPage() {
   const nav = useNavigate();
@@ -64,6 +65,7 @@ export default function MarketplaceSettingsPage() {
         <h1 className="text-lg font-black">Marketplace settings</h1>
       </header>
       <div className="space-y-4 px-4 pt-4">
+        <MarketplaceSafetyTips variant="panel" defaultOpen />
         <p className="text-xs text-muted-foreground">
           Separate from general YAJ notifications. Your Marketplace profile stays separate from your social profile.
         </p>

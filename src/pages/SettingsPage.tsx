@@ -8,6 +8,7 @@ import ProGateModal from "@/components/ProGateModal";
 import { useProGate } from "@/hooks/use-pro-gate";
 import { useAuth } from "@/contexts/AuthContext";
 import MarketplaceLocationCard from "@/components/marketplace/MarketplaceLocationCard";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useSafetyBalance } from "@/hooks/useSafetyBalance";
@@ -180,6 +181,9 @@ const SettingsPage = () => {
           <Switch checked={showActivity} onCheckedChange={setShowActivity} />
         </SettingRow>
         <ActionRow icon={<Ban className="w-4 h-4" />} label="Blocking" onClick={() => navigate("/settings/blocking")} />
+        <div className="px-1 pb-2 pt-1">
+          <MarketplaceSafetyTips variant="panel" />
+        </div>
       </Section>
 
       {/* Safety & Balance */}

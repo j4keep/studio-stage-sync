@@ -36,6 +36,7 @@ import { fetchUserDisplayRating, type DisplayRating } from "@/lib/ratings";
 import { blockUser } from "@/lib/blocks";
 import ShareListingSheet from "@/components/marketplace/ShareListingSheet";
 import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 import { useSellerDistance } from "@/hooks/use-seller-distance";
 
 export default function MarketplaceListingPage() {
@@ -432,6 +433,8 @@ export default function MarketplaceListingPage() {
             </button>
           </div>
         )}
+
+        {!isOwner && <MarketplaceSafetyTips variant="compact" />}
 
         {isOwner && (
           <div className="flex flex-wrap gap-2">

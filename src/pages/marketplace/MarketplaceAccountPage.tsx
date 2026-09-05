@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChevronRight, Heart, Package, Receipt, Settings, ShoppingBag, Store, Tag } from "lucide-react";
+import { ArrowLeft, ChevronRight, Heart, Package, Receipt, Settings, Shield, ShoppingBag, Store, Tag } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { listMarketplaceListings, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard from "@/components/marketplace/ListingCard";
+import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 
 /** Simple My Listings / saved management — not a Marketplace dashboard. */
 export default function MarketplaceAccountPage() {
