@@ -1,5 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { BookItem } from "@/lib/books-catalog";
+
+export type BookPageFlipperHandle = {
+  next: () => void;
+  prev: () => void;
+};
 
 type Props = {
   book: BookItem;
@@ -9,6 +14,8 @@ type Props = {
   onToggleControls: () => void;
   index: number;
   onIndexChange: (next: number) => void;
+  /** Extra bottom space for the Read-to-me bar */
+  bottomReserve?: boolean;
 };
 
 /**
@@ -16,14 +23,18 @@ type Props = {
  * Adult mode: the page IS the screen (paper texture, generous type, slim chrome).
  * Kids mode: chunkier type, playful card frame, less text density.
  */
-export default function BookPageFlipper({
-  book,
-  mode,
-  controlsVisible,
-  onToggleControls,
-  index,
-  onIndexChange,
-}: Props) {
+const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPageFlipper(
+  {
+    book,
+    mode,
+    controlsVisible,
+    onToggleControls,
+    index,
+    onIndexChange,
+    bottomReserve = false,
+  },
+  ref,
+) {
   const pages = book.pages.length ? book.pages : [{ text: "This book has no pages yet." }];
   const [flip, setFlip] = useState<"none" | "next" | "prev">("none");
   const touchX = useRef<number | null>(null);
@@ -46,6 +57,11 @@ export default function BookPageFlipper({
     },
     [index, onIndexChange, pages.length],
   );
+
+  useImperativeHandle(ref, () => ({
+    next: () => go("next"),
+    prev: () => go("prev"),
+  }), [go]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -159,9 +175,16 @@ export default function BookPageFlipper({
         <div
           className={`mx-auto flex h-full max-w-xl flex-col ${
             adult
-              ? "px-6 pr-8 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pr-12"
+              ? "px-6 pr-8 pt-3 sm:px-10 sm:pr-12"
               : "px-4 py-4"
           }`}
+          style={{
+            paddingBottom: bottomReserve
+              ? "max(6.75rem, calc(env(safe-area-inset-bottom) + 5.5rem))"
+              : adult
+                ? "max(1.25rem, env(safe-area-inset-bottom))"
+                : undefined,
+          }}
         >
           {!adult && (
             <div
@@ -235,4 +258,6 @@ export default function BookPageFlipper({
       </div>
     </div>
   );
-}
+});
+
+export default BookPageFlipper;

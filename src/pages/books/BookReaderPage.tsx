@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
-import BookPageFlipper from "@/components/books/BookPageFlipper";
+import BookPageFlipper, { type BookPageFlipperHandle } from "@/components/books/BookPageFlipper";
+import BookNarratorBar from "@/components/books/BookNarratorBar";
+import { useBookNarration } from "@/hooks/useBookNarration";
 import { formatBookPrice, getBookById } from "@/lib/books-catalog";
 
 export default function BookReaderPage() {
@@ -13,6 +15,7 @@ export default function BookReaderPage() {
   const [showCover, setShowCover] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
+  const flipperRef = useRef<BookPageFlipperHandle>(null);
 
   useEffect(() => {
     setShowCover(true);
@@ -33,6 +36,26 @@ export default function BookReaderPage() {
       body.style.overflow = prevBody;
     };
   }, []);
+
+  const pageCount = book?.pages.length ?? 0;
+  const pageText = book?.pages[pageIndex]?.text ?? "";
+
+  const advancePage = useCallback(() => {
+    flipperRef.current?.next();
+  }, []);
+
+  const narration = useBookNarration({
+    pageText,
+    pageIndex,
+    pageCount: Math.max(pageCount, 1),
+    onAdvancePage: advancePage,
+  });
+
+  // Stop narration when returning to cover or leaving the book.
+  useEffect(() => {
+    if (showCover) narration.stop();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to cover toggle
+  }, [showCover]);
 
   if (!book) {
     return (
@@ -113,7 +136,7 @@ export default function BookReaderPage() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,600&display=swap');
       `}</style>
-      <div className="flex h-[100dvh] flex-col">
+      <div className="relative flex h-[100dvh] flex-col">
         <header
           className={`z-10 flex items-center gap-2 px-3 transition-all duration-200 ${
             controlsVisible
@@ -131,7 +154,10 @@ export default function BookReaderPage() {
         >
           <button
             type="button"
-            onClick={() => nav(backTo)}
+            onClick={() => {
+              narration.stop();
+              nav(backTo);
+            }}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
             style={{ background: kids ? "#fff" : "rgba(0,0,0,0.05)" }}
             aria-label="Back"
@@ -155,12 +181,30 @@ export default function BookReaderPage() {
         </header>
 
         <BookPageFlipper
+          ref={flipperRef}
           book={book}
           mode={kids ? "kids" : "adult"}
           controlsVisible={controlsVisible}
           onToggleControls={() => setControlsVisible((v) => !v)}
           index={pageIndex}
           onIndexChange={setPageIndex}
+          bottomReserve
+        />
+
+        <BookNarratorBar
+          mode={kids ? "kids" : "adult"}
+          visible={controlsVisible || narration.isSession}
+          status={narration.status}
+          speed={narration.speed}
+          voiceLabel={narration.voiceLabel}
+          errorMessage={narration.errorMessage}
+          canPrev={pageIndex > 0}
+          canNext={pageIndex < book.pages.length - 1}
+          onTogglePlay={narration.togglePlay}
+          onStop={narration.stop}
+          onPrev={() => flipperRef.current?.prev()}
+          onNext={() => flipperRef.current?.next()}
+          onCycleSpeed={narration.cycleSpeed}
         />
       </div>
     </BooksShell>
