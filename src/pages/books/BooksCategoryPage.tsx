@@ -36,7 +36,7 @@ export default function BooksCategoryPage() {
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-lg font-bold">{meta?.label ?? "Books"}</h1>
           <p className="text-[11px]" style={{ color: "var(--books-muted)" }}>
-            {meta?.hint ?? ""} · {books.length} titles
+            {meta?.hint ?? ""} · {books.length} titles · YAJ Read to me
           </p>
         </div>
       </header>
