@@ -226,6 +226,7 @@ export default function BookReaderPage() {
           index={pageIndex}
           onIndexChange={setPageIndex}
           bottomReserve
+          highlight={narration.highlight}
         />
 
         <BookNarratorBar

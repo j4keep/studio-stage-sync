@@ -1,5 +1,6 @@
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type { BookItem } from "@/lib/books-catalog";
+import { splitBookSentences, type NarrationHighlight } from "@/lib/books/book-narration";
 
 export type BookPageFlipperHandle = {
   next: () => void;
@@ -16,6 +17,8 @@ type Props = {
   onIndexChange: (next: number) => void;
   /** Extra bottom space for the Read-to-me bar */
   bottomReserve?: boolean;
+  /** Soft highlight while YAJ is reading */
+  highlight?: NarrationHighlight | null;
 };
 
 /**
@@ -32,6 +35,7 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
     index,
     onIndexChange,
     bottomReserve = false,
+    highlight = null,
   },
   ref,
 ) {
@@ -41,6 +45,7 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
   const touchY = useRef<number | null>(null);
   const busy = useRef(false);
   const adult = mode === "adult";
+  const highlightRef = useRef<HTMLSpanElement | null>(null);
 
   const go = useCallback(
     (dir: "next" | "prev") => {
@@ -71,6 +76,11 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [go]);
+
+  useEffect(() => {
+    if (!highlight) return;
+    highlightRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [highlight?.paragraphIndex, highlight?.sentenceIndex, index]);
 
   const page = pages[index];
   const paragraphs = page.text
@@ -180,7 +190,7 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
           }`}
           style={{
             paddingBottom: bottomReserve
-              ? "max(6.75rem, calc(env(safe-area-inset-bottom) + 5.5rem))"
+              ? "max(5.25rem, calc(env(safe-area-inset-bottom) + 4.25rem))"
               : adult
                 ? "max(1.25rem, env(safe-area-inset-bottom))"
                 : undefined,
@@ -197,24 +207,51 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
           <div
             className={`books-page-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain ${adult ? "pr-2" : ""}`}
           >
-            {paragraphs.map((para, i) => (
-              <p
-                key={`${index}-${i}`}
-                className={adult ? "mb-5 text-[17px] leading-[1.75] tracking-[0.01em] text-[#1C1917]" : "mb-3 text-base font-semibold leading-7 text-stone-800"}
-                style={adult ? { fontFamily: '"Literata", "Georgia", "Times New Roman", serif' } : undefined}
-              >
-                {adult && i === 0 ? (
-                  <>
-                    <span className="float-left mr-2 mt-1 text-[2.35rem] font-semibold leading-none text-[#1C1917]">
-                      {para.charAt(0)}
-                    </span>
-                    {para.slice(1)}
-                  </>
-                ) : (
-                  para
-                )}
-              </p>
-            ))}
+            {paragraphs.map((para, i) => {
+              const sentences = splitBookSentences(para);
+              const paraActive = highlight?.paragraphIndex === i;
+              return (
+                <p
+                  key={`${index}-${i}`}
+                  className={
+                    adult
+                      ? "mb-5 text-[17px] leading-[1.75] tracking-[0.01em] text-[#1C1917]"
+                      : "mb-3 text-base font-semibold leading-7 text-stone-800"
+                  }
+                  style={adult ? { fontFamily: '"Literata", "Georgia", "Times New Roman", serif' } : undefined}
+                >
+                  {sentences.map((sentence, si) => {
+                    const isActive = paraActive && highlight?.sentenceIndex === si;
+                    const showDrop = adult && i === 0 && si === 0 && sentence.length > 0;
+                    return (
+                      <span
+                        key={`${index}-${i}-${si}`}
+                        ref={isActive ? highlightRef : undefined}
+                        className={
+                          isActive
+                            ? adult
+                              ? "rounded-[3px] bg-[#E8D9A8]/70 shadow-[inset_0_-1px_0_rgba(120,90,40,0.12)] transition-colors duration-300"
+                              : "rounded-md bg-orange-200/70 transition-colors duration-300"
+                            : "transition-colors duration-300"
+                        }
+                      >
+                        {showDrop ? (
+                          <>
+                            <span className="float-left mr-2 mt-1 text-[2.35rem] font-semibold leading-none text-[#1C1917]">
+                              {sentence.charAt(0)}
+                            </span>
+                            {sentence.slice(1)}
+                          </>
+                        ) : (
+                          sentence
+                        )}
+                        {si < sentences.length - 1 ? " " : null}
+                      </span>
+                    );
+                  })}
+                </p>
+              );
+            })}
           </div>
 
           <div

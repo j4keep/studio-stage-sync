@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  BOOK_NARRATION_SPEEDS,
   bookNarrationVoiceLabel,
   speakBookPage,
   stopBookNarration,
+  type BookNarrationSpeedId,
+  type NarrationHighlight,
 } from "@/lib/books/book-narration";
 import {
   unlockYajAudio,
@@ -10,10 +13,16 @@ import {
   resumeYajAudio,
   isYajAudioActive,
 } from "@/lib/yaj-media";
-import { loadYajAiPrefs, YAJ_AI_UPDATED_EVENT } from "@/lib/yaj-ai-prefs";
-import { COACH_VOICE_SPEEDS, type CoachVoiceSpeedId } from "@/lib/wellness-move-coach";
+import { YAJ_AI_UPDATED_EVENT } from "@/lib/yaj-ai-prefs";
 
-export type BookNarrationStatus = "idle" | "loading" | "playing" | "paused" | "error";
+/** preparing → reading → playing (pause/play controls). */
+export type BookNarrationStatus =
+  | "idle"
+  | "preparing"
+  | "reading"
+  | "playing"
+  | "paused"
+  | "error";
 
 type Args = {
   pageText: string;
@@ -25,14 +34,16 @@ type Args = {
 
 export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage }: Args) {
   const [status, setStatus] = useState<BookNarrationStatus>("idle");
-  const [speed, setSpeed] = useState<CoachVoiceSpeedId>(() => loadYajAiPrefs().coachSpeed);
+  const [speed, setSpeed] = useState<BookNarrationSpeedId>("1");
   const [voiceLabel, setVoiceLabel] = useState(() => bookNarrationVoiceLabel());
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<NarrationHighlight | null>(null);
 
   const sessionRef = useRef(false);
   const pausedWithAudioRef = useRef(false);
   const genRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
+  const readingTimerRef = useRef<number | null>(null);
   const pageIndexRef = useRef(pageIndex);
   const pageTextRef = useRef(pageText);
   const pageCountRef = useRef(pageCount);
@@ -47,6 +58,13 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
   speedRef.current = speed;
   statusRef.current = status;
 
+  const clearReadingTimer = useCallback(() => {
+    if (readingTimerRef.current != null) {
+      window.clearTimeout(readingTimerRef.current);
+      readingTimerRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     const sync = () => setVoiceLabel(bookNarrationVoiceLabel());
     window.addEventListener(YAJ_AI_UPDATED_EVENT, sync);
@@ -59,13 +77,16 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
     abortRef.current = null;
     stopBookNarration();
     pausedWithAudioRef.current = false;
-  }, []);
+    clearReadingTimer();
+    setHighlight(null);
+  }, [clearReadingTimer]);
 
   const stop = useCallback(() => {
     sessionRef.current = false;
     cancelInFlight();
     setStatus("idle");
     setErrorMessage(null);
+    setHighlight(null);
   }, [cancelInFlight]);
 
   const speakCurrentPage = useCallback(async () => {
@@ -75,14 +96,31 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
     abortRef.current = ac;
     stopBookNarration();
     pausedWithAudioRef.current = false;
+    clearReadingTimer();
+    setHighlight(null);
 
-    setStatus("loading");
+    setStatus("preparing");
     setErrorMessage(null);
     unlockYajAudio();
 
     const result = await speakBookPage(pageTextRef.current, {
       speed: speedRef.current,
       signal: ac.signal,
+      onHighlight: (h) => {
+        if (gen !== genRef.current) return;
+        setHighlight(h);
+      },
+      onPlaybackStart: () => {
+        if (gen !== genRef.current) return;
+        setStatus("reading");
+        clearReadingTimer();
+        readingTimerRef.current = window.setTimeout(() => {
+          if (gen !== genRef.current) return;
+          if (!sessionRef.current) return;
+          if (statusRef.current === "paused") return;
+          setStatus("playing");
+        }, 700);
+      },
     });
 
     if (gen !== genRef.current) return;
@@ -91,6 +129,7 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
 
     if (result === "error") {
       sessionRef.current = false;
+      setHighlight(null);
       setStatus("error");
       setErrorMessage("Couldn't start narration. Check your connection and try again.");
       return;
@@ -98,19 +137,20 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
 
     if (!sessionRef.current || gen !== genRef.current) return;
 
+    setHighlight(null);
+
     if (pageIndexRef.current < pageCountRef.current - 1) {
-      setStatus("loading");
+      setStatus("preparing");
       onAdvanceRef.current();
     } else {
       sessionRef.current = false;
       setStatus("idle");
     }
-  }, []);
+  }, [clearReadingTimer]);
 
   useEffect(() => {
     if (!sessionRef.current) return;
     if (statusRef.current === "paused") {
-      // Page changed while paused — drop mid-clip so Resume reads the new page.
       cancelInFlight();
       sessionRef.current = true;
       setStatus("paused");
@@ -129,6 +169,7 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
 
   const pause = useCallback(() => {
     if (!sessionRef.current) return;
+    clearReadingTimer();
     if (isYajAudioActive()) {
       pauseYajAudio();
       pausedWithAudioRef.current = true;
@@ -138,7 +179,7 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
     cancelInFlight();
     sessionRef.current = true;
     setStatus("paused");
-  }, [cancelInFlight]);
+  }, [cancelInFlight, clearReadingTimer]);
 
   const resume = useCallback(() => {
     unlockYajAudio();
@@ -152,17 +193,8 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
     void speakCurrentPage();
   }, [speakCurrentPage]);
 
-  useEffect(() => {
-    if (status !== "loading") return;
-    const id = window.setInterval(() => {
-      if (!sessionRef.current || statusRef.current === "paused") return;
-      if (isYajAudioActive()) setStatus("playing");
-    }, 180);
-    return () => window.clearInterval(id);
-  }, [status]);
-
   const togglePlay = useCallback(() => {
-    if (status === "playing" || status === "loading") {
+    if (status === "playing" || status === "preparing" || status === "reading") {
       pause();
       return;
     }
@@ -174,11 +206,16 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
   }, [pause, resume, start, status]);
 
   const cycleSpeed = useCallback(() => {
-    const ids = COACH_VOICE_SPEEDS.map((s) => s.id);
+    const ids = BOOK_NARRATION_SPEEDS.map((s) => s.id);
     const i = ids.indexOf(speed);
-    const next = ids[(i + 1) % ids.length] ?? "normal";
+    const next = ids[(i + 1) % ids.length] ?? "1";
     setSpeed(next);
-    if (sessionRef.current && statusRef.current !== "paused" && statusRef.current !== "idle") {
+    if (
+      sessionRef.current &&
+      statusRef.current !== "paused" &&
+      statusRef.current !== "idle" &&
+      statusRef.current !== "error"
+    ) {
       void speakCurrentPage();
     }
   }, [speakCurrentPage, speed]);
@@ -188,7 +225,12 @@ export function useBookNarration({ pageText, pageIndex, pageCount, onAdvancePage
     speed,
     voiceLabel,
     errorMessage,
-    isSession: status === "playing" || status === "loading" || status === "paused",
+    highlight,
+    isSession:
+      status === "playing" ||
+      status === "preparing" ||
+      status === "reading" ||
+      status === "paused",
     start,
     stop,
     pause,
