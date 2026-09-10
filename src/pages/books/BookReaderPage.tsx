@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookPageFlipper, { type BookPageFlipperHandle } from "@/components/books/BookPageFlipper";
 import BookNarratorBar from "@/components/books/BookNarratorBar";
+import YajBuddyIcon from "@/components/YajBuddyIcon";
 import { useBookNarration } from "@/hooks/useBookNarration";
 import { formatBookPrice, getBookById } from "@/lib/books-catalog";
 
@@ -15,12 +16,14 @@ export default function BookReaderPage() {
   const [showCover, setShowCover] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
+  const [pendingNarrate, setPendingNarrate] = useState(false);
   const flipperRef = useRef<BookPageFlipperHandle>(null);
 
   useEffect(() => {
     setShowCover(true);
     setPageIndex(0);
     setControlsVisible(true);
+    setPendingNarrate(false);
   }, [id]);
 
   // Hide bottom nav scroll locks aren't needed; keep reader immersive.
@@ -57,6 +60,21 @@ export default function BookReaderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to cover toggle
   }, [showCover]);
 
+  // Cover "Read to me" opens the pages and starts YAJ narration for any book.
+  useEffect(() => {
+    if (showCover || !pendingNarrate) return;
+    setPendingNarrate(false);
+    const t = window.setTimeout(() => narration.start(), 80);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- start once after opening from cover
+  }, [showCover, pendingNarrate]);
+
+  const openBook = (narrate: boolean) => {
+    setPendingNarrate(narrate);
+    setShowCover(false);
+    setControlsVisible(true);
+  };
+
   if (!book) {
     return (
       <BooksShell>
@@ -89,43 +107,62 @@ export default function BookReaderPage() {
             <p className="truncate text-sm font-semibold text-white/80">{book.title}</p>
           </div>
 
-          <button
-            type="button"
-            onClick={() => setShowCover(false)}
-            className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2"
-            aria-label={`Open ${book.title}`}
-          >
-            <div
-              className={`w-full max-h-[52dvh] overflow-hidden shadow-2xl ${kids ? "rounded-3xl border-4 border-white aspect-[3/4]" : "rounded-sm aspect-[2/3]"}`}
-              style={
-                book.coverImage
-                  ? undefined
-                  : { background: `linear-gradient(160deg, ${book.coverFrom}, ${book.coverTo})` }
-              }
+          <div className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
+            <button
+              type="button"
+              onClick={() => openBook(false)}
+              className="w-full"
+              aria-label={`Open ${book.title}`}
             >
-              {book.coverImage ? (
-                <img src={book.coverImage} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full flex-col justify-end bg-gradient-to-t from-black/55 to-transparent p-5">
-                  <p className="text-2xl font-bold text-white">{book.title}</p>
-                  <p className="mt-1 text-sm text-white/80">{book.author}</p>
-                </div>
-              )}
-            </div>
+              <div
+                className={`w-full max-h-[48dvh] overflow-hidden shadow-2xl ${kids ? "rounded-3xl border-4 border-white aspect-[3/4]" : "rounded-sm aspect-[2/3]"}`}
+                style={
+                  book.coverImage
+                    ? undefined
+                    : { background: `linear-gradient(160deg, ${book.coverFrom}, ${book.coverTo})` }
+                }
+              >
+                {book.coverImage ? (
+                  <img src={book.coverImage} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full flex-col justify-end bg-gradient-to-t from-black/55 to-transparent p-5">
+                    <p className="text-2xl font-bold text-white">{book.title}</p>
+                    <p className="mt-1 text-sm text-white/80">{book.author}</p>
+                  </div>
+                )}
+              </div>
+            </button>
             <p className={`mt-4 text-center text-sm ${kids ? "font-extrabold text-orange-100" : "text-stone-300"}`}>
               {book.blurb}
             </p>
             <p className={`mt-2 text-xs ${kids ? "font-bold text-orange-200" : "text-stone-500"}`}>
-              {formatBookPrice(book)} · {book.pages.length} pages
+              {formatBookPrice(book)} · {book.pages.length} pages · YAJ can read this aloud
             </p>
-            <span
-              className={`mt-auto inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-bold ${
-                kids ? "bg-orange-500 text-white" : "bg-white text-stone-900"
-              }`}
-            >
-              {kids ? "Start story →" : "Begin reading →"}
-            </span>
-          </button>
+
+            <div className="mt-auto flex w-full max-w-xs flex-col gap-2.5">
+              <button
+                type="button"
+                onClick={() => openBook(false)}
+                className={`inline-flex h-12 w-full items-center justify-center rounded-full px-8 text-sm font-bold ${
+                  kids ? "bg-orange-500 text-white" : "bg-white text-stone-900"
+                }`}
+              >
+                {kids ? "Start story →" : "Begin reading →"}
+              </button>
+              <button
+                type="button"
+                onClick={() => openBook(true)}
+                className={`inline-flex h-12 w-full items-center justify-center gap-2 rounded-full px-6 text-sm font-bold ${
+                  kids
+                    ? "border-2 border-white/70 bg-white/15 text-white"
+                    : "border border-white/25 bg-white/10 text-white"
+                }`}
+              >
+                <YajBuddyIcon className="h-5 w-5" active={kids} />
+                {kids ? "Have YAJ read it" : "Read to me · YAJ"}
+              </button>
+            </div>
+          </div>
         </div>
       </BooksShell>
     );

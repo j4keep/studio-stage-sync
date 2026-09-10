@@ -42,7 +42,7 @@ export default function BooksLibraryPage() {
             Categories
           </h2>
           <p className="mt-0.5 text-[11px]" style={{ color: "var(--books-muted)" }}>
-            Choose a shelf that fits your mood
+            Every book includes Read to me with your YAJ Buddy voice
           </p>
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {REGULAR_CATEGORIES.map((c) => (

@@ -40,8 +40,8 @@ export default function BooksKidsLibraryPage() {
 
       <div className="mx-auto max-w-lg px-4 pt-4">
         <div className="mb-4 rounded-2xl bg-gradient-to-r from-orange-400 to-pink-400 px-4 py-3 text-white shadow-md">
-          <p className="text-sm font-extrabold">Tap a cover · swipe pages sideways</p>
-          <p className="text-[11px] font-semibold opacity-90">Like turning a real picture book</p>
+          <p className="text-sm font-extrabold">Tap a cover · swipe pages · have YAJ read it</p>
+          <p className="text-[11px] font-semibold opacity-90">Every kids story works with your YAJ Buddy voice</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">

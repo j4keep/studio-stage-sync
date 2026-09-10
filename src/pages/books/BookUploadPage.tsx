@@ -111,7 +111,8 @@ export default function BookUploadPage() {
       <div className="mx-auto max-w-lg space-y-4 px-4 pt-4">
         <p className="text-xs leading-relaxed" style={{ color: "var(--books-muted)" }}>
           Publish to Regular or Kids. List as <strong>sale</strong>, <strong>donation</strong>, or <strong>free</strong>.
-          Separate pages with a blank line.
+          Separate pages with a blank line. Every published book includes <strong>Read to me</strong> with the
+          reader’s YAJ Buddy voice — same as catalog books.
         </p>
 
         <Field label="Title">
