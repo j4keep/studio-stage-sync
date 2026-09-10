@@ -51,10 +51,10 @@ export const REGULAR_CATEGORIES: {
   { id: "fantasy", label: "Fantasy", hint: "Magic & quests" },
 ];
 
-import harborLightsCover from "@/assets/books/harbor-lights-cover.svg";
-import stageLeftCover from "@/assets/books/stage-left-cover.svg";
-import quietRoomCover from "@/assets/books/quiet-room-cover.svg";
-import afterTheBellCover from "@/assets/books/after-the-bell-cover.svg";
+import harborLightsCover from "@/assets/books/harbor-lights-cover.jpg";
+import stageLeftCover from "@/assets/books/stage-left-cover.jpg";
+import quietRoomCover from "@/assets/books/quiet-room-cover.jpg";
+import afterTheBellCover from "@/assets/books/after-the-bell-cover.jpg";
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
@@ -81,7 +81,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0B1C2C",
     coverTo: "#0ea5e9",
     coverImage: harborLightsCover,
-    blurb: "A pier community faces a storm that forces old secrets ashore. A short novella told in full reading pages.",
+    blurb: "Some people find their way home in the darkest places. A coastal novella told in full reading pages.",
     pages: HARBOR_LIGHTS_PAGES,
   },
   {
@@ -94,7 +94,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#7F1D1D",
     coverTo: "#FBBF24",
     coverImage: stageLeftCover,
-    blurb: "An understudy gets one night to rewrite a career—and a family. A theater novella in full reading pages.",
+    blurb: "Sometimes the biggest role is the one you weren't supposed to get. A theater novella in full reading pages.",
     pages: STAGE_LEFT_PAGES,
   },
   {
@@ -107,7 +107,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0F172A",
     coverTo: "#94A3B8",
     coverImage: quietRoomCover,
-    blurb: "A mediator returns to her hometown courthouse for one last case—and teaches a town what to remember. A quiet novella in full reading pages.",
+    blurb: "Healing doesn't always make noise. A mediation novella in full reading pages.",
     pages: QUIET_ROOM_PAGES,
   },
   {
@@ -121,7 +121,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#065F46",
     coverTo: "#A7F3D0",
     coverImage: afterTheBellCover,
-    blurb: "A high-school counselor and a student rebuild trust one lunch period at a time. A warmer school novella in full reading pages.",
+    blurb: "Same hallways. New beginnings. A warmer school novella in full reading pages.",
     pages: AFTER_THE_BELL_PAGES,
   },
   {

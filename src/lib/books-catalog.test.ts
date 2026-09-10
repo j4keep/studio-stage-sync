@@ -29,7 +29,7 @@ describe("books-catalog", () => {
     const book = getBookById("drama-harbor-lights");
     expect(book).toBeTruthy();
     expect(book!.pages.length).toBeGreaterThanOrEqual(20);
-    expect(book!.coverImage).toBeTruthy();
+    expect(book!.coverImage).toMatch(/harbor-lights-cover\.(jpg|jpeg|png|webp|svg)/i);
     expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
     const sample = book!.pages[0]!.text;
     expect(sample.split(/\s+/).length).toBeGreaterThan(120);
@@ -39,7 +39,7 @@ describe("books-catalog", () => {
     const book = getBookById("drama-stage-left");
     expect(book).toBeTruthy();
     expect(book!.pages.length).toBeGreaterThanOrEqual(20);
-    expect(book!.coverImage).toBeTruthy();
+    expect(book!.coverImage).toMatch(/stage-left-cover\.(jpg|jpeg|png|webp|svg)/i);
     expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
     expect(book!.pages[0]!.text.split(/\s+/).length).toBeGreaterThan(120);
   });
@@ -48,7 +48,7 @@ describe("books-catalog", () => {
     const book = getBookById("drama-quiet-room");
     expect(book).toBeTruthy();
     expect(book!.pages.length).toBeGreaterThanOrEqual(20);
-    expect(book!.coverImage).toBeTruthy();
+    expect(book!.coverImage).toMatch(/quiet-room-cover\.(jpg|jpeg|png|webp|svg)/i);
     expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
     expect(book!.pages[0]!.text.split(/\s+/).length).toBeGreaterThan(120);
   });
@@ -57,7 +57,7 @@ describe("books-catalog", () => {
     const book = getBookById("drama-after-the-bell");
     expect(book).toBeTruthy();
     expect(book!.pages.length).toBeGreaterThanOrEqual(20);
-    expect(book!.coverImage).toBeTruthy();
+    expect(book!.coverImage).toMatch(/after-the-bell-cover\.(jpg|jpeg|png|webp|svg)/i);
     expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
     expect(book!.pages[0]!.text.split(/\s+/).length).toBeGreaterThan(120);
   });
