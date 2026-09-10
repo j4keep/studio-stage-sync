@@ -20,6 +20,8 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/" ||
     pathname === "/feed" ||
     pathname === "/explore" ||
+    pathname === "/books" ||
+    pathname.startsWith("/books/") ||
     pathname === "/meet" ||
     pathname.startsWith("/meet/") ||
     pathname === "/local-help" ||

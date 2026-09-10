@@ -4,7 +4,7 @@ import { Search, X } from "lucide-react";
 import { useSafetyBalance } from "@/hooks/useSafetyBalance";
 
 import localHelpBanner from "@/assets/explore-v2/local-help.png";
-import meetImage from "@/assets/explore-v6/meet-on-yaj.png";
+import booksImage from "@/assets/explore-v6/books.svg";
 import battlesImage from "@/assets/explore-v4/battles.png";
 import careersImage from "@/assets/explore-v6/opportunities.png";
 import gamesImage from "@/assets/explore-v4/games.png";
@@ -27,13 +27,12 @@ type ExploreItem = {
 
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
-    id: "meet",
-    label: "Meet on YAJ",
-    subtitle: "Dating profiles, scroll & interview.",
-    route: "/meet",
-    image: meetImage,
-    adultsOnly: true,
-    keywords: ["meet", "dating", "date", "interview", "match", "romance", "single", "connect"],
+    id: "books",
+    label: "Books",
+    subtitle: "Read. Flip pages. Share stories.",
+    route: "/books",
+    image: booksImage,
+    keywords: ["book", "books", "read", "reading", "library", "kids", "ebook", "story"],
   },
 
   {
@@ -102,7 +101,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   },
 ];
 
-const ORDER_KEY = "yaj.explore.card-order.v7";
+const ORDER_KEY = "yaj.explore.card-order.v8";
 
 function loadOrder(): string[] {
   try {
@@ -239,7 +238,7 @@ export default function ExplorePage() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search jobs, deals, marketplace…"
+            placeholder="Search books, jobs, deals, marketplace…"
             className="h-9 w-full touch-auto rounded-full border border-border bg-muted/70 pl-9 pr-9 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
           />
           {query && (
@@ -314,7 +313,7 @@ export default function ExplorePage() {
           <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
             <p className="font-bold">Nothing matched that search.</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Try jobs, deals, marketplace, gigs, battles, wellness, or local help.
+              Try books, jobs, deals, marketplace, battles, wellness, or local help.
             </p>
           </div>
         )}

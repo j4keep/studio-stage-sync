@@ -17,6 +17,13 @@ import AppLayout from "./components/AppLayout";
 import HomePage from "./pages/HomePage";
 import FeedPage from "./pages/FeedPage";
 import ExplorePage from "./pages/ExplorePage";
+import BooksIntroPage from "./pages/books/BooksIntroPage";
+import BooksLibraryPage from "./pages/books/BooksLibraryPage";
+import BooksCategoryPage from "./pages/books/BooksCategoryPage";
+import BooksKidsIntroPage from "./pages/books/BooksKidsIntroPage";
+import BooksKidsLibraryPage from "./pages/books/BooksKidsLibraryPage";
+import BookReaderPage from "./pages/books/BookReaderPage";
+import BookUploadPage from "./pages/books/BookUploadPage";
 import BattlesPage from "./pages/BattlesPage";
 import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
@@ -352,6 +359,13 @@ const ProtectedRoutes = () => {
         <Route path="/ask-yaj/conversation-settings" element={<YajAiConversationSettingsPage />} />
         <Route path="/ask-yaj/avatar" element={<YajAiAvatarPage />} />
         <Route path="/explore" element={<ExplorePage />} />
+        <Route path="/books" element={<BooksIntroPage />} />
+        <Route path="/books/library" element={<BooksLibraryPage />} />
+        <Route path="/books/category/:slug" element={<BooksCategoryPage />} />
+        <Route path="/books/kids" element={<BooksKidsIntroPage />} />
+        <Route path="/books/kids/library" element={<BooksKidsLibraryPage />} />
+        <Route path="/books/read/:id" element={<BookReaderPage />} />
+        <Route path="/books/upload" element={<BookUploadPage />} />
         <Route path="/meet" element={<MeetHomePage />} />
         <Route path="/meet/setup" element={<MeetSetupPage />} />
         <Route path="/meet/inbox" element={<MeetInboxPage />} />
