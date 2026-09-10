@@ -13,8 +13,10 @@ export type RegularCategoryId =
 export type BookCategoryId = RegularCategoryId | "kids";
 
 export type BookPage = {
-  /** Short page of readable text */
+  /** Full reading-page text (adult pages should be substantial paragraphs). */
   text: string;
+  /** Optional chapter label shown in the slim adult reader header. */
+  chapter?: string;
 };
 
 export type BookItem = {
@@ -29,6 +31,8 @@ export type BookItem = {
   coverFrom: string;
   coverTo: string;
   coverAccent?: string;
+  /** Optional real cover image (SVG/PNG URL). */
+  coverImage?: string;
   blurb: string;
   pages: BookPage[];
   /** true when created by a user upload */
@@ -46,6 +50,9 @@ export const REGULAR_CATEGORIES: {
   { id: "mystery", label: "Mystery", hint: "Clues & suspense" },
   { id: "fantasy", label: "Fantasy", hint: "Magic & quests" },
 ];
+
+import harborLightsCover from "@/assets/books/harbor-lights-cover.svg";
+import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
@@ -65,16 +72,11 @@ export const SEED_BOOKS: BookItem[] = [
     audience: "regular",
     category: "drama",
     listingType: "free",
-    coverFrom: "#1e293b",
+    coverFrom: "#0B1C2C",
     coverTo: "#0ea5e9",
-    blurb: "A pier community faces a storm that forces old secrets ashore.",
-    pages: pages(
-      "The ferry horn rolled across the bay as Mira locked the bakery door. Tonight the harbor lights blinked in a pattern she had not seen since her father left.",
-      "Inside the community hall, neighbors argued about the pier repairs. Mira set a tray of rolls on the table and listened for the one voice she dreaded.",
-      "When the blackout hit, only the emergency beacon cut through the fog. Someone was signaling from the abandoned boathouse — three short, two long.",
-      "By dawn the town knew: the storm had uncovered a locked chest under the pier. Inside were letters addressed to Mira, dated the year she was born.",
-      "She read them on the seawall as gulls wheeled overhead. Forgiveness, she learned, was not a single moment — it was a light you keep turning back on.",
-    ),
+    coverImage: harborLightsCover,
+    blurb: "A pier community faces a storm that forces old secrets ashore. A short novella told in full reading pages.",
+    pages: HARBOR_LIGHTS_PAGES,
   },
   {
     id: "drama-stage-left",

@@ -3,6 +3,7 @@ import {
   REGULAR_CATEGORIES,
   SEED_BOOKS,
   booksForCategory,
+  getBookById,
   kidsBooks,
   regularBooks,
 } from "./books-catalog";
@@ -22,5 +23,15 @@ describe("books-catalog", () => {
     expect(regularBooks().every((b) => b.audience === "regular")).toBe(true);
     expect(kidsBooks().every((b) => b.audience === "kids")).toBe(true);
     expect(SEED_BOOKS.length).toBeGreaterThanOrEqual(35);
+  });
+
+  it("ships Harbor Lights as a full-page adult template", () => {
+    const book = getBookById("drama-harbor-lights");
+    expect(book).toBeTruthy();
+    expect(book!.pages.length).toBeGreaterThanOrEqual(20);
+    expect(book!.coverImage).toBeTruthy();
+    expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
+    const sample = book!.pages[0]!.text;
+    expect(sample.split(/\s+/).length).toBeGreaterThan(120);
   });
 });
