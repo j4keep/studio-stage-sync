@@ -69,11 +69,11 @@ export default function BookReaderPage() {
           <button
             type="button"
             onClick={() => setShowCover(false)}
-            className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center justify-center px-6 pb-10"
+            className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2"
             aria-label={`Open ${book.title}`}
           >
             <div
-              className={`w-full overflow-hidden shadow-2xl ${kids ? "rounded-3xl border-4 border-white aspect-[3/4]" : "rounded-sm aspect-[2/3]"}`}
+              className={`w-full max-h-[52dvh] overflow-hidden shadow-2xl ${kids ? "rounded-3xl border-4 border-white aspect-[3/4]" : "rounded-sm aspect-[2/3]"}`}
               style={
                 book.coverImage
                   ? undefined
@@ -89,14 +89,14 @@ export default function BookReaderPage() {
                 </div>
               )}
             </div>
-            <p className={`mt-5 text-center text-sm ${kids ? "font-extrabold text-orange-100" : "text-stone-300"}`}>
+            <p className={`mt-4 text-center text-sm ${kids ? "font-extrabold text-orange-100" : "text-stone-300"}`}>
               {book.blurb}
             </p>
             <p className={`mt-2 text-xs ${kids ? "font-bold text-orange-200" : "text-stone-500"}`}>
               {formatBookPrice(book)} · {book.pages.length} pages
             </p>
             <span
-              className={`mt-6 inline-flex h-12 items-center rounded-full px-8 text-sm font-bold ${
+              className={`mt-auto inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-bold ${
                 kids ? "bg-orange-500 text-white" : "bg-white text-stone-900"
               }`}
             >

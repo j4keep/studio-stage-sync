@@ -53,8 +53,10 @@ export const REGULAR_CATEGORIES: {
 
 import harborLightsCover from "@/assets/books/harbor-lights-cover.svg";
 import stageLeftCover from "@/assets/books/stage-left-cover.svg";
+import quietRoomCover from "@/assets/books/quiet-room-cover.svg";
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
+import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
@@ -100,16 +102,11 @@ export const SEED_BOOKS: BookItem[] = [
     audience: "regular",
     category: "drama",
     listingType: "donation",
-    coverFrom: "#334155",
-    coverTo: "#94a3b8",
-    blurb: "A mediator returns to her hometown courthouse for one last case.",
-    pages: pages(
-      "The quiet room smelled of lemon polish and old paper. Nora arranged three chairs in a triangle and waited for the families who would not look at each other.",
-      "The dispute was about a bakery lease. Beneath it lived grief neither side had named.",
-      "Nora asked only one question: “What do you want the town to remember about this week?” Silence stretched, then broke into honest talk.",
-      "By afternoon they had a plan that saved the lease and a memorial shelf for the missing partner.",
-      "Nora locked the quiet room and walked into rain that felt like applause for work no audience would ever see.",
-    ),
+    coverFrom: "#0F172A",
+    coverTo: "#94A3B8",
+    coverImage: quietRoomCover,
+    blurb: "A mediator returns to her hometown courthouse for one last case—and teaches a town what to remember. A quiet novella in full reading pages.",
+    pages: QUIET_ROOM_PAGES,
   },
   {
     id: "drama-after-the-bell",

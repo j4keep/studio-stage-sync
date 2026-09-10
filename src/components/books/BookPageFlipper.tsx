@@ -109,6 +109,30 @@ export default function BookPageFlipper({
         }
         .flip-next { animation: flip-out-left 0.26s ease-in forwards; }
         .flip-prev { animation: flip-out-right 0.26s ease-in forwards; }
+        .books-page-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: transparent transparent;
+        }
+        .books-page-scroll:hover,
+        .books-page-scroll:focus-within,
+        .books-page-scroll:active {
+          scrollbar-color: rgba(120, 100, 70, 0.28) transparent;
+        }
+        .books-page-scroll::-webkit-scrollbar {
+          width: 4px;
+        }
+        .books-page-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .books-page-scroll::-webkit-scrollbar-thumb {
+          background: transparent;
+          border-radius: 999px;
+        }
+        .books-page-scroll:hover::-webkit-scrollbar-thumb,
+        .books-page-scroll:focus-within::-webkit-scrollbar-thumb,
+        .books-page-scroll:active::-webkit-scrollbar-thumb {
+          background: rgba(120, 100, 70, 0.28);
+        }
       `}</style>
 
       <div
@@ -135,7 +159,7 @@ export default function BookPageFlipper({
         <div
           className={`mx-auto flex h-full max-w-xl flex-col ${
             adult
-              ? "px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10"
+              ? "px-6 pr-8 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 sm:px-10 sm:pr-12"
               : "px-4 py-4"
           }`}
         >
@@ -147,7 +171,9 @@ export default function BookPageFlipper({
             />
           )}
 
-          <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${adult ? "pr-1" : ""}`}>
+          <div
+            className={`books-page-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain ${adult ? "pr-2" : ""}`}
+          >
             {paragraphs.map((para, i) => (
               <p
                 key={`${index}-${i}`}

@@ -66,6 +66,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
   const isWellness = location.pathname === "/wellness" || location.pathname.startsWith("/wellness/");
+  const isBookReader = location.pathname.startsWith("/books/read/");
 
   // Workout music belongs only to the Move screen. This route-level guard
   // also covers exits through bottom navigation, browser history, and links.
@@ -73,12 +74,14 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     if (location.pathname !== "/wellness/move") workoutMusic.stop();
   }, [location.pathname]);
   // Marketplace / Wellness use their own headers (back → Explore); keep YAJ BottomNav for integration.
+  // Book reader is immersive — hide mobile top chrome and bottom tabs while reading.
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) &&
     !isPodcastWorkspace &&
     !isPodcastLobby &&
     !isMarketplace &&
-    !isWellness;
+    !isWellness &&
+    !isBookReader;
   const rootTabs = ["/", "/feed", "/explore", "/ask-yaj", "/profile", "/auth"];
   const showBackButton = !rootTabs.includes(location.pathname);
 
@@ -154,7 +157,9 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className={
               mobileFeed
                 ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible lg:pb-4"
-                : "min-w-0 pb-20 lg:pb-4"
+                : isBookReader
+                  ? "min-w-0 pb-0 lg:pb-0"
+                  : "min-w-0 pb-20 lg:pb-4"
             }
           >
             {children}
@@ -165,7 +170,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopHomeIconRail />
           </div>
 
-          <BottomNav />
+          {!isBookReader && <BottomNav />}
         </div>
 
         <GlobalRadioPlayer />
@@ -196,11 +201,11 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
       )}
-      <main className="min-w-0 pb-20">{children}</main>
+      <main className={`min-w-0 ${isBookReader ? "pb-0" : "pb-20"}`}>{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
-      <BottomNav />
+      {!isBookReader && <BottomNav />}
       {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>
   );
