@@ -54,9 +54,11 @@ export const REGULAR_CATEGORIES: {
 import harborLightsCover from "@/assets/books/harbor-lights-cover.svg";
 import stageLeftCover from "@/assets/books/stage-left-cover.svg";
 import quietRoomCover from "@/assets/books/quiet-room-cover.svg";
+import afterTheBellCover from "@/assets/books/after-the-bell-cover.svg";
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
+import { AFTER_THE_BELL_PAGES } from "@/lib/books/after-the-bell";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
@@ -116,16 +118,11 @@ export const SEED_BOOKS: BookItem[] = [
     category: "drama",
     listingType: "sale",
     price: 4.99,
-    coverFrom: "#14532d",
-    coverTo: "#86efac",
-    blurb: "A high-school counselor and a student rebuild trust one lunch period at a time.",
-    pages: pages(
-      "The lunch bell emptied the halls. Ms. Cole kept her door open anyway — habit, hope, and leftover granola bars.",
-      "Devon sat without speaking for eleven minutes. On the twelfth, he asked if a person could restart mid-semester.",
-      "They made a chart of small wins: one class, one friend, one honest conversation with home.",
-      "By spring, Devon ran the peer circle. Ms. Cole still kept granola bars. Some tools never go out of style.",
-      "Graduation day, Devon left a note: “You held the quiet until I could fill it.” She taped it inside her desk drawer.",
-    ),
+    coverFrom: "#065F46",
+    coverTo: "#A7F3D0",
+    coverImage: afterTheBellCover,
+    blurb: "A high-school counselor and a student rebuild trust one lunch period at a time. A warmer school novella in full reading pages.",
+    pages: AFTER_THE_BELL_PAGES,
   },
   {
     id: "drama-glass-elevator",

@@ -28,6 +28,7 @@ const BottomNav = () => {
   const { open: showCreate, cameraStream, openCreate, closeCreate } = useCreatePostSheet();
   const { canPublish } = useModerationStatus();
   const isFeed = location.pathname === "/feed" || location.pathname === "/";
+  const isBookReader = location.pathname.startsWith("/books/read/");
 
   const tryOpenCreate = useCallback(async () => {
     if (!canPublish) {
@@ -140,6 +141,7 @@ const BottomNav = () => {
 
   return (
     <>
+      {!isBookReader && (
       <nav
         className={`lg:hidden ${
           isFeed ? "absolute inset-x-0 bottom-0 w-full" : "fixed bottom-0 left-0 right-0"
@@ -176,6 +178,7 @@ const BottomNav = () => {
           {right.map(renderTab)}
         </div>
       </nav>
+      )}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
     </>

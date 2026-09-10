@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1350" viewBox="0 0 900 1350" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ECFDF5"/>
+      <stop offset="0.45" stop-color="#A7F3D0"/>
+      <stop offset="1" stop-color="#065F46"/>
+    </linearGradient>
+    <linearGradient id="hall" x1="0" y1="300" x2="900" y2="900" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FEF3C7"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(680 260) rotate(90) scale(220 180)">
+      <stop stop-color="#FEF9C3" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#FEF9C3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1350" fill="url(#bg)"/>
+  <circle cx="680" cy="260" r="1" fill="url(#sun)"/>
+  <!-- school hallway perspective -->
+  <path d="M80 420 L450 520 L820 420 L820 980 L80 980 Z" fill="url(#hall)" opacity="0.55"/>
+  <path d="M160 460 L450 540 L740 460" stroke="#92400E" stroke-width="6" fill="none"/>
+  <path d="M200 520 L450 580 L700 520" stroke="#92400E" stroke-width="4" fill="none" opacity="0.7"/>
+  <!-- open door of light -->
+  <rect x="390" y="560" width="120" height="280" rx="4" fill="#FEFCE8" stroke="#065F46" stroke-width="8"/>
+  <rect x="410" y="590" width="80" height="160" fill="#6EE7B7" opacity="0.85"/>
+  <!-- school bell -->
+  <ellipse cx="250" cy="340" rx="70" ry="55" fill="#FBBF24" stroke="#B45309" stroke-width="8"/>
+  <path d="M250 280 L250 250" stroke="#78350F" stroke-width="10" stroke-linecap="round"/>
+  <path d="M220 390 Q250 420 280 390" stroke="#78350F" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <circle cx="250" cy="400" r="10" fill="#78350F"/>
+  <!-- locker row hint -->
+  <rect x="120" y="620" width="70" height="160" rx="4" fill="#047857" opacity="0.5"/>
+  <rect x="200" y="640" width="70" height="140" rx="4" fill="#059669" opacity="0.45"/>
+  <rect x="630" y="640" width="70" height="140" rx="4" fill="#059669" opacity="0.45"/>
+  <rect x="710" y="620" width="70" height="160" rx="4" fill="#047857" opacity="0.5"/>
+  <!-- title -->
+  <rect x="80" y="1000" width="740" height="240" rx="12" fill="#064E3B" fill-opacity="0.82"/>
+  <text x="450" y="1090" text-anchor="middle" fill="#ECFDF5" font-family="Georgia, 'Times New Roman', serif" font-size="64" font-weight="700">After the Bell</text>
+  <text x="450" y="1155" text-anchor="middle" fill="#6EE7B7" font-family="Helvetica, Arial, sans-serif" font-size="24" letter-spacing="3">A SCHOOL NOVELLA</text>
+  <text x="450" y="1210" text-anchor="middle" fill="#D1FAE5" font-family="Georgia, serif" font-size="32">Priya Nair</text>
+</svg>

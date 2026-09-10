@@ -110,28 +110,28 @@ export default function BookPageFlipper({
         .flip-next { animation: flip-out-left 0.26s ease-in forwards; }
         .flip-prev { animation: flip-out-right 0.26s ease-in forwards; }
         .books-page-scroll {
-          scrollbar-width: thin;
-          scrollbar-color: transparent transparent;
-        }
-        .books-page-scroll:hover,
-        .books-page-scroll:focus-within,
-        .books-page-scroll:active {
-          scrollbar-color: rgba(120, 100, 70, 0.28) transparent;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
         }
         .books-page-scroll::-webkit-scrollbar {
-          width: 4px;
+          width: 0;
+          height: 0;
+          display: none;
         }
-        .books-page-scroll::-webkit-scrollbar-track {
-          background: transparent;
-        }
-        .books-page-scroll::-webkit-scrollbar-thumb {
-          background: transparent;
-          border-radius: 999px;
-        }
-        .books-page-scroll:hover::-webkit-scrollbar-thumb,
-        .books-page-scroll:focus-within::-webkit-scrollbar-thumb,
-        .books-page-scroll:active::-webkit-scrollbar-thumb {
-          background: rgba(120, 100, 70, 0.28);
+        /* Reveal a faint thumb only while the user is actively scrolling via :hover on pointer devices */
+        @media (hover: hover) {
+          .books-page-scroll:hover {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(120, 100, 70, 0.22) transparent;
+          }
+          .books-page-scroll:hover::-webkit-scrollbar {
+            width: 3px;
+            display: block;
+          }
+          .books-page-scroll:hover::-webkit-scrollbar-thumb {
+            background: rgba(120, 100, 70, 0.22);
+            border-radius: 999px;
+          }
         }
       `}</style>
 

@@ -105,6 +105,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     return <>{children}</>;
   }
 
+  // Book reading mode: same immersive escape hatch for EVERY title (Harbor Lights,
+  // Stage Left, Quiet Room, etc.). No YAJ bottom nav, no top chrome, no players.
+  if (isBookReader) {
+    return <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#F7F1E8] text-foreground">{children}</div>;
+  }
+
   if (isPodcastWorkspace || isPodcastLobby) {
     return (
       <div className="relative min-h-screen overflow-x-hidden overscroll-x-none bg-background text-foreground">
