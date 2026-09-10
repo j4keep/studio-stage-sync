@@ -34,4 +34,13 @@ describe("books-catalog", () => {
     const sample = book!.pages[0]!.text;
     expect(sample.split(/\s+/).length).toBeGreaterThan(120);
   });
+
+  it("ships Stage Left at Harbor Lights quality", () => {
+    const book = getBookById("drama-stage-left");
+    expect(book).toBeTruthy();
+    expect(book!.pages.length).toBeGreaterThanOrEqual(20);
+    expect(book!.coverImage).toBeTruthy();
+    expect(book!.pages[0]?.chapter).toMatch(/Chapter/i);
+    expect(book!.pages[0]!.text.split(/\s+/).length).toBeGreaterThan(120);
+  });
 });

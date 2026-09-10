@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1350" viewBox="0 0 900 1350" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1350" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1A0B08"/>
+      <stop offset="0.55" stop-color="#3B150C"/>
+      <stop offset="1" stop-color="#0C0A09"/>
+    </linearGradient>
+    <linearGradient id="curtain" x1="0" y1="0" x2="900" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7F1D1D"/>
+      <stop offset="0.5" stop-color="#B91C1C"/>
+      <stop offset="1" stop-color="#7F1D1D"/>
+    </linearGradient>
+    <radialGradient id="spot" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(450 620) rotate(90) scale(280 220)">
+      <stop stop-color="#FDE68A" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#FDE68A" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="900" height="1350" fill="url(#bg)"/>
+  <!-- proscenium -->
+  <rect x="60" y="120" width="780" height="40" fill="#D6D3D1"/>
+  <rect x="60" y="160" width="40" height="720" fill="#A8A29E"/>
+  <rect x="800" y="160" width="40" height="720" fill="#A8A29E"/>
+  <!-- curtains -->
+  <path d="M100 160 C180 280 180 520 100 700 L100 160 Z" fill="url(#curtain)"/>
+  <path d="M800 160 C720 280 720 520 800 700 L800 160 Z" fill="url(#curtain)"/>
+  <path d="M140 160 C250 300 250 500 140 680" stroke="#450A0A" stroke-width="10" fill="none"/>
+  <path d="M760 160 C650 300 650 500 760 680" stroke="#450A0A" stroke-width="10" fill="none"/>
+  <!-- stage floor -->
+  <path d="M140 780 L760 780 L820 920 L80 920 Z" fill="#292524"/>
+  <path d="M180 800 L720 800 L760 880 L140 880 Z" fill="#44403C"/>
+  <!-- spotlight -->
+  <circle cx="450" cy="560" r="1" fill="url(#spot)"/>
+  <!-- lone figure silhouette -->
+  <ellipse cx="450" cy="760" rx="48" ry="12" fill="#0C0A09" opacity="0.55"/>
+  <path d="M450 520 C430 520 418 545 422 580 L410 700 L435 700 L442 620 L458 620 L465 700 L490 700 L478 580 C482 545 470 520 450 520 Z" fill="#F5F5F4"/>
+  <circle cx="450" cy="495" r="28" fill="#F5F5F4"/>
+  <!-- script pages at feet -->
+  <rect x="510" y="730" width="70" height="50" rx="3" fill="#FEF3C7" transform="rotate(12 545 755)"/>
+  <rect x="320" y="735" width="64" height="46" rx="3" fill="#FEF3C7" transform="rotate(-8 352 758)"/>
+  <!-- title -->
+  <rect x="90" y="980" width="720" height="250" rx="10" fill="#0C0A09" fill-opacity="0.62"/>
+  <text x="450" y="1075" text-anchor="middle" fill="#FEF3C7" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">Stage Left</text>
+  <text x="450" y="1140" text-anchor="middle" fill="#FBBF24" font-family="Helvetica, Arial, sans-serif" font-size="26" letter-spacing="5">A THEATER NOVELLA</text>
+  <text x="450" y="1200" text-anchor="middle" fill="#D6D3D1" font-family="Georgia, serif" font-size="32">Jonah Reed</text>
+</svg>

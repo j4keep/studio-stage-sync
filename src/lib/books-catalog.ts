@@ -52,7 +52,9 @@ export const REGULAR_CATEGORIES: {
 ];
 
 import harborLightsCover from "@/assets/books/harbor-lights-cover.svg";
+import stageLeftCover from "@/assets/books/stage-left-cover.svg";
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
+import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
@@ -85,16 +87,11 @@ export const SEED_BOOKS: BookItem[] = [
     audience: "regular",
     category: "drama",
     listingType: "free",
-    coverFrom: "#7c2d12",
-    coverTo: "#f59e0b",
-    blurb: "An understudy gets one night to rewrite a career — and a family.",
-    pages: pages(
-      "Call time was 6:40. Lena’s understudy binder shook in her hands as the lead’s understudy notice lit up the company chat.",
-      "Act One went clean. Act Two, the set stuck. Lena improvised a line that made the audience lean forward — and her estranged brother, seated row C, freeze.",
-      "Backstage, the director whispered, “Keep that.” Lena nodded, tasting copper and courage.",
-      "After curtain, her brother waited by the stage door with two tickets for next week. “For Mom,” he said. “She would have liked your ending.”",
-      "Lena kept the tickets in her script. Some roles, she realized, you rehearse your whole life before you finally step into the light.",
-    ),
+    coverFrom: "#7F1D1D",
+    coverTo: "#FBBF24",
+    coverImage: stageLeftCover,
+    blurb: "An understudy gets one night to rewrite a career—and a family. A theater novella in full reading pages.",
+    pages: STAGE_LEFT_PAGES,
   },
   {
     id: "drama-quiet-room",
