@@ -1,1070 +1,512 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Postcard Home — finished YAJ original adult romance novella.
+ * Postcard Home — finished YAJ original adult novella.
  * 24 substantial reading pages, arranged as eight three-page chapters.
  */
 export const POSTCARD_HOME_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — Three Days",
-    text: `Samantha Vinh arrived in Morrow Bay with two black dresses, four charging cables, and a professional suspicion of charm. Her assignment was simple: three days, eight hundred words, one coastal town not yet exhausted by photographs. The magazine wanted salt, eccentricity, and "a sense of discovery without inconvenience."
+    text: `Sam Ortiz had visited forty-one towns in the last two years and remembered almost none of them individually, only as a blur of rental cars and notebooks filled with the specific, portable poetry required by a magazine called Compass Monthly. Her editor, Dana Whitfield, had a talent for turning any place into three days: enough time to gather color, not enough to get attached.
 
-At the rental counter, discovery began with no car.
+Salt Hollow was supposed to be no different. A lighthouse feature, six hundred words, a few evocative details about fog and gulls, filed by Thursday so Sam could catch a flight to a much larger assignment in Reykjavik the following week. She'd read the brief on the train from the airport: decommissioned harbor, one remaining private lighthouse keeper, quaint enough for the "hidden coastal gems" issue.
 
-"Bridge inspection," the clerk said. "Everybody extended. You can take the county bus."
+She arrived at dusk, salt air thick enough to taste, and checked into the town's only inn above a shop that sold both bait and secondhand paperbacks, which struck her as either efficient or deeply confused. The innkeeper, a woman named Odette with a laugh like a seagull, told her the lighthouse keeper didn't take visitors easily.
 
-The bus carried Sam past shuttered bait shops and fields flattened by ocean wind. Her editor, Len, texted instructions.
+"He'll talk to you," Odette said, "eventually. Finn doesn't do fast."
 
-Find us the next place before influencers do.
+Sam, who had built an entire career on doing fast, filed that information away with mild professional concern and no particular curiosity about the man himself. She had three days. She intended to use exactly three, the way she used every town: efficiently, warmly, and without ever once imagining what it might be like to stay.
 
-Sam had built fifteen years of work on that sentence. She had slept in desert monasteries, reviewed ice hotels, and learned to make loneliness sound like freedom in airport lounges. Her readers trusted that she could arrive anywhere without needing to belong.
-
-Morrow Bay's station was a bench beside a grocery store. Fog obscured the harbor and erased the upper half of a white lighthouse on the headland.
-
-A man in a navy sweater waited beside an ancient truck. He held a cardboard sign reading SAMANTHA VAN.
-
-"Vinh," she said.
-
-He examined the sign. "The innkeeper's handwriting has regional limitations."
-
-"Are you the shuttle?"
-
-"Elias Ortega. Volunteer chauffeur, lighthouse custodian, occasional rescuer of travel writers."
-
-"I don't require rescue."
-
-"Good. The truck's unreliable."
-
-His smile was slow and unapologetic. He loaded her case beside coils of rope and a box of library books.
-
-As they drove, the lighthouse beam turned invisibly in the fog, touching nothing Sam could see.
-
-"Three days?" Elias asked.
-
-"If the bridge cooperates."
-
-"People say that like the bridge makes decisions."
-
-Sam opened her notebook and wrote: Town personifies infrastructure. Possibly from isolation.
-
-Elias glanced over. "Spell my name right when you call me peculiar."`,
+She did not yet know that the lighthouse at the end of Salt Hollow's crumbling pier kept its own schedule, indifferent to magazine deadlines, and that the man who tended it had spent years learning precisely the kind of patience Sam had spent her whole career avoiding.`,
   },
   {
     chapter: "Chapter 1 — Three Days",
-    text: `The Gull House Inn had six rooms, floral wallpaper, and a proprietor named Nessa who objected to being described as quaint.
+    text: `The lighthouse stood beyond a peeling pier, gulls arranged along its rail like a jury. Sam approached with her notebook and professional smile ready.
 
-"Quaint means the plumbing is old and visitors are expected to find that noble," she said, handing Sam a brass key.
+Above her, the lantern glass caught a colorless sun. The whole tower looked both neglected and stubbornly awake.
 
-Sam's room overlooked the harbor. Through fog, boats appeared and vanished like thoughts she had decided not to finish. A handwritten card on the pillow listed breakfast times and the number for Elias if the lighthouse horn became "needlessly dramatic."
+She found him halfway up an exterior ladder, replacing a cracked pane in the lamp housing, sleeves rolled to reveal forearms that suggested decades of exactly this kind of unglamorous repair work.
 
-Sam conducted interviews with the efficiency of an extraction. At the bakery she recorded the price of cardamom buns. At the maritime museum she photographed whalebones. She asked a fisherman named Colm what tourists misunderstood.
+"Finn Marlow?" she called up.
 
-"They think we're scenery," he said.
+He looked down, unhurried, the way a man looks at weather he isn't worried about. "Depends who's asking, and why."
 
-By four, rain streaked her notes. Elias found her beneath the awning of a closed pharmacy.
+"Sam Ortiz. Compass Monthly. I'm writing about the lighthouse."
 
-"You missed the tide pools."
+"The lighthouse doesn't need writing about. It needs a new pane, which is what I'm doing, if you don't mind holding the ladder steady instead of asking it questions."
 
-"They're on tomorrow's schedule."
+Sam had interviewed senators without losing her footing, yet this man flustered her. He climbed down, wiped his hands, and studied her with an attention that felt like actual seeing.
 
-"The tide is not."
+"Three days," she said, by way of explanation. "That's how long I have to understand this place well enough to write six hundred words about it."
 
-He drove her to a black-rock cove. They descended slick steps while gulls tilted overhead. Elias showed her anemones closing around droplets and mussels shining blue in crevices. He did not narrate everything, which Sam appreciated.
+Finn's mouth twitched, not quite a smile. "You can't understand this place in three days. You can barely understand the tide table in three days."
 
-"How did you become lighthouse custodian?" she asked.
+"I don't need to fully understand it. I need to describe it well enough that people who'll never come here feel like they almost did."
 
-"Poor life choices and municipal budgeting."
+"That," Finn said, "sounds like a very sad job."
 
-"That sounds rehearsed."
-
-"My real answer takes longer."
-
-Sam photographed him against the gray water, then lowered the camera. He had a weathered face, brown skin, and eyes that seemed amused before his mouth consented.
-
-At the cove's edge, her boot slipped. Elias caught her forearm. The contact was practical and brief, but her body registered it with embarrassing clarity.
-
-"Still don't require rescue?" he asked.
-
-"I require better municipal stairs."
-
-He laughed, and the sound entered her notes without being written.`,
+Sam opened her mouth to disagree and found, disconcertingly, that she couldn't.`,
   },
   {
     chapter: "Chapter 1 — Three Days",
-    text: `That night, Sam ate chowder at the Anchor Room and reviewed her material. She had market colors, historical dates, and three usable jokes. She lacked the sentence that made a place seem inevitable.
+    text: `She spent the rest of the first day doing what she always did: collecting texture. An elderly fisherman named Coz told her, unprompted, that the town's harbor had silted up decades ago and nobody had found the money to dredge it properly, so the boats had stopped coming, one by one, until only Finn's lighthouse remained as a formality nobody had gotten around to decommissioning.
 
-Elias sat at the bar repairing a brass lantern. Beside him, a girl of seventeen did homework with purple headphones.
+"Why does he still keep it, if there's no harbor to guide anymore?" Sam asked.
 
-"My daughter, Wren," he said when Sam approached. "Wren, the journalist who schedules tides."
+Coz considered this with the seriousness of a man who'd had decades to think about it. "Ask him. Though I'll tell you now, you won't get much. Finn talks in about as many words as the tide allows."
 
-Wren looked up. "Condolences."
+That evening, notebook full of color but strangely thin on the actual keeper, Sam walked back out to the pier and found Finn sitting on the lighthouse steps with a thermos, watching the last light fade off the water.
 
-Sam ordered whiskey. She learned Elias taught history at the secondary school and maintained the lighthouse under a county contract. Wren lived with him most weeks; her mother, Isabel, managed a marine lab two towns north.
+"I have a professional question," she said, sitting a careful distance away. "Why keep a lighthouse nobody needs anymore?"
 
-"So there is no keeper dramatically alone in the tower?" Sam asked.
+Finn was quiet long enough that Sam thought he might simply not answer. "My father kept it. Then he died, and I found out I didn't know how to stop, even after the harbor board told me the funding was gone and I was doing it for nothing official."
 
-"There is a rotating LED and a government maintenance log. Sorry for your article."
+"That's not nothing," Sam said. "That's grief with a very specific shape."
 
-He invited her to the morning lens cleaning.
+Finn looked at her for the first time like she might have said something worth hearing. "You're better at this than I expected from someone who only has three days."
 
-"At five?"
-
-"The light is best."
-
-"That phrase has lured writers into many poor decisions."
-
-"You can review the sunrise anonymously."
-
-At dawn, Elias unlocked the lighthouse. The spiral stair rose through cold stone smelling of metal and sea. Sam climbed behind him, counting steps until breath displaced numbers.
-
-In the lantern room, fog thinned below them. The Fresnel lens stood taller than Sam, prisms gathering the first sunlight and breaking it into pale fire.
-
-The town emerged gradually: red roofs, wet streets, the harbor cupped by rock.
-
-Sam forgot to take a photograph.
-
-"There," Elias said softly. "It has to reveal itself."
-
-The phrase was too perfect. She suspected he knew.
-
-"Do you perform this for every visitor?"
-
-"Only the hostile ones."
-
-She raised her camera, but he had turned toward the glass. In his reflection, the whole town seemed held within his chest.
-
-Sam wrote no notes for the next ten minutes.`,
+"I contain more than three days' worth of noticing," Sam said. "I just don't usually get to use it."`,
   },
   {
-    chapter: "Chapter 2 — Local Knowledge",
-    text: `On day two, Sam followed the itinerary Nessa had revised without permission. She joined the community radio weather report, visited a boatbuilder who quoted poetry while caulking seams, and ate fried oysters from a window that opened only when the owner's red bicycle was parked outside.
+    chapter: "Chapter 2 — The Keeper",
+    text: `By the second morning, Sam had abandoned the pretense of gathering color efficiently and simply followed Finn through his actual routine — checking the lamp mechanism, logging weather in a book that looked older than either of them, walking the pier's edge to inspect erosion that the harbor board would never fund repairs for.
 
-Morrow Bay resisted compression. Its prettiest lane ended at a sewage pump. Its famous sea arch could be seen only from a parking lot behind a discount pharmacy. Residents told stories with unnecessary cousins.
+"You do all this alone," she said, watching him tighten a bolt that had clearly been tightened a hundred times before.
 
-Elias appeared between appointments as if the town had assigned him to complicate her. He brought coffee to the radio station and corrected the museum's account of a shipwreck. At lunch, Wren joined them and asked Sam where she lived.
+"Mostly. Odette helps when I let her. Coz shows up to supervise and offer opinions I didn't ask for."
 
-"Mostly New York."
+"No family beyond your father?"
 
-"Mostly?"
+"A sister, two towns over. She thinks I'm wasting my life on a building nobody official cares about." Finn set down the wrench, looked out at the gray water. "She's probably right, in the ways that matter to a bank account. I've made peace with that particular kind of right."
 
-"I have an apartment. I travel."
+Sam wrote none of this down. It felt, suddenly, like the kind of thing that belonged to Finn rather than to Compass Monthly's readership, six hundred words of borrowed intimacy dressed up as travel writing. She had never once, in two years, felt protective of a subject's privacy instead of hungry for its details.
 
-"Plants?"
+"Can I ask why you're telling me this," she said, "instead of the version you'd give a stranger with a notebook?"
 
-"One plastic fern."
+Finn considered the question with the same unhurried care he gave everything. "Because you put the notebook away twenty minutes ago and didn't notice you'd done it."
 
-Wren looked at her father. "That's bleak."
-
-Sam smiled. "My apartment has excellent light."
-
-"For the plastic fern."
-
-Elias hid a laugh behind his cup.
-
-In the afternoon, he took Sam to Mercado Ortega, the grocery his parents had opened after leaving Puerto Rico in 1978. His older sister Lucía now ran it. Photographs above the register showed Elias as a boy in an apron, then in army uniform, then holding infant Wren.
-
-"You left," Sam said.
-
-"For eleven years."
-
-"And came back."
-
-"Eventually."
-
-The word carried weight.
-
-Sam bought a postcard from a dusty rack: the lighthouse under an impossible blue sky. On the back she wrote to her mother in California, then stopped.
-
-Her mother would ask whether Sam was eating, whether the town was safe, whether this trip might finally be the last. Love between them often arrived disguised as border control.
-
-Sam placed the unwritten card inside her notebook.
-
-Across the shop, Elias watched without asking who it was for.`,
+Sam looked down. He was right. Somewhere between the erosion inspection and the weather log, she'd stopped performing the job and started simply being present for it — a distinction she hadn't realized she was capable of making anymore, after two years of turning every place into material before she'd even finished arriving.`,
   },
   {
-    chapter: "Chapter 2 — Local Knowledge",
-    text: `Elias's real answer took longer over dinner at his house, a cedar cottage beneath the lighthouse road. Wren had invited Sam, claiming her father cooked too much rice when nervous.
+    chapter: "Chapter 2 — The Keeper",
+    text: `That afternoon, a storm warning transformed Finn from unhurried to purposeful. He secured the shutters, checked the generator, and climbed the tower to test the lamp.
 
-"I am not nervous," Elias said.
+"Do you need help?" Sam asked, feeling useless in a way her career rarely allowed.
 
-"Then your portion control has failed naturally."
+"You could hold things. Hand me tools. Try not to fall off the pier — that would complicate both our days considerably."
 
-The house held instruments, school papers, and jars of sea glass. No surface had been styled for a photograph. Sam felt the fatigue of being a visitor among objects that knew where they belonged.
+For two hours she handed him tools and learned the satisfaction of a stubborn bolt seating correctly. She had not felt so present on an assignment in years.
 
-Elias had enlisted at nineteen to leave a father whose disappointment filled every room. He repaired aircraft, married Isabel, and followed postings until Wren was six. When his father became ill, Elias returned to help at the store. The marriage did not survive the geography.
+Salt dried on her wrists. When Finn passed a wrench into her hand, he trusted her to know its place without explanation.
 
-"Do you regret coming back?" Sam asked.
+"You're good at this," Finn said, surprising her, as they climbed down from the tower's final check. "Most visitors would have complained by now."
 
-"Some days. Regret isn't always an instruction."
+"I'm not most visitors."
 
-After Wren went upstairs, Sam and Elias washed dishes. Their shoulders touched at the sink.
+"No," Finn agreed, studying her with that same rare, actual attention. "You're not."
 
-"Your turn," he said. "Why travel?"
+The wind had picked up considerably by the time they finished, gulls scattering toward whatever shelter gulls found in weather like this, the sky over the water gone the particular bruised color that meant the storm wasn't a warning anymore but an arrival.
 
-Sam gave the published version: her parents ran motels along California highways; she grew up watching strangers arrive with stories; movement felt native.
+"You should get back to the inn before this gets worse," Finn said.
 
-"And the unpublished version?"
+Sam looked at the darkening sky, then at the lighthouse, then at him. "Or I could stay and see what a storm actually looks like from here. For the article."
 
-She dried a bowl. "If you leave first, nobody gets to define the place you occupy."
-
-Elias did not pretend to understand too quickly.
-
-Outside, the lighthouse beam crossed the kitchen every twelve seconds, brightening his face and moving on.
-
-"Would you like to see the night watch?" he asked.
-
-"Is that municipal language?"
-
-"Strictly."
-
-They walked uphill under a sky clearing of cloud. At the lighthouse door, Sam looked back at his warm house, Wren's lamp upstairs, and the dark ocean beyond.
-
-Her departure bus left in thirty-one hours.
-
-For the first time, the deadline did not feel like safety. It felt like something approaching.`,
+"For the article," Finn repeated, in a tone that suggested he didn't entirely believe her, and didn't entirely mind.`,
   },
   {
-    chapter: "Chapter 2 — Local Knowledge",
-    text: `At night the lantern room floated above darkness. The automated beacon turned with a soft mechanical breath. Elias poured coffee from a dented thermos and showed Sam the old keeper logs.
+    chapter: "Chapter 2 — The Keeper",
+    text: `The storm arrived at eight, rain slamming the windows and wind howling through every gap. Finn checked the lamp every twenty minutes; ships still passed, and habits built to save lives did not vanish with funding.
 
-Entries from a century ago recorded storms, births, rescues, and ordinary meals in the same disciplined handwriting. Feb. 7: gale from east. Lamp steady. Beans spoiled.
+Each circuit up the iron stairs brought him back wetter and more intent. The beam crossed the room at fixed intervals, measuring the weather without calming it.
 
-"People trusted the person who wrote this," Elias said. "A light is a promise made to strangers."
+Sam sat wrapped in a blanket Finn had produced from somewhere, watching him work, notebook forgotten on the small kitchen table beside two mugs of tea gone cold.
 
-Sam ran a finger above the ink. "A travel article is too."
+"Tell me about your father," she said, during a lull between the worst gusts.
 
-"What does yours promise?"
+Finn traced his mug. "He kept this light for forty years. Said a lighthouse works by being reliable: same light, same place, whether anyone needs it or not. Most good things work that way."
 
-She thought of Len's instruction, the hunger to name the next place. "That going somewhere can change you."
+"Do you believe that?"
 
-"Does it?"
+"I didn't, for a long time after he died. I thought reliability without an audience was just stubbornness with better lighting." Finn looked at her, the lamp's mechanical hum steady behind him. "I'm starting to reconsider."
 
-"Sometimes. Usually you bring yourself."
+"Why now?"
 
-Wind struck the glass. The tower vibrated.
+"Because you asked me a real question and then actually waited for the answer instead of writing it down first," Finn said. "Most people who come through here can't manage that. It's a smaller thing than it sounds, and also a much bigger one."
 
-Elias stood close behind her, looking at the same open log. Sam turned. His gaze dropped to her mouth with no attempt at disguise.
-
-"This would be unprofessional," she said.
-
-"I'm not employed by your magazine."
-
-"You are a subject."
-
-"A person first, on county holidays."
-
-She kissed him before she could convert desire into a clever sentence. He tasted of coffee and sea air. One hand settled at her waist; the other stayed on the iron rail, as though anchoring them both.
-
-The beacon swept over them, darkness and brightness alternating. Sam had kissed people in cities she could no longer locate precisely on maps. This was different not because it promised permanence, but because she wanted to remember the room after leaving it.
-
-They stopped before restraint became regret.
-
-"Your bus," Elias said.
-
-"Thirty hours."
-
-"You're counting."
-
-"I count everything."
-
-He touched his forehead to hers. "Then count this accurately."
-
-Below, waves struck rock they could not see. The light continued its patient circle, promising nothing about shore except that it existed.`,
+Sam didn't have an answer for that. She simply moved closer on the narrow bench, close enough that their shoulders touched, and let the storm fill the silence where a professional response should have been.`,
   },
   {
-    chapter: "Chapter 3 — Weather Warning",
-    text: `The storm arrived ahead of forecast and closed both bridge and bus route. Nessa extended Sam's room with visible satisfaction.
+    chapter: "Chapter 3 — Off Itinerary",
+    text: `The storm passed by midnight, leaving Salt Hollow rinsed and quiet, the harbor's silted stillness somehow more peaceful than before. Sam should have gone back to the inn. Instead she stayed until the lamp's backup power switched over to the restored main line, watching Finn's careful, exhausted satisfaction at a job completed without failure.
 
-"The town has detained you," she said.
+"Thank you," he said, walking her back along the pier in the gray predawn light. "For staying. Most people wouldn't have."
 
-"Weather is not jurisdiction."
+"Most people have flights to catch," Sam said. "I do too, eventually. Reykjavik, next week."
 
-"Tell the bridge."
+"Eventually," Finn repeated, as though testing the word's weight. "That's a very generous eventually, for someone whose job is built on three days."
 
-Len approved one extra day but reminded Sam that the sponsored issue went to layout Friday. The sponsor was Calder Coast, a hospitality company whose name Sam had seen on boutique hotels from Miami to Dubrovnik.
+Sam felt something tighten in her chest — not quite guilt, not quite longing, something newer and less named than either. "I have a draft due Thursday. Six hundred words. I haven't written a single one yet."
 
-At the municipal office, Sam requested development records as routine background. The clerk hesitated, then handed her a public packet. Calder Coast had quietly optioned seventy acres above Morrow Bay for a resort, marina, and private access road. A promotional rendering showed the lighthouse beside glass villas.
+"What's stopping you?"
 
-Elias found her reading it at the radio station.
+"I don't know how to compress this into six hundred words without lying about what it actually is."
 
-"You knew," she said.
+Finn stopped walking, turned to face her fully in the thin morning light. "What is it actually?"
 
-"The council signed confidentiality agreements. It leaked last week."
+Sam considered lying, the way she'd learned to smooth over every complicated thing in two years of professional detachment. She didn't. "I think it's the first place I've been in longer than I can remember where I wasn't already thinking about the next place while I was still standing in this one."
 
-"My magazine's sponsor is buying the headland."
+Finn's expression shifted, something guarded loosening slightly. "That's a dangerous thing to admit to a lighthouse keeper with three days left on your schedule."
 
-"Your article is advance marketing."
+"I'm aware," Sam said. "I don't have a plan for what to do about it yet."
 
-The accusation stung because it might be true.
-
-"I didn't know."
-
-"Will that matter after publication?"
-
-Sam called Len from the hallway. He dismissed her concern.
-
-"The resort isn't approved. Write the town we saw. Don't become a zoning reporter."
-
-"Did Calder choose Morrow Bay for the issue?"
-
-Silence answered before he did. "They suggested several emerging destinations."
-
-Sam returned to the studio. Elias had gone.
-
-All afternoon she interviewed residents about the proposal. Some wanted jobs. Others feared water shortages and loss of fishing access. Lucía Ortega said, "Don't turn us into saints resisting money. People here need money. Just tell who will receive it."
-
-By evening, rain ran in silver sheets down the inn windows. Sam's draft waited on her screen, full of cardamom and fog.
-
-She deleted the opening sentence.
-
-Then she began again: The next place you are meant to discover may already have been discovered by someone planning to sell it.`,
+"Neither do I," Finn admitted. "But I'd like to find out together, if you're willing to stay long enough to try."`,
   },
   {
-    chapter: "Chapter 3 — Weather Warning",
-    text: `Sam sent Len two documents: the travel feature and a reported sidebar about Calder Coast's option. He called within four minutes.
+    chapter: "Chapter 3 — Off Itinerary",
+    text: `Sam requested two extra days, citing "richer material than expected." Dana replied: *Two days, not more. Reykjavik and the deadline won't wait.*
 
-"This isn't the assignment."
+Two days felt, suddenly, both generous and cruelly insufficient.
 
-"It's the context."
+Time changed texture once counted in departures. Every ordinary hour now seemed to ask whether she was observing a life or beginning one.
 
-"It's an allegation based on public paperwork."
+She spent them living rather than collecting: walking with Finn, learning the fishing families' names, and seeing how a town without an economic reason to exist remained held by more than commerce.
 
-"That's called reporting."
+"You're not taking notes anymore," Finn observed, on their second afternoon, watching her watch the tide instead of writing about it.
 
-"That's called setting fire to a sponsored issue."
+"I noticed that too. It's strange. I've never once forgotten to document something before."
 
-He demanded a clean draft by morning.
+"Maybe you're not here to document it this time."
 
-Unable to sleep, Sam walked uphill through rain to the lighthouse cottage. Elias opened the door wearing an old T-shirt, his face guarded.
+"Then why am I here?"
 
-"I need to ask what you want quoted."
+Finn considered with his usual patience. "I don't know. But I'd like you to stay long enough to find out instead of obeying a schedule written before you arrived."
 
-"At midnight?"
+Sam looked out at the lighthouse, steady against the gray afternoon sky, and felt the specific vertigo of a woman whose entire career had been built on leaving discovering, for the first time, an actual reason to consider staying.
 
-"My deadline doesn't respect coastal custom."
+"I have a flight in four days," she said. "To Reykjavik. Then somewhere else after that. That's the job."
 
-He let her in. Wren was at Isabel's because of the storm. On the kitchen table lay petitions against the resort and an economic report funded by Calder.
-
-Elias believed the town needed investment but not enclosure. His proposal would renovate the public pier, create a marine training center, and preserve headland access through a local cooperative. Nobody with capital had listened.
-
-"Write that," he said. "Not me brooding attractively near the light."
-
-"I hadn't used attractively."
-
-"Editorial oversight."
-
-They worked until two, combining his local research with Sam's documents. Attraction remained in the room, but anger made honesty sharper.
-
-"Did you kiss me because you liked me," he asked, "or because your article needed weather?"
-
-Sam closed her laptop. "That is insulting."
-
-"Your career depends on entering lives and leaving with a version."
-
-"And yours depends on believing staying makes your version pure."
-
-Elias recoiled.
-
-Sam stood. "I kissed you because I wanted you. I'm writing this because it's true. Neither guarantees an outcome you like."
-
-At the door, he said her name, but she left.
-
-Back at the inn, she found a message from Calder's publicist praising her "forthcoming celebration." Beneath it, Len had written: Send the original pretty draft. Last chance.
-
-Sam watched the lighthouse beam cross her ceiling like a question without mercy.`,
+"I know," Finn said. "I'm not asking you to quit your job, Sam. I'm asking you to be honest about what you'd be leaving behind, instead of pretending it's just color for an article."`,
   },
   {
-    chapter: "Chapter 3 — Weather Warning",
-    text: `At dawn, Sam sent the reported version.
+    chapter: "Chapter 3 — Off Itinerary",
+    text: `That evening, Odette cornered Sam at the inn's small kitchen table, sliding a mug of tea across without asking whether she wanted one.
 
-Len replied only: Call me.
+"You've been out at that lighthouse every day this week," Odette said, not quite a question.
 
-The storm passed. Bridge crews announced one escorted crossing at noon, and Nessa placed Sam's suitcase beside the desk with a pointed lack of subtlety.
+"I'm writing about it."
 
-"Leaving and being thrown out look similar from the road," Sam said.
+"You're writing about him. There's a difference, and everyone in this town noticed it before you did." Odette's laugh, that particular seagull sound, softened into something gentler. "Finn hasn't let anyone this close in years. Not since his father died, honestly. He decided somewhere along the way that reliability meant doing it alone, like company would somehow make the light less steady."
 
-"I packed because you were staring at it instead of breakfast."
+"He told me his father used to say a lighthouse works by being reliable, not loud."
 
-Sam walked once more to the harbor. Residents stacked sandbags and cleared branches. Nobody paused because her emotional weather had changed.
+"His father also used to say a lighthouse works better with two people tending it, but Finn conveniently forgets that half of the lesson." Odette studied Sam over her own mug. "You could be good for him. I don't know if you're planning to be here long enough to find out."
 
-Elias stood on the pier securing a loose gate. She gave him the sources list for her article.
+"I have a career built on not staying anywhere," Sam admitted, the words feeling strange and heavy leaving her mouth for the first time. "I don't know how to want something that contradicts every choice I've made for two years."
 
-"Calder will attack it," she said. "Everything needs to be public and exact."
+"Nobody knows how, the first time," Odette said. "You just have to decide if the thing you found is worth learning a new way of wanting."
 
-"Are they running it?"
-
-"I don't know."
-
-"And the travel feature?"
-
-"Also don't know."
-
-He took the pages. "About last night—"
-
-"You were right about one thing. I leave with versions. I have done harm by calling attention neutral."
-
-"I was afraid wanting you made me useful to the story."
-
-"You were useful. You were also yourself. Both can be true."
-
-The bus horn sounded from the square.
-
-Elias looked toward it. "Counting?"
-
-"Four minutes."
-
-He kissed her on the rain-slick pier, in view of fishermen and Lucía unloading bread. There was no lighthouse beam to make it beautiful. Sam's coat smelled of wet wool. Elias's lip was split from the storm gate.
-
-"Come back when you aren't assigned," he said.
-
-Sam wanted to promise. Instead she said, "I don't know what happens next."
-
-"Accurate."
-
-On the bus, she opened the postcard to her mother.
-
-Mẹ—Found a town that doesn't want to be found. Found someone who saw me anyway.
-
-She did not mail it. Not yet. A postcard, she thought, was a declaration written before the traveler had to prove return.`,
+Sam sat with that for a long time after Odette went to bed, staring at her half-finished notebook, the six hundred words she still owed Dana Whitfield sitting unwritten beside an entirely different, much longer story that had started writing itself inside her without permission over the past several days.`,
   },
   {
-    chapter: "Chapter 4 — The Published Version",
-    text: `The magazine published on Thursday.
+    chapter: "Chapter 4 — The Deadline",
+    text: `Dana called on Wednesday morning, voice brisk with the particular impatience of an editor managing several writers' schedules simultaneously. "I need that draft by tomorrow, Sam. Reykjavik's fixer is already lined up for Monday. Tell me you have something."
 
-Calder's resort did not appear. Neither did Elias's cooperative plan. Len used Sam's first draft, restored from the editing system, beneath the headline MORROW BAY: THE COAST'S LAST SECRET.
+"I have something," Sam said, staring at the lighthouse through the inn's small window. "It's just not six hundred words yet."
 
-Her descriptions survived almost intact: the cardamom bakery, tide pools, lighthouse unveiling itself through fog. A sidebar invited readers to "arrive before everyone else." Calder Coast occupied six glossy advertising pages.
+"It needs to be six hundred words by tomorrow. That's the job."
 
-Sam's name stood beneath the title.
+Sam had heard variations of that sentence for two years, always accepted it without argument, because the job had always mattered more than any specific place she'd passed through on the way to the next assignment. Standing at the window now, watching Finn's small figure moving along the pier in the gray morning light, she found herself, for the first time, questioning the hierarchy she'd built her entire career around.
 
-By noon, bookings crashed the Gull House website. By Friday, influencers were filming dances on the lighthouse steps. Nessa sent one photograph of cars blocking the fire lane, no caption.
+"Dana, can I ask you something? Off the record, editor to writer."
 
-Sam confronted Len in a glass conference room above Manhattan.
+"Always ominous when you say it like that."
 
-"You published rejected copy."
+"Have you ever actually loved a place you were supposed to leave in three days?"
 
-"You filed it. We edited within rights."
+There was a pause on the line, longer than Sam expected. "Once," Dana said finally. "A town in Portugal, eleven years ago. I filed the piece, caught my flight, and thought about that place for the next decade in a way I've never thought about anywhere since."
 
-"You concealed sponsor involvement."
+"Do you regret leaving?"
 
-"We separated editorial and advertising."
+"Every single day," Dana said, voice quieter now. "But that's not really a helpful answer for you right now, is it. I still need six hundred words by tomorrow, Sam. The rest is yours to figure out on your own time, not the magazine's."
 
-"On facing pages?"
-
-Len's exhaustion resembled her own. "We are trying to keep a magazine alive. Your investigation was not legally ready."
-
-"Then hold the issue."
-
-"And refund seven figures because you had an ethical awakening in a lighthouse?"
-
-She resigned before he could fire her, then learned her contract restricted publication of reporting gathered on assignment for ninety days.
-
-At home, her apartment looked staged for absence: white walls, one unopened suitcase, plastic fern holding no dust because the cleaner came Tuesdays. Sam called Elias. His voicemail answered.
-
-She typed apologies and deleted them. Sorry sounded like weather again, something that had happened around her.
-
-Finally Wren texted: Dad is at emergency council meeting. Town is chaos. He thinks you knew.
-
-Sam stared at the sentence.
-
-She had proof she had not known. Emails, drafts, timestamps. Yet innocence did not cover the distance between intention and result.
-
-Outside, New York lights filled the windows with a city she could describe perfectly and had never allowed to know her.`,
+Sam hung up feeling both less alone in the question and no closer to an answer, the specific weight of a deadline pressing against a feeling she hadn't yet found honest words for.`,
   },
   {
-    chapter: "Chapter 4 — The Published Version",
-    text: `Sam's mother arrived from California carrying oranges and no warning.
+    chapter: "Chapter 4 — The Deadline",
+    text: `She found Finn replacing a warped pier board and sat beside his toolbox, unsure how to begin.
 
-Linh Vinh entered the apartment, looked at the plastic fern, and said, "You live like the bank is showing this place."
+"I have to file tomorrow," she said. "And catch a flight Friday. Reykjavik, then probably somewhere in the Baltics after that, then home for exactly four days before the next assignment starts."
 
-Sam had told her about quitting but not Morrow Bay. Over soup, the whole story emerged. Linh listened, occasionally making the quiet sound that meant both disapproval and continued attention.
+Finn set down his hammer, studied her with the careful attention that had, over the past week, become the thing she most looked forward to in any given day. "That's a lot of somewhere-elses."
 
-"You wrote true things," she said. "They used them falsely."
+"It's the job. It's been the job for two years. I built an entire life around never staying long enough to need to leave anything behind."
 
-"That distinction doesn't clear the fire lane."
+"And now?"
 
-"No."
+"And now I don't know how to write six hundred words about a lighthouse without accidentally writing eleven thousand about you instead," Sam admitted. "Which is a professional problem in addition to whatever else it is."
 
-Linh had managed roadside motels for thirty years, moving whenever owners sold. Sam remembered rooms made temporarily theirs by a rice cooker and her father's slippers.
+Finn looked across the silver water. "I won't ask you to choose between your career and one week in a town missing from most maps."
 
-"Why did you always tell me not to get attached?" Sam asked.
+"But?"
 
-"Because we had to leave."
+"But I'd be lying if I said I wasn't hoping you'd choose it anyway. Not the town. This." He gestured, imprecisely, at the space between them, the toolbox, the lighthouse behind him. "Whatever this has turned into, faster than either of us probably meant to let it."
 
-"I thought you loved leaving."
+Looking at him, Sam felt the vertigo of a decision larger than a deadline.
 
-Her mother laughed. "Children invent parents who choose what frightens them."
-
-The sentence rearranged Sam's life.
-
-She showed Linh the unmailed postcard.
-
-"This man. Is he good?"
-
-"He was honest while being unfair."
-
-"That can be good."
-
-Sam's phone displayed photographs from Morrow Bay. A Calder representative had announced accelerated resort hearings, citing demonstrated visitor demand. Her article was quoted in the press release.
-
-The contract prevented Sam from publishing her original investigation, not from continuing to report. She called an independent coastal newspaper and offered the documents, sources, and her labor without a byline. The editor, Amara Cole, understood the legal line.
-
-For two weeks Sam verified water permits, campaign donations, and land records. She spoke to Elias only through factual emails. His replies were cold and useful.
-
-When Amara's investigation appeared, it proved Calder had funded the county's feasibility study through a shell nonprofit. State regulators opened a review.
-
-Sam read the news at her kitchen table. Linh placed a stamp beside the postcard.
-
-"Evidence first," her mother said. "Then promises."`,
+"I need to write the article first," she said. "I owe Dana that much. Then I need to figure out what's actually true, instead of what's just convenient to feel for four more days."`,
   },
   {
-    chapter: "Chapter 4 — The Published Version",
-    text: `Sam returned to Morrow Bay in November, three months after the magazine article. No assignment, no press booking, one suitcase.
+    chapter: "Chapter 4 — The Deadline",
+    text: `Sam wrote the six hundred words that night, alone in her room above the bait shop, and found the task harder than any assignment in two years precisely because she finally understood what her editor had asked her to compress: not a lighthouse, not a quaint coastal detail for the "hidden gems" issue, but an entire man's inherited grief, dressed up as maintenance, and the particular way a broken town kept choosing to exist anyway.
 
-Tourist season had burned itself out. The bakery sold sweatshirts from a rack. The tide-pool stairs were closed for repair after a visitor fell while filming. At the Gull House, Nessa accepted Sam's reservation without warmth.
+She wrote about the silted harbor, the whitewash peeling in long strips, the specific vocabulary of tools she'd learned in a single storm-tossed evening. She did not write about the way Finn's attention felt like being truly seen for the first time in years, or the way she'd stopped taking notes without noticing, or the particular ache of a deadline that had nothing to do with print schedules.
 
-"Room Four," she said. "Standard rate. No professional courtesy."
+She filed the piece at eleven that night, six hundred words exactly, competent and warm and entirely insufficient to the actual thing she'd found in Salt Hollow.
 
-"Fair."
+Dana's reply came within the hour: *This is good. Genuinely good. Almost too tender for the section, but I'll fight for it. Flight's still Friday. You good?*
 
-Elias met Sam at the lighthouse because she requested an interview for Amara's follow-up. The formality hurt.
+Sam stared at the question for a long time before answering.
 
-He looked thinner. "You helped expose Calder."
+*Not sure yet,* she typed, then deleted it. *Working on it,* she wrote instead, and sent it before she could second-guess the honesty of even that much.
 
-"Amara exposed them. Residents supplied the case."
-
-"And you?"
-
-"I did work."
-
-Wind moved his jacket. Below, waves broke white against the headland.
-
-"I accused you of knowing," he said. "Wren showed me your emails."
-
-"I should have checked the sponsor before I came."
-
-"Would you normally?"
-
-"No."
-
-"Then don't invent a standard just to make guilt feel controllable."
-
-Sam had missed the precision of him.
-
-The state review had frozen the resort permit, but Calder still owned the option. Elias's cooperative needed outside expertise to prepare a public-access tourism plan. Sam had contacts, data, and nowhere she was required to be.
-
-"I can stay through the hearing," she said. "Six weeks."
-
-Elias's expression closed slightly. "Professional?"
-
-"Yes."
-
-"And after?"
-
-"I don't know."
-
-"Still accurate."
-
-He did not kiss her. He gave her the cooperative files and walked down the lighthouse stairs ahead of her.
-
-That night, Sam unpacked into the Gull House dresser instead of living from her suitcase. In the bottom drawer she placed her passport.
-
-The gesture was small, almost theatrical.
-
-Still, when she turned off the lamp, the room felt less like a place awaiting her departure.`,
+She closed her laptop, looked out at the dark shape of the lighthouse still keeping its steady, reliable watch over a harbor that no longer needed guiding, and understood, with sudden clarity, that the article was finished but the actual question — what she was going to do about the four days remaining before her flight — had barely begun.`,
   },
   {
-    chapter: "Chapter 5 — Return Address",
-    text: `The cooperative met in the Mercado Ortega stockroom between towers of canned beans. Its plan combined a public headland trust, small-business loans, and visitor limits at fragile sites. Everyone disagreed about details.
+    chapter: "Chapter 5 — What the Storm Left",
+    text: `Thursday brought a different kind of weather — not a storm, but the particular stillness that follows one, the sky scrubbed clean, the harbor's silted water gone flat and mirror-bright. Sam walked out to the lighthouse with the published draft printed and folded in her pocket, wanting Finn to read it before anyone else did, before it became simply another piece of Compass Monthly's endless content stream.
 
-Colm wanted no resort. Lucía wanted year-round customers. Nessa wanted tourists who understood checkout times. Wren wanted the marine training center to include paid internships.
+He read it slowly, sitting on the lighthouse steps, and Sam watched his face for some sign of what he thought, finding mostly the same unhurried care he brought to everything.
 
-Sam built forecasts and refused to turn conflict into local color. Her magazine experience helped her predict what travelers would pay for, but Morrow Bay residents decided what they were willing to sell.
+"You made it sound reliable," he said finally, folding the pages carefully. "Not sad. Not quaint. Reliable. That's the first time anyone's described this place the way I actually feel about it."
 
-Elias worked beside her with courteous distance. Some nights they stayed late, shoulders nearly touching over maps. Neither referenced the lighthouse kiss.
+"I almost wrote something much longer and much more personal," Sam admitted. "I decided that part wasn't mine to publish."
 
-After a meeting, Wren cornered Sam near the freezer.
+"Whose was it, then?"
 
-"He thinks if he forgives you, he has to trust your leaving."
+"Ours. If we want it to be anything at all."
 
-"That is none of your business."
+Finn set the pages down beside him, looked out at the harbor's mirror-flat water. "I've been thinking about what you said. About four more days."
 
-"Everything is my business until college."
+"Me too. I don't have an answer yet."
 
-Sam smiled despite herself. "Forgiveness and trust aren't the same."
+"I'm not asking for an answer today," Finn said. "I'm asking if you'd let me show you something, instead. Something my father never showed anyone outside the family, not even Odette."
 
-"Tell him. He hears me as youth."
+Sam felt a small, curious thrill move through her, the specific sensation of being trusted with something rare. "What is it?"
 
-On Saturday, Sam helped Elias repair trail signs. Rain moved across the bay in blue curtains.
-
-"I am sorry," she said. "Not for the article I intended. For failing to know how my work would be used. For writing about your home as if readers' desire had no cost."
-
-Elias drove a screw into wet cedar. "I am sorry I made you prove you weren't corrupt before admitting I was hurt."
-
-"Do you forgive me?"
-
-"Some days."
-
-"Do you trust me?"
-
-He met her eyes. "In a storm. With facts. Not yet with the future."
-
-It was more honest than reassurance.
-
-They finished the sign. PUBLIC SHORE—LEAVE ONLY FOOTPRINTS seemed inadequate, so Wren had added: AND MONEY AT LOCAL BUSINESSES.
-
-Sam laughed. Elias did too.
-
-The sound was not a reconciliation. It was a path reopening.`,
+"The keeper's log. Forty years of my father's handwriting, every night he tended this light, every storm, every quiet evening when nothing happened and he wrote it down anyway because nothing happening was still worth recording." Finn stood, offered his hand. "I think you'd understand it better than anyone I've ever shown it to. Come see."`,
   },
   {
-    chapter: "Chapter 5 — Return Address",
-    text: `December brought hard rain and a power failure that darkened half the town. The modern lighthouse went out at 1:17 a.m.
+    chapter: "Chapter 5 — What the Storm Left",
+    text: `Leather-bound keeper's logs filled a locked cabinet. Finn opened the oldest to his father's slanted handwriting: wind, visibility, then one line unrelated to maritime conditions.
 
-Elias called Sam because the emergency radio list still contained her number from the storm. She met him at the tower with flashlights and found Wren hauling a portable battery uphill.
+The pages smelled of lamp oil and damp paper. Decades of weather had become columns, while regret crowded the narrow margins.
 
-The backup motor had flooded. While Elias and Wren worked below, Sam climbed to the lantern room to watch for the Coast Guard signal. Without the rotating beam, darkness felt complete enough to touch.
+*Missed my daughter's recital tonight. Light held steady anyway. Will find a way to make it up to her tomorrow, the way I always say I will.*
 
-She thought of the keeper logs: A light is a promise made to strangers.
+"He wrote things like that constantly," Finn said quietly. "Little confessions, tucked into the official record like nobody would ever actually read this far down the page. I think he needed somewhere to put the guilt of choosing this over everything else, even the people he loved most."
 
-At 2:06, the old auxiliary lamp ignited. Its glow was weaker, amber rather than white, but it reached the black water.
+"Did he ever make it up to her? Your sister?"
 
-Elias joined her, hands greasy, hair wet.
+"Sometimes. Not always. That's why she thinks I'm wasting my life the same way." Finn turned pages. "The week I was born, he nearly missed it, terrified he'd lose the light and his family in one storm."
 
-"You stayed," he said.
+Sam read twice and understood what Finn feared repeating: a life spent holding irreconcilable loyalties steady.
 
-"There was an emergency."
+"You're worried about becoming him," she said. "Choosing the light over the person."
 
-"You always stay for emergencies."
+"I'm worried about asking you to choose staying over your entire career, and becoming exactly the kind of selfish devotion my father never quite forgave himself for," Finn said. "I don't want that for either of us."
 
-The truth carried no compliment. Crisis allowed Sam to be indispensable without becoming ordinary.
-
-"I want to stay after this one," she said.
-
-Elias looked at her.
-
-"Not forever. I don't know how to promise a word that large. I want to rent a place through spring, keep working with the cooperative, and see what we are when nobody is drowning."
-
-"That sounds dangerously specific."
-
-"I'm trying."
-
-The auxiliary lamp warmed the glass between them. Elias touched her cheek, giving her time to turn away.
-
-Their kiss was quieter than the first. It contained anger remembered, repair unfinished, and the bodily knowledge that wanting had survived both.
-
-When they separated, he said, "There is a cottage behind Lucía's store."
-
-"Is it quaint?"
-
-"The plumbing is old."
-
-"Absolutely not."
-
-He smiled against her forehead.
-
-Below, the emergency generator caught. The main beam blazed and began its circle, making their reflections appear, vanish, and return.`,
+"Then don't ask me to choose," Sam said. "Ask me what I actually want, and let me answer that instead."`,
   },
   {
-    chapter: "Chapter 5 — Return Address",
-    text: `Sam rented the cottage in January. It had sloping floors, blue cupboards, and a quince tree that scraped the bedroom window. She bought a real fern from Mercado Ortega and called Linh for care instructions.
+    chapter: "Chapter 5 — What the Storm Left",
+    text: `Finn closed the log carefully, set it back in its place among the decades of his father's careful, guilty handwriting, and turned to face Sam fully in the lighthouse's small, lamp-lit quarters.
 
-"You know I am not a botanist," her mother said.
+"All right," he said. "What do you actually want?"
 
-"You kept me alive."
+Sam had spent two years building a career on precisely the kind of decisive, quotable answers that made good copy, and found, standing here, that she had none ready for this particular question — only a slow, honest uncertainty she wasn't used to admitting out loud.
 
-"Different watering schedule."
+"I want to not have to choose between the only life I know how to build and the first place that's ever made me want to stop building it so fast," she said finally. "I don't know if that's possible. I don't know if there's a version of my job that allows for both."
 
-Freelance work came slowly. Some editors considered Sam disloyal; others considered her newly interesting. She wrote essays about tourism's hidden labor, train journeys, and the ethics of declaring anything undiscovered. Her income fell by half. Her days acquired shape.
+"What would that version look like?"
 
-She and Elias dated without itinerary. They shopped, argued about films, and spent nights at the cottage when Wren wanted the lighthouse house to herself. Elias snored lightly. Sam left cupboard doors open. Intimacy became less cinematic and more persuasive.
+"I don't know yet. Maybe longer assignments. Maybe fewer of them. Maybe writing something that isn't six hundred words compressed into a schedule someone else built before I ever arrived." Sam looked around the small, cluttered quarters — the log cabinet, the narrow bed, the window that faced directly out toward the water Finn had spent his whole life watching over. "I know I don't want to get on a plane Friday and spend the rest of my career wondering what would have happened if I'd stayed even four more days to find out."
 
-At the March hearing, the cooperative presented its plan. Sam testified about Calder's sponsored coverage and disclosed her role. The company attorney asked whether she had a personal relationship with the lighthouse custodian.
+Finn's expression shifted, something cautious and hopeful moving across it at once. "Four more days isn't very long."
 
-"Yes," she said.
+"No," Sam agreed. "But it's more than three, and it's a start. I'd like to spend them finding out what I actually want, instead of what's just convenient to want on a deadline."
 
-"So your reporting was not objective."
-
-"My failure began when I pretended a place was an object."
-
-The county rejected Calder's marina permit and opened negotiations to purchase the headland with state conservation funds. The result was not total victory. Calder could build a smaller inland hotel under existing zoning. The town would change.
-
-Outside the hall, reporters surrounded Sam. She directed them to Lucía and Wren.
-
-Elias found her alone behind the courthouse.
-
-"You gave away your quote," he said.
-
-"Occupational growth."
-
-He handed her the old postcard, now stamped. Linh had mailed it after adding a line in Vietnamese:
-
-Con về nhà khi con biết nhà ở đâu.
-
-Come home when you know where home is.
-
-Sam read it twice, unsure whether the instruction pointed east or west.`,
+"I can work with four days," Finn said, and reached for her hand, the lighthouse's steady lamp turning slowly above them both.`,
   },
   {
-    chapter: "Chapter 6 — The Long Stay",
-    text: `Spring returned color to the headland. The cooperative secured the lighthouse grounds and public trails; the county funded Wren's marine apprenticeship program. Calder began construction of a sixty-room hotel near the highway, smaller than planned and still capable of changing rents.
+    chapter: "Chapter 6 — Extension Requested",
+    text: `The four days became, almost immediately, a negotiation with a life built entirely around not needing one. Sam called Dana on Friday morning, the morning she was supposed to be boarding a flight to Reykjavik, and asked for something she had never once asked for in two years of professional detachment: more time.
 
-Morrow Bay argued forward.
+"I need to push Reykjavik," she said. "Two weeks, maybe three. I know that's not how the schedule works."
 
-Sam helped create a visitor charter printed on every booking confirmation: arrive by bus when possible, reserve tide-pool access, spend locally, do not film residents without permission. Nessa added, TIP HOUSEKEEPING, which became the boldest line.
+"It's exactly how the schedule doesn't work," Dana said, though her voice carried less irritation than Sam expected. "What's actually going on, Sam? And don't tell me it's 'richer material.' I've read enough of your drafts to know when something's actually happening versus when you're just tired."
 
-One afternoon Len appeared at the Gull House. The magazine had lost Calder as a sponsor after the investigation and gained subscribers after issuing a correction. He offered Sam a new column with editorial independence.
+Sam considered lying, the professional reflex still strong even now. She didn't. "I met someone. In Salt Hollow. A lighthouse keeper. It's complicated and probably ridiculous and I don't have a plan, but I know I'm not ready to get on a plane yet."
 
-"Travel after innocence," he called it.
+There was a long pause on the line. "The lighthouse keeper from your draft. The reliable one."
 
-"That title needs work."
+"That's him."
 
-"So did we."
+Dana sighed, the particular exhausted sound of an editor who had, eleven years ago, once loved a town in Portugal and left it anyway. "I can give you two weeks unpaid, Sam. Reykjavik's fixer will wait that long, grudgingly, if I call in a favor. After that, I need you back on a plane somewhere, doing the job you're actually paid to do. I can't hold your position open indefinitely while you figure out your feelings about a man with a lighthouse."
 
-Sam asked for a week to decide. The old version of her would have said yes before he finished, grateful to reenter the life she knew.
+"Two weeks," Sam said. "That's more than fair. Thank you, Dana."
 
-Elias did not advise her.
-
-"You're being suspiciously healthy," she said.
-
-"Wren threatened me."
-
-Sam accepted the column under a contract that let her choose assignments and publish sponsor disclosures. She would travel six weeks a year, not thirty. The compromise cost money and status. It also made room for a life she no longer treated as downtime.
-
-Her first piece began in Morrow Bay, not as destination but as argument. She wrote about the town's conflicting needs, named Calder, and quoted residents who wanted both jobs and access.
-
-When it published, Colm complained she made him sound reasonable.
-
-"Professional failure," Elias said.
-
-They celebrated with coffee in the lantern room. Fog covered the town.
-
-"Can you love a place without idealizing it?" Sam asked.
-
-Elias looked toward where the harbor should be. "That's the only way love becomes useful."`,
+"Don't thank me yet," Dana said. "Thank me if it works out. Otherwise I'm just an editor who let you throw away a Reykjavik assignment for romantic uncertainty, and that's a much worse story."`,
   },
   {
-    chapter: "Chapter 6 — The Long Stay",
-    text: `Wren left for university in September. Elias cleaned the house compulsively, then stood in her empty room holding a single purple headphone cushion.
+    chapter: "Chapter 6 — Extension Requested",
+    text: `The two weeks unfolded slower than any assignment Sam had ever worked, and faster than any relationship she'd ever let herself have. She moved out of the inn's single room and into a small rented cottage two doors down from Odette's, close enough to the pier that she could see the lighthouse's lamp from her bedroom window every night, a steady, reliable presence she found herself checking before she checked her phone.
 
-"She's two hours away," Sam said.
+She learned Salt Hollow's actual rhythms, not the tourist version she'd have gathered in three days but the real one: which fishing families still worked the water despite the silted harbor, which shops survived on regulars rather than passersby, how the whole town seemed to organize itself, quietly, around the specific fact of Finn's lighthouse still standing at the end of the pier, whether the harbor board funded it or not.
 
-"Historically, distance leads to Portugal."
+Finn, for his part, learned Sam in return — the particular anxiety that arrived whenever she went too long without a notebook in hand, the way she still, occasionally, caught herself narrating her own life in the clipped professional shorthand of a woman used to filing color instead of feeling it.
 
-"Not everyone is Nina."
+"You did it again," he said one evening, watching her describe a sunset in the specific, portable poetry of Compass Monthly's house style. "You're writing it instead of living in it."
 
-"I know."
+"Old habit," Sam admitted. "Two years of turning everything into copy before I've even finished experiencing it."
 
-Sam recognized that knowledge and feeling often traveled separately. She stayed for dinner, then returned to her cottage because Elias needed to learn the sound of his own house.
+"What would it look like, not doing that? Just for tonight."
 
-Their first year together included no dramatic proposal. Instead there were incremental risks. Elias gave Sam a key. Sam listed him as emergency contact. He joined her on assignment in Montreal and hated the hotel pillows. She spent Lunar New Year with Linh, who interrogated him about retirement planning and then packed food for his flight.
-
-In November, Sam's landlord announced the cottage would become a vacation rental.
-
-"Move in here," Elias said too quickly.
-
-Sam stiffened.
-
-"Or don't," he added. "That sounded like rescue."
-
-"It sounded like logistics."
-
-"I meant more."
-
-They sat at his kitchen table under the sweeping beam. The house held Isabel's old paint choices, Wren's height marks, Elias's return. Sam feared becoming another layer in a home authored before her.
-
-"I need a room that is mine," she said.
-
-"The downstairs study."
-
-"And I travel."
-
-"I teach. Wren returns with laundry. We all have verbs."
-
-She laughed.
-
-They spent a month discussing money, privacy, and whose furniture deserved survival. When Sam moved in, she brought the real fern, a red desk, and twenty-seven boxes of books she had claimed not to own.
-
-Elias labeled the porch mailbox ORTEGA / VINH in equal letters.
-
-Sam stood in the road looking at it until rain blurred both names.`,
+Sam considered the question, then set aside the habit deliberately, the way she'd learned to set aside a schedule that had once run her entire life. "It would look like this," she said, and simply watched the sunset instead of narrating it, Finn's hand steady in hers, the lighthouse behind them holding its reliable, patient watch.`,
   },
   {
-    chapter: "Chapter 6 — The Long Stay",
-    text: `Living together exposed differences travel had edited out. Elias saved glass jars without lids. Sam required silence before coffee. He invited people to dinner as if chairs reproduced overnight. She planned solitude on a calendar.
+    chapter: "Chapter 6 — Extension Requested",
+    text: `Not everything about the two weeks was easy. Finn's sister, Maren, arrived unannounced on the ninth day, ostensibly to check on the lighthouse's maintenance budget, actually to assess the woman who had, according to Odette's inevitable gossip network, upended her brother's carefully solitary life in under a month.
 
-They fought once about a postcard.
+"You're the journalist," Maren said, studying Sam with an appraising directness Sam recognized immediately, having inherited a similar directness from her own mother.
 
-Sam had begun mailing one to Elias from every assignment, even if she returned before it arrived. From Kyoto she wrote: Found a garden that teaches emptiness. Miss your clutter.
+"I'm the journalist who's currently unemployed on purpose for two weeks, yes."
 
-Elias pinned them above his desk. When Sam came home and discovered he had shown several to Wren, she felt stripped open.
+"Finn doesn't do this. Whatever this is. He's been alone at that lighthouse for six years, and the one time he lets someone close, she's a woman with a career built on leaving places."
 
-"They're postcards," he said. "Not sealed letters."
+"That's fair," Sam said, refusing to flinch from the accuracy of it. "I don't have a tidy answer for how this works long-term. I only know that I haven't wanted to leave anywhere this badly not to leave in two years, and that scared me enough to actually stay and find out why."
 
-"They were to you."
+Maren studied her a moment longer, something in her expression softening slightly. "My father died holding onto that light like it was the only thing he'd ever done right. I don't want Finn making the same mistake — loving something reliable so hard he forgets to ask if it's actually good for him, or just familiar."
 
-"I was proud."
+"I don't think I'm asking him to choose the light or me," Sam said carefully. "I think I'm asking both of us to figure out if there's a version of a life that holds both — his lighthouse, my work, whatever this is between us — without either of us disappearing into the other's needs."
 
-"Pride doesn't grant publication rights."
-
-He removed every card.
-
-For two days, blank wall space accused them both. Then Elias installed a narrow wooden box beneath the desk. On it he wrote PRIVATE WEATHER.
-
-"I should have asked," he said.
-
-Sam placed the cards inside. "You can show the Kyoto one."
-
-"With written permission?"
-
-"Don't become unbearable."
-
-The next postcard arrived from an assignment only twenty miles away. Sam had spent the day reporting on a hotel whose workers could not afford the town.
-
-On the front was Morrow Bay's impossible blue lighthouse. She had bought it years earlier and never used it.
-
-Dear Elias,
-
-Home remains imperfect. The plumbing complains. The keeper hoards jars. I would recommend it without stars because stars make people compare what cannot be ranked.
-
-She signed her full name.
-
-Elias read it alone, then found her in the kitchen and kissed the ink smudge on her wrist.
-
-"How long are you staying?" he asked.
-
-"Ask me tomorrow."
-
-He did.
-
-Her answer kept being: Longer.`,
+Maren was quiet for a long moment, then nodded once, sharp and decisive. "Figure it out fast. He's happier than I've seen him in six years. I'd rather not watch that get taken away by indecision."`,
   },
   {
-    chapter: "Chapter 7 — Beyond the Frame",
-    text: `Five years after Calder's first proposal, Morrow Bay appeared on a list of "authentic escapes" compiled by an algorithm. Weekend traffic doubled. Rents rose. The visitor charter became a decorative page nobody read.
+    chapter: "Chapter 7 — Choosing",
+    text: `The borrowed weeks ended abruptly when a forgotten calendar reminder buzzed like an alarm through a dream.
 
-At a town meeting, residents blamed the hotel, social media, Sam's magazine, and one another. Elias defended the cooperative until Colm accused him of profiting from lighthouse tours.
+Neither pretended that affection had made the decision simple. Rent, work, solitude, and the lighthouse remained facts with claims of their own.
 
-At home, he paced beneath the beam.
+She sat with Finn on the lighthouse steps that evening, the same steps where they'd first talked honestly about grief and reliability, and laid out the actual shape of the decision in front of them, no longer avoidable.
 
-"We saved access so more people could destroy it."
+"Dana needs an answer by tomorrow," she said. "Reykjavik, or something else entirely. I could ask for a different kind of assignment — longer features, fewer of them, more room to actually live in a place before I write about it. She might say yes. She might not."
 
-"Access isn't the same as volume," Sam said.
+"And if she says no?"
 
-"You always have a distinction ready."
+"Then I have to decide if I'm willing to leave this job I've spent two years building, for something I've only known for two weeks."
 
-"Because distinctions matter."
+Finn turned her hand in his. "Two weeks isn't safe ground for changing a life. But my father gave forty years to a light and died wondering whether he had been reliable to the people who needed him. I won't choose something only because it's already built."
 
-"Sometimes they are how writers escape consequence."
+"Meaning?"
 
-The old insult returned with its old accuracy and unfairness.
+"I'm thinking of training help at the lighthouse, enough that I could sometimes travel with you. Is there a version where neither of us becomes the other's only reliable thing?"
 
-Sam's new book, Postcard Home, examined towns changed by travel writing. Morrow Bay occupied a chapter. She had interviewed everyone and shown quotations, but Elias had refused to read the manuscript.
-
-"You think the town belongs to you because you stayed," he said.
-
-"No. I think my experience belongs to me."
-
-"And ours?"
-
-That question silenced her.
-
-The manuscript described their first kiss, the power failure, and moving in. She had changed Elias's name in early drafts, then restored it because disguise seemed dishonest. Consent to quote was not consent to become narrative.
-
-Sam withdrew the chapter the next morning.
-
-Her editor objected. "It's the heart of the book."
-
-"Then the book needs another heart."
-
-She did not tell Elias as proof of love. She asked him to read what she had removed.
-
-He did, slowly.
-
-"It's beautiful," he said.
-
-"That is not the question."
-
-"No." He closed the pages. "It made me feel observed from outside my own life."
-
-They sat with the cost of a story unwritten.`,
+Sam felt something unclench in her chest that had been tight since the moment Dana's original deadline first arrived. "I'd want that. I'd want exactly that."`,
   },
   {
-    chapter: "Chapter 7 — Beyond the Frame",
-    text: `The crisis forced the cooperative to become less picturesque. It introduced shuttle reservations, higher hotel impact fees, and a cap on short-term rentals. Businesses protested. Workers demanded that the new revenue fund housing rather than another visitor center.
+    chapter: "Chapter 7 — Choosing",
+    text: `Dana's answer came the next morning, and it was neither the clean yes nor the clean no Sam had braced for. "I can offer you a different kind of column," Dana said. "Longer stays, fewer pieces per year, more depth. It pays less per piece, but there are more pieces overall, and honestly, readers have been asking for exactly this since your Salt Hollow draft ran. People want the version of travel writing that doesn't just skim the surface. You'd be the one to build it, if you want it."
 
-Sam reported none of it for six months. She facilitated meetings, took minutes, and allowed other journalists to tell the story badly.
+"What's the catch?"
 
-Elias developed a lighthouse curriculum taught by paid local guides, reducing his own role. "A place should not depend on one keeper," he said, though letting go wounded him.
+"The catch is you'd need a home base. Someplace you actually return to between assignments, instead of drifting between hotel rooms indefinitely. The magazine needs an address to mail contracts to, if nothing else." Dana's tone softened slightly. "Also, personally, I think you need one. I watched you build a career on never staying anywhere for two years, Sam. I don't think it was making you happy. I think it was just familiar."
 
-Their argument about the book remained tender. Sam rewrote it around her parents' motels and the childhood lesson that moving was choice. The lost Morrow Bay chapter became a structural absence she could feel but no reader could.
+Sam looked out the cottage window at the lighthouse, steady in the morning light, and thought about Finn's father's confession buried in decades of careful handwriting — *missed my daughter's recital tonight, light held steady anyway* — and the particular grief of a man who'd never quite learned how to be reliable to both the light and the people who loved him.
 
-One evening Elias returned the printed pages.
+"I have a home base in mind," she said. "It has a lighthouse and questionable cell service and a woman who runs the inn who gossips more than any small town has any right to produce."
 
-"You can publish parts," he said. "The lighthouse kiss. The postcard. Not Wren, not the fight after Calder."
+"Salt Hollow." Dana didn't sound surprised. "I wondered when you'd say it outright instead of dancing around it."
 
-"Are you sure?"
+"Salt Hollow," Sam confirmed. "I want the column, Dana. And I want the address to be there, if that's allowed."
 
-"Ask me after I see the revision."
-
-They negotiated sentences at the kitchen table. It was slow, occasionally absurd work. Elias deleted a description of his eyes.
-
-"My eyes do not contain tidal knowledge."
-
-"Metaphor."
-
-"Libel."
-
-The final chapter admitted its permissions. It told readers that intimacy was not raw material simply because it was true.
-
-When the book appeared, Morrow Bay residents reviewed it with local severity. Nessa called it "surprisingly non-annoying." Linh bought twenty copies and corrected Sam's Vietnamese inscription in each.
-
-At a reading in the maritime museum, Elias sat in the back. Sam read the postcard passage, then closed the book.
-
-"Every description is a frame," she told the audience. "Love begins by remembering what remains beyond it."
-
-Afterward, Elias walked her home by the long headland path. Neither spoke. The unrecorded silence belonged completely to them.`,
+"It's allowed," Dana said. "Welcome to actually having a home, Sam. It's about time."`,
   },
   {
-    chapter: "Chapter 7 — Beyond the Frame",
-    text: `Elias proposed on the tenth anniversary of Sam's first arrival.
+    chapter: "Chapter 7 — Choosing",
+    text: `Sam found Finn replacing another warped board and sat beside him without invitation, a habit that felt like belonging.
 
-He drove the same unreliable truck to the bus stop and held the original cardboard sign: SAMANTHA VAN. On the back he had written: FINAL SHUTTLE?
+"I have news," she said. "Dana offered me a new kind of column. Longer stays. Fewer assignments per year. And she wants me to have an actual home base, instead of drifting between hotels."
 
-"Marriage is not a final shuttle," Sam said.
+Finn set down his hammer slowly, studying her with the specific attention that had, from the very first day, felt less like scrutiny and more like actual seeing. "What did you tell her?"
 
-"I panicked under craft pressure."
+"I told her Salt Hollow. I told her I wanted the address to be here, if you're all right with that."
 
-He offered no ring. Instead he handed her a small brass mailbox flag from the cottage she had once rented, painted red and mounted on driftwood.
+Something moved across Finn's face — relief, and underneath it, a hope he'd clearly been guarding carefully against disappointment. "You'd still travel. For the column."
 
-"I love that you leave," he said. "I love that you return. I would like the law, our families, and the emergency services to recognize that we are each other's address."
+"Constantly, probably. Weeks at a time, sometimes. That's the job, even the better version of it."
 
-Sam looked at the grocery store, the harbor, the lighthouse intermittently visible through morning fog. The town had become home not through one revelation but through accumulated errands, disputes, funerals, and borrowed tools.
+"And you'd come back here, in between."
 
-"Yes," she said. "Though this metaphor needs editing."
+"I'd come back here," Sam confirmed, "the way your father's light comes back on every single night, whether anyone officially needs it that particular night or not. Reliable. Not because it's the only thing I know how to do, but because I actually want to."
 
-They married at the county office with Wren and Linh as witnesses. Isabel brought flowers. Lucía closed the market for exactly forty minutes and complained about lost revenue throughout lunch.
+The word want felt stronger for carrying no promise of ease.
 
-Sam kept her name. Elias kept his house full of jars. They placed the mailbox flag beside the front door.
+Finn held her hand carefully. "I trained Coz's grandson on lamp checks. Between us, the light can survive me leaving for weeks at a time with a woman whose job is complicated and wonderful."
 
-That summer, Wren returned with a marine biology degree and a partner named Kay who made ceramic tide charts. Sam watched Elias attempt not to give advice and fail within seven minutes.
-
-At dinner, Wren raised a glass.
-
-"To Samantha Van, who missed her bus."
-
-"The bridge closed," Sam corrected.
-
-"Still blaming infrastructure," Elias said.
-
-Outside, the lighthouse made its circle. Sam no longer counted the seconds, though she sometimes noticed brightness moving across familiar faces.
-
-Being at home, she understood, was not the end of travel. It was having somewhere that altered when you came back.`,
+"That," Sam said, "sounds like exactly the kind of reliability your father would have approved of."`,
   },
   {
-    chapter: "Chapter 8 — Postmarked",
-    text: `Years later, Sam taught a seminar for young travel writers in the lighthouse classroom. She began by handing each student a postcard.
+    chapter: "Chapter 8 — Postcard Home",
+    text: `Sam flew to Reykjavik six weeks late, a cottage key in her pocket. The assignment came easier because she understood the difference between visiting and remaining long enough to see clearly.
 
-"Describe the place without using beautiful, hidden, authentic, untouched, or charming."
+She did not romanticize the change. Airports stayed exhausting, deadlines stayed sharp, and Salt Hollow could not protect her from loneliness abroad.
 
-They groaned.
+What changed was knowing solitude had an address to answer.
 
-"Now describe one person without making them represent everybody."
+She wrote Finn a postcard from a small guesthouse near the harbor, the first of what would become a habit neither of them had planned but both came to treasure: a physical, unhurried correspondence to balance the speed of everything else in her life.
 
-They groaned louder.
+*Reykjavik is beautiful and freezing and entirely unlike Salt Hollow, which I mean as the highest compliment to Salt Hollow. I miss the lighthouse. I miss you more, which I didn't think was possible after two weeks together, but apparently distance is teaching me new vocabulary for it. Home in nine days. — S*
 
-Morrow Bay had changed. The Calder hotel became worker-owned after bankruptcy. Electric shuttles replaced part of the traffic. The headland grass recovered behind seasonal closures. Housing remained expensive. No policy delivered a final chapter.
+Finn kept every postcard beside his father's logs, a new record in a woman's handwriting describing a life learning to hold movement and return.
 
-Elias retired from school but continued repairing the beacon, distrusting the county's definition of retired. His hair had gone white. His bad jokes acquired the authority of repetition.
+Nine days later, Finn met her at the causeway with unhurried joy.
 
-At lunch, he brought Sam coffee in the lantern room.
+"How was Reykjavik?" he asked, taking her bag.
 
-"Are they hostile?" he asked.
-
-"Promisingly."
-
-On the table lay the old keeper logs beside a digital maintenance tablet. Sam opened the volume to the night of their first kiss. Elias had made no mention of it.
-
-Nov. 14: gale easing. Lamp steady. Coffee insufficient.
-
-"Coward," she said.
-
-"Public record."
-
-She wrote a postcard while he cleaned the lens. It was addressed to Linh, who now lived with them part of each year and still asked when Sam intended to stop traveling.
-
-Mẹ—The light is steady. Coffee remains insufficient. I am coming down for dinner.
-
-She mailed it from the box outside their own door.
-
-Linh received it three minutes later and accused Sam of wasting postage.
-
-That evening the family ate on the porch while fog covered the harbor. Sam could not see the tower from the table, but every twelve seconds its beam passed through the mist, illuminating what was already there.`,
+"Beautiful. Freezing. Not home." Sam looked past him toward the lighthouse, steady in the gray afternoon light, and felt the particular settling sensation of a woman who had finally built a life with room enough for both leaving and returning. "This is home. I'm glad it still is."`,
   },
   {
-    chapter: "Chapter 8 — Postmarked",
-    text: `When Elias became ill, he refused every comparison to weather.
+    chapter: "Chapter 8 — Postcard Home",
+    text: `Dana ran Sam's first "extended stay" column eight months later, a feature on a fishing village in Portugal that took three full weeks to research, longer and slower and richer than anything Compass Monthly had published in years. Readers wrote in by the hundreds, several admitting they'd booked flights based entirely on the specific, patient way Sam had learned to describe a place worth actually knowing rather than merely visiting.
 
-"I am not a gathering storm," he told Sam after the diagnosis. "I have lymphoma and excellent insurance."
+"You've ruined efficient travel writing for me," Dana told her over the phone, though her tone made clear this wasn't really a complaint. "Everyone wants the slow version now. I have three other writers asking for the same arrangement."
 
-Treatment took them to the city twice a week. Sam became the one who drove, packed food, and counted pills. Elias became impatient with dependence and apologetic about pain. They learned the humiliating logistics of devotion.
+"Tell them to find their own lighthouse," Sam said, watching Finn from the cottage window, out on the pier training Coz's grandson through the evening lamp check with the same unhurried thoroughness his own father had once used on him.
 
-At the clinic, Sam read him keeper logs. Beans spoiled. Lamp steady. A child born during the blizzard of 1912. Ordinary details gave illness a scale larger than itself.
+She still traveled constantly — Portugal, then Patagonia, then a long, unhurried month in rural Japan — but she came home now, always, to the same small cottage with its view of the same steady lamp, postcards accumulating in Finn's cabinet beside his father's careful confessions.
 
-He recovered by degrees. The first time he climbed the lighthouse again, Wren walked behind him and Sam ahead. At the lantern room, Elias leaned against the rail, breathless.
+On the anniversary of her first arrival in Salt Hollow, Sam wrote one final postcard, though this one she didn't mail. She simply left it on Finn's kitchen table, propped against his morning coffee, where he'd find it before his first lamp check of the day.
 
-"It has to reveal itself," he said as fog thinned.
+*Extending my research indefinitely,* it read, in the same handwriting Dana had once called almost too tender for print. *Home confirmed. Filing this one under permanent. — S*
 
-"Still performing."
-
-"Hostile visitor."
-
-Below them, Morrow Bay appeared: roofs repaired, pier crowded, their house small beneath the road. Sam took a photograph, then another without Elias in the frame because survival did not require turning him into an emblem.
-
-That night, he found a postcard on his pillow.
-
-Front: the lighthouse under impossible blue.
-
-Back: Reviewed after extended stay. Plumbing variable. Views obscured. Local guide intrusive. Five stars.
-
-"You used stars," he said.
-
-"Illness compromised my standards."
-
-He turned the card over. Beneath her joke Sam had written: Thank you for staying through the hard part.
-
-Elias held the card against his chest. Neither said forever. The word seemed less honest than the morning appointment marked on their calendar, the soup warming downstairs, the lamp turning beyond the window.
-
-They slept with the postcard between their books, an address written and rewritten by return.`,
+Finn read it twice, then carried it out to the lighthouse himself, and added it to the cabinet, first entry in a log that would, this time, never need updating again.`,
   },
   {
-    chapter: "Chapter 8 — Postmarked",
-    text: `At seventy-two, Sam published her last magazine column. It concerned no distant place. She wrote about the county bus between the airport and Morrow Bay, interviewing drivers, commuters, and the clerk who still occasionally misspelled names on pickup cards.
+    chapter: "Chapter 8 — Postcard Home",
+    text: `They married the following spring on the pier. Odette cried and denied it; Coz compared marriage to tide tables; Maren admitted she'd never seen Finn happier; Dana took notes she swore were personal.
 
-Her closing line read: A journey becomes a life when the road is traveled in both directions.
+Marriage did not make Sam stationary. She still crossed oceans for work, sometimes missing Finn with an ache no pretty sentence improved. Finn traveled with her when the trained keepers could cover the lamp, discovering that reliability could include leaving and coming back.
 
-Len, retired for years, emailed that the sentence was sentimental. Sam replied with a postcard.
+They argued about missed calls, money, and whose career yielded when schedules collided. Their vows did not solve those questions. They gave the questions a place to return, and two adults responsible for answering them honestly.
 
-She and Elias walked to the lighthouse at dusk. Wren now managed the marine center. Linh was gone. Nessa's nephew ran the inn and proudly called the renovated plumbing quaint.
+On difficult days, home remained a practice rather than a verdict: notice, speak, repair, return. The lighthouse offered no magic beyond repetition.
 
-In the lantern room, Sam opened the archive box where the town kept significant correspondence. Residents had asked to include her first postcard home. She had finally mailed it to Linh after the Calder hearing; her mother had saved it for decades.
+Sam wore sea-glass green; Finn's only suit was short at the wrists. They exchanged vows below the daylight-dark lamp, steady even when unseen.
 
-Mẹ—Found a town that doesn't want to be found. Found someone who saw me anyway.
+"I thought love meant staying," Finn said. "My father believed that, and it cost him. You taught me reliability can let someone move freely if both keep choosing the same light."
 
-Beneath it Linh had later written: Seeing is good. Staying to be seen is harder.
+Holding sea lavender, Sam said, "I spent two years turning places into six hundred words, leaving before I could miss them. You taught me some people are worth feeling the leaving and returning until home becomes true."
 
-Sam read the words aloud.
-
-"Your mother always improved your endings," Elias said.
-
-They descended as the beacon brightened behind them. At the cottage, now expanded by one study and generations of clutter, the porch lamp waited.
-
-Sam raised the little brass mailbox flag although there was nothing to collect. It had become their private signal when one returned from travel: I am here. Come outside if you can.
-
-Elias opened the door before she reached it.
-
-Fog gathered on his sweater. Music came from the kitchen where family prepared dinner. The town around them was neither hidden nor untouched, neither wholly saved nor sold.
-
-It was home: difficult, visible, and still revealing itself.`,
+They kissed where they'd first discussed grief. Above them, the lighthouse kept its quiet lesson: love, like a good light, worked by being there after anyone stopped requiring it.`,
   },
 ];

@@ -13,15 +13,13 @@ This one was interesting immediately. The cover was cracked red leather, no labe
 
 Same fiscal years. Same general categories — individual gifts, corporate matches, foundation grants. Different numbers. Consistently, precisely different, in a pattern too deliberate to be error.
 
-Clara had spent eleven years as a staff accountant, most of them at organizations too small to employ anyone whose job was specifically to look for this. She recognized the shape of what she was looking at within minutes: a shadow ledger, tracking the true state of the books beside a public version built to look healthier than it was.
-
 She sat at her desk long after the building had emptied, the red ledger open under her desk lamp, and felt the specific, cold clarity of a person realizing that the organization she'd spent four years believing in had, somewhere in its history, learned to lie to itself in ink.
 
 She photographed every page before she did anything else. Some habits, learned the hard way at a previous job that had fired her predecessor for asking the wrong question too loudly, existed for exactly this moment.`,
   },
   {
     chapter: "Chapter 1 — The Discrepancy",
-    text: `The executive director, Renata Osei, had hired Clara four years earlier specifically because she wanted someone who asked uncomfortable questions before the auditors did. Clara found her in her office the next morning, red ledger's photographed pages already printed and stacked on the desk between them.
+    text: `Clara found executive director Renata Osei the next morning, the red ledger's photographed pages stacked between them.
 
 Renata read through the first several pages in silence, her expression sliding from confusion to something harder.
 
@@ -51,15 +49,13 @@ Clara spent the following week rebuilding eight years of donor history from scra
 
 Someone had been keeping the organization's largest institutional funding alive by manufacturing donors who didn't exist.
 
-The list of grant funders who might have been deceived by these numbers included two major foundations, either of which could trigger a genuine legal crisis for the Trust if the fraud became public before it was fully understood internally.
-
 Clara mapped the names of the phantom donors onto a single page — twenty-three names across eight years, addresses that led to a scattered handful of real streets and one address that repeated itself with suspicious frequency: a self-storage facility on the edge of town called Ferro Self Storage, Unit 114.
 
 She stared at the address for a long time before writing it down in her own notebook, aware that whatever she found there would likely tell her exactly who had built the red ledger, and why.`,
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `Clara called Teddy Alsop before she did anything else with the storage unit address. Teddy had trained her at her first accounting job fifteen years earlier, retired now, spending his days fixing lawnmowers and occasionally answering calls from former protégés who'd found something they didn't know how to hold alone.
+    text: `Clara called Teddy Alsop, the retired accountant who had trained her fifteen years earlier.
 
 "Twenty-three phantom donors, all traced back to a storage unit," Teddy said, after she'd walked him through it. "That's not embezzlement in the usual sense. Nobody's directly pocketing donor cash, not through this mechanism anyway. This is about maintaining eligibility. Making the organization look healthy enough to keep receiving grants it might not have qualified for otherwise."
 
@@ -77,7 +73,7 @@ Clara felt something settle into place, unwelcome and specific. "Marcus Kline. H
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `Clara approached the storage unit investigation carefully, aware that Ferro Self Storage's records would require either a legitimate reason to access them or enough caution to keep her firmly on the right side of the law while she gathered further information. She drove past the facility twice before working up the nerve to go inside and ask the front desk clerk, a bored young man named Desmond, about Unit 114's rental history.
+    text: `Clara asked Ferro Self Storage's desk clerk, a bored young man named Desmond, about Unit 114's rental history.
 
 "Can't give you renter information without a warrant or the actual account holder's permission," Desmond said, not unkindly. "Company policy, corporate's pretty strict about it since a lawsuit a few years back."
 
@@ -95,7 +91,7 @@ Clara thanked him and left before her questions became memorable enough to be re
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `Renata authorized a formal internal review the following week, framing it to the rest of the staff as a routine compliance audit ahead of the Trust's upcoming grant renewal cycle — technically true, carefully incomplete. Clara used the cover to request full access to the board's historical correspondence with the two foundations whose funding depended on the falsified minimums, cross-referencing dates against the storage unit's access log.
+    text: `Renata authorized an internal review, publicly framed as routine compliance work. Clara cross-referenced board correspondence with the storage unit's access log.
 
 The pattern tightened with each new document. Every visit to Unit 114 fell within days of a grant reporting deadline. Every falsified donor entry in the red ledger corresponded to a specific funding gap Clara could now trace directly to underperforming fundraising quarters that Marcus Kline, in his role managing foundation relationships, would have been the first to know about.
 
@@ -110,8 +106,6 @@ Renata sat with this for a long moment, hands folded on her desk. "He's chaired 
   {
     chapter: "Chapter 3 — The Storage Unit",
     text: `The opportunity came sooner than Clara expected. Renata, working through legitimate board channels, discovered that Ferro Self Storage required a co-signer's authorization to grant emergency access to a unit when the Trust could demonstrate a compelling organizational interest — a policy designed for business partnerships rather than fraud investigations, but applicable enough, with a carefully worded letter from the Trust's attorney citing potential financial impropriety requiring urgent internal review.
-
-Desmond, visibly startled to see Clara return with an actual attorney and a notarized letter, processed the paperwork with the specific nervous efficiency of a man suddenly aware his job might involve more than checking people in and out of storage units.
 
 Unit 114 held exactly what eight years of careful, secretive access suggested it might: a filing cabinet of financial records dating back over a decade, a small fireproof safe, and — mounted discreetly in the corner near the ceiling, easily missed unless you were specifically looking for it — a battery-powered security camera aimed at the unit's door.
 
@@ -135,8 +129,6 @@ Clara felt the shape of the story shifting under her. "What if Marcus didn't bui
 
 "No," Clara agreed. "But it changes what we're actually investigating. This might not be one man's greed. It might be an inherited lie that everyone since has been too afraid to confess."
 
-The camera in the storage unit complicated the theory considerably. Someone had installed surveillance equipment recently enough that its battery still held partial charge, aimed specifically at the door, which suggested someone besides Marcus Kline knew about Unit 114 and had wanted a record of who came and went.
-
 Clara removed the camera's memory card carefully, using gloves from the attorney's emergency kit, aware that whatever footage it held might answer the question of exactly who had been watching this unit, and why, more directly than any spreadsheet could.
 
 "We need to see what's on this," she told Renata. "Before we decide anything about Marcus."
@@ -147,7 +139,7 @@ Clara removed the camera's memory card carefully, using gloves from the attorney
   },
   {
     chapter: "Chapter 3 — The Storage Unit",
-    text: `Devon Cho, a freelance IT consultant the Trust occasionally hired for network security work, agreed to examine the camera's memory card the same evening, working from his small home office with the specific unhurried focus of someone who found data recovery more interesting than most of his paying clients ever gave him credit for.
+    text: `IT consultant Devon Cho examined the camera's memory card that evening.
 
 "Camera's motion-activated," he said, scrolling through file timestamps. "Records in short bursts, only when something moves in front of it. Cuts down on storage needs, means whoever set this up didn't want to review hours of empty footage."
 
@@ -169,7 +161,7 @@ Devon adjusted the frame. The woman's features sharpened slightly — younger th
   },
   {
     chapter: "Chapter 4 — Getting Watched",
-    text: `It took Clara two days of careful, discreet comparison against staff photos before she identified the woman from the footage: Priya Nair, a program coordinator who'd joined the Trust eighteen months earlier, well after the fraud had already been running for years, working in an entirely different department from finance with no obvious reason to know about a storage unit on the edge of town.
+    text: `Clara identified the woman from the footage as Priya Nair, a program coordinator with no reason to know about the storage unit.
 
 Clara approached her carefully, requesting an informal conversation under the pretense of a routine program budget review, and watched Priya's composure falter within the first few careful questions about her knowledge of the Trust's historical fundraising reports.
 
@@ -191,7 +183,7 @@ Priya took a long breath. "Marcus's assistant. Wendell. He said Marcus handled '
     chapter: "Chapter 4 — Getting Watched",
     text: `The conversation with Priya changed the shape of Clara's investigation considerably. If Wendell Pruitt, Marcus Kline's longtime assistant, had actively warned a staff member away from the fraud, the scheme's protection extended beyond one man's private guilt into something closer to active concealment, with at least two people aware of the falsified donor records and choosing silence over disclosure.
 
-Clara raised the concern with Renata that evening, laying out the full timeline: Rosalind Voss originating the scheme over a decade earlier, Marcus Kline inheriting and maintaining it for eight years, Wendell Pruitt actively suppressing internal discovery, and Priya Nair as an unexpected, reluctant whistleblower who'd stumbled into evidence she hadn't gone looking for.
+Clara laid out the timeline for Renata: Rosalind began the scheme, Marcus maintained it, Wendell suppressed discovery, and Priya stumbled into evidence.
 
 "This is bigger than I let myself believe," Renata said, staring at the timeline Clara had assembled. "I need to bring the full board in on this. Not just you and me anymore."
 
@@ -209,8 +201,6 @@ Someone had been watching more closely than she'd realized.`,
     chapter: "Chapter 4 — Getting Watched",
     text: `Clara's photographed copies, backed up on a personal cloud account Marcus Kline had no way of accessing, meant the missing physical pages represented an inconvenience rather than a catastrophe. But the break-in itself confirmed something more unsettling than the fraud's scope: someone inside the organization knew exactly how far Clara's investigation had progressed, and had decided that stealing evidence was preferable to letting it reach the full board.
 
-She reported the break-in to building security, framing it publicly as a simple office theft, while privately informing only Renata and Devon Cho of the actual significance.
-
 "He knows," Renata said, once they were alone. "Or someone close to him knows. This isn't paranoia anymore, Clara. Someone went into your locked office and took specific documents. That's not a random theft."
 
 "I know. Which means we're on a clock now, whether we're ready or not."
@@ -225,7 +215,7 @@ She forwarded the message to Renata, then to the Trust's attorney, and finally, 
   },
   {
     chapter: "Chapter 5 — The Camera",
-    text: `Detective Selena Marsh arrived at the Trust's offices the following morning, unhurried and precise in the way Clara recognized from her own profession — a person who understood that the truth usually survived being checked twice, and rarely survived being rushed.
+    text: `Detective Selena Marsh arrived the following morning, unhurried and precise.
 
 "Walk me through everything," Marsh said, settling into Renata's office with a notebook considerably less elegant than the red ledger but built for the same essential purpose.
 
@@ -245,7 +235,7 @@ Marsh listened without interrupting, occasionally making notes, and when Clara f
   },
   {
     chapter: "Chapter 5 — The Camera",
-    text: `The formal investigation moved faster than Clara expected, propelled by Marsh's existing interest in Marcus Kline and the weight of documentary evidence Clara had assembled. Within a week, forensic accountants working alongside the detective confirmed what Clara had already reconstructed manually: eight years of falsified donor records, sustained to maintain grant eligibility that would otherwise have lapsed, totaling just over 1.4 million dollars in funding received under false pretenses.
+    text: `Within a week, forensic accountants confirmed eight years of falsified records used to obtain 1.4 million dollars in funding under false pretenses.
 
 Wendell Pruitt, confronted with Priya's statement and phone records showing his warning message, cooperated quickly, eager to distance himself from responsibility he characterized, not entirely unreasonably, as following orders from a superior he'd trusted for over a decade.
 
@@ -261,7 +251,7 @@ The camera footage, once formally reviewed by Marsh's team, revealed one final p
   },
   {
     chapter: "Chapter 5 — The Camera",
-    text: `Marcus Kline was formally confronted by Detective Marsh and the Trust's attorney on a Thursday afternoon, in a conference room Clara had once used to present routine budget reports, now repurposed for a conversation that would end his eleven-year tenure as board chair within the hour.
+    text: `Detective Marsh and the Trust's attorney confronted Marcus on Thursday afternoon.
 
 Clara was not present for the confrontation itself, but Renata relayed the essential shape of it afterward: Marcus had not denied the evidence, had not attempted to negotiate or minimize, had simply sat very still for a long moment and then asked a single question.
 
@@ -279,7 +269,7 @@ It was, Clara thought, a strange kind of ending — not innocent, not entirely v
   },
   {
     chapter: "Chapter 6 — Confrontation",
-    text: `The board meeting called to address Marcus Kline's resignation and the fraud's full scope was the tensest professional gathering Clara had ever attended, twelve board members crowded into a conference room built for eight, foundation representatives dialed in by phone with the specific clipped courtesy of people deciding how much continued funding, if any, the Trust's future could reasonably expect.
+    text: `The meeting about Marcus's resignation and the fraud's scope was the tensest gathering Clara had ever attended.
 
 Renata presented the findings with a composure Clara privately admired, laying out the timeline exactly as Clara had built it: Rosalind Voss's original scheme, Marcus Kline's eight years of maintenance, Wendell Pruitt's suppression, Priya Nair's reluctant discovery, and Clara's own methodical reconstruction that had finally brought the full pattern into daylight.
 
@@ -293,7 +283,7 @@ The room was quiet for a long moment. Then Constance Ferrar nodded, once, and sa
   },
   {
     chapter: "Chapter 6 — Confrontation",
-    text: `The weeks following the board meeting tested every part of the Trust's culture that Clara had, until recently, taken for granted. Staff morale suffered under public scrutiny — a local news story ran within days, careful and factual but still devastating in the way any headline containing the word "fraud" tends to be, regardless of context.
+    text: `The following weeks tested the Trust's culture. A local news story ran within days, factual but devastating.
 
 Priya Nair, credited publicly and privately for her role in surfacing the initial evidence, found herself simultaneously praised and quietly isolated by colleagues who resented the organization's sudden fragility, however unfair that resentment was. Clara made a point of checking in with her weekly, aware that whistleblowers often paid a longer, quieter price than the wrongdoers they exposed.
 
@@ -319,7 +309,7 @@ Marcus Kline pleaded guilty to fraud charges eventually, avoiding trial, accepti
 
 "Maybe," Clara said. "But I believe in what this place actually does, underneath the years someone spent lying about how it was funded. I'd like to help make sure the next person who finds something wrong doesn't have to work as hard, or take as much risk, to be believed."
 
-She accepted the position, and spent the following months building exactly the kind of transparent, redundant financial oversight system that would have made an eight-year hidden fraud structurally impossible — quarterly external reviews, mandatory donor verification protocols, an anonymous reporting channel specifically protected from the kind of internal suppression that had silenced Priya for months.
+She accepted and built redundant oversight: external reviews, donor verification, and an anonymous reporting channel protected from the suppression that had silenced Priya.
 
 The red ledger itself, once the investigation formally concluded, was retained as evidence rather than destroyed, eventually returned to the Trust's own archives — not hidden this time, but catalogued openly, a permanent record of exactly what happens when an organization's convenient silence becomes indistinguishable from its survival.
 
@@ -329,7 +319,7 @@ Clara kept a single photocopy of its first falsified page in her own desk drawer
     chapter: "Chapter 7 — Exposure",
     text: `The foundation relationships, against Clara's initial fears, largely survived the scandal's aftermath, though not without cost. Two smaller funders declined to renew their grants, citing reputational caution rather than any specific doubt about the Trust's current integrity. The two major foundations whose funding minimums had motivated the fraud chose, after review of the new oversight structures Clara had built, to continue their support — cautiously, but without the outright withdrawal that could have ended the organization entirely.
 
-Constance Ferrar, the sharp-voiced representative who had questioned the Trust's trustworthiness at the initial board meeting, became, unexpectedly, one of Clara's most consistent professional allies over the following year, impressed enough by the new oversight system that she began recommending it as a model to other organizations her foundation funded.
+Constance Ferrar became one of Clara's most consistent allies and recommended the new oversight system to other organizations.
 
 "I've seen a dozen nonprofits handle a scandal like this," Constance told Clara over lunch, nearly a year after the initial discovery. "Most of them either collapse under the shame or paper over it just enough to survive without actually fixing anything. You did neither. You built something that makes the next fraud structurally harder to hide, and you did it without pretending the first one didn't happen."
 
@@ -345,7 +335,7 @@ Priya Nair, promoted the following year into a newly created role overseeing int
     chapter: "Chapter 7 — Exposure",
     text: `Clara received a call from a journalist eighteen months after the initial discovery, researching a broader piece on nonprofit financial fraud and hoping Clara would speak on the record about the Ashcombe case as an example of a scandal handled with unusual transparency rather than institutional self-protection.
 
-She agreed, cautiously, aware that any public statement carried risk but increasingly convinced that the story mattered beyond the Trust's own walls — a template, however imperfect, for how organizations could survive discovering their own worst failures without either collapsing or covering them up more carefully next time.
+She agreed, convinced the story mattered beyond the Trust's walls.
 
 "What made you keep pulling the thread," the journalist asked, "once you realized how far it might go, and how much it might cost the organization you'd built your career at?"
 
@@ -365,7 +355,7 @@ The piece ran two months later, considerably more sympathetic to the Trust's han
 
 She hadn't intended it as anything grander than professional shorthand. But something about the phrase had spread through the Trust's internal culture in the months since, appearing on internal memos, in Renata's opening remarks at the following year's annual meeting, eventually even printed, without irony, on the cover of the Trust's first fully transparent annual report since the scandal broke.
 
-Clara found the report on her desk one morning, freshly printed, Renata having quietly slipped a copy there before the official distribution. The cover featured a simple, unadorned design — no stock photography of smiling children, no aspirational tagline about hope or community. Just the Trust's name, the fiscal year, and beneath it, in modest lettering, the phrase that had somehow become the organization's quiet motto in the aftermath of its worst year.
+Renata left the report on Clara's desk. Its plain cover bore the Trust's name, the fiscal year, and the phrase that had become its quiet motto.
 
 TRUTH, RECONCILED.
 
@@ -381,7 +371,7 @@ Renata found her still sitting there twenty minutes later, report open to the re
     chapter: "Chapter 8 — Truth, Reconciled",
     text: `Two years after finding the red ledger behind a row of ordinary blue binders, Clara stood at the podium of the Trust's annual meeting, invited by Renata to give the financial presentation herself for the first time — no longer simply the accountant who'd uncovered a fraud, but the architect of the transparent system that had, in the time since, become something close to a model for the sector.
 
-The audience included program participants whose lives the Trust's work had genuinely improved, donors both old and newly recruited, several journalists who'd followed the story's resolution with more interest than most nonprofit finance reports usually attracted, and Priya Nair, seated in the front row, now leading the ethics office that existed specifically because of what she'd once risked her career to discover.
+Priya sat in the front row, now leading the ethics office created because of what she had risked her career to discover.
 
 "Two years ago," Clara began, "I found a ledger that told a different story than the one this organization had been telling everyone, including itself. I want to be honest about what that discovery actually felt like, because I think honesty is the only thing that makes any of what followed matter."
 
@@ -397,7 +387,7 @@ She gestured to the screen behind her, where the year's fully reconciled financi
     chapter: "Chapter 8 — Truth, Reconciled",
     text: `After the meeting, Clara found Teddy Alsop waiting near the refreshment table, having driven two hours to watch the presentation he'd been hearing about in phone calls for the better part of two years but had never actually seen unfold in person.
 
-"You did good work," he said, the same three words Renata had used, apparently the specific vocabulary retired accountants and executive directors reached for when nothing more elaborate felt necessary.
+"You did good work," he said.
 
 "I had a good teacher."
 
@@ -422,8 +412,6 @@ Clara looked around the room — Renata, Priya, the honest numbers glowing on th
   {
     chapter: "Chapter 8 — Truth, Reconciled",
     text: `That evening, after the reception ended and the caterers had cleared the last of the folding chairs, Clara walked back through the empty office alone, the way she often did after long days, checking that the archive closet door was properly latched out of habit more than necessity. The red ledger no longer lived there. It sat now in a labeled evidence box in the Trust's records room, catalogued and cross-referenced, available to anyone who wanted to understand exactly how the organization had once lied to itself and exactly how it had stopped.
-
-She thought, standing in the quiet hallway, about the strange arithmetic of the last two years — a fraud that had cost the Trust money, trust, and two employees' careers, weighed against an oversight system robust enough that Constance Ferrar now recommended it to other funders, a whistleblower who'd been protected instead of punished, and an organization that had chosen, when it mattered most, to survive the truth rather than manage it.
 
 Renata found her there, coat already on, keys in hand. "You're still here."
 
