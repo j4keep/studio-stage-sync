@@ -17,6 +17,11 @@ export type BookPage = {
   text: string;
   /** Optional chapter label shown in the slim adult reader header. */
   chapter?: string;
+  /**
+   * Optional kids illustration URL (imported asset).
+   * Kids reader shows a big picture on top with short text underneath.
+   */
+  image?: string;
 };
 
 export type BookItem = {
@@ -76,6 +81,17 @@ import riverOfNamesCover from "@/assets/books/river-of-names-cover.jpg";
 import clockworkSparrowCover from "@/assets/books/clockwork-sparrow-cover.jpg";
 import saltAndStarlightCover from "@/assets/books/salt-and-starlight-cover.jpg";
 import libraryWyrmCover from "@/assets/books/library-wyrm-cover.jpg";
+import appleAdventureCover from "@/assets/books/apple-adventure-cover.jpg";
+import moonPajamasCover from "@/assets/books/moon-pajamas-cover.jpg";
+import busThatGiggledCover from "@/assets/books/bus-that-giggled-cover.jpg";
+import sockDetectiveCover from "@/assets/books/sock-detective-cover.jpg";
+import rainbowToastCover from "@/assets/books/rainbow-toast-cover.jpg";
+import tinyCaptainCover from "@/assets/books/tiny-captain-cover.jpg";
+import bearWhoCountedCover from "@/assets/books/bear-who-counted-cover.jpg";
+import robotRecessCover from "@/assets/books/robot-recess-cover.jpg";
+import whisperingCrayonCover from "@/assets/books/whispering-crayon-cover.jpg";
+import picnicOnACloudCover from "@/assets/books/picnic-on-a-cloud-cover.jpg";
+
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
@@ -101,14 +117,20 @@ import { RIVER_OF_NAMES_PAGES } from "@/lib/books/river-of-names";
 import { CLOCKWORK_SPARROW_PAGES } from "@/lib/books/clockwork-sparrow";
 import { SALT_AND_STARLIGHT_PAGES } from "@/lib/books/salt-and-starlight";
 import { LIBRARY_WYRM_PAGES } from "@/lib/books/library-wyrm";
+import { APPLE_ADVENTURE_PAGES } from "@/lib/books/kids/apple-adventure";
+import { MOON_PAJAMAS_PAGES } from "@/lib/books/kids/moon-pajamas";
+import { BUS_THAT_GIGGLED_PAGES } from "@/lib/books/kids/bus-that-giggled";
+import { SOCK_DETECTIVE_PAGES } from "@/lib/books/kids/sock-detective";
+import { RAINBOW_TOAST_PAGES } from "@/lib/books/kids/rainbow-toast";
+import { TINY_CAPTAIN_PAGES } from "@/lib/books/kids/tiny-captain";
+import { BEAR_WHO_COUNTED_PAGES } from "@/lib/books/kids/bear-who-counted";
+import { ROBOT_RECESS_PAGES } from "@/lib/books/kids/robot-recess";
+import { WHISPERING_CRAYON_PAGES } from "@/lib/books/kids/whispering-crayon";
+import { PICNIC_ON_A_CLOUD_PAGES } from "@/lib/books/kids/picnic-on-a-cloud";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
 const KIDS_INTRO_SEEN_KEY = "yaj.books.kids-intro-seen.v1";
-
-function pages(...chunks: string[]): BookPage[] {
-  return chunks.map((text) => ({ text }));
-}
 
 /** Five original titles per regular category + ten kids titles. */
 export const SEED_BOOKS: BookItem[] = [
@@ -464,13 +486,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverTo: "#86efac",
     coverAccent: "#fef08a",
     blurb: "A smiling apple finds a book and learns to share stories.",
-    pages: pages(
-      "Once there was a round red apple with the biggest smile in the orchard.",
-      "One windy day a little book landed right on Apple’s face — plop!",
-      "Apple peeked through the pages and saw dragons, trains, and friendly stars.",
-      "“I will share these stories!” Apple giggled, rolling down the hill to the playground.",
-      "All the kids took turns reading. Apple’s smile grew even wider. The end — for now!",
-    ),
+    coverImage: appleAdventureCover,
+    pages: APPLE_ADVENTURE_PAGES,
   },
   {
     id: "kids-moon-pajamas",
@@ -482,13 +499,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1d4ed8",
     coverTo: "#c4b5fd",
     blurb: "Soft pajamas that glow when you tell the truth at bedtime.",
-    pages: pages(
-      "Mia’s new pajamas twinkled like tiny moons.",
-      "When she said “I brushed my teeth,” they glowed. When she fibbed, they went dim.",
-      "Mia told the truth about the cookie crumb. Glow!",
-      "She fell asleep in a constellation of honesty.",
-      "Sweet dreams, little truth-teller.",
-    ),
+    coverImage: moonPajamasCover,
+    pages: MOON_PAJAMAS_PAGES,
   },
   {
     id: "kids-bus-that-giggled",
@@ -500,13 +512,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#ea580c",
     coverTo: "#fde047",
     blurb: "A school bus that only starts when everyone laughs together.",
-    pages: pages(
-      "Beep-beep! The yellow bus would not budge.",
-      "The driver winked. “It needs a giggle key.”",
-      "One joke, then two, then a whole bus of belly laughs.",
-      "Vroom! Off they went to school, still smiling.",
-      "Best. Morning. Ever.",
-    ),
+    coverImage: busThatGiggledCover,
+    pages: BUS_THAT_GIGGLED_PAGES,
   },
   {
     id: "kids-sock-detective",
@@ -518,13 +525,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#7c3aed",
     coverTo: "#f9a8d4",
     blurb: "A brave sock searches the laundry for its missing match.",
-    pages: pages(
-      "Left Sock peeked out of the basket. “Where is Right?”",
-      "Clues: glitter, a crayon, and a tiny trail of crumbs.",
-      "Under the bed — a fort! Right Sock was reading comics.",
-      "“Next time, invite me,” Left said. They high-fived (sort of).",
-      "Case closed. Laundry wins!",
-    ),
+    coverImage: sockDetectiveCover,
+    pages: SOCK_DETECTIVE_PAGES,
   },
   {
     id: "kids-rainbow-toast",
@@ -536,13 +538,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#db2777",
     coverTo: "#fbbf24",
     blurb: "Breakfast becomes a parade of colors and kindness.",
-    pages: pages(
-      "Sam wanted boring toast. The toaster had other plans.",
-      "Pop! Out came stripes of red, orange, yellow, green, blue.",
-      "Sam shared slices with neighbors on the stairs.",
-      "The whole building smelled like happy mornings.",
-      "Toast tastes better when it’s shared.",
-    ),
+    coverImage: rainbowToastCover,
+    pages: RAINBOW_TOAST_PAGES,
   },
   {
     id: "kids-tiny-captain",
@@ -554,13 +551,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0e7490",
     coverTo: "#67e8f9",
     blurb: "A paper-boat captain sails a puddle ocean.",
-    pages: pages(
-      "After the rain, Cap’n Dot launched a paper boat.",
-      "Worms waved. Puddle fish (imaginary) cheered.",
-      "A leaf storm! Dot steered with a twig rudder.",
-      "Safe harbor: the front step. Mission complete.",
-      "Tomorrow’s forecast: more adventures.",
-    ),
+    coverImage: tinyCaptainCover,
+    pages: TINY_CAPTAIN_PAGES,
   },
   {
     id: "kids-bear-who-counted",
@@ -573,13 +565,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#92400e",
     coverTo: "#fcd34d",
     blurb: "A cozy bear counts stars until sleep arrives.",
-    pages: pages(
-      "Bear counted one soft star… two… three…",
-      "At twelve, the sky winked back.",
-      "At twenty, Bear’s eyes felt heavy as honey.",
-      "At twenty-one, snores. The stars kept watch.",
-      "Goodnight, little counter.",
-    ),
+    coverImage: bearWhoCountedCover,
+    pages: BEAR_WHO_COUNTED_PAGES,
   },
   {
     id: "kids-robot-recess",
@@ -591,13 +578,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#4f46e5",
     coverTo: "#a5b4fc",
     blurb: "A classroom robot learns hopscotch and friendship.",
-    pages: pages(
-      "Clank loved math. Recess? Unknown territory.",
-      "Kids taught hopscotch. Clank counted squares perfectly.",
-      "Then Clank taught them a beep-beep dance.",
-      "Friendship firmware: updated!",
-      "When the bell rang, everyone rolled back inside — giggling.",
-    ),
+    coverImage: robotRecessCover,
+    pages: ROBOT_RECESS_PAGES,
   },
   {
     id: "kids-whispering-crayon",
@@ -609,13 +591,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#15803d",
     coverTo: "#86efac",
     blurb: "A crayon that only draws what you feel.",
-    pages: pages(
-      "Maya’s crayon whispered, “Draw your brave.”",
-      "She sketched a tall tree and a small climbing self.",
-      "Next: “Draw your kind.” A shared umbrella appeared.",
-      "The page glowed softly, like a hug.",
-      "Art, Maya learned, can speak without shouting.",
-    ),
+    coverImage: whisperingCrayonCover,
+    pages: WHISPERING_CRAYON_PAGES,
   },
   {
     id: "kids-picnic-on-a-cloud",
@@ -627,13 +604,8 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0284c7",
     coverTo: "#fef9c3",
     blurb: "Friends pack snacks and float up for the fluffiest lunch.",
-    pages: pages(
-      "Balloons lifted the picnic blanket — slowly, safely, silly.",
-      "Sandwiches tasted extra cloudy.",
-      "A bird joined for crumbs and conversation.",
-      "They floated down before nap time.",
-      "Best picnic. Zero ants. Ten giggles.",
-    ),
+    coverImage: picnicOnACloudCover,
+    pages: PICNIC_ON_A_CLOUD_PAGES,
   },
 ];
 

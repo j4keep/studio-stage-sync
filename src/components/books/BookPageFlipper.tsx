@@ -24,7 +24,7 @@ type Props = {
 /**
  * Sideways page turner.
  * Adult mode: the page IS the screen (paper texture, generous type, slim chrome).
- * Kids mode: chunkier type, playful card frame, less text density.
+ * Kids mode: big illustration on top + short text underneath (picture-book layout).
  */
 const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPageFlipper(
   {
@@ -144,7 +144,6 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
           height: 0;
           display: none;
         }
-        /* Reveal a faint thumb only while the user is actively scrolling via :hover on pointer devices */
         @media (hover: hover) {
           .books-page-scroll:hover {
             scrollbar-width: thin;
@@ -155,15 +154,19 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
             display: block;
           }
           .books-page-scroll:hover::-webkit-scrollbar-thumb {
-            background: rgba(120, 100, 70, 0.22);
+            background: rgba(120, 90, 40, 0.22);
             border-radius: 999px;
           }
+        }
+        .kids-illust-frame {
+          border-radius: 1.75rem;
+          clip-path: ellipse(98% 96% at 50% 50%);
         }
       `}</style>
 
       <div
         className={`relative min-h-0 flex-1 overflow-hidden ${
-          adult ? "" : "rounded-3xl border-4 border-white shadow-lg"
+          adult ? "" : "rounded-[1.75rem] border-[5px] border-white shadow-lg"
         } ${flip === "next" ? "flip-next" : flip === "prev" ? "flip-prev" : ""}`}
         style={
           adult
@@ -173,7 +176,7 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
                   "linear-gradient(90deg, rgba(60,40,20,0.045) 0 1px, transparent 1px), radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.55), transparent 55%), linear-gradient(#F7F1E8, #F3EBDD)",
               }
             : {
-                background: `linear-gradient(165deg, ${book.coverFrom}22, #fff8e7 42%, ${book.coverTo}33)`,
+                background: "#FFFDF8",
               }
         }
         onTouchStart={onTouchStart}
@@ -182,116 +185,191 @@ const BookPageFlipper = forwardRef<BookPageFlipperHandle, Props>(function BookPa
         role="document"
         aria-label={`${book.title}, page ${index + 1} of ${pages.length}`}
       >
-        <div
-          className={`mx-auto flex h-full max-w-xl flex-col ${
-            adult
-              ? "px-6 pr-8 pt-3 sm:px-10 sm:pr-12"
-              : "px-4 py-4"
-          }`}
-          style={{
-            paddingBottom: bottomReserve
-              ? "max(5.25rem, calc(env(safe-area-inset-bottom) + 4.25rem))"
-              : adult
-                ? "max(1.25rem, env(safe-area-inset-bottom))"
-                : undefined,
-          }}
-        >
-          {!adult && (
-            <div
-              className="mb-3 aspect-[16/9] overflow-hidden rounded-2xl"
-              style={{ background: `linear-gradient(145deg, ${book.coverFrom}, ${book.coverTo})` }}
-              aria-hidden
-            />
-          )}
-
+        {adult ? (
           <div
-            className={`books-page-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain ${adult ? "pr-2" : ""}`}
+            className="mx-auto flex h-full max-w-xl flex-col px-6 pr-8 pt-3 sm:px-10 sm:pr-12"
+            style={{
+              paddingBottom: bottomReserve
+                ? "max(5.25rem, calc(env(safe-area-inset-bottom) + 4.25rem))"
+                : "max(1.25rem, env(safe-area-inset-bottom))",
+            }}
           >
-            {paragraphs.map((para, i) => {
-              const sentences = splitBookSentences(para);
-              const paraActive = highlight?.paragraphIndex === i;
-              return (
-                <p
-                  key={`${index}-${i}`}
-                  className={
-                    adult
-                      ? "mb-5 text-[17px] leading-[1.75] tracking-[0.01em] text-[#1C1917]"
-                      : "mb-3 text-base font-semibold leading-7 text-stone-800"
-                  }
-                  style={adult ? { fontFamily: '"Literata", "Georgia", "Times New Roman", serif' } : undefined}
-                >
-                  {sentences.map((sentence, si) => {
-                    const isActive = paraActive && highlight?.sentenceIndex === si;
-                    const showDrop = adult && i === 0 && si === 0 && sentence.length > 0;
-                    return (
-                      <span
-                        key={`${index}-${i}-${si}`}
-                        ref={isActive ? highlightRef : undefined}
-                        className={
-                          isActive
-                            ? adult
+            <div className="books-page-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2">
+              {paragraphs.map((para, i) => {
+                const sentences = splitBookSentences(para);
+                const paraActive = highlight?.paragraphIndex === i;
+                return (
+                  <p
+                    key={`${index}-${i}`}
+                    className="mb-5 text-[17px] leading-[1.75] tracking-[0.01em] text-[#1C1917]"
+                    style={{ fontFamily: '"Literata", "Georgia", "Times New Roman", serif' }}
+                  >
+                    {sentences.map((sentence, si) => {
+                      const isActive = paraActive && highlight?.sentenceIndex === si;
+                      const showDrop = i === 0 && si === 0 && sentence.length > 0;
+                      return (
+                        <span
+                          key={`${index}-${i}-${si}`}
+                          ref={isActive ? highlightRef : undefined}
+                          className={
+                            isActive
                               ? "rounded-[3px] bg-[#E8D9A8]/70 shadow-[inset_0_-1px_0_rgba(120,90,40,0.12)] transition-colors duration-300"
-                              : "rounded-md bg-orange-200/70 transition-colors duration-300"
-                            : "transition-colors duration-300"
-                        }
-                      >
-                        {showDrop ? (
-                          <>
-                            <span className="float-left mr-2 mt-1 text-[2.35rem] font-semibold leading-none text-[#1C1917]">
-                              {sentence.charAt(0)}
-                            </span>
-                            {sentence.slice(1)}
-                          </>
-                        ) : (
-                          sentence
-                        )}
-                        {si < sentences.length - 1 ? " " : null}
-                      </span>
-                    );
-                  })}
-                </p>
-              );
-            })}
-          </div>
+                              : "transition-colors duration-300"
+                          }
+                        >
+                          {showDrop ? (
+                            <>
+                              <span className="float-left mr-2 mt-1 text-[2.35rem] font-semibold leading-none text-[#1C1917]">
+                                {sentence.charAt(0)}
+                              </span>
+                              {sentence.slice(1)}
+                            </>
+                          ) : (
+                            sentence
+                          )}
+                          {si < sentences.length - 1 ? " " : null}
+                        </span>
+                      );
+                    })}
+                  </p>
+                );
+              })}
+            </div>
 
-          <div
-            className={`mt-2 flex items-center justify-between ${controlsVisible ? "opacity-100" : "opacity-70"}`}
-          >
-            <button
-              type="button"
-              disabled={index <= 0}
-              onClick={(e) => {
-                e.stopPropagation();
-                go("prev");
-              }}
-              className={`disabled:opacity-30 ${
-                adult
-                  ? "rounded-full px-2 py-1 text-[11px] font-medium text-stone-500"
-                  : "rounded-full bg-white/80 px-3 py-1.5 text-xs font-extrabold text-orange-600"
-              }`}
+            <div
+              className={`mt-2 flex items-center justify-between ${controlsVisible ? "opacity-100" : "opacity-70"}`}
             >
-              ← Prev
-            </button>
-            <p className={`tabular-nums ${adult ? "text-[11px] text-stone-500" : "text-xs font-bold text-orange-700"}`}>
-              {index + 1} / {pages.length}
-            </p>
-            <button
-              type="button"
-              disabled={index >= pages.length - 1}
-              onClick={(e) => {
-                e.stopPropagation();
-                go("next");
-              }}
-              className={`disabled:opacity-30 ${
-                adult
-                  ? "rounded-full px-2 py-1 text-[11px] font-medium text-stone-500"
-                  : "rounded-full bg-orange-500 px-3 py-1.5 text-xs font-extrabold text-white"
-              }`}
-            >
-              Next →
-            </button>
+              <button
+                type="button"
+                disabled={index <= 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go("prev");
+                }}
+                className="rounded-full px-2 py-1 text-[11px] font-medium text-stone-500 disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              <p className="tabular-nums text-[11px] text-stone-500">
+                {index + 1} / {pages.length}
+              </p>
+              <button
+                type="button"
+                disabled={index >= pages.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go("next");
+                }}
+                className="rounded-full px-2 py-1 text-[11px] font-medium text-stone-500 disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div
+            className="mx-auto flex h-full max-w-xl flex-col px-3 pb-3 pt-3"
+            style={{
+              paddingBottom: bottomReserve
+                ? "max(5.5rem, calc(env(safe-area-inset-bottom) + 4.5rem))"
+                : undefined,
+            }}
+          >
+            {/* Big picture-book illustration — ~60% of the page */}
+            <div className="relative min-h-0 flex-[1.35]">
+              <div
+                className="kids-illust-frame absolute inset-0 overflow-hidden border-[3px] border-orange-100 shadow-sm"
+                style={
+                  page.image
+                    ? undefined
+                    : {
+                        background: `linear-gradient(145deg, ${book.coverFrom}, ${book.coverTo})`,
+                      }
+                }
+              >
+                {page.image ? (
+                  <img
+                    src={page.image}
+                    alt=""
+                    className="h-full w-full object-cover"
+                    draggable={false}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center px-6 text-center">
+                    <p className="text-2xl font-extrabold leading-snug text-white/90 drop-shadow">
+                      {book.title}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Short kid text underneath */}
+            <div className="mt-3 flex min-h-[5.5rem] flex-col justify-center px-1">
+              <div className="books-page-scroll max-h-[9.5rem] overflow-y-auto overscroll-contain text-center">
+                {paragraphs.map((para, i) => {
+                  const sentences = splitBookSentences(para);
+                  const paraActive = highlight?.paragraphIndex === i;
+                  return (
+                    <p
+                      key={`${index}-${i}`}
+                      className="mb-1 text-[17px] font-extrabold leading-snug text-stone-800"
+                      style={{ fontFamily: '"Nunito", "Trebuchet MS", "Segoe UI", sans-serif' }}
+                    >
+                      {sentences.map((sentence, si) => {
+                        const isActive = paraActive && highlight?.sentenceIndex === si;
+                        return (
+                          <span
+                            key={`${index}-${i}-${si}`}
+                            ref={isActive ? highlightRef : undefined}
+                            className={
+                              isActive
+                                ? "rounded-md bg-orange-200/80 px-0.5 transition-colors duration-300"
+                                : "transition-colors duration-300"
+                            }
+                          >
+                            {sentence}
+                            {si < sentences.length - 1 ? " " : null}
+                          </span>
+                        );
+                      })}
+                    </p>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div
+              className={`mt-2 flex items-center justify-between ${controlsVisible ? "opacity-100" : "opacity-90"}`}
+            >
+              <button
+                type="button"
+                disabled={index <= 0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go("prev");
+                }}
+                className="rounded-full bg-white px-3.5 py-2 text-xs font-extrabold text-orange-600 shadow-sm ring-1 ring-orange-100 disabled:opacity-30"
+              >
+                ← Prev
+              </button>
+              <p className="tabular-nums text-xs font-extrabold text-orange-700">
+                {index + 1} / {pages.length}
+              </p>
+              <button
+                type="button"
+                disabled={index >= pages.length - 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  go("next");
+                }}
+                className="rounded-full bg-orange-500 px-3.5 py-2 text-xs font-extrabold text-white shadow-sm disabled:opacity-30"
+              >
+                Next →
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
