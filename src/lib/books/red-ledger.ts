@@ -293,7 +293,7 @@ Clara asked to see the facility records. Daniel refused until morning, when he d
 
 At Alden Street, Nia reported her car stolen from the gala. Police found it near the storage facility, wiped clean. Nia claimed her keys had disappeared during the blackout.
 
-Sebastian called an emergency board meeting and placed Clara on paid leave pending a cybersecurity review.
+Sebastian called an emergency board meeting and placed Clara on leave pending a cybersecurity review.
 
 "This protects you as well as the foundation," he said over speakerphone.
 
@@ -605,7 +605,7 @@ Daniel looked at the recovered drive. "Then we close it."`,
   },
   {
     chapter: "Chapter 5 — Material Weakness",
-    text: `Omar's drive held photographs, invoices, and recordings. The scheme was repetitive and audacious.
+    text: `Omar's drive contained photographs, invoices, recordings. The scheme was audacious.
 
 Sebastian moved Rusk money through anonymous gifts that triggered public matching grants. Alden Street paid inflated invoices to shell vendors; Rusk recovered his money while the public match entered a Caribbean trust.
 

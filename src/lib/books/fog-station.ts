@@ -277,7 +277,7 @@ Her return ticket now showed 3:26. She could not remember seeing the time printe
   },
   {
     chapter: "Chapter 3 — The Last Stop",
-    text: `The fifth car held Central Station, March 2012. Commuters flowed around older, thinner, visibly ill Mateo Velez.
+    text: `The fifth car held Central Station, March 2012. Commuters flowed around older, thinner, ill Mateo Velez.
 
 Marisol recognized the date. A transit officer had found Mateo dead in a station restroom that night. No identification. He was buried under a municipal number, his connection to Bellweather undiscovered.
 
