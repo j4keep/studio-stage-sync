@@ -7,7 +7,7 @@ import type { BookPage } from "@/lib/books-catalog";
 export const BALCONY_SEASON_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — Across the Courtyard",
-    text: `June Bell moved into the Marlowe in March, when every balcony in the courtyard looked like a row of empty theater boxes. Wind worried the striped awnings. The fountain below held black leaves instead of water. In apartment 4C, someone had painted around the furniture so faithfully that pale rectangles haunted the walls.
+    text: `June Bell moved into the Marlowe in March, when every balcony in the courtyard looked like a row of empty theater boxes. Wind worried awnings. The fountain held black leaves. In 4C, pale rectangles haunted walls where someone had painted around furniture.
 
 June unpacked her plants first.
 
@@ -49,7 +49,7 @@ June turned it over and added: Article Two—unsolicited horticulture limited to
   },
   {
     chapter: "Chapter 1 — Across the Courtyard",
-    text: `The Marlowe had been built in 1927 around a square courtyard, its apartments facing one another with the intimacy of train compartments. Everyone knew when Mr. Bass in 2A burned toast and when the twins in 6D practiced tap. Privacy was not an absence of witnesses; it was a neighborhood agreement to look away selectively.
+    text: `The Marlowe had been built around a square courtyard, its apartments facing like train compartments. Everyone knew when Mr. Bass burned toast and when the twins practiced tap. Privacy was a neighborhood agreement to look away selectively.
 
 Leo did not look away from June's plants.
 
@@ -309,9 +309,9 @@ Their building rose ahead, every balcony green and illuminated. For the first ti
   },
   {
     chapter: "Chapter 3 — Night Bloom",
-    text: `They argued on the sidewalk because neither wanted the building to hear.
+    text: `They argued beyond the building's hearing.
 
-Leo said June had made intimacy into a furnished room with one locked cabinet. June said he treated every relationship as a beautiful temporary project because leaving first preserved the romance.
+Leo said June made intimacy a furnished room with one locked cabinet. June said he treated relationships as temporary projects because leaving first preserved romance.
 
 "You think friendship with Nina proves you never damage anyone," she said.
 
@@ -357,7 +357,7 @@ Outside, the courtyard fountain kept running, indifferent and bright.`,
   },
   {
     chapter: "Chapter 3 — Night Bloom",
-    text: `Leo had signed because the Lisbon offer required an answer and the buyout covered a year abroad. He had planned to tell June after the final contract arrived.
+    text: `Leo signed because Lisbon required an answer and the buyout covered a year abroad. He planned to tell June after the contract arrived.
 
 "You knew our homes were being sold while you ate dinner across from me."
 
@@ -705,7 +705,7 @@ Tomorrow they would share one door. Tonight, they let the old space remain meani
   },
   {
     chapter: "Chapter 6 — Common Ground",
-    text: `The warehouse apartment sounded different. River traffic hummed beyond the terrace. Pipes barely spoke. Without a courtyard of witnesses, silence felt both luxurious and unobserved.
+    text: `The warehouse sounded different. River traffic hummed beyond the terrace. Pipes barely spoke. Without courtyard witnesses, silence felt luxurious and unobserved.
 
 Leo built June's private room at the east end of the studio, with glass above the door for morning light. She painted it deep green and refused his help arranging anything. On the west side, he constructed a recording booth lined with gray wool.
 

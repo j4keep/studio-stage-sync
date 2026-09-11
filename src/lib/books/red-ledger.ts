@@ -85,9 +85,7 @@ Below it was a photograph of her unlocking the safe.`,
   },
   {
     chapter: "Chapter 1 — Out of Balance",
-    text: `Clara lived in a narrow house inherited from her mother, where every clock ran two minutes fast. She placed the ledger under a white lamp at the kitchen table and called her younger brother, Daniel, a detective in the financial-crimes unit.
-
-She did not tell him everything. Family love made confidentiality feel negotiable.
+    text: `At home, where every clock ran two minutes fast, Clara placed the ledger beneath a kitchen lamp and called her brother Daniel, a financial-crimes detective.
 
 "Hypothetically," she said, "if evidence appeared in a controlled safe without an access record—"
 
@@ -125,7 +123,7 @@ The ink had bled across the concrete like a small, precise wound.`,
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `Daniel arrived before the uniformed officers left. He was forty, broad-shouldered, and wore worry as irritation.
+    text: `Daniel arrived before the officers left. He wore worry as irritation.
 
 "You brought foundation evidence home."
 
@@ -133,7 +131,7 @@ The ink had bled across the concrete like a small, precise wound.`,
 
 "Those are not mutually exclusive crimes."
 
-He photographed the cartridge and insisted on taking a formal statement. Clara showed him the threatening message but withheld the ledger images. Daniel's division had investigated Alden Street once, four years earlier, after an anonymous claim about inflated renovation invoices. The complaint collapsed when the whistleblower recanted.
+He photographed the cartridge and insisted on taking a formal statement. Clara showed him the threatening message but withheld the ledger images. Daniel's division had investigated Alden Street once before, after an anonymous claim about inflated renovation invoices. The complaint collapsed when the whistleblower recanted.
 
 "Who?" Clara asked.
 
@@ -179,7 +177,7 @@ His voice contained neither sympathy nor surprise.`,
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `Clara confronted Nia in the executive dressing room while a stylist pinned Nia's gala dress.
+    text: `Clara confronted Nia amid gala preparations and dismissed the stylist.
 
 "Freeze all payments to Mercy North," Clara said. "My credentials were compromised."
 
@@ -197,7 +195,7 @@ Nia's face remained composed. "If we freeze vendor payments hours before the gal
 
 "You think institutions survive on innocence? They survive proportion. Find the breach quietly."
 
-Clara heard an echo from fifteen years earlier, when she had found manipulated reserves at Bishop North Bank. Her supervisor called the discrepancy immaterial. Clara accepted a corrected report, kept her job, and watched the bank fail nine months later. Her mother lost part of her pension. Clara had built the rest of her career around never again confusing a small number with a small lie.
+Clara remembered finding manipulated reserves at Bishop North Bank fifteen years earlier. Her supervisor called the discrepancy immaterial. Clara accepted a corrected report and watched the bank fail nine months later. She had built the rest of her career around never confusing a small number with a small lie.
 
 "I am freezing Mercy North," she said.
 
@@ -221,9 +219,9 @@ Then she searched the foundation's insurance files for Warehouse 0614. The prope
   },
   {
     chapter: "Chapter 2 — Ghost Donors",
-    text: `The gala transformed Alden Street into a theater of virtue. Donors drank beneath projected images of families receiving keys. Waiters carried tiny food through rooms where program staff compared rent increases.
+    text: `The gala made Alden Street a theater of virtue. Donors drank beneath images of families receiving keys while program staff compared rent increases.
 
-Clara wore a black dress and kept the red ledger strapped beneath her coat in the locked finance office. She watched Sebastian deliver his speech.
+Clara wore a dress and kept the red ledger beneath her coat in the locked finance office. She watched Sebastian deliver his speech.
 
 "Transparency," he said, "is the architecture of trust."
 
@@ -275,7 +273,7 @@ Nia Calder's did not.`,
   },
   {
     chapter: "Chapter 3 — Unit 614",
-    text: `Daniel took the claim ticket as evidence and stationed an officer outside Clara's house. He would not let her accompany police to the storage facility.
+    text: `Daniel took the ticket and stationed an officer outside Clara's house. He barred her from the storage search.
 
 "You are a witness," he said.
 
@@ -285,15 +283,13 @@ Nia Calder's did not.`,
 
 "The numbers are not."
 
-At midnight, his unit found 614 unlocked and empty except for a folding chair. No second copy. No Mara Voss. Security cameras had been disabled ten minutes before the black car arrived.
+At midnight, his unit found 614 unlocked and empty but for a chair. No second copy. No Mara Voss. Security cameras had been disabled ten minutes before the black car arrived.
 
 Clara asked to see the facility records. Daniel refused until morning, when he discovered the unit had been rented under her name with a copy of her driver's license.
 
 "Someone prepared this before Friday," Clara said.
 
 "Or you did."
-
-The possibility stood between them professionally, poisoning the family air.
 
 At Alden Street, Nia reported her car stolen from the gala. Police found it near the storage facility, wiped clean. Nia claimed her keys had disappeared during the blackout.
 
@@ -327,7 +323,7 @@ Clara remembered Sebastian's key-shaped cuff links.`,
   },
   {
     chapter: "Chapter 3 — Unit 614",
-    text: `The safe had been donated during the foundation's renovation by Rusk Security Holdings, Sebastian's first company. Its electronic lock recorded cards and codes, but the manufacturer's manual revealed a mechanical emergency override behind the left hinge. Opening it created no digital entry.
+    text: `Rusk Security Holdings, Sebastian's first company, had donated the safe. Its lock recorded cards and codes, but a mechanical override behind the left hinge created no digital entry.
 
 Only Alden Street's facilities manager and the installer should have held keys.
 
@@ -365,7 +361,7 @@ Julian looked toward the street. "They told me the gifts came through anonymous 
 
 He said nothing.
 
-Clara understood him perfectly, which made contempt difficult. Julian had called each compromise temporary while promotion made it permanent.
+Clara understood him, which made contempt difficult. Julian had called each compromise temporary while promotion made it permanent.
 
 "What is at 614?"
 
@@ -387,7 +383,7 @@ Someone was still constructing evidence, one object at a time.`,
   },
   {
     chapter: "Chapter 3 — Unit 614",
-    text: `Julian agreed to speak with Daniel, but only after Clara promised to obtain whistleblower counsel. His testimony connected Sebastian to the ghost donors, not the transfers. He insisted Nia approved every vendor payment.
+    text: `Julian agreed to speak after Clara promised whistleblower counsel. His testimony connected Sebastian to ghost donors, not transfers. He insisted Nia approved every payment.
 
 At home, Clara spread the ledger photographs across her dining table. The punched holes beside entries had bothered her from the beginning. Groups of one through five repeated in no financial pattern.
 
@@ -571,7 +567,7 @@ The doors shuddered under a blow from the other side.`,
   },
   {
     chapter: "Chapter 5 — Material Weakness",
-    text: `Nia led them through the fireplace panel into a service passage left from the building's life as a department store. Smoke followed, acrid with burning plastic.
+    text: `Nia led them through the fireplace panel into an old service passage. Acrid smoke followed.
 
 They emerged behind the freight elevator. Julian collapsed against the wall.
 
@@ -609,11 +605,11 @@ Daniel looked at the recovered drive. "Then we close it."`,
   },
   {
     chapter: "Chapter 5 — Material Weakness",
-    text: `Omar's drive held photographs, invoices, and audio recordings. The scheme was audacious in its repetition.
+    text: `Omar's drive held photographs, invoices, and recordings. The scheme was repetitive and audacious.
 
-Sebastian created anonymous gifts using money moved from Rusk subsidiaries. The donations triggered public matching grants. Alden Street then paid inflated renovation invoices to Mercy North and other shell vendors. The original money returned to Rusk; the public match moved through a Caribbean trust.
+Sebastian moved Rusk money through anonymous gifts that triggered public matching grants. Alden Street paid inflated invoices to shell vendors; Rusk recovered his money while the public match entered a Caribbean trust.
 
-Nia had approved the contracts. Julian had created the donor identities. Both claimed they believed Sebastian's explanation that secrecy protected legitimate donors.
+Nia approved contracts; Julian created donor identities. Both claimed secrecy protected legitimate donors.
 
 "Belief isn't a control," Clara told them during separate interviews.
 
@@ -717,7 +713,7 @@ Daniel stared at his sister, officer and brother visibly at war.
   },
   {
     chapter: "Chapter 6 — Closing Entry",
-    text: `Alden Street after the fire was a wet, blackened shell. Police placed cameras in the finance office and officers behind temporary walls. Clara sat at her old desk with a blank consulting agreement and the red ledger returned by evidence technicians.
+    text: `After the fire, Alden Street was a wet, blackened shell. Police hid cameras and officers near Finance. Clara sat with a blank consulting agreement and the returned red ledger.
 
 Sebastian arrived at 4:52 with Mark Dane's replacement and a lawyer. Daniel's team detained the security man downstairs on an outstanding weapons charge. The lawyer remained in the lobby after Sebastian insisted this was a private conversation.
 
@@ -811,7 +807,7 @@ The copies were.`,
   },
   {
     chapter: "Chapter 6 — Closing Entry",
-    text: `Sebastian Rusk resigned as board chair at 7:03 a.m., four minutes before federal agents announced his arrest. Alden Street's statement thanked law enforcement and promised an independent review, as though institutions could issue surprise at their own design.
+    text: `Sebastian Rusk resigned at 7:03 a.m., four minutes before agents announced his arrest. Alden Street thanked law enforcement and promised review, as though institutions could express surprise at their own design.
 
 Nia Calder resigned by noon. Julian March entered a cooperation agreement. Mark Dane was charged with arson, assault, and attempted murder. Investigators reopened Omar Bell's death, though the medical evidence still supported natural causes.
 

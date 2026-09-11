@@ -37,7 +37,7 @@ Mae smiled despite herself. At forty-one, she had learned not to mistake intrigu
     chapter: "Chapter 1 — The Returned Novel",
     text: `The mystery had no customer sticker, which meant it had come from Bellwether's outdoor cart or from the era before Mae computerized anything. She placed it on the staff table and forgot it until closing, when a man in a charcoal coat entered carrying a broken umbrella.
 
-He was perhaps forty-five, silver beginning at his temples, rain darkening his shoulders. Mae had seen him twice that winter in Biography, reading first pages with grave attention.
+He was perhaps forty-five, silver at his temples. Mae had seen him twice in Biography, reading first pages carefully.
 
 "Do you repair books?" he asked.
 
@@ -53,7 +53,7 @@ Mae touched only the undamaged corner. "I can resew it. Three weeks."
 
 "Take four. Her notes are more important than the cover."
 
-He filled out a repair ticket: ADRIAN VALE, followed by a phone number and no email. When Mae asked if he wanted a receipt, he said, "I trust paper," and his smile appeared briefly, like sun in a stairwell.
+He filled out a repair ticket: ADRIAN VALE, followed by a phone number and no email. He declined a receipt. "I trust paper," he said, smiling briefly.
 
 After he left, Priya emerged from the office.
 
@@ -83,7 +83,7 @@ Then how do you know which door is yours?
 
 Mae stood in the cold vestibule reading the sentence until the mail carrier asked whether she needed medical attention.
 
-She told herself A could be anyone. A student. A retired woman. A person who enjoyed making booksellers invent lives for initials. Nevertheless, she answered.
+A could be anyone: student, retiree, or someone making booksellers invent lives for initials. Nevertheless, she answered.
 
 The door is rarely yours until you choose it.
 
@@ -105,7 +105,7 @@ For the first time, she wondered whether mystery was less dangerous before it ac
   },
   {
     chapter: "Chapter 2 — Marginal Weather",
-    text: `Adrian was an architect who restored buildings the city had stopped valuing. This emerged in pieces over the repair counter. He had saved the Orpheum's plaster ceiling, converted a schoolhouse into apartments, and once spent eleven months persuading a bank that original windows were not a moral failure.
+    text: `Adrian restored buildings the city had stopped valuing. He had saved the Orpheum's plaster ceiling and converted a schoolhouse into apartments.
 
 "You argue with institutions for a living," Mae said.
 
@@ -145,7 +145,7 @@ Mae wrote: This shop, though lately I cannot tell whether it is a place or an al
   },
   {
     chapter: "Chapter 2 — Marginal Weather",
-    text: `Bellwether was failing politely. It still hosted readings and wrapped purchases in brown paper. It still appeared in travel guides beneath words like beloved and enduring. But beloved businesses could owe fourteen thousand dollars in back rent, and endurance was not accepted by the electric company.
+    text: `Bellwether was failing politely. It hosted readings, wrapped purchases, and appeared in travel guides as beloved and enduring. But beloved businesses could owe fourteen thousand dollars in back rent, and endurance was not accepted by the electric company.
 
 Mae had hidden the notices in a cookbook box under the register. Celia had mortgaged her apartment to keep the store alive; Mae had spent her own savings honoring that sacrifice. Now the landlord planned to sell the building in June.
 
@@ -391,9 +391,9 @@ Mae looked around at thirty years of recommendations penciled onto shelf cards, 
   },
   {
     chapter: "Chapter 4 — Terms of Sale",
-    text: `Lenore Pike offered Mae a five-year lease at nearly twice the present rent, with a discount if Bellwether became a hotel amenity and surrendered its rear room. Mae asked questions until Pike stopped using the word partnership.
+    text: `Lenore Pike offered Mae a five-year lease at nearly twice the present rent, discounted if Bellwether became a hotel amenity and surrendered its rear room. Mae questioned her until Pike stopped saying partnership.
 
-That afternoon, Mae convened twelve customers, two former employees, Priya, the bakery owner, and Mr. Okafor from the neighborhood development fund. They sat among mismatched chairs after closing while rain ticked against the windows.
+That afternoon, Mae convened customers, former employees, neighboring owners, and Mr. Okafor from the development fund. They sat among mismatched chairs while rain ticked against the windows.
 
 Mae showed them the debt and the proposed sale. Shame rose hot in her throat, then diminished each time somebody leaned closer rather than away.
 
@@ -453,8 +453,6 @@ Mae missed him most in those moments—not the grand idea of romance, but his ha
 
 On the bid deadline, Mr. Okafor submitted the trust's offer. It was nine percent below Pike's.
 
-"Sellers have accepted worse differences for cleaner closings," he said.
-
 At six, Mae found Adrian on the roof inspecting a temporary patch. The city spread beneath them, windows lighting one by one.
 
 "We did what we could," he said.
@@ -487,7 +485,7 @@ This time, when he kissed her, neither mistook it for a solution.`,
     chapter: "Chapter 5 — The Unwritten Ending",
     text: `The seller accepted Pike's offer.
 
-The message arrived at 9:12 on a Tuesday, while Mae was recommending a sea novel to a man afraid of boats. She completed the sale, wrapped the book, and only then went into the office to be sick.
+The message arrived Tuesday while Mae recommended a sea novel to a man afraid of boats. She completed the sale, wrapped the book, then went into the office to be sick.
 
 The trust's financing had taken too long. Pike would close in thirty days. She remained willing to lease Bellwether the front half under hotel terms.
 
@@ -523,11 +521,11 @@ Saying it made the loss real. It also made the next choice hers.`,
   },
   {
     chapter: "Chapter 5 — The Unwritten Ending",
-    text: `News that Bellwether would close spread by morning. Reporters called it another casualty of redevelopment. Customers arrived carrying outrage, flowers, and impractical suggestions. Mae refused to become picturesque ruin.
+    text: `News that Bellwether would close spread by morning. Reporters called it a casualty of redevelopment. Customers brought outrage, flowers, and impractical suggestions. Mae refused to become picturesque ruin.
 
 She announced a final six-week season of readings, repair workshops, and midnight sales. She also began looking for a smaller storefront beyond the hotel district.
 
-Adrian drove her to viewings. The first smelled of fryer oil. The second had no windows. The third was a former laundromat beside Priya's studio, with cracked terrazzo floors and morning light pouring through a south-facing wall.
+Adrian drove her to viewings. The first smelled of fryer oil. The second had no windows. The third was a laundromat beside Priya's studio, with cracked terrazzo floors and morning light pouring through a south-facing wall.
 
 "Too far from downtown," the broker said.
 

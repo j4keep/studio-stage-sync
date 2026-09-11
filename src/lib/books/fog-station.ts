@@ -9,7 +9,7 @@ export const FOG_STATION_PAGES: BookPage[] = [
     chapter: "Chapter 1 — Platform Seven",
     text: `Platform Seven had been closed since Marisol Ruiz was twenty-three, which was why she noticed the light beneath its sign.
 
-She stood alone in Central Station at 1:10 a.m., a cold-case carton at her feet and fog pressing white against the roof glass. The last northbound train had been canceled. Somewhere beyond the shuttered cafes, a floor polisher whined and stopped.
+She stood alone in Central Station at 1:10 a.m., cold-case carton at her feet, fog whitening the roof glass. Beyond shuttered cafes, a floor polisher whined and stopped.
 
 Platform Seven lay behind a brass gate secured with a chain. Its clock showed 1:13, three minutes fast or twenty-eight years slow. Marisol had passed it thousands of times without seeing a bulb burn.
 
@@ -193,17 +193,17 @@ Outside the window, fire escapes streamed past through fog. On one landing stood
   },
   {
     chapter: "Chapter 2 — The Witness Cars",
-    text: `The third witness waited in November 1998, seven hours before the fire. She was Dahlia Crane, the Bellweather's night desk clerk and one of the twelve victims.
+    text: `The third car held November 1998, seven hours before the fire. Dahlia Crane, the Bellweather's night clerk and one of twelve victims, waited behind the desk.
 
-The lobby shone with dark wood and brass. A jazz trio played beneath chandeliers. Guests in evening clothes crossed the carriage without seeing Marisol.
+Dark wood and brass shone. A jazz trio played. Guests crossed the carriage without seeing Marisol.
 
-Dahlia wore a red jacket and the patient expression of someone finishing a long shift. In the official timeline, she called emergency services at 12:08 and died helping guests escape.
+Dahlia wore a red jacket and a long shift's patience. Officially, she called emergency services at 12:08 and died helping guests escape.
 
 Marisol asked, "What did you see that night?"
 
 "Too much, in the wrong order."
 
-At 6:30, Conrad Voss argued with Edwin Vale in the manager's office. Voss needed an insurance inspection delayed; Vale wanted money promised for keeping Helen Park's report from city files. The men were not related. Vale had changed his surname from Velez as a young officer—a fact buried in personnel records.
+At 6:30, Conrad Voss argued with Edwin Vale. Voss wanted an insurance inspection delayed; Vale wanted payment for suppressing Helen's report. The men were unrelated. Vale had changed his surname from Velez as a young officer.
 
 At ten, Mateo arrived demanding unpaid wages. Dahlia let him use the staff phone. Edwin drove him away.
 
@@ -277,7 +277,7 @@ Her return ticket now showed 3:26. She could not remember seeing the time printe
   },
   {
     chapter: "Chapter 3 — The Last Stop",
-    text: `The fifth car resembled Central Station in March 2012. Commuters flowed soundlessly around a bench where Mateo Velez sat older, thinner, and visibly ill.
+    text: `The fifth car held Central Station, March 2012. Commuters flowed around older, thinner, visibly ill Mateo Velez.
 
 Marisol recognized the date. A transit officer had found Mateo dead in a station restroom that night. No identification. He was buried under a municipal number, his connection to Bellweather undiscovered.
 
@@ -381,9 +381,7 @@ Silas waited beside the train. In his hand was a black matchbook stamped THE BEL
   },
   {
     chapter: "Chapter 3 — The Last Stop",
-    text: `Silas gave Marisol the matchbook.
-
-Unlike the microfilm canister, it had weight. The cardboard was warm and smelled faintly of smoke.
+    text: `Silas gave Marisol the matchbook. It had weight, and its warm cardboard smelled faintly of smoke.
 
 "Why this?" she asked.
 
@@ -485,7 +483,7 @@ For the first time in her career, Edwin Vale looked afraid of a place.`,
   },
   {
     chapter: "Chapter 4 — Morning Evidence",
-    text: `Edwin ordered Dev removed from the case and Marisol evaluated for medical fitness. Internal Affairs intervened before either order took effect.
+    text: `Edwin ordered Dev removed and Marisol medically evaluated. Internal Affairs intervened before either took effect.
 
 "You are weeks from retirement," Edwin told her privately. "Don't let confusion rewrite a respected career."
 
@@ -535,7 +533,7 @@ Someone had built an alibi before the fire began.`,
   },
   {
     chapter: "Chapter 4 — Morning Evidence",
-    text: `Forensics dated the matchbook paper and ink to December 1998, confirming it could not have been collected on fire night. Its pencil inscription was older graphite, likely transferred from another surface. No useful prints.
+    text: `Forensics dated the matchbook to December 1998, proving it could not come from fire night. Its pencil inscription was older graphite. No useful prints.
 
 The matchbook was impossible in two directions: too new for the fire, too well preserved for twenty-eight years in a damp station locker.
 
@@ -635,7 +633,7 @@ The interview-room lights flickered green.`,
   },
   {
     chapter: "Chapter 5 — The Lost Timetable",
-    text: `Edwin refused to explain his remark. His lawyer ended the interview and moved him into protective custody.
+    text: `Edwin refused to explain. His lawyer ended the interview and secured custody.
 
 That night, he vanished.
 
@@ -685,9 +683,9 @@ The second hand began to move.`,
   },
   {
     chapter: "Chapter 5 — The Lost Timetable",
-    text: `The prosecutor refused a rescue operation based on a supernatural timetable. She did approve a controlled exchange with the matchbook after forensic testing was complete.
+    text: `The prosecutor refused a rescue based on a supernatural timetable, but approved a controlled matchbook exchange after testing.
 
-Marisol prepared two versions: the original in an evidence pouch beneath her coat, a replica in her pocket. Dev placed trackers in both, though neither signal penetrated the platform wall.
+Marisol prepared two versions: the original under her coat, a replica in her pocket. Dev tracked both, though neither signal penetrated the wall.
 
 At 1:13, fog entered Central Station despite locked doors.
 
@@ -787,13 +785,13 @@ In darkness, Silas's voice announced:
   },
   {
     chapter: "Chapter 6 — Fire Line",
-    text: `Green platform lamps ignited one by one.
+    text: `Green lamps ignited one by one.
 
 Conrad's men shouted. One fired toward the waiting room, muzzle flash exposing empty seats. Edwin tackled the other. Marisol kicked a fuel can off the platform; it struck the rail and split.
 
 Fog rushed along the tracks.
 
-The modern work train stood fifty yards away, its locomotive coupled to generator cars and projection equipment. Beyond it, another headlamp appeared.
+The modern train stood fifty yards away, coupled to generators and projection equipment. Beyond it, another headlamp appeared.
 
 The black train arrived without using the rails.
 
@@ -821,7 +819,7 @@ Marisol looked at Silas.
 
 The modern engine entered fog and disappeared.
 
-At Central Station, only three feet of crumpled locomotive were found embedded in the concrete wall. Conrad's body was not inside. Investigators later discovered him wandering along a rural rail bed sixty miles away, burned on both hands and carrying twelve unused matchbooks.
+At Central Station, three feet of locomotive were embedded in the wall. Conrad was found wandering a rural rail bed sixty miles away, hands burned, carrying twelve unused matchbooks.
 
 He confessed before sunrise, then recanted.
 

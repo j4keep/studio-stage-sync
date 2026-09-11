@@ -283,7 +283,7 @@ Below, waves struck rock they could not see. The light continued its patient cir
 
 Len approved one extra day but reminded Sam that the sponsored issue went to layout Friday. The sponsor was Calder Coast, a hospitality company whose name Sam had seen on boutique hotels from Miami to Dubrovnik.
 
-At the municipal office, Sam requested development records as routine background. The clerk hesitated, then handed her a public packet. Calder Coast had quietly optioned seventy acres above Morrow Bay for a resort, marina, and private access road. A promotional rendering showed the lighthouse beside glass villas.
+Sam requested development records. The clerk handed her a public packet. Calder Coast had quietly optioned seventy acres above Morrow Bay for a resort, marina, and private access road. A rendering showed the lighthouse beside glass villas.
 
 Elias found her reading it at the radio station.
 
@@ -335,7 +335,7 @@ Then she began again: The next place you are meant to discover may already have 
 
 He demanded a clean draft by morning.
 
-Unable to sleep, Sam walked uphill through rain to the lighthouse cottage. Elias opened the door wearing an old T-shirt, his face guarded.
+Sleepless, Sam walked through rain to the lighthouse cottage. Elias opened the door in an old T-shirt, guarded.
 
 "I need to ask what you want quoted."
 
@@ -343,7 +343,7 @@ Unable to sleep, Sam walked uphill through rain to the lighthouse cottage. Elias
 
 "My deadline doesn't respect coastal custom."
 
-He let her in. Wren was at Isabel's because of the storm. On the kitchen table lay petitions against the resort and an economic report funded by Calder.
+He let her in. Wren was at Isabel's because of the storm. Petitions and Calder's economic report covered the table.
 
 Elias believed the town needed investment but not enclosure. His proposal would renovate the public pier, create a marine training center, and preserve headland access through a local cooperative. Nobody with capital had listened.
 
