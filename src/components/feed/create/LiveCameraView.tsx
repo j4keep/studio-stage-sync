@@ -25,7 +25,7 @@ import {
 } from "@/lib/create-modes";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { startCircleLive } from "@/lib/circle-live";
+import { startCircleLive, type ExclusiveLiveAudience } from "@/lib/circle-live";
 import { useFaceFilters, type FaceFilterId } from "@/hooks/useFaceFilters";
 import {
   liveWatchUrl,
@@ -101,6 +101,7 @@ export default function LiveCameraView({
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
+  const [exclusiveAudience, setExclusiveAudience] = useState<ExclusiveLiveAudience>("all");
 
   const [showEnhance, setShowEnhance] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
@@ -274,9 +275,35 @@ export default function LiveCameraView({
 
       const session = await startCircleLive(circleId ?? null, user.id, viewMode, {
         isExclusive: exclusiveLive,
+        exclusiveAudience: exclusiveLive ? exclusiveAudience : undefined,
       });
       if (circleId) {
-        navigate(`/circle/c/${circleId}/live${exclusiveLive ? "?exclusive=1" : ""}`);
+        const invite = exclusiveLive && exclusiveAudience === "invite" ? session.invite_token : null;
+        const path = `/circle/c/${circleId}/live${
+          exclusiveLive
+            ? `?exclusive=1${invite ? `&invite=${encodeURIComponent(invite)}` : ""}`
+            : ""
+        }`;
+        if (exclusiveLive && invite) {
+          const url = liveWatchUrl({
+            circleId,
+            exclusive: true,
+            inviteToken: invite,
+          });
+          void shareLiveInvite({
+            url,
+            title: "Join my Exclusive live on YAJ",
+            circleScoped: true,
+          }).then((result) => {
+            if (result === "copied") {
+              toast({
+                title: "Invite link copied",
+                description: "Send it only to people you want in this Exclusive live.",
+              });
+            }
+          });
+        }
+        navigate(path);
       } else {
         navigate(`/live/${session.id}`);
       }
@@ -402,7 +429,13 @@ export default function LiveCameraView({
           <X className="w-7 h-7" />
         </button>
         <span className="text-xs font-bold text-white/80 px-3 py-1 rounded-full bg-black/40">
-          {startingLive ? "Starting…" : isCircleScoped ? "Circle Live" : "Go Live"}
+          {startingLive
+            ? "Starting…"
+            : exclusiveLive
+              ? "Exclusive Live"
+              : isCircleScoped
+                ? "Circle Live"
+                : "Go Live"}
         </span>
         <div className="w-11" />
       </div>
@@ -444,6 +477,36 @@ export default function LiveCameraView({
       </div>
 
       <div className="relative z-20 mt-auto flex flex-col items-center gap-4 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)] pr-16">
+        {exclusiveLive && (
+          <div className="w-full max-w-[20rem] space-y-2 rounded-2xl border border-white/15 bg-black/50 p-3 backdrop-blur-md">
+            <p className="text-center text-[11px] font-bold uppercase tracking-wide text-white/70">
+              Who can watch this Exclusive live
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setExclusiveAudience("all")}
+                className={`rounded-xl px-2.5 py-2 text-left ${
+                  exclusiveAudience === "all" ? "bg-white text-black" : "bg-white/10 text-white"
+                }`}
+              >
+                <p className="text-[12px] font-black">All Exclusive</p>
+                <p className="mt-0.5 text-[10px] opacity-70">Everyone with Exclusive access</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setExclusiveAudience("invite")}
+                className={`rounded-xl px-2.5 py-2 text-left ${
+                  exclusiveAudience === "invite" ? "bg-white text-black" : "bg-white/10 text-white"
+                }`}
+              >
+                <p className="text-[12px] font-black">Invite link</p>
+                <p className="mt-0.5 text-[10px] opacity-70">Only people you send the link</p>
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/40 p-1 backdrop-blur-md">
           {VIEW_MODES.map((mode) => {
             const Icon = mode.icon;
@@ -472,7 +535,13 @@ export default function LiveCameraView({
           aria-label="Go live"
         >
           {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
-          {startingLive ? "Starting your live…" : "Go Live"}
+          {startingLive
+            ? "Starting your live…"
+            : exclusiveLive && exclusiveAudience === "invite"
+              ? "Go Live · Invite only"
+              : exclusiveLive
+                ? "Go Live · Exclusive"
+                : "Go Live"}
         </button>
       </div>
 

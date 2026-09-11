@@ -26,6 +26,9 @@ import {
   listCircleLiveComments,
   sendCircleLiveComment,
   sendCircleLiveGift,
+  sessionExclusiveAudience,
+  sessionInviteToken,
+  sessionLooksExclusive,
   type CircleLiveLayoutMode,
   type GiftType,
 } from "@/lib/circle-live";
@@ -96,6 +99,7 @@ export default function CircleLiveRoomPage() {
   const isPublicRoute = !!sessionId;
   const [searchParams] = useSearchParams();
   const wantExclusive = searchParams.get("exclusive") === "1";
+  const inviteFromUrl = searchParams.get("invite");
   const navigate = useNavigate();
   const { user } = useAuth();
   const [circle, setCircle] = useState<Circle | null | undefined>(undefined);
@@ -198,11 +202,22 @@ export default function CircleLiveRoomPage() {
   const isOwner = !isPublicRoute && !!circle && user?.id === circle.owner_id;
   const isApprovedMember = isPublicRoute ? !!user?.id : isOwner || membership?.status === "approved";
   const isHost = !!session && session.host_user_id === user?.id;
-  const isExclusiveLive = Boolean(session?.is_exclusive) || wantExclusive;
+  const isExclusiveLive = (session ? sessionLooksExclusive(session) : false) || wantExclusive;
+  const exclusiveAudience = session ? sessionExclusiveAudience(session) : "all";
+  const hasValidInvite =
+    !!inviteFromUrl &&
+    inviteFromUrl === (session ? sessionInviteToken(session) : null);
   const canWatchExclusive =
     !isExclusiveLive ||
     isHost ||
-    (!!circle && canAccessCircleExclusive(circle, membership, isOwner));
+    (exclusiveAudience === "invite"
+      ? hasValidInvite
+      : !!circle && canAccessCircleExclusive(circle, membership, isOwner));
+  // Invite-link Exclusive lives can be watched by anyone with the link (signed in), not only members.
+  const canEnterLiveRoom =
+    isHost ||
+    isApprovedMember ||
+    (isExclusiveLive && exclusiveAudience === "invite" && hasValidInvite);
   const displayName = (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "Guest";
   const backPath = isPublicRoute ? "/feed" : `/circle/c/${id}`;
 
@@ -242,7 +257,7 @@ export default function CircleLiveRoomPage() {
     roomName: session?.room ?? "",
     displayName,
     hostIdentity: session?.host_user_id,
-    enabled: !!session && isApprovedMember && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost),
+    enabled: !!session && canEnterLiveRoom && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost),
     // Host always publishes. Multi guests get publish permission but only go live after host accepts.
     publish: isHost,
     canPublish: isHost || stageJoinEnabled,
@@ -251,7 +266,7 @@ export default function CircleLiveRoomPage() {
 
   const stageDoor = useLiveStageDoor({
     sessionId: session?.id,
-    enabled: !!session && isApprovedMember && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost) && stageJoinEnabled,
+    enabled: !!session && canEnterLiveRoom && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost) && stageJoinEnabled,
     isHost,
     userId: user?.id,
     displayName,
@@ -360,17 +375,27 @@ export default function CircleLiveRoomPage() {
 
   const handleShareLive = async () => {
     if (!session) return;
+    const exclusive = sessionLooksExclusive(session);
+    const audience = sessionExclusiveAudience(session);
     const url = liveWatchUrl({
       circleId: session.circle_id,
       sessionId: session.circle_id ? null : session.id,
+      exclusive,
+      inviteToken: exclusive && audience === "invite" ? sessionInviteToken(session) : null,
     });
     const result = await shareLiveInvite({
       url,
-      title: "Join my live on YAJ",
+      title: exclusive ? "Join my Exclusive live on YAJ" : "Join my live on YAJ",
       circleScoped: Boolean(session.circle_id),
     });
     if (result === "copied") {
-      toast({ title: "Live link copied", description: "Send it by text or message so friends can join." });
+      toast({
+        title: audience === "invite" ? "Invite link copied" : "Live link copied",
+        description:
+          audience === "invite"
+            ? "Only people with this link can watch this Exclusive live."
+            : "Send it by text or message so friends can join.",
+      });
     } else if (result === "failed") {
       toast({
         title: "Couldn't open share",
@@ -697,7 +722,7 @@ export default function CircleLiveRoomPage() {
     );
   }
 
-  if (!isApprovedMember) {
+  if (!canEnterLiveRoom) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">You don't have access to this live.</p>
@@ -709,10 +734,10 @@ export default function CircleLiveRoomPage() {
   }
 
   // Exclusive lives are Circle-gated only — never open on the public /live/:sessionId route.
-  if (isPublicRoute && session?.is_exclusive) {
+  if (isPublicRoute && session && sessionLooksExclusive(session)) {
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
-        <p className="font-bold">This Exclusive live is for subscribers only.</p>
+        <p className="font-bold">This Exclusive live isn’t on the public feed.</p>
         <button type="button" onClick={() => navigate("/feed")} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Feed
         </button>
@@ -721,16 +746,23 @@ export default function CircleLiveRoomPage() {
   }
 
   if (isExclusiveLive && !canWatchExclusive) {
+    const inviteNeeded = exclusiveAudience === "invite";
     const paidOnly = circle ? getCircleExclusiveAccess(circle) === "paid" : true;
     return (
       <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
         <p className="font-bold">
-          {paidOnly ? "Exclusive live — paid supporters only" : "Exclusive live — members only"}
+          {inviteNeeded
+            ? "Invite-only Exclusive live"
+            : paidOnly
+              ? "Exclusive live — paid supporters only"
+              : "Exclusive live — members only"}
         </p>
         <p className="max-w-xs text-[13px] text-white/70">
-          {paidOnly
-            ? "Subscribe to this creator’s Supporter Membership to watch Exclusive lives."
-            : "Join this Circle to watch Exclusive lives."}
+          {inviteNeeded
+            ? "You need a personal invite link from the host to watch this live."
+            : paidOnly
+              ? "Subscribe to this creator’s Supporter Membership to watch Exclusive lives."
+              : "Join this Circle to watch Exclusive lives."}
         </p>
         <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle

@@ -90,7 +90,8 @@ export type CreateCircleInput = {
 export async function getCircle(id: string): Promise<Circle | null> {
   const { data, error } = await sb.from("circles").select("*").eq("id", id).maybeSingle();
   if (error) throw error;
-  return data as Circle | null;
+  if (!data) return null;
+  return mergeExclusiveAccess(data as Circle);
 }
 
 /** Every user's own gated "My Circle" — created lazily the first time anyone (usually
@@ -113,35 +114,50 @@ export async function getOrCreatePersonalCircle(userId: string, displayName?: st
 }
 
 export async function updateCircle(id: string, patch: Partial<CreateCircleInput>): Promise<Circle> {
-  const { data, error } = await sb
-    .from("circles")
-    .update({
-      ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
-      ...(patch.description !== undefined ? { description: patch.description } : {}),
-      ...(patch.category !== undefined ? { category: patch.category } : {}),
-      ...(patch.city !== undefined ? { city: patch.city } : {}),
-      ...(patch.avatarUrl !== undefined ? { avatar_url: patch.avatarUrl } : {}),
-      ...(patch.coverUrl !== undefined ? { cover_url: patch.coverUrl } : {}),
-      ...(patch.isPrivate !== undefined ? { is_private: patch.isPrivate } : {}),
-      ...(patch.isDiscoverable !== undefined ? { is_discoverable: patch.isDiscoverable } : {}),
-      ...(patch.requiresApproval !== undefined ? { requires_approval: patch.requiresApproval } : {}),
-      ...(patch.isPaid !== undefined ? { is_paid: patch.isPaid } : {}),
-      ...(patch.priceCents !== undefined ? { price_cents: patch.priceCents } : {}),
-      ...(patch.welcomeMessage !== undefined ? { welcome_message: patch.welcomeMessage } : {}),
-      ...(patch.defaultPostVisibility !== undefined ? { default_post_visibility: patch.defaultPostVisibility } : {}),
-      ...(patch.memberPostingAllowed !== undefined ? { member_posting_allowed: patch.memberPostingAllowed } : {}),
-      ...(patch.memberCommentsAllowed !== undefined ? { member_comments_allowed: patch.memberCommentsAllowed } : {}),
-      ...(patch.memberInvitesAllowed !== undefined ? { member_invites_allowed: patch.memberInvitesAllowed } : {}),
-      ...(patch.notifyNewRequests !== undefined ? { notify_new_requests: patch.notifyNewRequests } : {}),
-      ...(patch.notifyNewMembers !== undefined ? { notify_new_members: patch.notifyNewMembers } : {}),
-      ...(patch.exclusiveAccess !== undefined ? { exclusive_access: patch.exclusiveAccess } : {}),
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select("*")
-    .single();
+  const payload: Record<string, unknown> = {
+    ...(patch.name !== undefined ? { name: patch.name.trim() } : {}),
+    ...(patch.description !== undefined ? { description: patch.description } : {}),
+    ...(patch.category !== undefined ? { category: patch.category } : {}),
+    ...(patch.city !== undefined ? { city: patch.city } : {}),
+    ...(patch.avatarUrl !== undefined ? { avatar_url: patch.avatarUrl } : {}),
+    ...(patch.coverUrl !== undefined ? { cover_url: patch.coverUrl } : {}),
+    ...(patch.isPrivate !== undefined ? { is_private: patch.isPrivate } : {}),
+    ...(patch.isDiscoverable !== undefined ? { is_discoverable: patch.isDiscoverable } : {}),
+    ...(patch.requiresApproval !== undefined ? { requires_approval: patch.requiresApproval } : {}),
+    ...(patch.isPaid !== undefined ? { is_paid: patch.isPaid } : {}),
+    ...(patch.priceCents !== undefined ? { price_cents: patch.priceCents } : {}),
+    ...(patch.welcomeMessage !== undefined ? { welcome_message: patch.welcomeMessage } : {}),
+    ...(patch.defaultPostVisibility !== undefined ? { default_post_visibility: patch.defaultPostVisibility } : {}),
+    ...(patch.memberPostingAllowed !== undefined ? { member_posting_allowed: patch.memberPostingAllowed } : {}),
+    ...(patch.memberCommentsAllowed !== undefined ? { member_comments_allowed: patch.memberCommentsAllowed } : {}),
+    ...(patch.memberInvitesAllowed !== undefined ? { member_invites_allowed: patch.memberInvitesAllowed } : {}),
+    ...(patch.notifyNewRequests !== undefined ? { notify_new_requests: patch.notifyNewRequests } : {}),
+    ...(patch.notifyNewMembers !== undefined ? { notify_new_members: patch.notifyNewMembers } : {}),
+    ...(patch.exclusiveAccess !== undefined ? { exclusive_access: patch.exclusiveAccess } : {}),
+    updated_at: new Date().toISOString(),
+  };
+
+  let { data, error } = await sb.from("circles").update(payload).eq("id", id).select("*").single();
+
+  // Schema not migrated yet — keep Exclusive toggle working via local preference.
+  if (error && patch.exclusiveAccess !== undefined && /exclusive_access/i.test(error.message || "")) {
+    setLocalExclusiveAccess(id, patch.exclusiveAccess);
+    const withoutExclusive = { ...payload };
+    delete withoutExclusive.exclusive_access;
+    if (Object.keys(withoutExclusive).length > 1) {
+      ({ data, error } = await sb.from("circles").update(withoutExclusive).eq("id", id).select("*").single());
+      if (!error && data) {
+        return mergeExclusiveAccess({ ...(data as Circle), exclusive_access: patch.exclusiveAccess });
+      }
+    }
+    const existing = await getCircle(id);
+    if (existing) return { ...existing, exclusive_access: patch.exclusiveAccess };
+    throw error;
+  }
+
   if (error) throw error;
-  return data as Circle;
+  if (patch.exclusiveAccess !== undefined) clearLocalExclusiveAccess(id);
+  return mergeExclusiveAccess(data as Circle);
 }
 
 /** Personal circles can't be deleted — every user needs exactly one. */
@@ -275,7 +291,11 @@ export async function uploadCircleImageFromDataUrl(userId: string, dataUrl: stri
   return data.publicUrl as string;
 }
 
-export function getCircleExclusiveAccess(circle: { exclusive_access?: string | null }): "members" | "paid" {
+export function getCircleExclusiveAccess(circle: { id?: string; exclusive_access?: string | null }): "members" | "paid" {
+  if (circle.id) {
+    const local = getLocalExclusiveAccess(circle.id);
+    if (local) return local;
+  }
   return circle.exclusive_access === "members" ? "members" : "paid";
 }
 
@@ -289,10 +309,43 @@ export function canAccessCircleExclusive(
   if (!membership || membership.status !== "approved") return false;
   const access = getCircleExclusiveAccess(circle);
   if (access === "members") return true;
-  return membership.role === "paid_member";
+  return membership.role === "paid_member" || membership.role === "owner" || membership.role === "admin";
 }
 
 const AGE_KEY = (userId: string, circleId: string) => `yaj.circle.exclusive.age18.${userId}.${circleId}`;
+const ACCESS_KEY = (circleId: string) => `yaj.circle.exclusive.access.${circleId}`;
+
+function getLocalExclusiveAccess(circleId: string): "members" | "paid" | null {
+  try {
+    const v = localStorage.getItem(ACCESS_KEY(circleId));
+    if (v === "members" || v === "paid") return v;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function setLocalExclusiveAccess(circleId: string, access: "members" | "paid") {
+  try {
+    localStorage.setItem(ACCESS_KEY(circleId), access);
+  } catch {
+    /* ignore */
+  }
+}
+
+function clearLocalExclusiveAccess(circleId: string) {
+  try {
+    localStorage.removeItem(ACCESS_KEY(circleId));
+  } catch {
+    /* ignore */
+  }
+}
+
+function mergeExclusiveAccess(circle: Circle): Circle {
+  const local = getLocalExclusiveAccess(circle.id);
+  if (!local) return circle;
+  return { ...circle, exclusive_access: local };
+}
 
 export function hasConfirmedExclusiveAge(userId: string, circleId: string): boolean {
   try {
