@@ -7,15 +7,13 @@ import type { BookPage } from "@/lib/books-catalog";
 export const MIDNIGHT_LIBRARY_KEY_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — The Hum",
-    text: `Mara Fenn had worked the night shift at the Halloway Public Library for exactly eleven days when the key first hummed in her hand. It was an ordinary-looking thing, longer than a modern key had any reason to be, brass gone the color of weak tea, worn smooth along one edge where three generations of night librarians had carried it against their palms. Ottoline Vance, the head librarian who was retiring in a month and training Mara to take her place, had pressed it into Mara’s hand on the first night with a solemnity that seemed, at the time, entirely out of proportion to a piece of hardware that opened a single supply closet.
+    text: `Mara Fenn had worked the night shift at the Halloway Public Library for exactly eleven days when the key first hummed in her hand. Ottoline Vance, the head librarian who was retiring in a month and training Mara to take her place, had pressed it into Mara’s hand on the first night with a solemnity that seemed, at the time, entirely out of proportion to a piece of hardware that opened a single supply closet.
 
 “Carry it after close,” Ottoline had said. “Even when you don’t think you need it. Especially then.”
 
 Mara had assumed this was simply an old woman’s superstition, the kind libraries collected the way they collected dust — harmless, faintly charming, easy to humor. She had carried the key on a lanyard around her neck for eleven nights without incident, checking in returns, reshelving the day’s chaos, locking the reading room promptly at midnight the way the schedule required.
 
-On the twelfth night, as she crossed the reading room with an armful of returns, the key grew warm against her collarbone, then warmer, then began — there was no other word for it — to hum. A low vibration, barely audible, felt more than heard, like a tuning fork struck somewhere deep in the building’s bones. Mara stopped walking. The hum did not stop.
-
-She looked around the reading room, half-expecting to find some rational explanation — a vent, a pipe, the old boiler acting up again. The room was empty and still, lit only by the amber glow of the after-hours lamps. And yet, at the far end of the eastern stacks, where the local history and periodicals had stood in the same configuration for as long as Mara had worked there, something had changed. A gap had opened between two shelving units that she was almost certain had not existed a week and, she was certain to the second, had absolutely not existed that morning.
+On the twelfth night, as she crossed the reading room with an armful of returns, the key grew warm against her collarbone, then warmer, then began — there was no other word for it — to hum. A low vibration, barely audible, felt more than heard, like a tuning fork struck somewhere deep in the building’s bones. Mara stopped walking. The hum did not stop. The room was empty and still, lit only by the amber glow of the after-hours lamps. And yet, at the far end of the eastern stacks, where the local history and periodicals had stood in the same configuration for as long as Mara had worked there, something had changed. A gap had opened between two shelving units that she was almost certain had not existed a week and, she was certain to the second, had absolutely not existed that morning.
 
 The key kept humming, patient and insistent, like something asking to be followed.`,
   },
@@ -29,7 +27,7 @@ She thought immediately of calling Ottoline, then remembered it was nearly one i
 
 Instead she did what her training — the ordinary kind, the kind about circulation desks and interlibrary loans — had never once prepared her for. She stepped into the gap, the key still humming warm against her chest, and let the shelves close soundlessly behind her.
 
-The corridor smelled of paper and something else beneath it, something like rain on old stone, though the Halloway building had no stone in it that Mara had ever noticed. She walked perhaps forty feet before the shelves on either side thinned and gave way to a doorway she did not recognize from any floor plan she’d studied — a heavy door, unmarked, its surface carved with a single word so worn by handling that she had to trace it with her fingers to be sure she was reading it correctly.
+The corridor smelled of paper and something else beneath it, something like rain on old stone, though the Halloway building had no stone in it that Mara had ever noticed.
 
 UNFINISHED.
 
@@ -37,7 +35,7 @@ Beneath her collarbone, the key had gone from a hum to something closer to a hea
   },
   {
     chapter: "Chapter 1 — The Hum",
-    text: `The door opened without resistance, as though it had been waiting for exactly this key and had simply been too polite to open itself before being asked. Inside was a reading room Mara had never seen in eleven days of learning every inch of the Halloway building — long, high-ceilinged, lit by lamps that seemed to burn without cords or bulbs, shelved floor to ceiling with books whose spines bore no titles at all, only a strange, shifting shimmer where lettering should have been, as though the words hadn’t decided yet what they wanted to say.
+    text: `The door opened without resistance, as though it had been waiting for exactly this key and had simply been too polite to open itself before being asked.
 
 At the center of the room stood a single reading table, and on it, a manuscript box she recognized instantly, because she had spent the better part of her second week at the library cataloguing its absence from the local history archive. THOMASIN REYES: THE SALT ALMANAC (UNFINISHED, UNPUBLISHED) had been reported missing from the restricted collection eight months before Mara was even hired — one of Halloway’s few genuine treasures, an unfinished final manuscript by a beloved regional author who had died before completing it, donated by her estate on the express condition it never leave the building.
 
@@ -53,39 +51,59 @@ Somewhere behind her, the door to the ordinary library clicked softly shut, and 
   },
   {
     chapter: "Chapter 2 — The Unshelved Room",
-    text: `Mara found her way back to the reading room an hour before dawn, more by instinct than any remembered path, and sat at the circulation desk until her hands stopped shaking, staring at the missing-item report she’d filed weeks earlier without ever once suspecting it connected to anything but ordinary theft. She did not tell Ottoline everything that first morning. She told her enough — the hum, the gap in the stacks, the manuscript resting somewhere it should not have been able to rest — to watch the older woman’s face go carefully, deliberately still.
+    text: `Mara returned an hour before dawn and sat at the circulation desk until her hands steadied. The missing-item report she had filed weeks earlier now described something stranger than theft.
 
-“You found the Unshelved Room,” Ottoline said finally, setting down her tea with a hand that trembled slightly, though whether from age or emotion Mara couldn’t tell. “I hoped you would, eventually. I did not expect it to happen in your second week.”
+She told Ottoline about the humming key, the gap, and the manuscript resting in an impossible room. The older woman became carefully still.
 
-“You knew it existed.”
+“You found the Unshelved Room. I hoped you would eventually, not in your second week.”
 
-“I kept the key for thirty-one years, Mara. Of course I knew.” Ottoline’s eyes went distant, the particular distance of someone measuring how much of a long secret could safely be spent in one sitting. “Every library holds more than its catalogue admits. Books abandoned before they were finished. Manuscripts an author burned in grief and regretted the same night. Chapters someone meant to write and never did, out of fear, or shame, or simply running out of years. Halloway keeps them. Has kept them, I believe, since the building was first consecrated as a library rather than merely constructed as one.”
+“You knew.”
 
-“Consecrated,” Mara repeated.
+“I carried the key for thirty-one years.” Ottoline’s hand trembled around her tea. “Every library holds more than its catalogue admits: abandoned books, burned manuscripts, chapters fear or time prevented. Halloway has kept them since this building became more than brick and shelves.”
 
-“There isn’t a better word for what happens when enough unfinished truth accumulates in one place long enough.” Ottoline reached across the desk and closed her hand briefly over Mara’s, over the key still faintly warm against her palm. “The room only opens to whoever carries this key and comes to it honestly — carrying their own unfinished business, whether they know it or not. It rearranges the shelves to lead you there when something inside the collection needs to be set right. It led you there because The Salt Almanac does not belong in that room. It was stolen from the vault below, and something in this building wants it found.”
+“You mean consecrated.”
 
-Mara thought of the card. RETURNED LATE. RETURNED WRONG. FIND WHO TOOK IT FIRST.
+“I mean enough unfinished truth accumulated to require a room.”
 
-“Then I need to find out who took it,” she said, “before the room decides I’m the one who failed to.”`,
+The room opened only to a keyholder carrying unfinished business, whether she recognized it or not. Its shelves rearranged when something in the collection required attention.
+
+“The Salt Almanac does not belong there,” Ottoline said. “It was completed as far as Reyes could complete it, then stolen from the vault. The room wants it found.”
+
+Mara thought of the stamped card: RETURNED LATE. RETURNED WRONG. FIND WHO TOOK IT FIRST.
+
+“Why me?”
+
+Mara remembered the sealed box of her mother’s unfinished memoir at home. She had not opened it in three years and had told no one why.
+
+Ottoline covered Mara’s hand, and the black key warmed between them.
+
+“The room never explains that before the work.”
+
+“Then I will find who took it before the room decides I failed.”`,
   },
   {
     chapter: "Chapter 2 — The Unshelved Room",
-    text: `Ottoline’s files on the theft, when Mara finally located them in the older woman’s meticulously organized retirement box, were thinner than a missing masterpiece deserved. A single incident report, filed the morning the manuscript was discovered absent from its climate-controlled case, listing no signs of forced entry, no broken seals, nothing beyond the plain, quiet fact of an absence where a treasure had been.
+    text: `Ottoline’s files were thinner than a missing masterpiece deserved.
 
-Only one name appeared twice in the surrounding paperwork: Curtis Bell, a rare-book dealer and longtime Halloway patron who had petitioned the board, unsuccessfully, for research access to the unpublished Reyes materials three separate times over as many years, each request politely and firmly denied under the terms of the donor agreement.
+One name appeared twice: Curtis Bell, a rare-book dealer and longtime patron. Three times he had requested access to Reyes’s unpublished papers. The donor agreement required Halloway to refuse.
 
-“He runs a shop two streets over,” Ottoline said. “Bell’s Antiquarian. Struggling, last I heard. He was very insistent about that manuscript. Very persistent in a way that eventually stopped feeling like scholarship and started feeling like something else.”
+“Bell’s Antiquarian is two streets over,” Ottoline said. “The shop is struggling. His persistence stopped feeling like scholarship.”
 
 “You suspected him.”
 
-“I suspected everyone who wanted that manuscript badly enough to keep asking after being told no,” Ottoline said. “Suspicion isn’t proof. I never found proof. I retired instead, and left the problem, I’m ashamed to say, in a box for whoever came after me.”
+“I suspected anyone who wanted the manuscript after being told no. Suspicion was not proof.” Ottoline looked toward her retirement boxes. “I never found proof, and I left the problem for whoever followed me.”
 
-Mara spent the following two nights doing what her ordinary training had actually prepared her for — pulling access logs, checking sign-in sheets for the restricted reading room where scholars occasionally viewed portions of the Reyes archive under supervision, cross-referencing dates against the vault’s maintenance schedule. On the third night she found it: a supervised viewing request, granted six weeks before the theft, for a scholar identified only by initials, C.B., who had spent ninety minutes alone in the restricted room while the assigned staff member stepped out to handle an unrelated emergency — a gap in coverage lasting, according to the sign-out log, exactly eleven minutes.
+Mara spent two nights pulling access logs, restricted-room sheets, and vault maintenance records. The ordinary tools steadied her after the impossible room.
 
-Eleven minutes was not enough time to steal a manuscript from a locked vault two floors away.
+On the third night, she found a supervised visit six weeks before the theft. A scholar identified as C.B. had viewed the Reyes archive. The assigned librarian stepped away for an emergency, leaving him alone for exactly eleven minutes.
 
-It was more than enough time, Mara realized with a chill, to memorize exactly how the vault’s old mechanical lock worked.`,
+That was not enough time to reach a locked vault two floors below and steal the manuscript.
+
+It was enough to study staff keys on the desk, copy a maintenance schedule, and learn that the old vault still used a mechanical lock.
+
+The initials did not prove theft, and Mara wrote that warning beneath them. Wonder had not released her from evidence; if anything, an impossible room made ordinary rigor more necessary.
+
+Mara wrote Curtis Bell’s full name in her notebook. The black key warmed beside it.`,
   },
   {
     chapter: "Chapter 2 — The Unshelved Room",
@@ -93,7 +111,7 @@ It was more than enough time, Mara realized with a chill, to memorize exactly ho
 
 She walked the aisles more carefully this time, reading titles that shimmered and resolved briefly into legibility as she passed, then dissolved again once she’d moved on. Most meant nothing to her — a farmer’s memoir abandoned mid-chapter sixty years ago, a love letter never sent, a scientific paper an anxious graduate student had shredded the night before her defense and regretted for the rest of her career. Near the back of the room, though, one shelf held something that made her stop entirely: a slim, unbound stack of pages in handwriting she recognized immediately, because she had read three drafts of it in her own kitchen the week her mother died.
 
-HALF A MAP, the top page read, in her mother Corinne Fenn’s careful, looping hand. A memoir Corinne had started and never finished, abandoned somewhere around chapter nine, the same year the cancer diagnosis had made every unfinished thing in her life suddenly, unbearably urgent to complete and impossible to face completing.
+HALF A MAP, the top page read, in her mother Corinne Fenn’s careful, looping hand.
 
 Mara had inherited the physical pages after the funeral, boxed them, and never once opened the box again. She had not known — had never imagined — that some ghostly, unbound version of them might exist here too, waiting in a room built explicitly for things people couldn’t bring themselves to finish.
 
@@ -101,11 +119,9 @@ The room, she understood now with sudden and uncomfortable clarity, had not simp
   },
   {
     chapter: "Chapter 3 — Rules of the Room",
-    text: `Ottoline’s old ledger — a private notebook Mara found tucked inside the same retirement box, separate from the official incident report — contained thirty-one years of careful, handwritten observations about the room’s behavior, organized with the same rigor she’d once applied to the library’s actual catalogue. Mara read it over three consecutive nights, piecing together rules that no official policy manual would ever have believed, let alone recorded.
+    text: `Ottoline’s old ledger — a private notebook Mara found tucked inside the same retirement box, separate from the official incident report — contained thirty-one years of careful, handwritten observations about the room’s behavior, organized with the same rigor she’d once applied to the library’s actual catalogue.
 
-The room only opened for the keyholder, and only when the keyholder’s own unfinished business ran parallel to whatever the room needed resolved. It rearranged its shelves according to logic no ordinary cartography could map, always leading toward the specific unfinished thing that most urgently required attention, whether that thing belonged to the keyholder or to someone else entirely. And it held nothing that had been truly completed, no matter how imperfect — only work abandoned mid-breath, grief interrupted before it could finish grieving, truths people had almost, but not quite, found the courage to tell.
-
-Mara’s hands stilled on one particular entry, dated eleven years earlier: A man came tonight uninvited, though the door opened for him anyway. Curtis B. He does not carry the key. I do not understand how he found the corridor. He left before I could stop him, carrying nothing visible, though I cannot shake the feeling something left with him regardless.
+The room only opened for the keyholder, and only when the keyholder’s own unfinished business ran parallel to whatever the room needed resolved. It rearranged its shelves according to logic no ordinary cartography could map, always leading toward the specific unfinished thing that most urgently required attention, whether that thing belonged to the keyholder or to someone else entirely. And it held nothing that had been truly completed, no matter how imperfect — only work abandoned mid-breath, grief interrupted before it could finish grieving, truths people had almost, but not quite, found the courage to tell. Curtis B. He does not carry the key. I do not understand how he found the corridor.
 
 Eleven years. Long before the theft. Long before Bell had ever formally requested access to the Reyes archive.
 
@@ -123,7 +139,7 @@ Mara thought of the eleven-minute gap in the supervised viewing log, and felt th
     chapter: "Chapter 3 — Rules of the Room",
     text: `Bell’s Antiquarian occupied a narrow storefront two streets from the library, its windows crowded with leather-bound spines that had not, judging by the dust on the display glass, been rearranged in some time. Mara visited during ordinary daylight hours, in her ordinary librarian capacity, ostensibly to inquire about a donation the Halloway had supposedly received from his shop the previous spring — a pretext Ottoline had helped her construct carefully enough to survive a few minutes of polite scrutiny.
 
-Curtis Bell was older than she’d expected, sixty perhaps, with the careful, threadbare dignity of a man who had once been comfortable and had spent years quietly adjusting to no longer being so. He answered her questions about the donation with the mild confusion of someone genuinely unaware any such gift had been made, which told Mara the pretext, at least, hadn’t worked as intended — but his shop told her something the conversation didn’t.
+Curtis Bell was older than she’d expected, sixty perhaps, with the careful, threadbare dignity of a man who had once been comfortable and had spent years quietly adjusting to no longer being so.
 
 Behind the counter, propped against an old cash register that looked older than either of them, sat a stack of manuscript pages in a protective sleeve, handwritten, the ink faded but legible enough that Mara recognized the distinctive, slanted hand from photographs she’d studied in the Halloway archive a dozen times that week.
 
@@ -139,27 +155,37 @@ Bell looked at her for a long, unguarded moment, and something in his face — g
   },
   {
     chapter: "Chapter 3 — Rules of the Room",
-    text: `“Twenty-two years,” Bell said finally, not moving to retrieve the hidden pages. “I started that novel when I still believed I’d be someone. A dealer with a reputation. A name people mentioned alongside the collectors who actually mattered. I stopped writing it the year the shop’s lease doubled and I understood I’d spend the rest of my life selling other people’s finished words instead of ever finishing my own.”
+    text: `“Twenty-two years,” Bell said. “I began that novel when I expected to become somebody. Then the lease doubled, and I spent my life selling other people’s finished words.”
 
 “What does that have to do with The Salt Almanac?”
 
-His jaw tightened. “I don’t know what you think you know.”
+His jaw tightened. “I do not know what you think you know.”
 
-“I know someone entered the Halloway’s restricted reading room eleven years ago without a key,” Mara said quietly, “and I know a supervised research visit six weeks before the manuscript disappeared included an unsupervised gap of exactly eleven minutes, granted to a scholar identified only by your initials.”
+Mara named the old entry in the Unshelved Room’s ledger and the eleven-minute gap under his initials.
 
-Bell sat down slowly on the stool behind his counter, the practiced dignity finally, visibly cracking. “I never meant to take it permanently,” he said. “I told myself I’d study it, catalogue the unfinished sections properly, perhaps even quietly finish it myself in a manner respectful of Reyes’s intentions, and return it before anyone noticed the gap. I told myself a great many generous things, Ms. Fenn, in a very short window of time, and every one of them turned out to be a lie I needed in order to keep going.”
+Bell sat behind the counter, his composure breaking. “I never meant to keep it. I would study it, catalogue the unfinished sections, perhaps complete them respectfully, then return it. Every generous reason was a lie I needed.”
 
-“Where is it now?”
+“Where is it?”
 
-“Somewhere safe. Climate-controlled. I’m not a monster — I know exactly what that manuscript is worth and exactly how to protect it.” His voice cracked on the last word. “I simply couldn’t make myself return it once I had it, because returning it meant admitting I’d taken something I had no right to, in service of a project I hadn’t had the courage to finish in over two decades.”
+“Safe. Climate-controlled.” His voice cracked. “Returning it meant admitting I stole something in service of a project I lacked courage to finish.”
 
-Mara thought of the strange room’s ledger, of her mother’s unfinished memoir shimmering on a shelf she hadn’t asked to find, of a house built explicitly to hold every unfinished, unresolved thing a person couldn’t bring themselves to face.
+Mara thought of her mother’s unfinished memoir shimmering on a shelf she had not asked to find. Bell had encountered the hidden corridor eleven years before the theft. The room had recognized what he carried, but recognition had not made him honest. He converted longing into entitlement.
 
-“I think,” she said slowly, “you and I need to have a very different conversation than the one I came here to have.”`,
+“You will bring the Almanac back,” she said.
+
+“And then?”
+
+“Then the library decides the consequence. But first you will look at what you abandoned without using Reyes to finish it for you.”
+
+Bell stared at the hidden pages beneath his counter.
+
+Outside, a delivery truck rattled past. His shop smelled of leather, dust, and the long patience of books waiting for a braver reader.
+
+“I think,” Mara said, “we need a different conversation from the one I came here to have.”`,
   },
   {
     chapter: "Chapter 4 — Suspects",
-    text: `Bell did not confess everything that afternoon. He asked for time, the particular fragile time of a man who has finally been seen clearly and is terrified of what happens next, and Mara — against every instinct her ordinary training insisted was correct — granted it, on the condition that he meet her that same night, at the library, after close.
+    text: `Bell did not confess everything that afternoon.
 
 She spent the intervening hours telling Ottoline everything, watching the older woman absorb eleven years of unanswered suspicion finally resolving into a shape she could name. “I should have pressed harder,” Ottoline said. “That night he claimed to be lost. I let it go because pressing felt unkind, and unkindness felt like the greater failure at the time.”
 
@@ -169,7 +195,7 @@ She spent the intervening hours telling Ottoline everything, watching the older 
 
 Mara thought of her own unopened box of her mother’s pages, sitting in a closet for three years because opening it had felt, every single time she’d considered it, like a question she wasn’t ready to hear the answer to.
 
-She returned to the Unshelved Room alone that evening, an hour before Bell was due to arrive, and stood before the shelf holding Half a Map for a long time without touching it. The shimmering title steadied as she watched, resolving fully into her mother’s handwriting, patient and unhurried, as though the room understood it had all the time in the world to wait for her to be ready.
+She returned to the Unshelved Room alone that evening, an hour before Bell was due to arrive, and stood before the shelf holding Half a Map for a long time without touching it.
 
 She did not read it that night. She only rested her palm flat against the spine, the way she might have rested it against her mother’s hand in a hospital room three years earlier, and let herself feel, briefly and without flinching, the specific shape of the thing she’d spent three years avoiding.
 
@@ -177,7 +203,7 @@ Then she closed the door behind her and went to wait for Curtis Bell, understand
   },
   {
     chapter: "Chapter 4 — Suspects",
-    text: `Bell arrived at eleven-forty, carrying a leather satchel he held against his chest the entire walk from the door to the circulation desk, as though it contained something more fragile than paper. He looked older under the after-hours lamps than he had in his own shop, the particular exhaustion of a man who had spent a long afternoon arguing with himself and losing.
+    text: `Bell arrived at eleven-forty, carrying a leather satchel he held against his chest the entire walk from the door to the circulation desk, as though it contained something more fragile than paper.
 
 “I brought it,” he said, setting the satchel down with visible reluctance. “The Almanac. I couldn’t sleep thinking about you standing in my shop asking whether I’d ever tried to finish my own novel. I realized I’d spent twenty-two years protecting an unfinished thing of my own by stealing someone else’s finished courage instead.”
 
@@ -199,9 +225,7 @@ Bell frowned. “What kind of room?”
     chapter: "Chapter 4 — Suspects",
     text: `The shelves parted for them both, which surprised Mara more than she let herself show — she had assumed, based on Ottoline’s ledger, that only the keyholder could pass through the gap, and yet Bell followed her into the corridor without hesitation, as though something in the building had decided, tonight, that his unfinished business qualified him for entry regardless.
 
-The door marked UNFINISHED opened at her touch. Inside, the shimmering shelves seemed to have rearranged themselves yet again, and Mara understood, walking Bell past aisle after aisle of other people’s abandoned truths, that the room had been waiting specifically for this visit.
-
-She led him to the shelf holding his own novel — the same pages she’d glimpsed beneath his counter that afternoon, somehow already here, spine steady and legible in a way none of the other titles had been for her.
+The door marked UNFINISHED opened at her touch.
 
 Bell stopped walking entirely.
 
@@ -221,9 +245,7 @@ Bell stood there a long time, one hand on his own abandoned pages, before he fin
   },
   {
     chapter: "Chapter 5 — Following the Thread",
-    text: `Returning The Salt Almanac to its rightful place required more paperwork than Mara had anticipated, and considerably more diplomacy — Reyes’s estate had to be formally notified, the missing-item report closed and reopened as a recovery, the board briefed on a theft that had gone unsolved for eight months before Mara’s second week on the job somehow cracked it wide open. She left out the reading room entirely from every official account, the same way Ottoline had for thirty-one years, and found that the omission cost her less guilt than she’d expected, because some truths, she was beginning to understand, belonged to the building rather than to any report.
-
-Bell’s legal exposure turned out to be smaller than either of them had feared. The estate, informed of the manuscript’s safe, undamaged return and the dealer’s full voluntary cooperation, declined to pursue criminal charges in exchange for a formal restitution agreement and a public acknowledgment of the theft — humiliating, certainly, but survivable, and considerably kinder than the outcome Bell had clearly spent eight months bracing for.
+    text: `Returning The Salt Almanac to its rightful place required more paperwork than Mara had anticipated, and considerably more diplomacy — Reyes’s estate had to be formally notified, the missing-item report closed and reopened as a recovery, the board briefed on a theft that had gone unsolved for eight months before Mara’s second week on the job somehow cracked it wide open. She left out the reading room entirely from every official account, the same way Ottoline had for thirty-one years, and found that the omission cost her less guilt than she’d expected, because some truths, she was beginning to understand, belonged to the building rather than to any report. The estate, informed of the manuscript’s safe, undamaged return and the dealer’s full voluntary cooperation, declined to pursue criminal charges in exchange for a formal restitution agreement and a public acknowledgment of the theft — humiliating, certainly, but survivable, and considerably kinder than the outcome Bell had clearly spent eight months bracing for.
 
 “You didn’t have to advocate for leniency,” he told Mara, the week the agreement was finalized. “After everything.”
 
@@ -235,7 +257,7 @@ Mara took the pages carefully, the way she’d learned to hold every fragile, un
   },
   {
     chapter: "Chapter 5 — Following the Thread",
-    text: `The library board, unaware of the reading room’s existence but deeply aware of the publicity surrounding a recovered literary treasure, seized on the story with an enthusiasm Ottoline found almost comical after thirty-one years of the same board treating the building as an expensive, underused liability. A recovered Reyes manuscript, safely returned through the diligence of the library’s own staff, made excellent copy for the capital campaign the board had quietly been planning to justify selling the building to a developer eyeing the block for condominiums.
+    text: `The library board, unaware of the reading room’s existence but deeply aware of the publicity surrounding a recovered literary treasure, seized on the story with an enthusiasm Ottoline found almost comical after thirty-one years of the same board treating the building as an expensive, underused liability.
 
 “They were going to close us,” Ottoline told Mara over tea, the week the story broke in three regional papers. “I never told you, because I didn’t want you walking into your first month here already grieving a building that might not survive it. The Halloway’s been losing money for a decade. The board had a developer’s offer on the table before you were ever hired.”
 
@@ -250,8 +272,6 @@ She thought, walking home that night, that the room had never needed her to save
   {
     chapter: "Chapter 5 — Following the Thread",
     text: `Henry Oduya had been a Halloway regular longer than Mara had been alive — a retired mail carrier in his eighties who arrived every Tuesday afternoon with a battered spiral notebook and sat at the same corner table for exactly two hours, writing in a small, careful hand that Mara had noticed on her very first week without understanding its significance.
-
-She approached him one Tuesday not long after Bell’s restitution agreement closed, curious in a way she hadn’t quite been before the room had taught her to notice unfinished things everywhere she looked.
 
 “What are you working on, Mr. Oduya?”
 
@@ -271,23 +291,29 @@ Mara left him to his notebook and his corner table, and found herself, walking b
   },
   {
     chapter: "Chapter 6 — Confrontation",
-    text: `The confrontation Mara had been quietly bracing for arrived not from Bell, whose restitution was already settled, but from an unexpected direction: a formal letter from the Reyes estate’s legal representative, arriving three weeks after the manuscript’s celebrated return, requesting a full accounting of the item’s condition during its months of unauthorized absence, along with — buried in dense legal language on the second page — a pointed inquiry into how, precisely, library staff had located and recovered it without any corresponding entry in the official incident file between the theft and the sudden, unexplained recovery.
+    text: `Three weeks after the Almanac’s return, the Reyes estate requested a condition report and asked how staff recovered it without entries in the incident file.
 
-Mara sat with the letter for a long time before bringing it to Ottoline.
+Mara brought the letter to Ottoline.
 
-“They want to know how we found it,” she said. “And there’s no honest paper trail that doesn’t sound insane.”
+“They want an honest paper trail, and the truth sounds insane.”
 
-Ottoline read the letter twice, the old habit passing between them like an inheritance neither of them had ever formally discussed. “Thirty-one years,” she said finally, “and I never once had to answer this question in writing. You’ll need an answer that satisfies a lawyer without requiring either of us to describe a room that doesn’t appear on any deed this library has ever filed.”
+Ottoline read it twice. “In thirty-one years, I never answered this in writing. Give the lawyer what can be documented without describing a room absent from every deed.”
 
-“What did you used to say, when people asked how things turned up?”
+“What did you say when impossible things turned up?”
 
-“I said staff diligence and a strong network of community relationships,” Ottoline said, with the faint, weary humor of someone who had perfected a lie through decades of gentle repetition. “It has the considerable advantage of being technically true.”
+“Staff diligence and community relationships.” Ottoline smiled wearily. “Technically true.”
 
-Mara drafted a response along exactly those lines — describing, in careful, defensible detail, the legitimate investigative work that had genuinely led her to Curtis Bell: the access logs, the eleven-minute gap, the shop visit, the voluntary confession. She omitted the corridor, the shifting shelves, the shimmering titles, the specific and impossible mechanism by which a hidden reading room had guided her, patiently, toward exactly the truth it needed surfaced.
+Mara disliked the phrase. It had the polished surface institutions used to hide machinery. Still, exposing the room could turn unfinished grief into a collection to exploit, and curiosity did not entitle the estate to every secret.
 
-It was not a lie, precisely. It was simply an incomplete honesty, offered in service of a truth too large for any legal letterhead to hold.
+She described the real investigation: access logs, the eleven-minute gap, her shop visit, and Bell’s voluntary confession. She included independent condition photographs and omitted the shifting shelves that had guided her.
 
-The estate’s lawyer, reading it three days later, found it entirely satisfactory, and closed the file without further inquiry — leaving Mara with the specific, uneasy relief of having protected something by describing only the half of it the world was equipped to believe.`,
+The answer was incomplete, not false. That distinction did not make it comfortable.
+
+Three days later, the lawyer accepted the account and closed the file. Mara felt relief braided with unease. Protecting the midnight collection had required deciding which half of truth the daylight world could hold.
+
+Ottoline did not praise her choice. Guardianship, she said, became dangerous whenever secrecy began feeling virtuous.
+
+She recorded the full account in Ottoline’s private ledger, including what she had withheld and why. Secrecy, she decided, should at least leave a witness to itself.`,
   },
   {
     chapter: "Chapter 6 — Confrontation",
@@ -299,7 +325,7 @@ Corinne Fenn’s handwriting looked exactly as Mara remembered — looping, gene
 
 Chapter nine ended mid-sentence, the way Mara had known it would, the way the room’s spectral copy had shown her weeks earlier. Corinne had been describing, when the pen stopped moving, the morning she learned Mara had been accepted into her graduate program, the pride so large in the unfinished sentence that Mara had to set the page down twice before she could finish reading it.
 
-There was no room here to guide her through what came next. There was only a kitchen table, a stack of pages, and the plain, unmagical work of grief that had been waiting three years for her to be ready to do it without assistance.
+There was no room here to guide her through what came next.
 
 She read until nearly two in the morning, then closed the box gently, not because she had finished — nothing about grief, she was beginning to understand, ever finished cleanly — but because she had finally, honestly, begun.
 
@@ -319,7 +345,7 @@ Mara turned the idea over slowly, the way she’d learned to turn over every str
 
 “Then perhaps that’s exactly what belongs in the chapter she couldn’t write.”
 
-Mara went home that night and, for the first time in three years, took out a blank sheet of paper rather than sealing the box back up unopened. She did not write much — a single page, tentative, half as generous and confident as her mother’s hand had always been — but it was a beginning, and beginnings, she had learned from an entire hidden library of abandoned truths, were nearly always the hardest and most necessary part.
+Mara went home that night and, for the first time in three years, took out a blank sheet of paper rather than sealing the box back up unopened.
 
 She thought, setting down the pen well after midnight, of Henry Oduya’s forty pages, of Curtis Bell’s two new chapters, of an unfinished manuscript by a dead author finally safe again on its proper shelf.
 
@@ -330,8 +356,6 @@ Second chances, she was beginning to understand, rarely arrived as clean, dramat
     text: `Ottoline’s retirement party, delayed twice already by the theft and its aftermath, finally took place on a mild evening in the library’s atrium, string lights borrowed from the Friends of the Library committee, a modest cake, and a turnout considerably larger than Mara had expected for a woman who had spent thirty-one years deliberately, carefully avoiding attention.
 
 Curtis Bell attended, standing awkwardly near the refreshment table until Mara caught his eye and waved him over, and Henry Oduya arrived in his Tuesday suit, notebook tucked, as always, under one arm, as though he couldn’t quite trust the world not to demand an unscheduled chapter at any moment.
-
-Ottoline gave a short speech, mostly about the ordinary pleasures of a life spent among books, and said nothing at all about corridors that shouldn’t exist or keys that hummed against a person’s collarbone — but at the end, she caught Mara’s eye across the crowded room and raised her teacup very slightly, a private toast that needed no further explanation between the only two people in the building who understood exactly what they were actually celebrating.
 
 Afterward, once the crowd thinned, Ottoline pulled Mara aside near the circulation desk and pressed something small and folded into her hand — not the key, which Mara already carried, but a single sheet of paper, Ottoline’s own handwriting, dated that same week.
 
@@ -351,7 +375,7 @@ Mara unfolded the page. At the bottom, beneath thirty-one years of careful obser
 
 Bell laughed, the sound lighter than she’d ever heard from him. “I understand entirely. I promise this one is legally, thoroughly mine to share.”
 
-The reading, when it finally happened, drew a modest crowd — Henry Oduya in the front row, Ottoline near the back, a handful of the same board members who had once quietly negotiated the building’s sale now applauding a redemption story they’d be delighted to fold into next year’s capital campaign. Mara watched from the circulation desk, thinking about how strange it was that an entire chain of grief, theft, and quiet forgiveness had led, eventually, to something as ordinary and lovely as a nervous man reading his own words aloud in a library that had almost stopped existing to hold the room where his courage had finally been forced into the light.
+The reading, when it finally happened, drew a modest crowd — Henry Oduya in the front row, Ottoline near the back, a handful of the same board members who had once quietly negotiated the building’s sale now applauding a redemption story they’d be delighted to fold into next year’s capital campaign.
 
 Afterward, packing up chairs in the emptying atrium, Bell approached her one final time.
 
@@ -377,8 +401,6 @@ Mara understood, standing there, that the room did not exist to be visited forev
 
 She thought of Ottoline’s note. The room does not exist to punish what was abandoned. It exists to prove that abandoned things can still, eventually, be found.
 
-She left that night without taking anything, without needing to, and found the ordinary reading room waiting for her exactly where she’d left it, the after-hours lamps glowing amber over returns still waiting to be shelved, the building settling into the particular hush it always kept after midnight.
-
 The key, hanging warm against her collarbone, had gone quiet — not silent forever, she suspected, because some other night, some other unfinished truth, would eventually call it awake again. But quiet enough, for now, that she could simply finish her shift, lock the doors, and walk home through an ordinary night without anything left to solve.`,
   },
   {
@@ -386,8 +408,6 @@ The key, hanging warm against her collarbone, had gone quiet — not silent fore
     text: `A year to the night after the key first hummed against her collarbone, Mara sat at the same circulation desk, now officially head librarian, Ottoline’s old title transferred with considerably less ceremony than the moment deserved, in a building that the developer’s offer had never managed to claim. The capital campaign, buoyed by the Almanac’s recovery and Bell’s public reading and a dozen smaller, quieter stories of community goodwill that had followed in their wake, had funded not just survival but a modest renovation — new shelving in the local history wing, a reading nook for children that Mara had designed herself, a small plaque near the periodicals section commemorating, in language vague enough to satisfy any board member, the manuscript once lost and found again.
 
 Henry Oduya still came every Tuesday, though his novel about his father’s crossing had, against forty years of gentle self-deprecation, finally reached its last page the previous spring — read aloud, at his own insistence, to an audience of exactly one librarian, after hours, in the ordinary reading room rather than the extraordinary one, because some endings, he told her, deserved witnesses but not spectacle.
-
-Curtis Bell had reopened his shop under a new name, specializing now in restoration and provenance research rather than acquisition, and sent Mara a card every year on the anniversary of his confession, containing nothing but a single line about whatever he’d most recently finished.
 
 Mara herself had finished Half a Map the previous winter — not by writing her mother’s missing chapters, which she had finally accepted were not hers to invent, but by writing her own final chapter honestly alongside the unfinished one, a daughter’s ending appended gently to a mother’s interrupted beginning, bound together now in a single volume that lived on Mara’s own shelf at home rather than in any library’s catalogue.
 
@@ -401,7 +421,7 @@ She followed it without hesitation this time, no fear in the following, only the
 
 The door marked UNFINISHED opened at her touch.
 
-Inside, the shelves had rearranged themselves once more, leading her not toward any specific title this time but simply through the long, quiet aisles, past the shimmering spines of a thousand abandoned truths she would likely never read in full, each one waiting patiently for whoever eventually needed to find it. She walked the full length of the room slowly, unhurried, the way a person walks through a garden they have finally learned to tend rather than merely visit.
+Inside, the shelves had rearranged themselves once more, leading her not toward any specific title this time but simply through the long, quiet aisles, past the shimmering spines of a thousand abandoned truths she would likely never read in full, each one waiting patiently for whoever eventually needed to find it.
 
 At the center table, where The Salt Almanac had once rested in a place it should never have occupied, sat a single new card, blank except for a short line in handwriting Mara recognized immediately as her own, though she could not remember writing it.
 
@@ -413,7 +433,7 @@ She left the card exactly where it lay.`,
   },
   {
     chapter: "Chapter 8 — Reading Room",
-    text: `Mara locked the Halloway’s doors that night at the ordinary hour, under the ordinary amber lamps, past shelves that had, for one more evening, settled back into their familiar and unremarkable configuration. Outside, the street was quiet, the particular hush of a small town well past midnight, streetlights humming faintly in a way that no longer startled her into thinking of anything stranger than electricity.
+    text: `Mara locked the Halloway’s doors that night at the ordinary hour, under the ordinary amber lamps, past shelves that had, for one more evening, settled back into their familiar and unremarkable configuration.
 
 She thought, walking home, about second chances — Bell’s finished novel, Henry’s completed crossing, her own kitchen-table chapter appended honestly to her mother’s unfinished one — and understood that none of them had required the room’s magic to actually happen. The room had only offered what every good library, at its best and most ordinary, had always quietly offered: a place patient enough to hold what a person couldn’t yet carry, for exactly as long as they needed it held, without judgment and without a due date that mattered more than the truth being returned.
 

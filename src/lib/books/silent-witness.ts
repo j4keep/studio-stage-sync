@@ -7,13 +7,13 @@ import type { BookPage } from "@/lib/books-catalog";
 export const SILENT_WITNESS_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — The Gallery Sketch",
-    text: `June Ashworth had drawn nine hundred faces in courtrooms across the state, and she could usually tell within the first ten minutes of a session which ones would haunt her afterward and which would simply fade into the enormous, forgettable archive of ordinary human misery she carried in her flat files. The Marsh trial had haunted her before it even began — a defendant named Elias Marsh, accused of setting three fires that had each, with an almost theatrical precision, left a single charred charcoal sketch pinned to a fence or a mailbox near the scene, as though the arsonist wanted credit for an art form rather than a crime.
+    text: `June Ashworth had drawn nine hundred faces in courtrooms across the state, and she could usually tell within the first ten minutes of a session which ones would haunt her afterward and which would simply fade into the enormous, forgettable archive of ordinary human misery she carried in her flat files.
 
 The press had named him the Framer before anyone had even been arrested, and June, hired by the wire service to provide the courtroom sketches cameras weren’t permitted to capture, had spent three weeks studying Marsh’s face across the defendant’s table until she could have drawn it blind: the deep grooves at the corners of his mouth, the way his left eye tracked half a second slower than his right, the stillness he wore like a coat he’d borrowed and never quite grown into.
 
 It was during the fourth week, in the gallery seating reserved for press and public, that June first noticed someone sketching her back.
 
-He sat three rows behind the family section, an ordinary-looking man in his thirties with an artist’s pad angled just enough that June could see the motion of his pencil without seeing the page itself. She might not have noticed at all if he hadn’t been so precisely, unnervingly matched to her own posture — head tilted the same fifteen degrees, pencil moving in the same short, economical strokes she used herself, a mirror image conducted at a slight and deliberate delay.
+He sat three rows behind the family section, an ordinary-looking man in his thirties with an artist’s pad angled just enough that June could see the motion of his pencil without seeing the page itself.
 
 She told herself it was nothing. Courtroom sketch artists occasionally drew each other; it was a small, strange profession, and strange professions attracted each other’s curiosity. She went back to her own page, finished Marsh’s profile for the afternoon recess, and did not think about the man again until the bailiff called a break and she found, tucked beneath her equipment case, a folded page that had not been there when she’d arrived.
 
@@ -33,8 +33,6 @@ The deputy took a report, promised to review gallery seating logs for the day, a
 
 She returned to the gallery for the afternoon session and searched the rows for the man from that morning. He was gone. In his seat sat an elderly woman knitting quietly, as though the space had never held anyone else at all.
 
-That evening, alone in her studio — a converted garage behind her rented house, walls lined with nine hundred faces in various states of finish, the accumulated archive of a career spent watching strangers absorb the worst days of their lives — June pinned the stranger’s sketch to her corkboard beside her own morning drawing of Marsh, and studied the two side by side until the resemblance in technique became impossible to dismiss as coincidence.
-
 The same short strokes. The same economy of shading. Whoever had drawn her understood exactly how she worked, closely enough to imitate it convincingly, which meant he had studied her published sketches for long enough to internalize a technique most people never noticed at all.
 
 She thought of the word beneath the drawing. TOMORROW.
@@ -46,8 +44,6 @@ June did not sleep well that night.`,
   {
     chapter: "Chapter 1 — The Gallery Sketch",
     text: `The prosecution’s evidence the next morning was worse than June had braced for, mostly because she had spent three weeks studying Elias Marsh’s face and had, somewhere in that study, begun to half-believe the defense’s quiet insistence that a man this still, this exhausted, could not possibly be the architect of anything so theatrical as charcoal sketches left deliberately at burning buildings.
-
-The three recovered fence drawings were projected onto the courtroom screen one by one, each rendered in the same tight, controlled hand: a house before it burned, a family standing in a yard, a child’s bicycle abandoned on a lawn — domestic scenes, oddly tender for an arsonist’s calling card, each one accompanied by a small caption in the same careful lettering June had now seen twice.
 
 BEFORE. The first read. BEFORE, AGAIN. The second. And the third, recovered from the most recent fire, three weeks old: TOMORROW BELONGS TO WHOEVER REMEMBERS IT BEST.
 
@@ -67,33 +63,37 @@ Nasser went very quiet, reading both, and June watched the detective’s exhaust
   },
   {
     chapter: "Chapter 2 — Old Case, New Fear",
-    text: `Priya Nasser did not believe in coincidences, a professional trait she stated plainly and without apology within her first minute of conversation, and the handwriting match between June’s stolen portrait and the third fence caption had visibly moved her from polite skepticism to focused attention.
+    text: `Priya Nasser did not believe in coincidences. The handwriting match moved her from skepticism to attention.
 
-“Whoever wrote both of these knew you specifically,” Nasser said, laying the two samples side by side under the harsh fluorescent light of an empty jury room she’d commandeered for the conversation. “Not the case generally. You. That’s not the profile we’ve built for Marsh, and frankly it’s not the profile we’ve built for the fires either.”
+“Whoever wrote both knew you specifically,” she said, placing the samples together in an empty jury room. “That is not the profile we built for Marsh or the fires.”
 
-“What profile have you built?”
+“What profile?”
 
-Nasser hesitated, weighing how much a working detective should share with a courtroom sketch artist who had, until yesterday, been nothing more than useful set dressing for the wire service’s coverage. “Marsh has an alibi for the third fire we’ve never been able to fully break,” she said finally. “We’ve proceeded anyway because the physical evidence at the first two scenes was strong enough to carry the case regardless, and because the DA didn’t want three separate suspects complicating one trial.”
+Nasser hesitated. “Marsh has an alibi for the third fire that we never broke. Evidence from the first two carried the case, and the district attorney did not want multiple suspects complicating one trial.”
 
-“You think there might be two people involved.”
+“You think two people were involved.”
 
-“I think,” Nasser said carefully, “that the third fence caption has always felt like it was written by someone performing the first two crimes rather than continuing them. Studying them. Imitating the signature closely enough to pass, but with a different rhythm underneath, if you look for it.” She tapped the photograph. “A copycat, in other words. Someone who wanted the credit, or the attention, or simply the proximity to whatever fame the Framer case was generating, badly enough to commit a third fire in the original arsonist’s style.”
+“The third caption always felt like someone performing the first crimes rather than continuing them.” She tapped the photograph. “A copycat imitated the signature but left a different rhythm. Someone wanted credit, attention, or proximity to the Framer’s fame badly enough to burn another building.”
 
-June felt something cold settle low in her stomach. “And now that copycat has started sketching me.”
+June compared the letterforms. The original captions pressed downward, blunt and impatient. The new one leaned toward whoever might read it. So did the word beneath her portrait.
 
-“Now that copycat may have realized,” Nasser said, “that the courtroom artist covering this trial has become almost as recognizable, in certain circles, as the case itself. If fame is what he wants, June, you’ve just become useful to him in a way I don’t think either of us wants to explore further without a plan.”`,
+“And now the copycat is sketching me.”
+
+“The courtroom artist covering this trial has become recognizable in certain circles,” Nasser said. “If fame is his motive, you are useful to him.”
+
+June looked through the jury-room glass at reporters crossing the corridor. She had spent a career making strangers visible without imagining visibility would turn back upon her.
+
+Nasser slipped both samples into evidence sleeves. The plastic made June’s portrait look clinical, but the date beneath her face remained personal. Tomorrow was no longer an abstract warning; it was a deadline someone else believed he controlled.
+
+“Then we need a plan,” she said.`,
   },
   {
     chapter: "Chapter 2 — Old Case, New Fear",
-    text: `June had, in fact, become recognizable in exactly the way Nasser described, though she had never fully registered the extent of it until the wire service’s social media editor forwarded her, that same evening, a screenshot from an online forum dedicated to true-crime obsessives who had spent three years dissecting every public detail of the Framer case with an intensity June found more unsettling than any single stranger in a courtroom gallery.
-
-A thread titled THE ARTIST WHO DRAWS THE ARTIST had accumulated four hundred replies in under a week, most of them admiring June’s courtroom sketches with the particular, faintly proprietary enthusiasm of people who had convinced themselves they understood a stranger’s inner life through her public work. One user, posting under the handle FRAME.WORTHY, had uploaded close crops of her published sketches alongside detailed technical commentary on her shading technique, her line weight, the specific angle at which she habitually tilted her subjects’ faces.
+    text: `June had, in fact, become recognizable in exactly the way Nasser described, though she had never fully registered the extent of it until the wire service’s social media editor forwarded her, that same evening, a screenshot from an online forum dedicated to true-crime obsessives who had spent three years dissecting every public detail of the Framer case with an intensity June found more unsettling than any single stranger in a courtroom gallery. One user, posting under the handle FRAME.WORTHY, had uploaded close crops of her published sketches alongside detailed technical commentary on her shading technique, her line weight, the specific angle at which she habitually tilted her subjects’ faces.
 
 June scrolled the thread for nearly an hour before she found what she was looking for: a post, three weeks old, in which FRAME.WORTHY had written, All the credit goes to the Framer for the first two. Everyone forgets the third was different. Someone else understood the assignment better. Tomorrow belongs to whoever remembers it best.
 
 The same phrase. Verbatim.
-
-She brought the screenshot to Nasser first thing the next morning, watching the detective’s face harden with the particular focus of someone who has just been handed the missing piece of a puzzle she’d suspected existed but hadn’t yet located.
 
 “We can subpoena the account information,” Nasser said. “It’ll take time. Forums like this route through half a dozen jurisdictions specifically to make that difficult.”
 
@@ -107,47 +107,55 @@ June thought about the word TOMORROW, and the trial’s own approaching verdict,
   },
   {
     chapter: "Chapter 2 — Old Case, New Fear",
-    text: `The idea, once June explained it fully, met exactly the resistance she’d expected from Nasser and considerably more from her own editor at the wire service, a perpetually harried man named Roland Vance who had spent the entire Framer trial treating June’s sketches as content first and her safety as an afterthought he remembered only when reminded directly.
+    text: `June’s proposal met resistance from Nasser and outrage from her editor, Roland Vance, who treated sketches as content and safety as an inconvenient correction.
 
-“You want to announce a public unveiling,” Roland said slowly, as though repeating the plan aloud might reveal some obvious flaw June had overlooked. “Of what, exactly?”
+“You want to announce a public unveiling,” Roland said. “Of what?”
 
-“A final courtroom sketch,” June said. “Framed as an exclusive — the definitive image of the trial, unveiled the evening before closing arguments, at a specific place and time. If FRAME.WORTHY is as obsessed with credit and recognition as his own posts suggest, he won’t be able to resist attending, or at least approaching close enough that we can identify him.”
+“A definitive trial portrait, shown before closing arguments. If FRAME.WORTHY craves recognition, he will attend or approach close enough to identify.”
 
-“You want to bait a man who might be a violent copycat arsonist into showing up in person.”
+“You want to bait an arsonist.”
 
-“I want to control the tomorrow he already promised me,” June said, “instead of waiting to find out what tomorrow he chooses on his own.”
+“I want to control the tomorrow he promised me instead of waiting for his version.”
 
-Nasser, when consulted, agreed with more reluctance than enthusiasm, but agreed nonetheless, on the condition that the entire event be staged under close surveillance, with plainclothes officers positioned throughout the venue and June herself replaced, at the critical moment, by a decoy the department would supply — a sketch, and a stand-in, close enough to convince a stranger scanning a crowd from a distance, safe enough that June herself would never need to stand exposed at the actual unveiling.
+Nasser agreed only after securing a gallery, plainclothes officers, and a police decoy to occupy June’s easel. June would watch from a locked security room.
 
-“I’ll need the real sketch to look convincing from far away,” June said. “Something with my technique unmistakably in it. It has to actually look like my work, or he’ll know immediately it’s staged.”
+The plan made a spectacle of the same attention they claimed to resist. Roland drafted publicity with indecent enthusiasm. June insisted the wire service publish no live location until officers were ready, and no image of the suspect until arrest.
 
-“Can you produce that without putting yourself at risk?”
+“The sketch must convince him from across the room,” she told Nasser. “My technique has to be unmistakable.”
 
-June thought of nine hundred faces in her flat files, of a career built on rendering strangers’ worst days with enough precision that juries occasionally wept looking at her sketches instead of the photographs. “I can produce exactly that,” she said. “I just need a decoy skilled enough to hold a pencil like she means it.”`,
+“Can you make that without exposing yourself?”
+
+June thought of nine hundred faces in her flat files, strangers rendered on their worst days. She knew the tilt of her own head, the angle of her wrist, the small habits an obsessive watcher would expect.
+
+At home she selected heavy paper and worked beneath closed blinds. Every stroke felt like invitation and refusal together. The resulting portrait of Marsh was exact enough to bait a watcher and false enough to protect its maker.
+
+“I can make the drawing,” she said. “Find a decoy who can hold a pencil like she means it.”`,
   },
   {
     chapter: "Chapter 3 — Detective Nasser",
-    text: `The decoy, when Nasser produced her three days later, turned out to be a rookie patrol officer named Desiree Okafor who had, entirely by coincidence, studied fine arts for two years before switching to criminal justice — close enough in build and coloring to pass for June at a reasonable distance, and, more usefully, genuinely capable of holding a sketchpad with convincing authority rather than the stiff, obvious posture of someone playacting a role she didn’t understand.
+    text: `Nasser’s decoy was Desiree Okafor, a rookie officer who had studied fine arts before changing careers. At a distance she resembled June; more importantly, she held a pad without looking as though she were playing a role.
 
-June spent two long evenings teaching Okafor the specific mannerisms that made her own courtroom presence recognizable — the particular tilt of the head, the habit of resting the pad against one raised knee, the unhurried, economical strokes that FRAME.WORTHY had studied closely enough to imitate. Okafor absorbed the instruction with the focused seriousness of someone who understood, clearly, that the exercise was not really about art at all.
+For two evenings, June taught her recognizable habits: head tilted, pad on one knee, strokes economical enough to look unhurried. Okafor understood the lesson was not really art.
 
-“If he approaches,” Nasser said, walking them both through the plan for the fourth time, “you do not engage. You signal, and you let the officers positioned around the venue close the distance. Your job, Desiree, is to look exactly like a target worth approaching, not to actually be one.”
+“If he approaches, signal and let officers close,” Nasser said. “Look like a target. Do not become one.”
 
 “Understood.”
 
-“June,” Nasser continued, “you’ll be positioned in the security office with a direct line to the officers on the floor, watching the feed. If anything goes wrong, if he somehow makes you before the plan activates, you leave immediately. No exceptions, no exclusive follow-up sketch, nothing.”
+“June, you watch from security. If he identifies you or anything changes, leave. No exceptions and no follow-up sketch.”
 
-June agreed, though privately she suspected the promise would be harder to keep than it sounded, because some part of her — the part that had spent a career translating other people’s worst moments into something a jury could sit with — wanted very badly to see the stranger’s face herself, to understand finally what kind of person studied a sketch artist’s technique closely enough to steal it, and needed her tomorrow badly enough to write it as a threat.
+June agreed. Part of her still wanted to see the stranger’s face herself. That impulse had built her career: the belief that close observation could make a terrible event containable. Now observation had become appetite, and she did not entirely trust it.
 
-The venue, chosen carefully, was a modest gallery space two blocks from the courthouse that occasionally hosted press events — public enough to draw a curious crowd, contained enough to make surveillance manageable, and, crucially, equipped with a rear alley connecting to a service entrance that Nasser’s team had already mapped in detail, on the theory that a man planning an approach would likely prefer an exit route that avoided the venue’s well-lit front doors.
+Okafor asked what she should do if fear changed her posture. June told her not to hide it. Courtroom drawing had taught her that bodies always leaked the truth; the trick was giving the suspect the truth he expected.
 
-It was the same alley, June would later realize, where nearly everything would eventually go wrong.`,
+The venue was a modest gallery near the courthouse, public enough for a crowd and small enough to watch. A rear service alley offered the exit Nasser expected the suspect to choose. Officers mapped its doors, roofs, and blind corners.
+
+Okafor practiced June’s posture beneath white gallery lights. From the entrance, even June felt the shock of seeing herself replaced.
+
+It was in the rear alley, she later understood, that nearly everything went wrong.`,
   },
   {
     chapter: "Chapter 3 — Detective Nasser",
     text: `The trial itself continued in parallel to their preparations, and June found herself, during the days leading up to the staged unveiling, watching Elias Marsh with a scrutiny that had shifted entirely in character. She no longer studied his face for the professional purposes of rendering a courtroom likeness. She studied it now for evidence of innocence, or guilt, or the specific, unreadable stillness of a man who had spent three weeks watching his own fate assembled from evidence he understood better than anyone else in the room.
-
-The defense’s cross-examination of the fire marshal, conducted over two increasingly tense afternoons, exposed exactly the crack in the prosecution’s case that Nasser had privately flagged weeks earlier — inconsistencies in the accelerant traces at the third scene that did not match the pattern established at the first two, timeline gaps in Marsh’s alibi that the defense attorney worked with visible, controlled fury, and a moment, near the end of the second afternoon, when the fire marshal admitted under pressure that the third scene’s caption had been recovered from a different type of paper stock entirely.
 
 June sketched all of it with the same steady hand she’d used for three weeks, but her mind kept drifting, during the quiet stretches, to FRAME.WORTHY’s forum post. Everyone forgets the third was different. Someone else understood the assignment better.
 
@@ -161,15 +169,13 @@ She raised the possibility to Nasser that evening, watching the detective’s ex
   },
   {
     chapter: "Chapter 3 — Detective Nasser",
-    text: `June spent the night before the unveiling unable to sleep, sketching instead — not Marsh, not the stranger from the gallery, but her own hands, over and over, the way she sometimes did when her mind needed somewhere quiet to rest that didn’t involve another person’s face. The exercise usually calmed her. Tonight it produced instead a slow, mounting dread she couldn’t entirely trace to any single source.
+    text: `June spent the night before the unveiling unable to sleep, sketching instead — not Marsh, not the stranger from the gallery, but her own hands, over and over, the way she sometimes did when her mind needed somewhere quiet to rest that didn’t involve another person’s face. The exercise usually calmed her.
 
 At two in the morning, unable to stop turning the case over, she pulled up FRAME.WORTHY’s forum thread one final time, scrolling past the technical commentary and the obsessive praise to a post she’d skimmed too quickly during her first pass. Posted eighteen hours after the third fire, before any of the details had been made public, it read: The house on Delancey burned beautifully tonight. Nobody appreciates how much planning goes into a scene like that. They’ll say it was him again. They’re wrong, and someday I’ll prove it, when the timing is right.
 
 The house on Delancey. June checked the case file Nasser had shared: the third fire had occurred on Delancey Street, a detail that had not, according to the timestamp on the post, been released to the public until the following morning’s press briefing.
 
 FRAME.WORTHY had known the address before anyone outside the department should have.
-
-She called Nasser immediately, reading the post aloud over a connection thick with the detective’s own interrupted sleep, and heard, on the other end, the particular silence of someone recalculating an entire operation in real time.
 
 “That confirms it,” Nasser said finally. “We’re not luring an obsessed fan tomorrow, June. We’re luring the person who actually set the third fire and let an innocent man take the blame for it because the timing, as he put it, wasn’t right yet.”
 
@@ -187,8 +193,6 @@ June watched the feed from the security office two floors up, Nasser beside her,
 
 “Nothing yet.” June scanned the crowd face by face, comparing each to the partial description they’d assembled from her own memory of the gallery encounter — average height, dark hair, an artist’s pad he’d likely leave at home tonight if he had any instinct for self-preservation at all.
 
-At eight-forty, twenty minutes before the scheduled reveal, a man in a gray jacket entered alone through the venue’s side door rather than the main entrance, moving with the particular, deliberate casualness of someone who had rehearsed appearing unremarkable. He circled the room once, apparently studying the other attendees rather than the covered sketch, and paused, briefly, near Okafor’s easel long enough to study her posture with an intensity that made June’s pulse spike even through the flat, grainy feed of a security monitor.
-
 “That’s him,” she said. “The gray jacket. Look at how he’s watching her hands.”
 
 Nasser keyed her radio immediately, voice low and controlled. “Unit two, subject in gray jacket, west side near the easel. Do not approach yet. Confirm visual and hold position.”
@@ -205,17 +209,13 @@ June watched the man in gray on the monitor, waiting for some reaction, some tel
 
 The man reached Okafor before the nearest officer could fully close the gap, leaning close enough to say something June couldn’t hear over the feed’s thin audio, his posture tense, urgent, nothing like the calculated calm he’d displayed circling the room minutes earlier. Okafor, trained for exactly this moment, kept her own posture relaxed, giving the small signal Nasser had drilled into her — a single touch to her own collar — that told the nearest officer to move.
 
-But the man in gray, apparently sensing the shift in the room’s attention before the officer reached him, turned abruptly and walked fast toward the side door, not running, not yet, but moving with the specific urgency of someone who had just realized, correctly, that he’d walked into exactly the trap he should have anticipated.
-
 “He’s making for the alley,” Nasser said, already moving toward the door. “June, stay here.”
 
 June did not stay. She was three steps behind Nasser before the detective had finished the sentence, driven by the same stubborn instinct that had carried her through nine hundred courtroom sketches and a career spent refusing to look away from things easier people would have flinched from — the conviction, deep and unshakable, that she had earned the right to see this particular story through to its actual ending, rather than watching it unfold secondhand on a grainy monitor two floors above the truth.`,
   },
   {
     chapter: "Chapter 4 — The Decoy",
-    text: `The alley behind the gallery was narrower and darker than the mapped surveillance route had suggested, lit only by a single security lamp above the service entrance and the ambient orange spill of streetlight from the block beyond. June reached the alley’s mouth just as Nasser and two plainclothes officers converged on the man in gray, who had stopped running, apparently understanding that outrunning three trained officers in a dead-end alley was never a realistic option, and turned instead to face them.
-
-Up close, under the security lamp’s thin light, June finally saw the face she had spent a week imagining from a single stolen sketch: younger than she’d expected, mid-thirties, with the specific, hollow-eyed intensity of someone who had spent years wanting something badly enough that wanting had become the primary architecture of his personality.
+    text: `The alley behind the gallery was narrower and darker than the mapped surveillance route had suggested, lit only by a single security lamp above the service entrance and the ambient orange spill of streetlight from the block beyond.
 
 “I know you,” he said, looking past Nasser directly at June, his voice carrying an unsettling note of something almost like relief. “You’re better in person than in your sketches. More precise. I’ve always thought that.”
 
@@ -229,27 +229,35 @@ June felt something cold and clarifying move through her, the specific horror of
   },
   {
     chapter: "Chapter 5 — Cracks in the Case",
-    text: `Simon Wexler’s arrest that night did not end the trial cleanly, the way June had half-imagined it would in the exhausted, adrenaline-soaked hours immediately after the alley confrontation. Instead it complicated everything, forcing the prosecution into an uncomfortable, public reckoning with evidence they had spent three weeks presenting as a single coherent narrative and now had to publicly disentangle into two separate crimes, two separate arsonists, and one deeply unwelcome admission that the DA’s office had proceeded against Marsh for the third fire despite an internal awareness that the forensic evidence had never fully supported it.
+    text: `Wexler’s arrest did not end the trial cleanly. It forced prosecutors to separate two arsonists after presenting one coherent story—and admit they had charged Marsh with a third fire whose forensics never fit.
 
-Nasser briefed June on the fuller confession two days later, over coffee in the same courthouse cafeteria where June had eaten a hundred rushed lunches during the trial without ever once imagining the case would end anywhere near this complicated. “Wexler followed the Marsh case obsessively from the first fire,” she said. “Posted about it constantly under half a dozen forum handles, always framing himself as an expert observer, someone who understood the Framer’s work better than the police investigating it. Somewhere in that obsession, admiration curdled into ambition. He wanted to prove he could produce something just as remarkable.”
+Nasser explained the confession over courthouse coffee.
 
-“So he set the third fire himself. Copying the signature closely enough to be credited to Marsh.”
+“Wexler followed Marsh from the first fire. He used several forum names and cast himself as the expert who understood the Framer better than police. Admiration became ambition.”
 
-“Closely enough that it almost worked completely,” Nasser said. “The accelerant inconsistencies the defense caught during cross-examination were the only real crack in his imitation. Everything else — the caption style, the fence placement, even the choice of house — was researched with an unsettling amount of care.”
+“So he copied the third fire.”
+
+“Almost perfectly. The defense found a different accelerant. Everything else—the caption, fence, and house—came from careful research.”
 
 “And me?”
 
-Nasser’s expression softened slightly. “You became relevant to him the moment the wire service started running your sketches alongside every article about the case. He told the arresting officers, more or less verbatim, that you were the only person whose work made the crime feel like art instead of just violence. He wanted, eventually, for you to draw him the same way. He’d been planning some kind of public act to force that recognition — we don’t yet know exactly what, and he isn’t offering many details voluntarily — timed for whatever he considered the right tomorrow.”
+“Your sketches ran beside every article. Wexler said your work made the crimes feel like art instead of violence. He wanted you to draw him the same way.” Nasser’s mouth tightened. “He planned a public act for what he called the right tomorrow.”
 
-June sat with that for a long moment, coffee cooling untouched in front of her. “He wasn’t obsessed with hurting me,” she said slowly. “He was obsessed with being seen by me. Those aren’t the same thing, but they’re close enough to have terrified me for a week regardless.”
+June let her coffee cool. She had feared an attacker and found a man seeking authorship through her attention. The distinction explained him without making her safer.
 
-“They’re close enough,” Nasser agreed, “that the department is treating both possibilities with equal seriousness going forward.”`,
+“He was not obsessed with hurting me,” she said. “He was obsessed with being seen by me.”
+
+“Those motives can end in the same place.”
+
+The district attorney would call the third fire an unfortunate complication. Marsh’s defense would call it proof that the entire case was poisoned. Between those convenient versions sat a burned house, a guilty copycat, and a defendant responsible for two fires rather than three.
+
+Outside the cafeteria, reporters gathered for the prosecution’s amended statement. June watched them prepare the next public version.
+
+This time, at least, it would contain two names.`,
   },
   {
     chapter: "Chapter 5 — Cracks in the Case",
-    text: `The revised charges against Elias Marsh, filed the following week, dropped the third fire entirely and proceeded solely on the first two — a narrower case, but a considerably stronger one, built now on forensic evidence the defense could no longer credibly muddy with reasonable doubt borrowed from a crime Marsh had never actually committed. June sat in the gallery for the amended proceedings and watched Marsh’s face for the first time without the particular dread she’d carried through the earlier weeks of testimony, and found, unexpectedly, something like relief moving across his features too — the relief, she suspected, of a man who had spent weeks watching his fate assembled partly from evidence he knew, better than anyone, did not actually belong to him.
-
-Roland Vance, predictably, wanted an exclusive account of the alley confrontation the moment word of Wexler’s arrest reached the newsroom, and June found herself, for the first time in her career, on the uncomfortable other side of the interview — not the artist quietly rendering someone else’s worst day, but the subject of a story she had never asked to become part of.
+    text: `The revised charges against Elias Marsh, filed the following week, dropped the third fire entirely and proceeded solely on the first two — a narrower case, but a considerably stronger one, built now on forensic evidence the defense could no longer credibly muddy with reasonable doubt borrowed from a crime Marsh had never actually committed.
 
 “Just give me the sketch you made of him,” Roland said, not unkindly, but with the particular hunger of an editor who understood exactly how valuable that image would be. “The stalker. Your attacker. Readers want to see his face through your eyes specifically. It’s the whole story, June.”
 
@@ -264,8 +272,6 @@ June found, filing the story without an accompanying sketch, a small, unfamiliar
   {
     chapter: "Chapter 5 — Cracks in the Case",
     text: `Wexler’s formal charges, filed a week later, included arson, evidence tampering, and obstruction of justice for allowing an innocent man to stand trial for a crime he knew he had committed himself. His attorney, in a brief statement to the press, described a client struggling with severe, untreated obsessive tendencies exacerbated by years of social isolation, a framing June found both clinically plausible and entirely insufficient as an explanation for the specific, deliberate cruelty of letting Marsh absorb three weeks of public scrutiny for a fire Wexler alone had set.
-
-She testified at his preliminary hearing two weeks later, describing the stolen sketch, the forum posts, the alley confrontation, in the same steady, precise voice she’d spent a career using to describe other people’s worst moments to juries who needed her clarity more than her opinion. It was strange, sitting in the witness stand rather than the gallery seats, being observed rather than observing — strange enough that she found herself, halfway through her testimony, briefly and involuntarily wondering who, if anyone, was sketching her face in that particular room.
 
 No one was. She checked, scanning the gallery the way old habit demanded, and found only ordinary spectators, ordinary reporters, nobody’s pencil moving in mirror to her own posture.
 
@@ -283,9 +289,7 @@ June considered the question honestly, surprised to find she had an answer readi
   },
   {
     chapter: "Chapter 6 — Alley",
-    text: `The alley confrontation replayed in June’s memory more often than she would have liked over the following month, not as trauma exactly — she had, to her own quiet surprise, processed the immediate fear faster than she’d expected — but as a kind of unfinished sentence her mind kept returning to, searching for the specific moment she should have understood sooner what Wexler actually wanted from her.
-
-She found herself, one evening, pulling out her studio’s entire archive of nine hundred faces and spreading a portion of them across her worktable, looking at her own career with a scrutiny she had never previously applied to it. Killers. Grieving families. Exhausted attorneys. Frightened witnesses. She had spent a decade rendering other people’s worst days with careful, deliberate precision, and had never once, until Wexler, considered what it might mean to someone desperate for significance to see that same precision turned, however briefly, toward them.
+    text: `The alley confrontation replayed in June’s memory more often than she would have liked over the following month, not as trauma exactly — she had, to her own quiet surprise, processed the immediate fear faster than she’d expected — but as a kind of unfinished sentence her mind kept returning to, searching for the specific moment she should have understood sooner what Wexler actually wanted from her. Killers. Grieving families. Exhausted attorneys. Frightened witnesses. She had spent a decade rendering other people’s worst days with careful, deliberate precision, and had never once, until Wexler, considered what it might mean to someone desperate for significance to see that same precision turned, however briefly, toward them.
 
 She thought about FRAME.WORTHY’s forum posts, the technical admiration disguising something considerably darker underneath, and understood, slowly, that her own work — however necessary, however honest — existed inside an ecosystem that occasionally rewarded exactly the wrong kind of attention. Courtroom sketches made villains recognizable. Recognizable, to a certain unwell corner of the internet, could curdle easily into a kind of celebrity.
 
@@ -297,9 +301,7 @@ Her editor never asked why the flourish disappeared. June never explained. Some 
   },
   {
     chapter: "Chapter 6 — Alley",
-    text: `Elias Marsh’s amended trial concluded three weeks after Wexler’s arrest, the jury returning a conviction on the first two fires after a deliberation considerably shorter than the length of the trial itself — the forensic evidence, stripped of the muddying third fire, apparently having presented a clearer picture than three weeks of testimony had managed to convey on its own.
-
-June attended the reading of the verdict, sketching Marsh’s face one final time as the words were read aloud — not the haunted, ambiguous expression she’d rendered throughout the trial, but something quieter, more resigned, a man absorbing a consequence he had, by every account, actually earned. She felt none of the earlier uncertainty she’d carried while watching him under suspicion for a crime that, it turned out, had never been his.
+    text: `Elias Marsh’s amended trial concluded three weeks after Wexler’s arrest, the jury returning a conviction on the first two fires after a deliberation considerably shorter than the length of the trial itself — the forensic evidence, stripped of the muddying third fire, apparently having presented a clearer picture than three weeks of testimony had managed to convey on its own. She felt none of the earlier uncertainty she’d carried while watching him under suspicion for a crime that, it turned out, had never been his.
 
 Afterward, in the hallway, Marsh’s attorney — a weathered, soft-spoken woman named Dolores Kim who had fought the case with a tenacity June had come to respect regardless of her client’s guilt — stopped June near the elevators.
 
@@ -317,7 +319,7 @@ June considered the strange, complicated shape of the compliment — thanks for 
   },
   {
     chapter: "Chapter 6 — Alley",
-    text: `Wexler’s plea deal was finalized the following month, a reduced sentence in exchange for full cooperation, exactly as Nasser had predicted. June was not required to testify at the formal sentencing, though she attended anyway, sitting quietly in the gallery — the same seats where, months earlier, she had first felt the unsettling weight of his gaze on the back of her neck.
+    text: `Wexler’s plea deal was finalized the following month, a reduced sentence in exchange for full cooperation, exactly as Nasser had predicted.
 
 He did not look at her this time. He sat at the defense table with the same hollow-eyed stillness she remembered from the alley, listening to the judge’s sentence with an expression June found, watching it, neither triumphant nor devastated — simply, finally, quiet, the particular quiet of a man whose long, desperate performance for an audience had ended without anyone applauding.
 
@@ -341,7 +343,7 @@ June considered the question seriously, thinking of nine hundred faces, of a dec
     chapter: "Chapter 7 — Confession",
     text: `The wire service ran June’s final piece on the case without a single illustration of Simon Wexler, exactly as she’d insisted from the beginning — instead accompanying the article with a single sketch of the alley itself, empty and ordinary in daylight, the security lamp above the service entrance switched off, nothing about the composition suggesting the fear that had once filled the space entirely. Roland complained, mildly and predictably, that the image lacked drama. June told him the drama had already happened, and the alley’s current ordinariness was, in its own way, the truest thing she could offer readers about how the story actually ended.
 
-She spent the weeks following the sentencing slowly returning to a version of her professional life that felt, if not entirely unchanged, at least recognizable again. New assignments arrived — a fraud trial, a custody dispute that had somehow escalated into criminal court, the ordinary, unglamorous churn of a courtroom artist’s calendar. She worked each one with the same care she always had, though she noticed, catching herself mid-sketch more than once, a new habit of scanning the gallery before she settled into any drawing at all, checking, briefly and almost unconsciously, for anyone whose posture mirrored her own too closely.
+She spent the weeks following the sentencing slowly returning to a version of her professional life that felt, if not entirely unchanged, at least recognizable again. New assignments arrived — a fraud trial, a custody dispute that had somehow escalated into criminal court, the ordinary, unglamorous churn of a courtroom artist’s calendar.
 
 No one ever did again. The habit persisted anyway, a small, permanent alteration to how she occupied a courtroom, the kind of change she suspected would never fully disappear regardless of how much time passed.
 
@@ -357,31 +359,37 @@ June, after a moment, did.`,
   },
   {
     chapter: "Chapter 7 — Confession",
-    text: `Desiree Okafor, promoted the following spring to detective after her role in the Wexler operation drew favorable attention from the department’s leadership, stopped by June’s studio one afternoon, ostensibly to return the sketchpad she’d borrowed for the decoy assignment and, more honestly, to talk through an experience neither of them had fully processed in the months since.
+    text: `The following spring, newly promoted Detective Okafor visited June’s studio to return the decoy sketchpad and discuss what neither had processed.
 
-“I think about that easel sometimes,” Okafor admitted, settling into the studio’s single worn armchair while June worked on an unrelated commission. “How close he got before anyone moved. I keep running the timeline in my head, wondering what would have happened if he’d reached me thirty seconds earlier.”
+“I think about the easel,” Okafor said. “How close he came. I keep imagining thirty seconds earlier.”
 
-“He didn’t,” June said. “That’s the version that actually happened.”
+“That did not happen.”
 
-“I know. It doesn’t stop the other version from playing anyway.”
+“It still plays.”
 
-June understood that completely, having spent her own share of sleepless nights replaying the alley’s narrower, darker moments, imagining outcomes considerably worse than the one that had actually unfolded. “I don’t think that ever fully goes away,” she said. “I think you just get better at noticing when you’re doing it, and choosing, deliberately, to come back to what actually happened instead.”
+June knew. She had replayed the alley with darker endings. “I do not think it disappears. You notice the loop sooner and return to what happened.”
 
-Okafor nodded slowly, watching June’s pencil move across the page in front of her — an ordinary commission, a family portrait for a client who’d admired her courtroom work and wanted, oddly, the same unflinching precision applied to something considerably gentler. “Can I ask you something? About the technique. The thing he studied so closely he could imitate it.”
+Okafor watched June work on a family portrait, applying courtroom precision to a gentler commission.
 
-“You can ask.”
+“Did you change your technique after he copied it?”
 
-“Did you change it? After?”
+“A little.” June showed her two studies. She had altered the signature flourish, the pressure of her shading, and where she began a face. Nothing a casual viewer would name; enough for her hand to feel private again.
 
-June set down her pencil, considering the question honestly. “A little,” she said. “Small things. Enough that it’s still mine, but not quite the same thing he studied.” She looked up. “I didn’t want to give up the thing I’m actually good at just because someone tried to make it dangerous. I just wanted it to belong to me again, instead of feeling like something he’d half-claimed.”
+“I did not want to abandon what I am good at because someone made it dangerous. I wanted it to belong to me instead of feeling half claimed.”
 
-Okafor smiled, small and genuine. “That sounds like the right kind of stubborn.”
+Okafor smiled. “The right kind of stubborn.”
 
-“It’s the only kind I’ve got,” June said, and went back to her drawing.`,
+“The only kind I have.”
+
+Before leaving, Okafor placed the borrowed pad on a shelf rather than in June’s hand. The small courtesy moved her.
+
+They drank coffee beside the open window and let silence become ordinary. No radio interrupted. No gray jacket crossed the alley. Recovery, June thought, often looked too uneventful to illustrate.
+
+June returned to the portrait. The family had asked to be seen. Consent did not simplify the work, but it changed who owned the looking.`,
   },
   {
     chapter: "Chapter 7 — Confession",
-    text: `June visited Nasser’s office one final time before the department formally closed its file on the case, mostly out of a professional curiosity she hadn’t expected to still be carrying, and found the detective buried in paperwork for an entirely unrelated investigation — the ordinary churn of a job that did not pause, however dramatic any single case had briefly felt, to let its participants fully catch their breath.
+    text: `Before the department closed its file, June visited Nasser and found her buried in paperwork for another investigation. The job had not paused to let anyone catch breath.
 
 “I keep meaning to ask,” Nasser said, without looking up from her forms. “Wexler’s forum posts. FRAME.WORTHY. Did you ever go back and read the whole thread, once you knew?”
 
@@ -407,11 +415,9 @@ June considered the question seriously, thinking of nine hundred faces, of an en
 
 She sat in the gallery, sketchpad on her knee, and drew the two feuding business partners at the center of the dispute with the same careful, economical strokes she’d always used, and felt, for the first time in over a year, entirely and simply present in the work itself rather than watching the room around her for anyone whose posture mirrored her own.
 
-Nobody was watching her back. Nobody needed to be watched for. The realization arrived quietly, without fanfare, somewhere in the case’s second uneventful afternoon, and settled into her chest like something she had been waiting a long time to finally set down.
+Nobody was watching her back. Nobody needed to be watched for. The realization arrived quietly, without fanfare, somewhere in the case’s second uneventful afternoon, and settled into her chest like something she had been waiting a long time to finally set down. None of it had ended cleanly. Very little of it, she suspected now, ever could have.
 
-She finished the assignment, filed her sketches, and drove home through the ordinary gold light of an ordinary autumn evening, thinking about the year behind her — the stolen sketch, the forum thread, the decoy easel, the alley, the testimony, the slow, imperfect resolution of two separate, uncomfortable verdicts sitting beside each other. None of it had ended cleanly. Very little of it, she suspected now, ever could have.
-
-But she had come through it. She had refused to draw the one face that wanted, more than anything, to be drawn by her. She had kept the work that mattered and quietly altered the parts that had become dangerous, and had learned, in the process, exactly how much of her own attention she was willing to extend to strangers, and exactly how much she was entitled to keep entirely for herself.
+But she had come through it. She had refused to draw the one face that wanted, more than anything, to be drawn by her.
 
 At home, in her studio, surrounded by nine hundred and one faces now instead of nine hundred, she opened a fresh sketchpad to a blank page and simply sat with it for a while, pencil resting untouched beside her hand.
 
@@ -419,37 +425,43 @@ She did not draw anything that evening. She had learned, finally, that peace som
   },
   {
     chapter: "Chapter 8 — Blank Peace",
-    text: `Priya Nasser called the following week, mostly to share news that had nothing to do with either case — a promotion, a transfer to a different unit, the ordinary forward motion of a career that had, for one strange year, intersected closely with June’s own. They talked for nearly an hour, easily, the way old colleagues do once the specific pressure that first brought them together has fully released its grip.
+    text: `Nasser called the following week with news of a promotion and transfer. Their careers, closely crossed for one strange year, were moving apart.
 
-“You still drawing courtrooms?” Nasser asked, near the end of the call.
+“Still drawing courtrooms?”
 
-“Some,” June said. “Not as many as before. I’ve been taking on more portrait work. Families. People who actually want to be seen, instead of people I’m documenting for a jury.”
+“Some. I take more portraits now—families, people who want to be seen instead of people documented for a jury.”
 
-“That sounds healthier.”
+“Healthier.”
 
-“It sounds like the version of this work I should have been doing more of all along,” June said. “I just needed a year like this one to understand that clearly.”
+“A part of the work I should have done sooner.”
 
-“Any regrets? About how it all went?”
+Nasser asked about regrets.
 
-June considered the question with the same honesty she’d offered every difficult question that year had presented her. “I regret that Wexler let an innocent man absorb three weeks of suspicion for something he didn’t do,” she said. “I regret that fame, or the wanting of it, made a man capable of that kind of cruelty. I don’t regret refusing to draw him. I don’t regret any of the choices that were actually mine to make.”
+June looked around her studio. “I regret Wexler let an innocent man carry suspicion for his fire. I regret that wanting fame made him capable of that cruelty. I do not regret refusing to draw him.”
 
-“That’s a good place to land,” Nasser said.
+“A good place to land.”
 
-“It took a while to get here.”
+“It took a while.”
 
 “Most good places do.”
 
-After they hung up, June sat for a long time in her studio, the evening settling gold and quiet through the garage’s single window, and found herself thinking, unexpectedly, of the very first sketch she’d ever completed as a professional courtroom artist — a minor theft case, over a decade ago, a defendant whose face she could no longer fully remember, drawn with the shaky, uncertain hand of someone who hadn’t yet learned how much of herself the work would eventually require.
+After they hung up, evening settled gold through the garage window. June remembered her first professional courtroom sketch: a minor theft case, a defendant whose face she could no longer summon, drawn by a hand that did not yet understand how much the work would require.
 
-She had learned, since then, exactly how much. She had learned, more recently, exactly how much she was allowed to hold back.`,
+She took the old flat file from a cabinet. The drawing was less skillful than memory suggested. It was also too certain, a young artist forcing a nervous mouth into one readable emotion.
+
+June did not destroy it. She wrote a note describing what she no longer knew and returned it to the file.
+
+Archives did not need every image to be right. They needed later hands willing to mark where certainty had exceeded sight.
+
+She had learned how much of herself to give the work.
+
+More recently, she had learned how much uncertainty she was allowed to keep.`,
   },
   {
     chapter: "Chapter 8 — Blank Peace",
     text: `On the one-year anniversary of the night in the alley, June returned to the gallery space where the staged unveiling had taken place, now hosting an entirely unrelated community art exhibition, and stood for a while near the spot where Desiree Okafor’s easel had once held a decoy sketch of Elias Marsh’s haunted face. The room looked nothing like it had that night — brighter, more crowded, full of ordinary local artists showing ordinary local work, no surveillance cameras, no plainclothes officers, no gray-jacketed stranger circling the perimeter with calculated patience.
 
 She had not planned the visit as any kind of ceremony. She had simply found herself walking past the building on an errand, and had felt, standing outside it, a pull toward finally seeing the space host something other than fear.
-
-Inside, she bought a small watercolor from a local artist she didn’t recognize — an unremarkable, pleasant landscape, nothing like the courtroom work that filled her own studio walls — and carried it home along the same streets she’d once walked with her pulse hammering, certain someone was tracking her exact movements.
 
 No one was tracking her movements now. The streets held their ordinary autumn quiet, streetlights coming on one by one as the light faded, and June walked through it unhurried, the small watercolor tucked under one arm, thinking about how strange and specific healing turned out to be — not a single dramatic moment of resolution, but a long accumulation of ordinary evenings like this one, walked without fear, in a city that had, eventually, simply gone back to being a city.
 

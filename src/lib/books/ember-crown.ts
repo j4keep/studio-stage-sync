@@ -111,13 +111,13 @@ A royal seal fell from the ash when Nera lifted the letter. On its reverse, Quee
 
 ASK ABOUT SORROWGATE.
 
-Sorrowgate was a northern pass where two thousand royal soldiers had died the previous autumn. Official proclamations blamed an unexpected enemy assault. Widows in the iron quarter blamed poor armor and empty supply wagons.
+At Sorrowgate, two thousand soldiers had died the previous autumn. Proclamations blamed surprise; iron-quarter widows blamed poor armor and empty supply wagons.
 
 The foundry door opened.
 
 Nera raised the spear.
 
-A woman in a captain's torn uniform entered with hands visible. Sera Malk had commanded the queen's city guard before Cassar dismissed her for "disloyal grief." Nera knew her only from broadsheets.
+A woman in a torn captain's uniform entered. Sera Malk had commanded the city guard until Cassar dismissed her for "disloyal grief."
 
 "Elian told me where the box would go," Sera said. "I was supposed to reach you first."
 

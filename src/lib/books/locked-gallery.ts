@@ -7,11 +7,9 @@ import type { BookPage } from "@/lib/books-catalog";
 export const LOCKED_GALLERY_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — The Empty Frame",
-    text: `Wren Lin unlocked the east door of the Kestrel Gallery at seven-fifteen, the way she had every weekday for six years, and knew before she reached the third room that something in the building had changed shape. It was not a sound. It was the quality of the silence, the particular emptiness of a wall that has lost the thing it was built to hold. She rounded the corner into the long gallery and stopped.
+    text: `Wren Lin unlocked the east door of the Kestrel Gallery at seven-fifteen, the way she had every weekday for six years, and knew before she reached the third room that something in the building had changed shape. It was not a sound. She rounded the corner into the long gallery and stopped.
 
-The frame was still there, bolted to the wall exactly as it had been for eleven years, gilt corners catching the early light from the skylight above. Inside it: nothing. Not a slashed canvas, not a ragged edge of linen where a blade had done its work. Only the frame, and behind the glass that should have protected Untitled Storm, a square of bare wall the color of old cream, undisturbed.
-
-Wren’s first thought was absurd — that the painting had been removed for cleaning and no one had told her, because she was the curator and someone always told her. Her second thought arrived colder. She looked at the alarm panel discreetly mounted at the corner of the doorway. Green light. No breach recorded. No motion after closing. The system that guarded eleven million dollars of Adrienne Faure’s last finished canvas had slept through its disappearance like an obedient dog.
+The frame was still there, bolted to the wall exactly as it had been for eleven years, gilt corners catching the early light from the skylight above. Inside it: nothing. Only the frame, and behind the glass that should have protected Untitled Storm, a square of bare wall the color of old cream, undisturbed. Her second thought arrived colder. She looked at the alarm panel discreetly mounted at the corner of the doorway. Green light. No breach recorded. No motion after closing. The system that guarded eleven million dollars of Adrienne Faure’s last finished canvas had slept through its disappearance like an obedient dog.
 
 She made herself look at the frame a second time before she called anyone, because looking twice was a habit her first mentor had drilled into her: the eye lies to whoever is in a hurry. That was when she saw the brass plaque beneath the empty glass — the little engraved rectangle that had read UNTITLED STORM, ADRIENNE FAURE, 1958 for as long as the painting had hung there. The engraving was gone, scratched through with something sharp, replaced by different letters, cut deep and deliberate into the metal.
 
@@ -21,15 +19,15 @@ Wren read it three times. Then she took out her phone, and instead of calling th
   },
   {
     chapter: "Chapter 1 — The Empty Frame",
-    text: `Desmond arrived within eleven minutes, badge already clipped to his belt, looking less panicked than a man should look when informed that the gallery’s single most valuable canvas had vanished overnight. He studied the frame, the plaque, the untouched glass, with the flat patience of someone running through a mental checklist rather than reacting to a crisis.
+    text: `Desmond arrived within eleven minutes, badge already clipped to his belt, looking less panicked than a man should look when informed that the gallery’s single most valuable canvas had vanished overnight.
 
 “No alarm,” Wren said. “No broken glass. No forced door. Desmond, how does eleven million dollars of pigment leave a sealed building without a single sensor noticing?”
 
 “It doesn’t,” he said. “Which means either the system failed, or someone who understood the system removed it from the inside, on purpose, using access it shouldn’t have taken this long to notice was still active.”
 
-Wren felt the sentence land somewhere just beneath her ribs. She thought immediately, and did not say aloud, of Julian Ashford — the gallery’s former conservator, gone eight months now after a departure the board had described internally as amicable and everyone who’d actually witnessed it had described, privately, as anything but. Julian had spent eleven years with his hands closer to Untitled Storm than anyone alive. He had also been the last person to argue, loudly and in front of two board members, that the painting should never leave the building for the traveling exhibit Director Pryce had quietly begun arranging.
+Wren felt the sentence land somewhere just beneath her ribs. She thought immediately, and did not say aloud, of Julian Ashford — the gallery’s former conservator, gone eight months now after a departure the board had described internally as amicable and everyone who’d actually witnessed it had described, privately, as anything but. Julian had spent eleven years with his hands closer to Untitled Storm than anyone alive.
 
-She did not say his name yet. She wanted to be wrong before she was right.
+She did not say his name yet.
 
 “I need the overnight footage,” she said instead.
 
@@ -43,7 +41,7 @@ Wren looked back at the brass plaque, at the strange, careful riddle scratched i
   },
   {
     chapter: "Chapter 1 — The Empty Frame",
-    text: `Director Aldous Pryce reached the gallery forty minutes later, coat still buttoned, phone already pressed to his ear. Wren caught fragments of the call before he noticed her: figures, a percentage, the phrase before the appraisal firm hears about it repeated twice with obvious irritation. When he saw her waiting, he ended the call with a speed that felt less like discretion and more like guilt wearing discretion as a disguise.
+    text: `Director Aldous Pryce reached the gallery forty minutes later, coat still buttoned, phone already pressed to his ear. Wren caught fragments of the call before he noticed her: figures, a percentage, the phrase before the appraisal firm hears about it repeated twice with obvious irritation.
 
 “Terrible morning,” he said, and did not sound as though he meant it the way the words were built to be meant. “I’ve already spoken with Simone at the insurer. She’s sending someone within the hour to begin the claim.”
 
@@ -67,7 +65,7 @@ She watched him go, and decided, quietly, that she would do exactly the opposite
   },
   {
     chapter: "Chapter 2 — No Alarms",
-    text: `By midafternoon the gallery had become a hive of people who all seemed more interested in liability than in the painting itself. Simone Reyes arrived from the insurer in a charcoal suit and comfortable shoes, the kind a person wears when they expect to be standing for long, unglamorous hours assessing a loss rather than admiring art. She was efficient, thorough, and — Wren noticed within the first ten minutes — oddly quick to suggest that Untitled Storm had likely been damaged or destroyed in transit by an amateur thief who hadn’t understood what he was handling.
+    text: `By midafternoon the gallery had become a hive of people who all seemed more interested in liability than in the painting itself.
 
 “It happens more than people think,” Simone said, examining the frame with a magnifier. “Opportunistic theft, no buyer lined up, panic, and the piece ends up ruined in someone’s garage. Sad, but common. The claim moves faster once we accept that as the likely outcome.”
 
@@ -75,9 +73,7 @@ She watched him go, and decided, quietly, that she would do exactly the opposite
 
 “I’m preparing the client for the realistic range of outcomes.”
 
-Wren didn’t argue further, but she filed the exchange away beside Pryce’s reluctance to call the authorities, two small facts that did not yet form a shape but had begun, together, to hum faintly wrong.
-
-The detective who eventually arrived — a tired, thorough woman named Odalys Ferro from the department’s small property-crimes unit — asked for the security footage, the plaque photograph, and a list of everyone with after-hours access. Wren provided all three. Desmond provided the fourth item nobody had asked for yet: the access log showing that a badge issued eight months earlier to former conservator Julian Ashford had never been formally deactivated in the system, despite three separate memos confirming that it had.
+Wren didn’t argue further, but she filed the exchange away beside Pryce’s reluctance to call the authorities, two small facts that did not yet form a shape but had begun, together, to hum faintly wrong. Wren provided all three. Desmond provided the fourth item nobody had asked for yet: the access log showing that a badge issued eight months earlier to former conservator Julian Ashford had never been formally deactivated in the system, despite three separate memos confirming that it had.
 
 “He left in February,” Desmond said. “I flagged the badge for deactivation myself. It should have died that week.”
 
@@ -89,7 +85,7 @@ Wren thought of Julian standing in this exact gallery eight months ago, voice lo
   },
   {
     chapter: "Chapter 2 — No Alarms",
-    text: `The archive room smelled the way it always did, of dust and old adhesive and the particular mustiness of acid-free folders that had never quite escaped their previous decades. Wren pulled every condition report Julian had filed in his last year, laying them across the reading table in chronological order until his handwriting became a kind of second voice in the room — small, precise, faintly slanted, the letters crowded together the way a person writes when they are trying to fit more honesty into a margin than the margin was built to hold.
+    text: `The archive room smelled the way it always did, of dust and old adhesive and the particular mustiness of acid-free folders that had never quite escaped their previous decades.
 
 She compared it, on a hunch she barely trusted, to the photograph of the scratched plaque on her phone.
 
@@ -125,7 +121,7 @@ Desmond stared at the old plans for a long moment. “That’s insane.”
 
 “It’s also the only version of tonight where nothing on camera lies and nothing on camera has to.”
 
-He didn’t answer right away. Instead he reached for the plaque photograph again, reading the riddle a third time as if it might behave differently now that they suspected the shape of the answer.
+He didn’t answer right away.
 
 COUNT THE HOUR THE ROOM FORGETS ITS OWN SHADOW. SEVENTEEN PAST THREE. LOOK WHERE IT POINTS.
 
@@ -137,11 +133,11 @@ Wren looked at the empty frame down the hall, gold and hollow in the afternoon l
   },
   {
     chapter: "Chapter 3 — Shadows at 3:17",
-    text: `The gallery’s central skylight had been the architect’s proudest feature in 1958 — a long diamond lattice of glass set at a precise angle to wash the main hall in even, gallery-safe light throughout the day, engineered specifically to avoid the kind of dramatic, shifting shadow that curators generally spent their careers trying to eliminate. Wren had walked beneath it for six years without once wondering what happened at the one moment its designers hadn’t bothered to correct for.
+    text: `The gallery’s 1958 skylight had been angled to keep the main hall in even light. Wren had never wondered what happened at the one moment its designers failed to correct.
 
-She called her old graduate advisor, Professor Ines Calloway, a woman who had spent four decades studying exactly the kind of architectural light-mapping that modern museums no longer needed and therefore no longer remembered. Ines arrived within the hour carrying a battered folding rule and an expression of unmistakable delight at being asked something interesting for the first time in months.
+She called Professor Ines Calloway, an expert in architectural light maps. Ines arrived within the hour carrying a folding rule.
 
-“Nineteen fifty-eight skylights weren’t built with modern LED correction,” Ines said, tilting her head up at the lattice. “They were built around the sun’s actual path on the date of dedication. If your ghost wanted a shadow that only appears once a day, at a specific minute, he’d have needed to know this building’s original solstice alignment — which means he’d have needed access to archives most people don’t know exist.”
+“Older skylights followed the sun’s path on the dedication date,” Ines said. “A shadow appearing at one minute requires the building’s solstice alignment. Whoever planned this knew forgotten archives.”
 
 “Julian would have known,” Wren said. “He wrote the condition report addendum on skylight UV exposure three years ago. I remember because nobody else read past the first paragraph.”
 
@@ -165,11 +161,9 @@ He hesitated. “If we damage gallery property based on a riddle—”
 
 “Then we damage gallery property based on a riddle,” Wren said. “Or we call Pryce first and give him time to decide it’s vandalism again and paint over it before we look.”
 
-That settled it. Desmond fetched a flat pry bar from the loading dock, and together, with Ines directing gentle pressure at the exact points the light had marked, they worked the panel loose. It came away from the wall with the particular reluctance of something that had been sealed a long time but not, Wren noted, sealed permanently — the screws behind it were newer than the surrounding hardware, bright and unrusted, installed sometime in the last year.
+That settled it. Desmond fetched a flat pry bar from the loading dock, and together, with Ines directing gentle pressure at the exact points the light had marked, they worked the panel loose.
 
 Behind the panel was a shallow cavity, empty of any painting, but not empty of everything. A single archival box sat inside, labeled in Julian’s careful, crowded hand: FOR WHOEVER STILL READS FOOTNOTES.
-
-Wren lifted it out with both hands, aware of Desmond and Ines going very still beside her, as though the box itself might still be watching them decide whether to open it.
 
 Inside were photographs — dozens of them, high-resolution raking-light images of Untitled Storm’s surface, the same kind described in Julian’s flagged condition report — alongside a folder of shipping correspondence bearing letterhead from a private collector overseas, and a certificate of authenticity for the painting dated three weeks earlier and signed by an appraiser Wren had never heard of.
 
@@ -179,11 +173,7 @@ The certificate described a painting that, according to its own condition notes,
   },
   {
     chapter: "Chapter 3 — Shadows at 3:17",
-    text: `They spread the contents of the box across the reading table in the archive, the same table where Wren had first noticed the handwriting match, and built the timeline in silence because none of them trusted themselves yet to say aloud what it implied.
-
-Ten months earlier, according to Julian’s notes, Untitled Storm had been removed from its frame during an unscheduled night session — the same session his flagged condition report had described — photographed extensively, and returned. Six months after that, a certificate of authenticity had been quietly drafted for a painting matching those photographs, prepared not for the gallery’s own records but for a private sale, addressed to a buyer identified in the correspondence only as V.L.
-
-Three weeks ago, the correspondence showed a final round of negotiations completing, a wire transfer pending, contingent on delivery of the physical canvas within thirty days.
+    text: `In the archive, they built a timeline from Julian’s notes. Ten months earlier, Untitled Storm had been removed during an unscheduled night session, photographed, and returned. Six months later, someone drafted a certificate of authenticity for a private buyer identified only as V.L. Three weeks ago, a wire transfer became contingent on delivery within thirty days.
 
 “Someone planned to sell the real painting privately,” Wren said slowly, “and needed the gallery’s copy gone from the wall in a way that looked like theft, so no one would ever go looking for a sale that was never supposed to be public in the first place.”
 
@@ -203,9 +193,7 @@ She looked at the empty frame down the hall.
   },
   {
     chapter: "Chapter 4 — The False Panel",
-    text: `Julian Ashford had not gone far. He had gone, Wren discovered after two phone calls and one slightly undignified conversation with his former landlady, exactly nine miles across the river to a small conservation studio he’d opened above a framer’s shop — the kind of place that survived on wedding portraits and the occasional estate appraisal, nothing close to the museum work his résumé should have commanded.
-
-He answered the door himself, and did not look surprised to see her, which told Wren almost as much as anything he was about to say.
+    text: `Julian Ashford had not gone far.
 
 “You found the panel,” he said. “Faster than I expected. I thought it might take you until Friday.”
 
@@ -229,103 +217,123 @@ Julian didn’t deny it. “I protected it from a forged sale nobody with the au
   },
   {
     chapter: "Chapter 4 — The False Panel",
-    text: `“Where is it,” Wren said, and it wasn’t entirely a question.
+    text: `“Where is it?” Wren asked.
 
-“Somewhere climate-controlled, insured under a policy I paid for myself, examined weekly by someone qualified to notice if it so much as breathed wrong.” Julian’s voice had none of the defensiveness she’d braced for. “I know how that sounds. A disgraced conservator claiming custody of eleven million dollars of pigment because he didn’t trust the people legally responsible for it.”
+“Climate-controlled, privately insured, and examined weekly.” Julian did not look away. “I know how that sounds: a disgraced conservator claiming custody because he distrusted the legal custodians.”
 
-“It sounds exactly that bad, Julian.”
+“It sounds exactly that bad.”
 
-“I know.” He didn’t look away. “I also know that if I’d gone to the police with what I had ten months ago — a suspicion, some correspondence I technically shouldn’t have had access to, and no proof the painting itself had ever left the frame — Pryce would have had a week to finish the sale and file the insurance claim before anyone verified a single fact. The painting would be in a private collection in another country, uninsured against public scrutiny forever, and the gallery would be eleven million dollars richer on a lie.”
+“If I had gone to police with a suspicion, correspondence I should not have seen, and no proof the canvas ever left its frame, Pryce would have had a week to complete the sale and claim the insurance. The painting would disappear into another country, and the gallery would become rich on a lie.”
 
-“So instead you staged a theft.”
+He showed her the policy, humidity records, and daily condition photographs. Preparation did not grant permission, but it established care.
 
-“I removed a painting I had every professional right to handle, through a service corridor I helped seal myself during the renovation, using a badge that should have been deactivated the day I left and wasn’t — which, by the way, I flagged twice in writing before I resigned, in case anyone ever wants to argue I was hiding my methods.” A thin, humorless smile. “I left a riddle instead of a note because a note can be dismissed as a disgruntled employee. A riddle only the right person solves proves the right person was capable of solving it — which means whatever I say next has to be taken seriously by someone who already demonstrated they’re not willing to look away.”
+“So you staged a theft.”
 
-Wren sat down slowly on a stool beside the workbench, surrounded by half-restored paintings that would never carry a fraction of Untitled Storm’s value and were, in this room, being cared for with exactly the same rigor anyway.
+“I removed it through a service corridor I helped seal, using a badge I twice asked them to deactivate.” His smile held no humor. “A note could be dismissed as revenge. A riddle only the right person solved would make that person examine the evidence before judging me.”
 
-“You could have told me all of this ten months ago,” she said.
+Wren walked between the easels. Modest family portraits and smoke-damaged landscapes received the same exacting care Julian had given Untitled Storm. Nothing in the room suggested a man interested in resale; every invoice lay open, and the security cabinet had two new locks.
 
-“Would you have believed me ten months ago?”
+“You made yourself look guilty.”
 
-She thought about it honestly, and hated the answer. “No. Probably not.”
+“I made myself impossible to ignore. Those are not always different.”
 
-“Then we needed the frame to go empty first.”`,
+“You could have told me ten months ago.”
+
+“Would you have believed me?”
+
+Wren hated the honest answer. “Probably not.”
+
+“Then the frame needed to go empty first.”`,
   },
   {
     chapter: "Chapter 4 — The False Panel",
-    text: `They spent the next two hours at his workbench going through everything Wren had found in the archival box, cross-referencing it against files Julian had kept on an external drive since the night he’d first found the painting off the wall. Together the two versions of the evidence formed a single, uncomfortably complete narrative: Pryce, under pressure from a board more interested in the gallery’s endowment shortfall than its collection, had approached a private buyer through an intermediary — a broker named Viktor Lindqvist, listed in the correspondence only by initials until a signature on the final wire authorization spelled the rest out plainly.
+    text: `At Julian’s workbench, they cross-referenced the archival box with files he had saved. Pryce, pressured by the gallery’s deficit, had approached private buyer Viktor Lindqvist through an intermediary. Lindqvist’s full signature appeared on the final wire authorization.
 
-“He’s expecting delivery within the month,” Julian said, tapping the printed timeline. “The insurance claim gives Pryce a clean story for the board — tragic theft, painting presumed destroyed, endowment padded by the payout. Lindqvist gets a masterpiece nobody will ever be looking for, because as far as any public record shows, it no longer exists.”
+The dates made the plan brutally simple. The canvas would disappear, insurers would pay for a presumed loss, and a foreign vault would receive the object under papers designed to outlive suspicion. Two profitable stories would occupy the same painting.
 
-“And if we go to the police with this right now?”
+“He expects delivery within a month,” Julian said. “The theft gives Pryce a clean story and an insurance payout. Lindqvist gets a masterpiece nobody will seek because public records say it no longer exists.”
 
-“We go to the police with a former employee’s private files and a curator’s theory. Pryce has a week of lawyers before anyone subpoenas Lindqvist’s side of the correspondence, and by the time they do, the delivery might already be complete.” Julian sat back. “I don’t think we call the police first, Wren. I think we let Pryce believe the theft narrative is still working, right up until the moment he tries to close the sale — and we make sure there are witnesses who can’t be dismissed as disgruntled when it happens.”
+“What if we go to police now?”
 
-“You’re describing a trap.”
+“We bring private files and a theory. Pryce brings lawyers, and delivery happens before a subpoena.” Julian tapped the timeline. “Let him believe the theft story works until he tries to close the sale. We make sure credible witnesses are present.”
 
-“I’m describing the only version of this where the painting comes home publicly enough that nobody can quietly bury what almost happened to it.”
+“A trap.”
 
-Wren looked at the timeline again, at Lindqvist’s signature, at the delivery window closing faster than any court process could move.
+“A public return. Otherwise they can bury what nearly happened.”
 
-“I need Constance Marsh,” she said finally. “If the board chair already ignored one written warning, I want her standing in the room when the second one becomes impossible to ignore.”
+Wren disliked using a painting as bait. She disliked more the ease with which Pryce had turned stewardship into a private transaction. Court orders would come later; first they needed him to reveal which story he believed he was completing.
 
-Julian almost smiled. “Now you’re thinking like someone who reads footnotes for a living.”`,
+She studied Lindqvist’s signature and the narrowing window.
+
+“I need Constance Marsh. If the board chair ignored one warning, she will stand in the room when the second becomes impossible to ignore.”
+
+Julian almost smiled. “Now you’re thinking like someone who reads footnotes.”`,
   },
   {
     chapter: "Chapter 5 — The Hand Behind the Riddle",
-    text: `Constance Marsh agreed to meet Wren in a coffee shop two blocks from the gallery rather than in her own office, which told Wren something about how carefully the board chair had already begun separating her public role from whatever she privately suspected. She read Julian’s written warning from six months earlier without visible reaction, then read it a second time, more slowly, the way Wren herself had learned to read plaques.
+    text: `Constance Marsh met Wren in a coffee shop rather than her board office. She read Julian’s warning twice.
 
-“I remember this,” Constance said finally. “I told him I’d look into it.”
+“I remember this. I told him I would investigate.”
 
 “Did you?”
 
-“I asked Aldous directly whether there was any truth to it. He told me Julian had misread an internal restoration proposal and was, in his words, struggling with the transition after losing creative authority over the collection to the new digitization initiative.” Constance set the paper down. “I believed him. I had no reason not to, and every reason to trust the director I’d personally hired six years earlier.”
+“I asked Aldous. He said Julian misunderstood a restoration proposal and resented losing authority.” Constance lowered the paper. “I believed the director I hired.”
 
 “And now?”
 
-Constance was quiet for a long moment. “Now I’m looking at a certificate of authenticity for a painting that supposedly still hangs in my gallery, dated three weeks ago, addressed to a buyer I’ve never heard of.” Her voice hardened. “What do you need from me?”
+“Now I have a certificate for a painting supposedly hanging in my gallery, addressed to a buyer I do not know.” Her voice hardened. “What do you need?”
 
-“I need you in the room,” Wren said, “when Aldous thinks he’s only explaining an insurance claim to a curator he can dismiss. I need someone with real authority who can’t later be told she wasn’t paying attention.”
+Rain striped the window behind her. Wren watched the board chair understand that trust had not been a neutral gift; it had become cover for the person receiving it.
 
-Constance looked at her for a long moment, something calculating and tired moving behind her eyes — the particular exhaustion of a person realizing how much of her trust had been spent on the wrong account.
+Around them, cups struck saucers and strangers held ordinary conversations. Institutional betrayal arrived without changing the weather or stopping anyone else’s lunch.
 
-“There’s a private viewing scheduled for potential major donors Thursday evening,” she said slowly. “Aldous arranged it himself, which is unusual — he normally delegates those entirely to development staff. He specifically requested access to the storage vault that evening, ostensibly to show a donor some archival pieces not currently on display.”
+“Be present when Aldous thinks he is explaining an insurance claim to a curator he can dismiss. He cannot later say the board missed it.”
 
-Wren felt the shape of Julian’s trap settle fully into focus.
+“I did miss it,” Constance said. “Julian wrote plainly. Aldous supplied a more comfortable explanation, and I chose comfort.”
 
-“That’s not a donor viewing,” she said. “That’s a delivery window.”
+Wren had expected denial. The admission made cooperation possible without making Constance innocent.
 
-“Then Thursday,” Constance said, “I suppose I’ll be very interested in archival pieces.”`,
+“Aldous scheduled a private donor viewing Thursday. He normally delegates those, but he requested access to the storage vault himself.”
+
+The shape of Julian’s trap settled into focus.
+
+“That is not a donor viewing,” Wren said. “It is a delivery window.”
+
+“Then on Thursday, I will be very interested in archival pieces.”`,
   },
   {
     chapter: "Chapter 5 — The Hand Behind the Riddle",
-    text: `Wren returned to Julian’s studio that evening to tell him about Thursday, and found him standing over a shallow crate she hadn’t seen before, lined with acid-free tissue, empty and waiting.
+    text: `Wren returned to Julian’s studio and found him over an empty, tissue-lined crate.
 
-“You’re bringing it,” she said. It wasn’t a question either.
+“You are bringing it.”
 
-“I’m bringing it back to where it belongs,” Julian said, “on the condition that it never leaves through a hole in a wall again.” He closed the crate gently. “I’ll transport it myself, tonight, to a secure holding room Desmond doesn’t know exists yet, inside the gallery, under the same service corridor I used the first time. If Pryce tries to complete a sale Thursday using photographs and a certificate for a painting he thinks is already gone, he’ll be selling something that technically never left the building at all.”
+“Back where it belongs, on the condition that it never leaves through a wall again.” He would move it that night to a secure gallery room. If Pryce tried selling from photographs and a certificate, he would be selling a canvas that had technically returned.
 
-“And if he panics before then? If he realizes the riddle led somewhere and moves the timeline up?”
+“What if he panics first?”
 
-“Then we lose the element of surprise, but not the evidence. Everything Constance read this afternoon still exists whether or not the trap closes cleanly.” Julian looked at her steadily. “I need you to understand something, Wren. I didn’t do this to be clever. I did it because the alternative was letting the last finished thing Adrienne Faure ever painted disappear into a private vault forever, sold on a lie, insured on a second lie, with nobody left who’d ever loved it enough to ask questions.”
+“We lose surprise, not evidence.” Julian met her eyes. “I did not do this to be clever. The alternative was Faure’s last painting vanishing into a private vault, sold on one lie and insured on another.”
 
-“You could have lost everything,” Wren said. “Your reputation. Any chance of working in this field again.”
+“You could lose your reputation. Any chance of working in this field.”
 
-“I already lost the job,” he said simply. “I decided I’d rather lose it having done the right thing badly than keep it having done nothing at all.”
+“I already lost the job. I would rather lose it doing the right thing badly than keep it by doing nothing.”
 
-Wren thought of her own quiet compliance for six years — the plaques she’d read twice, the condition reports she’d filed correctly, the trust she’d extended to a director who called an insurer before he called the police. She had not lied. She had also not, until this week, asked a single hard question of anyone with power over her.
+The answer did not make his method lawful or safe. A canvas could be damaged by righteous hands as easily as greedy ones. Yet Julian had accepted personal risk while those above him converted institutional caution into permission.
 
-“Thursday,” she said. “I’m coming with you when you move it.”
+Wren thought of six compliant years. She had read plaques twice, filed reports correctly, and trusted a director who called an insurer before police. She had not lied, but she had asked no hard question of anyone with power.
 
-Julian studied her, then nodded once, as if she’d passed some final, unspoken part of the riddle he’d never written down.`,
+She understood now that professionalism could become a beautiful frame around obedience.
+
+“I am coming when you move it.”
+
+Julian nodded as if she had solved the riddle’s unwritten final line.`,
   },
   {
     chapter: "Chapter 5 — The Hand Behind the Riddle",
-    text: `They moved Untitled Storm back into the Kestrel Gallery just after midnight on Wednesday, through the same sealed service corridor, Julian carrying the crate with the specific, unhurried care of a man who had spent eleven years learning exactly how much a canvas could and could not forgive. Desmond met them at the far end, having been let in on enough of the plan to secure the route without asking questions he clearly wanted to ask anyway.
+    text: `They moved Untitled Storm back into the Kestrel Gallery just after midnight on Wednesday, through the same sealed service corridor, Julian carrying the crate with the specific, unhurried care of a man who had spent eleven years learning exactly how much a canvas could and could not forgive.
 
 They laid the painting in a small interior storage room behind the conservation studio — no windows, humidity-controlled, accessible only by a lock Desmond had personally rekeyed that afternoon — and Wren stood over it for a long moment once the crate was open, looking at the real thing for the first time in what felt, absurdly, like months rather than days.
 
-Adrienne Faure’s storm was exactly as violent and exactly as controlled as Wren remembered, grey-green water folded over itself in thick, deliberate strokes, a single break of pale light on the horizon that the artist had reportedly repainted four times before she was satisfied. It had survived a war, two ocean crossings, and a near-decade under a director more interested in its dollar value than its weather. It had, apparently, also survived being smuggled out through a wall and back in through the same wall inside of a week.
+Adrienne Faure’s storm was exactly as violent and exactly as controlled as Wren remembered, grey-green water folded over itself in thick, deliberate strokes, a single break of pale light on the horizon that the artist had reportedly repainted four times before she was satisfied. It had survived a war, two ocean crossings, and a near-decade under a director more interested in its dollar value than its weather.
 
 “It’s heavier than I remembered,” Julian said quietly, setting the crate lid aside.
 
@@ -337,9 +345,9 @@ Thursday was two days away. Somewhere across the city, Aldous Pryce was almost c
   },
   {
     chapter: "Chapter 6 — The Forged Sale",
-    text: `Thursday evening arrived dressed as an ordinary donor reception — string quartet in the atrium, wine poured a half-inch too generously, a scattering of board members performing warmth at people whose checkbooks mattered more than their conversation. Wren moved through it with a glass she didn’t drink, watching Aldous Pryce work the room with the easy charm of a man who had already mentally spent money he did not yet have.
+    text: `Thursday evening arrived dressed as an ordinary donor reception — string quartet in the atrium, wine poured a half-inch too generously, a scattering of board members performing warmth at people whose checkbooks mattered more than their conversation.
 
-At eight-fifteen, exactly as Constance had predicted, he excused himself toward the storage vault with a single guest in tow — a lean, silver-haired man in an unremarkable gray suit whom Wren recognized instantly from the signature at the bottom of a wire authorization she had read a dozen times that week. Viktor Lindqvist did not look like a man capable of buying stolen masterpieces. He looked like a man capable of buying anything and being thanked for it.
+At eight-fifteen, exactly as Constance had predicted, he excused himself toward the storage vault with a single guest in tow — a lean, silver-haired man in an unremarkable gray suit whom Wren recognized instantly from the signature at the bottom of a wire authorization she had read a dozen times that week. Viktor Lindqvist did not look like a man capable of buying stolen masterpieces.
 
 Constance intercepted them at the vault door with the practiced ease of a board chair simply checking in on her director’s evening. “Aldous. I didn’t realize we were doing private viewings tonight.”
 
@@ -357,13 +365,13 @@ And found, resting on top of it, a single sealed envelope addressed, in handwrit
   },
   {
     chapter: "Chapter 6 — The Forged Sale",
-    text: `Pryce’s hand froze on the envelope. Lindqvist, sensing something wrong with the particular stillness of a room that had suddenly stopped performing its assigned choreography, took a half-step back toward the door.
+    text: `Pryce’s hand froze on the envelope. Lindqvist sensed trouble and edged toward the door.
 
 “What is this,” Pryce said, and for the first time all evening his voice lost its careful polish.
 
 “I believe,” Constance said, stepping fully into the vault, “that’s the question we’d all like answered. Open it.”
 
-He didn’t move. Wren did instead, lifting the envelope from the case and breaking the seal herself, reading aloud in a voice she kept deliberately steady, because she had learned this week that a steady voice could do more damage to a lie than any amount of shouting.
+He didn’t move. Wren broke the seal and read steadily.
 
 “‘To whoever stopped reading footnotes: the certificate in this folder describes a painting condition-documented in photographs taken during an unauthorized night session ten months ago. That same painting has been in the gallery’s possession, continuously, since Wednesday of this week, secured in a room adjacent to the conservation studio. It never left the building for delivery, because delivery was never completed. Whatever transaction you believe you are finalizing tonight, Mr. Lindqvist, concerns a canvas that is not, and never has been, available for private sale.’”
 
@@ -379,7 +387,7 @@ Pryce had gone very pale, still holding the empty folder, the certificate inside
   },
   {
     chapter: "Chapter 6 — The Forged Sale",
-    text: `What followed was less dramatic than Wren had braced for and considerably longer. Lindqvist left within minutes, unwilling to remain in a room where his signature was becoming a liability by the second, and Constance immediately placed a call to the gallery’s outside counsel, calm and precise, describing a situation Wren suspected the lawyer would remember for the rest of his career.
+    text: `What followed was less dramatic than Wren had braced for and considerably longer.
 
 Pryce did not run. He sat down instead, heavily, on a low storage bench meant for handling crates, and stared at the empty folder as though it might yet contain a version of the evening where none of this had happened.
 
@@ -401,29 +409,33 @@ Detective Ferro arrived within the hour, summoned this time not by a curator’s
   },
   {
     chapter: "Chapter 7 — What the Frame Protected",
-    text: `The board met in emergency session two days later, and Wren was asked to attend not as a witness being questioned but, unexpectedly, as a curator whose account of the past week the board wanted recorded formally, on tape, with counsel present. She told it plainly: the empty frame, the scratched riddle, the shadow at 3:17, the false panel, Julian’s files, Constance’s warning ignored, the vault, the envelope.
+    text: `The board met in emergency session two days later. With counsel and a recorder present, Wren recounted the empty frame, the riddle, the shadow at 3:17, the false panel, Julian’s files, the ignored warning, and the vault.
 
-When she finished, one of the older board members — a retired judge named Absalom Reyes who Wren had always privately considered the quietest person in every room he occupied — asked the only question that seemed to matter.
+Retired judge Absalom Reyes asked the question that mattered.
 
-“Mr. Ashford removed a painting worth eleven million dollars from this building without authorization,” he said. “Whatever his reasons, that remains, on its face, theft. Are we prepared to press charges against the one person in this entire affair who kept the canvas safe?”
+“Mr. Ashford removed an eleven-million-dollar painting without authorization. Whatever his reasons, that resembles theft. Do we prosecute the person who kept it safe?”
 
 The room went very still.
 
-“He documented every step,” Wren said. “Timestamped photographs, written warnings filed before he left, a fully insured secure holding arrangement paid for out of his own pocket. He left me a riddle instead of vanishing with the painting, because he wanted someone inside this institution to prove the truth before he ever asked to be believed on his word alone.”
+“He documented every step,” Wren said. “He filed warnings, insured its storage, and left a riddle so someone inside would prove the truth before taking his word.”
+
+The discussion divided along no simple line. Trustees who had ignored conservation budgets now defended property law. Others wanted to call Julian a hero and thereby avoid examining why heroics had become necessary. Wren refused both versions. He had endangered a work to prevent a larger danger, and good results did not make his secrecy harmless.
 
 “That is not the same as innocence,” Reyes said, not unkindly.
 
-“No,” Wren agreed. “But it’s the difference between a man protecting something and a man stealing it. He never once tried to sell it. He never asked for money. He asked, eventually, for someone to look.”
+“No. But he never tried to sell it or asked for money. He asked someone to look.”
 
-Constance spoke next, her voice carrying the particular weight of a board chair who had spent the last two days reckoning with her own failure to look sooner. “I received his written warning six months ago and did not act on it adequately. If this board wishes to discuss accountability, I believe that discussion should not begin and end with the person who ultimately turned out to be right.”
+Constance spoke next. “I received his warning and failed to act. Accountability cannot begin and end with the person who proved right.”
 
-The vote, when it finally came, did not clear Julian entirely — the board’s legal counsel insisted on a formal restitution agreement rather than an outright dismissal of the matter — but it stopped well short of the criminal referral Reyes had first proposed, and it began, that same afternoon, with Aldous Pryce’s unanimous termination.`,
+Reyes asked whether the gallery could acknowledge Julian’s unauthorized act while also naming the institutional failure around it. Counsel disliked the ambiguity. Wren thought ambiguity was the first honest thing offered all afternoon.
+
+The board required a formal restitution agreement but rejected criminal referral. That afternoon, it unanimously terminated Aldous Pryce.`,
   },
   {
     chapter: "Chapter 7 — What the Frame Protected",
     text: `Simone Reyes’s role took longer to untangle than Pryce’s, and turned out, in the end, to be smaller than Wren had feared and more damning than the insurer would ever publicly admit — an internal review found she had aggressively steered the claims process toward total-loss classification without the underwriting scrutiny her own policy required, a pattern that, once flagged, triggered an audit of several other claims she’d handled the same way. She was quietly removed from the account. No criminal charges followed. Wren suspected none ever would, and found that she minded this less than she once might have, because the painting itself had never actually needed the insurance money to survive.
 
-Viktor Lindqvist proved harder to reach than either of them. His lawyers responded to every inquiry with the same carefully worded denial, and the wire authorization that had once seemed like undeniable proof turned, under closer legal reading, into something merely highly suggestive rather than conclusive. Detective Ferro told Wren, with the tired candor of someone who had made peace with imperfect justice a long time ago, that men like Lindqvist rarely faced consequences proportionate to what they’d nearly gotten away with.
+Viktor Lindqvist proved harder to reach than either of them. Detective Ferro told Wren, with the tired candor of someone who had made peace with imperfect justice a long time ago, that men like Lindqvist rarely faced consequences proportionate to what they’d nearly gotten away with.
 
 “Does that bother you?” Wren asked her, over coffee outside the courthouse the week the initial fraud inquiry formally opened against Pryce.
 
@@ -439,7 +451,7 @@ Wren thought of the frame, empty for six days, then full again, hanging exactly 
     chapter: "Chapter 7 — What the Frame Protected",
     text: `Julian’s restitution agreement, when the paperwork finally settled, required him to formally acknowledge unauthorized removal of gallery property and to reimburse the modest, actual costs of his weeklong custody of the painting — costs that turned out to be less than the amount the gallery had already spent chasing a fraudulent insurance claim. In exchange, all criminal referral was dropped, and the board, at Constance’s insistence, issued a formal letter acknowledging that his original written warning had been ignored due to institutional failure rather than any deficiency in the warning itself.
 
-It was not an apology, exactly. It was close enough that Julian, reading it in Wren’s office a week later, laughed once, short and surprised, as though he hadn’t expected the sentence to exist at all.
+It was not an apology, exactly.
 
 “They’re not offering your position back,” Wren said carefully. “Not yet. Constance mentioned it might be possible eventually, once the audit closes and some of this stops being front-page material for the arts section.”
 
@@ -461,8 +473,6 @@ Julian looked at her for a long moment. “For what it’s worth,” he said, �
 
 The new plaque did not mention Pryce, or Lindqvist, or the forged certificate, or any of the specific machinery of the fraud. It read simply: THIS PAINTING WAS ONCE PROTECTED FROM A SALE IT NEVER CONSENTED TO. LOOK CLOSELY. SOME THINGS SURVIVE BECAUSE SOMEONE REFUSED TO LOOK AWAY.
 
-Wren had written it herself, late one night, after deciding that a gallery whose entire business was teaching people to read paintings owed its visitors at least one true sentence about what a painting could actually survive.
-
 Constance, now serving as interim director while the board conducted a proper search, stood beside her at the unveiling and read the new plaque twice — a habit, Wren suspected, that had spread through the building faster than any policy memo could have managed on its own.
 
 “The insurer’s audit closed this morning,” Constance said quietly. “Formal findings against Simone Reyes’s conduct on our claim. It won’t undo what almost happened, but it’ll make the next gallery she works with think twice.”
@@ -477,9 +487,7 @@ Constance, now serving as interim director while the board conducted a proper se
   },
   {
     chapter: "Chapter 8 — Better Locks",
-    text: `Wren was named head curator the following month, a promotion she suspected would have taken years longer under Pryce’s stewardship and one she accepted with far less triumph than she’d once imagined she’d feel reaching that title. Mostly she felt tired, and mostly she felt, for the first time in six years, entirely certain that the walls around her held exactly what the plaques claimed they held.
-
-She began, quietly, rewriting the gallery’s access protocols herself, cross-referencing every badge, every service corridor, every decommissioned door that had been drywalled over rather than actually removed. Desmond worked alongside her most evenings, muttering about architects who apparently believed sealing something was the same as eliminating it, and by the end of the second week they had produced a floor plan more honest than the one the building had operated under for nine years.
+    text: `Wren was named head curator the following month, a promotion she suspected would have taken years longer under Pryce’s stewardship and one she accepted with far less triumph than she’d once imagined she’d feel reaching that title. Mostly she felt tired, and mostly she felt, for the first time in six years, entirely certain that the walls around her held exactly what the plaques claimed they held. Desmond worked alongside her most evenings, muttering about architects who apparently believed sealing something was the same as eliminating it, and by the end of the second week they had produced a floor plan more honest than the one the building had operated under for nine years.
 
 Julian visited twice during that stretch, once to formally close out his restitution paperwork, once — unofficially, on a Tuesday evening with no meeting scheduled — simply to see Untitled Storm hanging again under proper light, no crate, no riddle, no false wall between it and the room built to hold it.
 
@@ -498,8 +506,6 @@ Wren looked at the storm on the wall, gray-green and unresolved and entirely, pe
   {
     chapter: "Chapter 8 — Better Locks",
     text: `On the anniversary of the theft that had never quite been a theft, Wren stood alone in the long gallery after closing, the way she had that first morning, except now the frame was full and the plaque beside it told a truer story than the one it had told for eleven years before.
-
-She thought about how close the whole affair had come to disappearing cleanly — a claim filed, a payout processed, a private buyer satisfied, a masterpiece gone forever into a vault no public record would ever think to search, and no one left who’d have known enough to ask a single hard question, because the man who’d known the most had already been quietly removed from the building months before anyone noticed the wall behind him had a seam.
 
 It had not disappeared cleanly. It had disappeared exactly long enough for the right person to notice the silence where an alarm should have been, and to keep noticing, past the point where noticing was convenient for anyone with power over her paycheck.
 
