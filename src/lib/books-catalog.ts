@@ -59,6 +59,27 @@ import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
 import { AFTER_THE_BELL_PAGES } from "@/lib/books/after-the-bell";
+import { GLASS_ELEVATOR_PAGES } from "@/lib/books/glass-elevator";
+import { ORBIT_GARDEN_PAGES } from "@/lib/books/orbit-garden";
+import { SIGNAL_NINE_PAGES } from "@/lib/books/signal-nine";
+import { CHROME_RAIN_PAGES } from "@/lib/books/chrome-rain";
+import { MEMORY_MARKET_PAGES } from "@/lib/books/memory-market";
+import { SECOND_MOON_PAGES } from "@/lib/books/second-moon";
+import { LATE_TRAIN_PAGES } from "@/lib/books/late-train";
+import { RECIPE_FOR_US_PAGES } from "@/lib/books/recipe-for-us";
+import { INK_PROMISE_PAGES } from "@/lib/books/ink-promise";
+import { BALCONY_SEASON_PAGES } from "@/lib/books/balcony-season";
+import { POSTCARD_HOME_PAGES } from "@/lib/books/postcard-home";
+import { RED_LEDGER_PAGES } from "@/lib/books/red-ledger";
+import { FOG_STATION_PAGES } from "@/lib/books/fog-station";
+import { LOCKED_GALLERY_PAGES } from "@/lib/books/locked-gallery";
+import { MIDNIGHT_LIBRARY_KEY_PAGES } from "@/lib/books/midnight-library-key";
+import { SILENT_WITNESS_PAGES } from "@/lib/books/silent-witness";
+import { EMBER_CROWN_PAGES } from "@/lib/books/ember-crown";
+import { RIVER_OF_NAMES_PAGES } from "@/lib/books/river-of-names";
+import { CLOCKWORK_SPARROW_PAGES } from "@/lib/books/clockwork-sparrow";
+import { SALT_AND_STARLIGHT_PAGES } from "@/lib/books/salt-and-starlight";
+import { LIBRARY_WYRM_PAGES } from "@/lib/books/library-wyrm";
 
 const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
@@ -134,13 +155,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0f172a",
     coverTo: "#64748b",
     blurb: "Two strangers stuck between floors learn what they each left unsaid.",
-    pages: pages(
-      "The elevator stalled between 14 and 15. Ava checked her phone — no signal. The man across from her straightened his tie like it could restart the cables.",
-      "“Worst timing,” he said. Ava almost laughed. Her interview was in twelve minutes; his was a goodbye he had postponed for years.",
-      "They traded stories to kill the dark. She wanted a chance. He wanted forgiveness from a sister who worked on 15.",
-      "When the car lurched upward, Ava offered to walk him to the door. He offered to vouch for her if anyone asked why she was late.",
-      "They stepped out into light. Some journeys only need one shared floor to change the destination.",
-    ),
+    pages: GLASS_ELEVATOR_PAGES,
   },
 
   // Sci-fi
@@ -154,13 +169,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#042f2e",
     coverTo: "#22d3ee",
     blurb: "A botanist tends Earth’s last seed vault on a spinning station.",
-    pages: pages(
-      "Hydroponic vines climbed the curved glass as Station Helix turned toward the sun. Dr. Sol patched a drip line and whispered to the tomato seedlings like old friends.",
-      "An alert flashed: unauthorized drone approaching the vault hatch. Sol sealed the greenhouse and floated to the airlock with a toolkit and a stubborn hope.",
-      "The drone carried a cracked memory chip from Earthside — maps of soil that might still grow.",
-      "Sol planted the first experimental tray that night under artificial dawn. Green returned like a promise.",
-      "In the log she wrote: “Orbit is temporary. Roots are the mission.”",
-    ),
+    pages: ORBIT_GARDEN_PAGES,
   },
   {
     id: "scifi-signal-nine",
@@ -173,13 +182,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1e1b4b",
     coverTo: "#818cf8",
     blurb: "A deep-space listener hears a pattern that should not exist.",
-    pages: pages(
-      "Night watch on Relay Nine was supposed to be quiet. Then the receiver sang a nine-beat pattern from empty coordinates.",
-      "Captain Rhee ordered silence protocol. Junior tech Lin kept a private copy of the waveform anyway.",
-      "Decoded, the pattern mapped to a childhood lullaby — Lin’s. Someone out there knew her name.",
-      "The crew voted to answer with one soft pulse. The reply arrived as starlight bent around a shape that looked almost like a door.",
-      "They did not open it yet. Some signals are invitations you answer with patience.",
-    ),
+    pages: SIGNAL_NINE_PAGES,
   },
   {
     id: "scifi-chrome-rain",
@@ -191,13 +194,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#111827",
     coverTo: "#38bdf8",
     blurb: "In a city of weather machines, a courier delivers illegal sunshine.",
-    pages: pages(
-      "Chrome rain hissed on the transit glass. Kai’s satchel held three licensed storm tokens and one contraband sun-disk.",
-      "District 4 paid well for warmth. The Weather Guild paid better for silence.",
-      "Kai ducked through a market of umbrellas and handed the disk to a clinic roof. Light spilled like medicine.",
-      "Guild drones arrived late. Patients were already smiling under a manufactured noon.",
-      "Kai vanished into the wet neon, already planning the next illegal dawn.",
-    ),
+    pages: CHROME_RAIN_PAGES,
   },
   {
     id: "scifi-memory-market",
@@ -209,13 +206,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#3b0764",
     coverTo: "#e879f9",
     blurb: "Bought memories come with receipts — and missing hours.",
-    pages: pages(
-      "The booth sold first kisses and last vacations by the gram. Jules bought a quiet afternoon that felt almost like home.",
-      "That night a gap opened: three hours missing from Tuesday. The receipt listed a seller ID Jules recognized — her own.",
-      "She traced the stall to a warehouse of humming drives. Her stolen Tuesdays powered someone else’s comfort.",
-      "Jules deleted the black-market index and kept one memory: learning to say no.",
-      "The market lights dimmed. For the first time, her mind felt like it belonged to her again.",
-    ),
+    pages: MEMORY_MARKET_PAGES,
   },
   {
     id: "scifi-second-moon",
@@ -227,13 +218,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0c4a6e",
     coverTo: "#a5f3fc",
     blurb: "Earth wakes to a new moon — and a countdown only kids can see.",
-    pages: pages(
-      "At breakfast the sky held two moons. Newsfeeds screamed. In the schoolyard, children pointed at numbers floating in the air that adults could not see.",
-      "Teacher Amira believed her students. Together they charted the countdown etched on the pale new stone.",
-      "Day zero was not an ending. It was a handshake from a civilization that spoke in games.",
-      "The children answered with chalk drawings on the playground. The second moon brightened once, like a nod.",
-      "Amira filed the report as “First Contact, recess edition.” History would need a new chapter title.",
-    ),
+    pages: SECOND_MOON_PAGES,
   },
 
   // Romance
@@ -247,13 +232,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#9f1239",
     coverTo: "#fb7185",
     blurb: "Two commuters share a delayed car and a second chance.",
-    pages: pages(
-      "The 8:12 became the 9:03. Nora recognized the man with the worn paperback — the one who never made her wedding years ago.",
-      "He looked up. “Nora?” Rain streaked the window between them like a soft curtain.",
-      "They talked until the conductor cleared his throat. Numbers were exchanged on a napkin that smelled faintly of coffee.",
-      "Their first real date was another late train, chosen on purpose.",
-      "Some love stories, Nora decided, run on delay — and arrive exactly when they should.",
-    ),
+    pages: LATE_TRAIN_PAGES,
   },
   {
     id: "romance-recipe-for-us",
@@ -266,13 +245,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#9a3412",
     coverTo: "#fdba74",
     blurb: "Rival food-truck chefs compete — then cook for each other.",
-    pages: pages(
-      "The festival map put taco and dumpling trucks side by side. Steam and rivalry rose together.",
-      "Judge scoring tied them. The only fair rematch was a private cook-off at midnight.",
-      "They borrowed a shared kitchen and burned the first pan laughing.",
-      "By plate three, rivalry tasted like partnership.",
-      "They merged menus in spring. The signature dish was called “Almost Tied.”",
-    ),
+    pages: RECIPE_FOR_US_PAGES,
   },
   {
     id: "romance-ink-promise",
@@ -284,13 +257,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1e3a8a",
     coverTo: "#93c5fd",
     blurb: "A bookstore owner finds love notes hidden in returned novels.",
-    pages: pages(
-      "Mae found the first note in a mystery paperback: “Page 212 made me brave.” No signature.",
-      "More notes arrived with returns — always kind, always curious.",
-      "She answered in the margins of a poetry display copy. The stranger answered back.",
-      "They met under the store awning during a soft storm, both holding the same dog-eared volume.",
-      "Mae kept the notes in a cigar box labeled “Inventory of Hope.”",
-    ),
+    pages: INK_PROMISE_PAGES,
   },
   {
     id: "romance-balcony-season",
@@ -302,13 +269,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#831843",
     coverTo: "#f9a8d4",
     blurb: "Neighbors share plants, playlists, and carefully timed glances.",
-    pages: pages(
-      "Leo’s balcony faced June’s. Her basil thrived; his playlists leaked through open doors.",
-      "They traded cuttings in a hanging basket on a rope. Then recipes. Then evenings.",
-      "When the building sold, they feared the end of balcony season.",
-      "Instead they rented a place with one shared railing and twice the light.",
-      "Love, June wrote in her journal, grows best with a little distance — and a good rope.",
-    ),
+    pages: BALCONY_SEASON_PAGES,
   },
   {
     id: "romance-postcard-home",
@@ -320,13 +281,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#be123c",
     coverTo: "#fecdd3",
     blurb: "A travel writer falls for the town she meant only to review.",
-    pages: pages(
-      "Assignment: three days, one coastal town, one witty article. Sam planned to stay detached.",
-      "The lighthouse keeper ruined that plan with coffee and bad jokes that somehow worked.",
-      "Sam’s draft softened. So did her departure ticket.",
-      "She mailed the editor a postcard instead of a resignation: “Extending research indefinitely.”",
-      "Home, it turned out, could be a place you review until you stop leaving.",
-    ),
+    pages: POSTCARD_HOME_PAGES,
   },
 
   // Mystery
@@ -340,13 +295,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#450a0a",
     coverTo: "#ef4444",
     blurb: "An accountant finds a second set of books — in blood-red ink.",
-    pages: pages(
-      "Clara balanced the nonprofit’s accounts until a red ledger appeared in the safe with no keycard log.",
-      "Names inside matched donors who had never existed. Transfers pointed offshore.",
-      "She followed the ink to a storage unit and a camera that had filmed its own thief.",
-      "The board chair resigned by sunrise. Clara kept a photocopy labeled “Truth, reconciled.”",
-      "Some mysteries close with a stamp, not a confession.",
-    ),
+    pages: RED_LEDGER_PAGES,
   },
   {
     id: "mystery-fog-station",
@@ -359,13 +308,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1f2937",
     coverTo: "#9ca3af",
     blurb: "A detective boards a train that was never on the timetable.",
-    pages: pages(
-      "Platform 7 should have been empty. The fog train hissed in anyway, doors inviting.",
-      "Detective Ruiz stepped on with a cold case file and a return ticket she did not buy.",
-      "Each car held a witness from a different year of the unsolved fire.",
-      "At the last stop the conductor handed her a matchbook from the burned hotel — unused.",
-      "Ruiz stepped into morning with the answer warming her pocket.",
-    ),
+    pages: FOG_STATION_PAGES,
   },
   {
     id: "mystery-locked-gallery",
@@ -377,13 +320,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#312e81",
     coverTo: "#c4b5fd",
     blurb: "A missing painting leaves only a frame and a riddle.",
-    pages: pages(
-      "The gallery alarm never tripped. The masterpiece was gone; the frame remained, whispering a riddle in scratched brass.",
-      "Curator Lin decoded it as a map of shadow angles at 3:17 p.m.",
-      "At that minute, sunlight revealed a false panel behind “Untitled Storm.”",
-      "Inside: the painting, and a note from a thief who only wanted it protected from a forged sale.",
-      "Lin hung it again under better locks — and a better story.",
-    ),
+    pages: LOCKED_GALLERY_PAGES,
   },
   {
     id: "mystery-midnight-library-key",
@@ -395,13 +332,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#0f172a",
     coverTo: "#6366f1",
     blurb: "Night librarians guard a key that opens more than doors.",
-    pages: pages(
-      "The night shift key was heavier than it looked. Mara’s first solo evening, it hummed.",
-      "Shelves rearranged themselves into a corridor she had never catalogued.",
-      "At the end: a reading room of unfinished books waiting for honest endings.",
-      "Mara returned a stolen manuscript to its rightful shelf. The key cooled in her palm.",
-      "Some libraries keep more than paper — they keep second chances.",
-    ),
+    pages: MIDNIGHT_LIBRARY_KEY_PAGES,
   },
   {
     id: "mystery-silent-witness",
@@ -413,13 +344,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#18181b",
     coverTo: "#a1a1aa",
     blurb: "A courtroom sketch artist sees the killer in the crowd — sketching her.",
-    pages: pages(
-      "Pencil to paper, June drew the defendant. In the gallery, another pencil moved in mirror.",
-      "The stranger’s page showed June’s face with a date tomorrow.",
-      "She left a decoy sketch on the courthouse steps and followed the real artist into rain.",
-      "Confrontation in an alley: a copycat chasing fame, not blood. Police took the confession.",
-      "June’s next sketch was blank on purpose. Peace, she decided, needed white space.",
-    ),
+    pages: SILENT_WITNESS_PAGES,
   },
 
   // Fantasy
@@ -433,13 +358,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#7c2d12",
     coverTo: "#fbbf24",
     blurb: "A forge apprentice inherits a crown that burns only liars.",
-    pages: pages(
-      "The crown arrived in ash. When Ryn placed it on the anvil, it flared at every false word in the workshop.",
-      "The duke’s messenger lied about tribute. The crown scorched the air between them.",
-      "Ryn marched to court with truth ringing like struck iron.",
-      "The duke knelt. The realm exhaled.",
-      "Ryn returned to the forge. Power, she learned, is hottest when you set it down.",
-    ),
+    pages: EMBER_CROWN_PAGES,
   },
   {
     id: "fantasy-river-of-names",
@@ -452,13 +371,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#064e3b",
     coverTo: "#34d399",
     blurb: "To save her village, a girl must reclaim the names the river stole.",
-    pages: pages(
-      "Names drifted on the black water like lanterns. Without them, people forgot who they loved.",
-      "Ilya waded in with a net woven from grandmother’s stories.",
-      "Each caught name glowed and returned to a waiting chest.",
-      "By sunrise the village remembered itself — including Ilya’s own middle name, long missing.",
-      "She left the net by the bank for the next forgetful tide.",
-    ),
+    pages: RIVER_OF_NAMES_PAGES,
   },
   {
     id: "fantasy-clockwork-sparrow",
@@ -470,13 +383,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1e293b",
     coverTo: "#f59e0b",
     blurb: "A brass bird leads a thief to a city under the city.",
-    pages: pages(
-      "The sparrow ticked on Pip’s windowsill, then flew into the storm drain.",
-      "Pip followed into a marketplace of gears and quiet magic.",
-      "The bird’s key wound a gate that only honest thieves could open — irony intended.",
-      "Pip returned a stolen heirloom and gained a brass feather of passage.",
-      "Above ground, dawn looked newly engineered.",
-    ),
+    pages: CLOCKWORK_SPARROW_PAGES,
   },
   {
     id: "fantasy-salt-and-starlight",
@@ -488,13 +395,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#1e3a8a",
     coverTo: "#fde68a",
     blurb: "Sailors bargain with constellations for safe passage.",
-    pages: pages(
-      "Captain Ade poured salt into the sea and named a star. The mast leaned toward answer.",
-      "The constellation asked for a story instead of gold.",
-      "Ade told the truth of a mutiny forgiven. Stars brightened the reef path.",
-      "The crew slept under a sky that felt like a signed treaty.",
-      "By morning the salt circle was gone — payment accepted.",
-    ),
+    pages: SALT_AND_STARLIGHT_PAGES,
   },
   {
     id: "fantasy-library-wyrm",
@@ -506,13 +407,7 @@ export const SEED_BOOKS: BookItem[] = [
     coverFrom: "#365314",
     coverTo: "#a3e635",
     blurb: "A tiny dragon eats plot holes — and grows wise.",
-    pages: pages(
-      "Archivist Wren found a wyrmling chewing the unfinished chapter of a cursed epic.",
-      "Fed properly on contradictions, the dragon glowed and whispered repairs.",
-      "Together they stitched endings that respected every character.",
-      "The wyrm curled asleep on the returns desk, full and kind.",
-      "Wren posted a sign: “Please do not feed the plot holes.”",
-    ),
+    pages: LIBRARY_WYRM_PAGES,
   },
 
   // Kids (10)
