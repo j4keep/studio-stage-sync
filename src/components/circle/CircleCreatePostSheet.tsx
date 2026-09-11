@@ -1,14 +1,12 @@
 import { useRef, useState } from "react";
-import { Calendar, Camera, ImageIcon, Lock, Sparkles, Users, Video, X } from "lucide-react";
+import { Calendar, Camera, ImageIcon, Lock, Megaphone, Users, Video, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ACTIVITY_META,
   COMMUNITY_SUBTYPE_META,
-  EXCLUSIVE_VISIBILITY_OPTIONS,
   createCircleContent,
   uploadCircleContentMedia,
   type CircleActivityType,
-  type CircleContentVisibility,
   type CommunitySubtype,
 } from "@/lib/circle-content";
 
@@ -20,13 +18,14 @@ type Props = {
   onCreated: () => void;
 };
 
-type PostType = Exclude<CircleActivityType, "video">;
+/** Home create sheet — Exclusive posts live only under the Exclusive tab. */
+type PostType = Exclude<CircleActivityType, "video" | "exclusive">;
 
-const POST_TYPES: PostType[] = ["photo", "event", "community", "update", "exclusive"];
+const POST_TYPES: PostType[] = ["photo", "event", "community", "update"];
 
 /**
- * Create a Circle post — five typed forms.
- * Exclusive is optional monetization, not the default for every Circle.
+ * Create a Circle Home post (Photo/Video, Event, Community, Update).
+ * Exclusive content is posted from the Exclusive tab area instead.
  */
 export default function CircleCreatePostSheet({ open, onClose, circleId, userId, onCreated }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -35,7 +34,6 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
   const [body, setBody] = useState("");
   const [tags, setTags] = useState("");
   const [donationsEnabled, setDonationsEnabled] = useState(true);
-  const [exclusiveVisibility, setExclusiveVisibility] = useState<CircleContentVisibility>("circle_members");
   const [isPinned, setIsPinned] = useState(false);
   const [communitySubtype, setCommunitySubtype] = useState<CommunitySubtype>("question");
   const [pollOptions, setPollOptions] = useState(["", ""]);
@@ -60,7 +58,6 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
     setBody("");
     setTags("");
     setDonationsEnabled(true);
-    setExclusiveVisibility("circle_members");
     setIsPinned(false);
     setCommunitySubtype("question");
     setPollOptions(["", ""]);
@@ -112,7 +109,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
       toast({ title: "Write an update or add an image", variant: "destructive" });
       return;
     }
-    if ((postType === "photo" || postType === "exclusive") && !body.trim() && !file && !title.trim()) {
+    if ((postType === "photo") && !body.trim() && !file && !title.trim()) {
       toast({ title: "Add a caption or media", variant: "destructive" });
       return;
     }
@@ -133,8 +130,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
         if (mediaKind === "video" && postType === "photo") kind = "video";
       }
 
-      const visibility: CircleContentVisibility =
-        postType === "exclusive" ? exclusiveVisibility : "circle_members";
+      const visibility = "circle_members" as const;
 
       const tagList = tags
         .split(/[#,|\s]+/)
@@ -173,10 +169,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
 
       toast({
         title: "Posted to your Circle",
-        description:
-          postType === "exclusive"
-            ? "Visible to qualifying members only · not on the main feed"
-            : "Shows on Home · Circle only",
+        description: "Shows on Home · Circle only",
       });
       reset();
       onCreated();
@@ -193,7 +186,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
   };
 
   const IconFor = (id: PostType) =>
-    id === "event" ? Calendar : id === "community" ? Users : id === "exclusive" ? Sparkles : id === "photo" ? Camera : Lock;
+    id === "event" ? Calendar : id === "community" ? Users : id === "update" ? Megaphone : id === "photo" ? Camera : Lock;
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 sm:items-center">
@@ -231,7 +224,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
           </div>
 
           {/* Shared media picker — photo/video for most types; optional on update */}
-          {(postType === "photo" || postType === "exclusive" || postType === "event" || postType === "update" || postType === "community") && (
+          {(postType === "photo" || postType === "event" || postType === "update" || postType === "community") && (
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
@@ -293,7 +286,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
             className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none"
           />
 
-          {(postType === "photo" || postType === "exclusive") && (
+          {postType === "photo" && (
             <input
               value={tags}
               onChange={(e) => setTags(e.target.value)}
@@ -400,32 +393,6 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
               </div>
               <input type="checkbox" checked={isPinned} onChange={(e) => setIsPinned(e.target.checked)} className="h-5 w-5 accent-primary" />
             </label>
-          )}
-
-          {postType === "exclusive" && (
-            <div>
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Exclusive visibility
-              </p>
-              <div className="space-y-2">
-                {EXCLUSIVE_VISIBILITY_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setExclusiveVisibility(opt.id)}
-                    className={`flex w-full flex-col rounded-2xl border px-3 py-2.5 text-left ${
-                      exclusiveVisibility === opt.id ? "border-primary bg-primary/10" : "border-border bg-card"
-                    }`}
-                  >
-                    <span className="text-[13px] font-bold">{opt.label}</span>
-                    <span className="text-[11px] text-muted-foreground">{opt.hint}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[10px] text-muted-foreground">
-                Circle access (Public / Private / Paid) is set separately in Settings. Free Circles can still post paid-subscriber Exclusive posts.
-              </p>
-            </div>
           )}
 
           <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-3">

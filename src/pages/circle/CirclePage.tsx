@@ -13,9 +13,10 @@ import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
 import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 import CircleCreatePostSheet from "@/components/circle/CircleCreatePostSheet";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
+import CircleExclusiveArea from "@/components/circle/CircleExclusiveArea";
 import LiveCameraView from "@/components/feed/create/LiveCameraView";
 
-type Tab = "home" | "members" | "about";
+type Tab = "home" | "exclusive" | "members" | "about";
 
 export default function CirclePage() {
   const { id } = useParams<{ id: string }>();
@@ -59,15 +60,19 @@ export default function CirclePage() {
 
   // Realtime so members see "went live" / "ended" without refreshing — RLS already
   // limits this to circles you're actually approved in (or own).
+  // Home Go Live ignores Exclusive lives (those only surface under the Exclusive tab).
   useEffect(() => {
     if (!circle) return;
-    void getActiveLiveSession(circle.id).then(setLiveSession).catch(() => setLiveSession(null));
+    void getActiveLiveSession(circle.id, { exclusive: false }).then(setLiveSession).catch(() => setLiveSession(null));
     const channel = supabase
       .channel(`circle-live-${circle.id}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "circle_live_sessions", filter: `circle_id=eq.${circle.id}` },
-        () => void getActiveLiveSession(circle.id).then(setLiveSession).catch(() => setLiveSession(null)),
+        () =>
+          void getActiveLiveSession(circle.id, { exclusive: false })
+            .then(setLiveSession)
+            .catch(() => setLiveSession(null)),
       )
       .subscribe();
     return () => {
@@ -122,6 +127,7 @@ export default function CirclePage() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "home", label: "Home" },
+    { id: "exclusive", label: "Exclusive" },
     ...(isAdmin ? [{ id: "members" as Tab, label: "Members" }] : []),
     { id: "about", label: "About" },
   ];
@@ -170,43 +176,51 @@ export default function CirclePage() {
 
         {circle.description && <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">{circle.description}</p>}
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          {user?.id && <CircleJoinButton circle={circle} userId={user.id} membership={membership} isOwner={isOwner} onChanged={load} />}
+        {/* Home actions only — Exclusive has its own Post / Go Live inside that tab. */}
+        {tab === "home" && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {user?.id && <CircleJoinButton circle={circle} userId={user.id} membership={membership} isOwner={isOwner} onChanged={load} />}
 
-          {/* Creator actions sit beside Go Live — not in the viewer tabs. */}
-          {canCreate && (
-            <button
-              type="button"
-              onClick={() => setShowCreatePost(true)}
-              className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-black text-primary-foreground active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Post
-            </button>
-          )}
+            {canCreate && (
+              <button
+                type="button"
+                onClick={() => setShowCreatePost(true)}
+                className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-black text-primary-foreground active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Post
+              </button>
+            )}
 
-          {isOwner && !liveSession && (
-            <button
-              type="button"
-              onClick={handleGoLive}
-              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
-            >
-              <Radio className="h-3.5 w-3.5" />
-              Go Live
-            </button>
-          )}
+            {isOwner && !liveSession && (
+              <button
+                type="button"
+                onClick={handleGoLive}
+                className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
+              >
+                <Radio className="h-3.5 w-3.5" />
+                Go Live
+              </button>
+            )}
 
-          {liveSession && isApprovedMember && (
-            <button
-              type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}/live`)}
-              className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-              {liveSession.host_user_id === user?.id ? "You're Live" : "Watch Live"}
-            </button>
-          )}
-        </div>
+            {liveSession && isApprovedMember && (
+              <button
+                type="button"
+                onClick={() => navigate(`/circle/c/${circle.id}/live`)}
+                className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                {liveSession.host_user_id === user?.id ? "You're Live" : "Watch Live"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {tab !== "home" && user?.id && (
+          <div className="mt-3">
+            <CircleJoinButton circle={circle} userId={user.id} membership={membership} isOwner={isOwner} onChanged={load} />
+          </div>
+        )}
       </div>
 
       <div className="mt-4 flex gap-1 border-b border-border px-4">
@@ -261,8 +275,19 @@ export default function CirclePage() {
         </>
       )}
 
+      {tab === "exclusive" && (
+        <CircleExclusiveArea
+          circle={circle}
+          membership={membership}
+          userId={user?.id}
+          isOwner={isOwner}
+          canCreate={canCreate}
+          onCircleChanged={load}
+        />
+      )}
+
       {!isApprovedMember && circle.is_private ? (
-        tab !== "home" && (
+        tab !== "home" && tab !== "exclusive" && (
           <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
             <Lock className="h-9 w-9 text-muted-foreground" />
             <h2 className="text-base font-bold">This is a private Circle</h2>

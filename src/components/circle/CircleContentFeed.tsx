@@ -7,6 +7,7 @@ type Props = {
   userId?: string;
   canInteract: boolean;
   kind?: CircleContentKind;
+  exclusiveOnly?: boolean;
   refreshKey?: number;
   emptyLabel?: string;
 };
@@ -16,16 +17,17 @@ export default function CircleContentFeed({
   userId,
   canInteract,
   kind,
+  exclusiveOnly = false,
   refreshKey = 0,
   emptyLabel = "Nothing here yet.",
 }: Props) {
   const [items, setItems] = useState<CircleContent[] | null>(null);
 
   const load = useCallback(() => {
-    void listCircleContents(circleId, { kind, userId })
+    void listCircleContents(circleId, { kind, userId, exclusiveOnly })
       .then(setItems)
       .catch(() => setItems([]));
-  }, [circleId, kind, userId]);
+  }, [circleId, kind, userId, exclusiveOnly]);
 
   useEffect(() => {
     load();

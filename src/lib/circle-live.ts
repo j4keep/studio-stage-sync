@@ -15,6 +15,8 @@ export type CircleLiveSession = {
   status: "live" | "ended";
   /** Prep picker: Live (solo host) | Multi (motor / guest grid) | Virtual. */
   layout_mode?: CircleLiveLayoutMode;
+  /** True when started from the Circle Exclusive area (gated separately). */
+  is_exclusive?: boolean;
   started_at: string;
   ended_at: string | null;
 };
@@ -70,6 +72,7 @@ export async function startCircleLive(
   circleId: string | null,
   hostUserId: string,
   layoutMode: CircleLiveLayoutMode = "live",
+  opts?: { isExclusive?: boolean },
 ): Promise<CircleLiveSession> {
   // One live at a time per host — kill ghost sessions left behind by a closed tab / white screen.
   await endActiveLivesForHost(hostUserId);
@@ -77,6 +80,7 @@ export async function startCircleLive(
   const room = `${circleId ? "circle" : "user"}_${circleId ?? hostUserId}_${Date.now()}`;
   const mode: CircleLiveLayoutMode =
     layoutMode === "multi" || layoutMode === "virtual" ? layoutMode : "live";
+  const isExclusive = Boolean(opts?.isExclusive);
   const base = {
     circle_id: circleId,
     host_user_id: hostUserId,
@@ -84,35 +88,64 @@ export async function startCircleLive(
     status: "live" as const,
   };
 
-  // Prefer writing layout_mode; if the column isn't migrated yet, fall back so Go Live
-  // still works and Multi is recovered from sessionStorage prep looks.
+  // Prefer writing layout_mode + is_exclusive; fall back column-by-column if not migrated.
   let { data, error } = await sb
     .from("circle_live_sessions")
-    .insert({ ...base, layout_mode: mode })
+    .insert({ ...base, layout_mode: mode, is_exclusive: isExclusive })
     .select("*")
     .single();
+
+  if (error && /is_exclusive/i.test(error.message || "")) {
+    ({ data, error } = await sb
+      .from("circle_live_sessions")
+      .insert({ ...base, layout_mode: mode })
+      .select("*")
+      .single());
+  }
 
   if (error && /layout_mode/i.test(error.message || "")) {
     ({ data, error } = await sb.from("circle_live_sessions").insert(base).select("*").single());
     if (!error && data) {
-      return { ...(data as CircleLiveSession), layout_mode: mode };
+      return { ...(data as CircleLiveSession), layout_mode: mode, is_exclusive: isExclusive };
     }
   }
   if (error) throw error;
-  return data as CircleLiveSession;
+  return { ...(data as CircleLiveSession), is_exclusive: isExclusive };
 }
 
-export async function getActiveLiveSession(circleId: string): Promise<CircleLiveSession | null> {
-  const { data, error } = await sb
+export async function getActiveLiveSession(
+  circleId: string,
+  opts?: { exclusive?: boolean },
+): Promise<CircleLiveSession | null> {
+  let q = sb
     .from("circle_live_sessions")
     .select("*")
     .eq("circle_id", circleId)
     .eq("status", "live")
     .order("started_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .limit(1);
+
+  // Prefer filtering by is_exclusive when the column exists.
+  if (opts?.exclusive === true) q = q.eq("is_exclusive", true);
+  if (opts?.exclusive === false) q = q.or("is_exclusive.eq.false,is_exclusive.is.null");
+
+  let { data, error } = await q.maybeSingle();
+  if (error && /is_exclusive/i.test(error.message || "")) {
+    ({ data, error } = await sb
+      .from("circle_live_sessions")
+      .select("*")
+      .eq("circle_id", circleId)
+      .eq("status", "live")
+      .order("started_at", { ascending: false })
+      .limit(1)
+      .maybeSingle());
+  }
   if (error) throw error;
-  return data as CircleLiveSession | null;
+  const row = data as CircleLiveSession | null;
+  if (!row) return null;
+  if (opts?.exclusive === true && row.is_exclusive === false) return null;
+  if (opts?.exclusive === false && row.is_exclusive === true) return null;
+  return row;
 }
 
 export async function getLiveSession(sessionId: string): Promise<CircleLiveSession | null> {
