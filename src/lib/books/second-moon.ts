@@ -6,1069 +6,343 @@ import type { BookPage } from "@/lib/books-catalog";
  */
 export const SECOND_MOON_PAGES: BookPage[] = [
   {
-    chapter: "Chapter 1 — Two Shadows",
-    text: `At breakfast, the sky held two moons.
+    chapter: "Chapter 1 — The New Moon",
+    text: `The second moon appeared over Ashcombe Elementary sometime between the six o'clock news and the seven o'clock rerun, and by morning the entire planet had an opinion about it before anyone had a fact. Amira Nasser learned about it the way most of her third-grade class did: not from a headline, but from the sky itself, pale and small and undeniably new, hanging beside the familiar moon like a shy understudy who had wandered onstage a beat too early. She stood in her kitchen with coffee going cold, watching two moons through a window that had only ever needed to frame one, and felt the specific vertigo of a fact too large to argue with and too strange to fully believe.
 
-Dr. Amira Sen saw the old one first, pale above the apartment roofs in its ordinary surrender to morning. The second hung lower and farther east, smaller but impossibly distinct, its surface smooth as unglazed porcelain. It had arrived without fire, warning, or permission.
+By the time she reached her classroom, the science had already outpaced her: astronomers confirmed the object was real, roughly a fifth the mass of Earth's original moon, settled into a stable orbit with no detectable trajectory of arrival, as if it had simply always been there and the universe had only just remembered to mention it. Governments convened. Markets wobbled. Cable news filled with competing theories, none of them agreeing on anything except that nobody understood what had actually happened.
 
-Her daughter Nadi came onto the balcony carrying toast.
-
-“Tell me that is an advertising projection.”
-
-“No projection reaches behind cloud.”
-
-A gull crossed the white disk and briefly cast two shadows on the neighboring wall.
-
-Every phone in the city began chiming. Observatory alerts contradicted defense alerts. News anchors repeated that there was no immediate danger while displaying a banner reading GLOBAL CELESTIAL EMERGENCY. Tidal stations reported no measurable change. Radar insisted the object was solid, three hundred kilometers wide, and occupying an orbit that should have required catastrophic arrival energy.
-
-Amira taught physics at Calder Secondary and consulted occasionally for the national observatory. By eight, both institutions wanted her. The observatory sent a car. The school reported students gathering in the yard and teachers unable to calm them.
-
-She chose the school.
-
-“Of course,” Nadi said.
-
-The quiet bitterness was older than the moon. Nadi had spent her childhood sharing Amira with classrooms, committees, and the elegant demands of distant stars.
-
-“Come with me.”
-
-“I have my own school.”
-
-Amira almost reminded her that schools were closed. Instead she watched Nadi stare at the new object.
-
-“Do you see anything on it?” Nadi asked.
-
-“Craters? No. It has no visible features.”
-
-Nadi’s face changed. “Nothing else?”
-
-Before Amira could answer, a message arrived from Calder’s head teacher:
-
-THE CHILDREN SAY THERE ARE NUMBERS.
-
-Amira looked back at the second moon. Its white surface remained blank.
-
-Beside her, Nadi whispered, “Seventeen days, fourteen hours, six minutes.”
-
-Then the number changed.`,
+Her students, when they filed in that morning, seemed entirely unbothered by the scientific uncertainty consuming the adult world. Most drew it in the margins of their worksheets, a second small circle beside the first, casual as weather. It was only near lunchtime that Amira noticed something stranger than the moon itself: a boy named Dev, quiet and careful, staring out the window at nothing Amira could see, mouthing numbers under his breath like a countdown only he could hear.`,
   },
   {
-    chapter: "Chapter 1 — Two Shadows",
-    text: `Calder’s yard was full of upturned faces.
+    chapter: "Chapter 1 — The New Moon",
+    text: `"What are you counting?" Amira asked, crouching beside his desk during the after-lunch reading block, keeping her voice light the way she'd learned to keep it light around anything that might otherwise feel like an accusation.
 
-Students stood on benches, held phones toward the sky, and argued over a countdown no adult could see. The youngest read seventeen days and fourteen hours. Older students saw missing digits, blurred symbols, or nothing. Every camera showed a plain white disk.
+Dev looked at her with the particular seriousness of an eight-year-old deciding whether an adult had earned the truth. "The numbers by the moon," he said. "The new one. They're counting down."
 
-Amira found her Year Seven class near the bicycle shelter. Lio Alvarez had written numbers down both arms because paper, he said, could be taken. Safiya Omondi was comparing the countdown with her watch. Jun Park sat on the asphalt, eyes closed.
+"You can see numbers by the moon?"
 
-“It is louder when I look,” Jun said.
+"Not by it. Around it. Like it's writing on the sky." He said it as simple fact, the way he might describe a cloud shaped like a dog, entirely unbothered by how impossible it sounded spoken aloud in a classroom that smelled like glue sticks and orange peels.
 
-“Numbers cannot be loud,” a teacher snapped.
+Amira had taught long enough to know the difference between a child performing imagination for attention and a child describing something they genuinely believed they were experiencing. Dev's account carried none of the theatrical flourish of the first kind. It had the flat, slightly bored certainty of someone reporting the weather.
 
-Amira crouched beside him. “Some things arrive in more than one sense. Tell me what loud means.”
+By the end of the day, four more students in her class of twenty-two had mentioned some version of the same thing, unprompted, in the scattered way children mention anything true and uninteresting to them: numbers, or symbols, or "moon writing," visible only when they looked at the new moon directly, invisible the moment an adult looked with them. None of the five children had discussed it with each other beforehand. Amira checked, carefully, twice.
 
-“Like waiting for someone to knock.”
-
-The answer entered her professionally and personally at once.
-
-She asked the students to draw exactly what they saw. The countdown appeared not as familiar numerals but as shapes each child somehow understood: hooked lines, nested circles, a mark like two open hands. When translated, every drawing agreed to the second.
-
-Nadi arrived twenty minutes later despite insisting she would not. At seventeen, she saw the symbols faintly, as if through moving water.
-
-“It is getting harder,” she said.
-
-Around the world, similar reports filled the networks. Children in Lagos, Mumbai, Reykjavík, and stations beneath Antarctica saw the same countdown. Most adults saw nothing. Neurologists proposed retinal development, visual cortex plasticity, mass suggestion. Religious leaders proposed judgment. Markets proposed several profitable combinations of both.
-
-At noon, government officers entered the yard and requested that the children surrender their drawings.
-
-Lio folded his arms over his notebook. “Are we in trouble?”
-
-“No,” the officer said. “We need to understand what you are seeing.”
-
-“So do we.”
-
-Amira stood between them. “Copy the pages. Originals remain with the students.”
-
-The officer regarded her identification badge, then the watching cameras.
-
-“For now,” he said.
-
-Above them, the second moon kept time no instrument could detect.`,
+She went home that night and did not sleep, staring at both moons through her window, seeing nothing but two ordinary, silent shapes in an ordinary sky.`,
   },
   {
-    chapter: "Chapter 1 — Two Shadows",
-    text: `By evening, Calder’s gymnasium had become a field laboratory. Children lay beneath scanners while adults asked whether the symbols frightened them, commanded them, or resembled dreams. The answers varied. The number did not.
+    chapter: "Chapter 1 — The New Moon",
+    text: `Amira called her sister Leila, an astrophysicist three time zones away who had spent the last eighteen hours fielding calls from every relative she had ever met, and asked the question she'd been turning over since Dev first spoke.
 
-Amira examined Nadi’s brain imaging beside Dr. Elias Vale from the observatory. Activity flared between visual processing and regions associated with language prediction.
+"Is there any scientific reason a person could see something on the moon that a camera couldn't capture?"
 
-“They are not seeing light,” Vale said. “They are anticipating meaning.”
+Leila's laugh carried the specific exhaustion of someone who had already answered several versions of this question today. "You mean besides wishful thinking? No. If there were visible markings, telescopes would have caught them in the first six hours. We've imaged that thing from every angle NASA owns. It's smooth. No writing, no structure, nothing but albedo variation consistent with regolith."
 
-“That sounds poetic for a scan.”
+"What if only children could see it?"
 
-“It sounds impossible for one.”
+The silence on the line lasted long enough that Amira thought the call had dropped. "That's not a scientific question, Amira. That's a fairy tale."
 
-Nadi emerged rubbing conductive paste from her hair. “The countdown has a border now.”
+"I know how it sounds."
 
-She drew a long curve beneath the symbols. Lio added three dots. Safiya drew a second curve above. No child had seen the whole frame, but when Amira overlaid their pages, the marks formed a shape like an eye—or an orbit.
+"Then why are you asking it seriously?"
 
-Her phone rang. Defense Minister Haldane appeared on the secure line.
+Amira thought of Dev's flat, bored certainty, five children describing the same invisible countdown without comparing notes, and found she didn't have an answer that would satisfy her sister's discipline, only one that satisfied her own gut. "Because I've taught long enough to know when a kid is lying to get attention, and none of today felt like that."
 
-“Dr. Sen, you are assigned to the Second Object Working Group effective immediately.”
+Leila didn't dismiss her outright, which from a scientist as rigorous as her sister felt like its own kind of concession. "Write down exactly what they say. Word for word. If it's nothing, we'll have wasted an evening. If it's not nothing, you'll want the record."
 
-“I did not agree.”
-
-“The order is compulsory.”
-
-He wanted the students transferred to an airbase for controlled study. Amira refused. Haldane reminded her that nobody understood whether the signal itself was harmful.
-
-“Then moving frightened children behind military fences will improve the science?”
-
-Nadi heard enough to turn away.
-
-Amira negotiated until Calder remained open under medical supervision, though armed guards took positions at the gates. She called it a victory because adults often renamed partial surrender to keep moving.
-
-After midnight, she and Nadi walked home beneath the two moons. The old one had risen bright, pocked with familiar seas. The new one remained smooth.
-
-“You believed them quickly,” Nadi said.
-
-“The observations agreed.”
-
-“You believe data quickly. People take longer.”
-
-Amira knew the sentence was not about the sky.
-
-Before she found an answer, Nadi stopped walking.
-
-The countdown had changed.
-
-Around the time marks, children now saw four new symbols.
-
-Nadi translated without knowing how:
-
-WHEN ZERO COMES, ANSWER.`,
+Amira began writing before she'd even hung up the phone.`,
   },
   {
-    chapter: "Chapter 2 — The Children’s Grammar",
-    text: `The world asked what answer meant and directed the question toward children already tired of explaining what adults could not see.
+    chapter: "Chapter 2 — What the Children See",
+    text: `Over the following week, Amira ran what she privately called, with some embarrassment, her investigation—though it amounted to nothing more sophisticated than listening carefully and writing everything down. She asked each of the five children, separately, to describe what they saw without leading them toward any particular answer, and compiled their accounts into a single notebook that grew heavier with each unsettling point of agreement.
 
-At Calder, Amira banned interrogations before breakfast. She arranged the gym into tables with clay, blocks, musical instruments, maps, and paper. “If the signal uses prediction,” she told the Working Group, “we should observe how meaning develops during play, not force it through adult vocabulary.”
+All five described numbers, though none used the word countdown until Amira asked directly whether the numbers seemed to be changing. All five said yes. All five, independently, estimated the numbers were getting smaller, though none could read them precisely enough to say by how much or toward what. Dev thought the number was around eleven. A quiet, freckled girl named Bea guessed nine. A boy named Marcus, usually the least reliable narrator in any classroom disagreement, described it not as digits at all but as "dots, like dominoes," which under gentle questioning resolved into a description that could plausibly mean the same countdown rendered differently by a seven-year-old's vocabulary.
 
-Haldane disliked the word play. It sounded insufficiently weaponized.
+None of the affected children were related. None sat near each other. None, as far as Amira could determine through careful, non-alarming questions to their parents, shared any unusual media consumption that might explain a copied idea.
 
-The children treated the work seriously enough to become silly. They discovered the orbit symbol changed when viewed through crossed fingers. A melody tapped against a desk made one border brighten. Jun built nested rings from hoops and stood in the center, saying the moon felt less loud there.
-
-Lio arranged stones into houses. Safiya moved one outside the circle.
-
-“That is not right,” she said.
-
-“Why?”
-
-“It is asking whether this one belongs.”
-
-Across hundreds of participating schools, the same pattern emerged. The symbols did not form a sentence. They behaved like rules to a game. One mark meant self, another group, another distance. Their combinations asked a question with no direct adult equivalent:
-
-Are you one alone, or one among?
-
-Amira presented the finding to the Working Group by video. Scientists leaned forward. Diplomats objected that no child could represent Earth. Military advisers asked whether one among implied a fleet.
-
-“It might imply community,” Amira said.
-
-“That is an assumption,” Haldane replied.
-
-“So is invasion.”
-
-After the meeting, she found Nadi in the empty art room trying to copy the symbols. Her lines had become uncertain.
-
-“I lost the hours,” Nadi said. “I can see days and minutes, but the middle is gone.”
-
-The signal was fading as her visual cortex matured.
-
-Amira reached for her.
-
-Nadi pulled away. “Do not study my face right now.”
-
-Amira dropped her hand.
-
-Motherhood, she thought, required learning when attention became another form of taking.`,
+What united them, she began to realize with a chill she couldn't entirely place, was age. Every child who reported seeing anything at all was younger than ten. Every child older than eleven, including her own fifth-grade nephew, looked at the same sky and saw nothing but an ordinary, silent, second moon.`,
   },
   {
-    chapter: "Chapter 2 — The Children’s Grammar",
-    text: `A week after the second moon arrived, tides began to shift.
+    chapter: "Chapter 2 — What the Children See",
+    text: `Amira brought her notebook to Principal Okonjo with the specific dread of someone about to sound, at best, eccentric and at worst, unfit to continue teaching young children. Okonjo listened without interrupting, flipping slowly through pages of dated, careful transcription, and did not laugh, which Amira found almost more unsettling than if he had.
 
-Not because of mass—the object appeared to bend gravity around itself—but because whales altered migration, birds flew at wrong hours, and millions of children woke at the same time from dreams of falling upward. The world’s rhythms responded even when instruments did not.
+"You understand how this sounds," he said finally.
 
-Panic followed ordinary channels. Schools closed in six countries. Parents covered windows. Online preachers sold lead-lined sleep tents. In one city, adults attacked an observatory after a rumor claimed scientists had summoned the object.
+"I understand exactly how it sounds. I've been arguing with myself about it for a week."
 
-Calder remained open because its students refused to leave.
+"And you still brought it to me instead of burying it."
 
-They received messages from children worldwide, drawings translated through software and human volunteers. The combined grammar grew. At the center of every version appeared an empty shape.
+"Because five children who don't know each other described the same impossible thing independently, and I don't have a better explanation than the obvious one, which is that they're actually seeing something."
 
-“A place for the answer,” Lio said.
+Okonjo closed the notebook and sat with it a long moment before answering. "My daughter's seven. She mentioned something about moon numbers three nights ago. I told her it was a dream." He said it quietly, almost reluctantly, as though admitting it cost him something. "I didn't write any of it down."
 
-“What answer?” Haldane demanded during his visit.
+"Do you remember what number she said?"
 
-Safiya looked at him with weary dislike. “We do not know yet.”
+"Ten. Maybe nine. I wasn't really listening."
 
-The minister paced among their tables. His security detail carried cases designed to shield electronics from electromagnetic attack. “In ten days, that object may act. Waiting is not a strategy.”
+Amira felt something settle into place that was neither relief nor fear but some cold third thing between them. "That's six children now. All under ten. All describing a countdown nobody adult can see."
 
-The defense coalition had developed one: strike the second moon with three kinetic vehicles forty-eight hours before zero. The impact would test its material and possibly alter its orbit.
-
-Vale showed Amira the classified models. If the object behaved like ordinary matter, debris could enter Earth’s atmosphere. If it did not, nobody knew what the strike would communicate.
-
-“Haldane believes action is safer than helplessness,” Vale said.
-
-“Action and control are not the same.”
-
-He smiled sadly. “Tell any government.”
-
-Nadi overheard and posted the strike plan to the student network. Within an hour, children in thirty countries walked out of their homes carrying signs that said DO NOT ANSWER A QUESTION WITH A WEAPON.
-
-Amira was furious.
-
-“You leaked classified material.”
-
-“You were going to let them launch.”
-
-“I was trying to stop it without making you a target.”
-
-Nadi’s laugh was sharp. “You cannot protect me by excluding me from the thing happening inside my head.”
-
-The truth left no dignified place for Amira to stand.`,
+Okonjo exhaled slowly, the particular exhale of an administrator recognizing that his job was about to become significantly stranger than it had been that morning. "Write up everything. Formally. I'll make some calls I really did not expect to be making this month."`,
   },
   {
-    chapter: "Chapter 2 — The Children’s Grammar",
-    text: `Security officers came for Nadi before dawn.
+    chapter: "Chapter 2 — What the Children See",
+    text: `The calls Okonjo made led, within three days, to a research team from the state university's child development department, and within a week, to a quieter, more careful set of visitors who introduced themselves only as "consulting with several federal agencies," declining to specify which ones with the particular vagueness Amira associated with people who had been specifically trained to be vague.
 
-Amira met them in the apartment corridor wearing slippers and an observatory badge. She demanded a warrant. They presented a national-emergency order authorizing “protective interview.”
+They tested the children gently, without the theatrical alarm Amira had half feared: simple drawing exercises, careful non-leading interviews, controlled observation sessions where children were asked to describe the new moon under conditions researchers could document precisely. The results, delivered to Amira in a debrief she wasn't entirely sure she'd been cleared to receive, were as unsettling as her own notebook had suggested: of forty-one children under ten tested across three schools in the district, thirty-three reported seeing some version of numeric or symbolic content associated specifically with the second moon. Of thirty-one children eleven and older tested under identical conditions, none did.
 
-Neighbors opened doors. Phones appeared. Nadi stepped forward before the officers could touch her.
+"There's a cutoff," said Dr. Farrah Kessler, the research psychologist leading the local assessment, reviewing the data with the careful neutrality of someone determined not to editorialize before she had to. "Somewhere around age ten or eleven, whatever this is stops being perceptible. We don't know why. We don't know if it's neurological, developmental, or something else entirely."
 
-“I’ll go if my mother comes.”
+"Something else entirely meaning what?" Amira asked.
 
-At the airbase, Haldane questioned her across a steel table. He was not cruel. Cruelty would have made him simpler. He spoke gently about responsibility, classified risk, and the millions who might die if adversaries learned launch details.
-
-Nadi said, “The whole planet is the adversary in your sentence.”
-
-Amira concealed pride because this was not a debate Nadi should have needed to win.
-
-Haldane played satellite footage of the second moon. For the first time its blank surface moved. A dark line opened along the equator, then closed.
-
-“We detected a directed energy pulse,” he said. “It mapped every active weapon platform on Earth.”
-
-“Perhaps because you aimed at it,” Amira replied.
-
-“Or perhaps it is choosing targets.”
-
-He would delay Nadi’s charges if Amira joined the launch assessment and persuaded students to suspend public demonstrations. The offer was coercive, practical, and wrapped in concern.
-
-Nadi answered first. “No.”
-
-Amira surprised herself. “I will join the assessment. I will not silence them.”
-
-Haldane let Nadi go because detention had already made her famous. Outside the base, hundreds of young people waited beyond the fence. Some saw the countdown. Older ones carried signs for those who did.
-
-In the car, Nadi’s hands began shaking.
-
-“I thought I was brave in there.”
-
-“You were.”
-
-“Then why am I scared now?”
-
-“Because bravery is not a feeling. It is what people call you after they watch you be frightened in public.”
-
-Nadi leaned her head against Amira’s shoulder, a childhood gesture returning without permission.
-
-Above the highway, both moons were visible in daylight.
-
-The countdown showed nine days.
-
-The new moon had begun to turn.`,
+Kessler didn't answer that question directly. She only looked, for a long moment, toward the window, where the second moon sat pale and silent in the afternoon sky, and said, "We're trying not to speculate publicly yet. Off the record, I think your students might be the only reliable instruments we currently have."`,
   },
   {
-    chapter: "Chapter 3 — Recess Protocol",
-    text: `The breakthrough came from a six-year-old in Recife who refused to draw within the lines.
+    chapter: "Chapter 3 — The Countdown Confirmed",
+    text: `The federal team's careful discretion lasted exactly eleven days before a leaked internal memo, published by a science journalist with more courage than patience, confirmed to the public what Amira's classroom had already quietly suspected: children under a certain age were reporting a consistent, decreasing numeric sequence associated with the second moon, and the number, cross-referenced across hundreds of independent reports gathered discreetly across multiple countries, appeared to be converging on the same value regardless of language, culture, or geography.
 
-Every research team had treated the empty shape as a space to fill. The child, Luiza, covered the paper around it with blue spirals and left the center untouched. When her teacher asked why, she said, “Home is not inside one place.”
+The number, as of the leak, stood at six.
 
-Children at Calder understood immediately. They carried their work into the yard, where chalk offered more room than laboratory paper. Safiya drew the orbit sign around a map of the playground. Lio added paths from the school to apartments, parks, the hospital, the sea. Jun lay at the center and listened.
+Public reaction fractured immediately along predictable lines. Some dismissed it as mass childhood suggestion, a viral idea spread faster among children than adults typically credited, requiring no supernatural explanation beyond the ordinary contagion of playground rumor. Others treated it as confirmation of the worst possible interpretation: an alien countdown to something catastrophic, six days from a public panic that had, by the memo's release, already begun eating into the number itself.
 
-The signal brightened for every child watching.
+Amira found herself fielding calls from parents demanding she confirm or deny theories she had no authority to confirm or deny, while quietly, privately, checking in with Dev and Bea and Marcus each morning with the same careful, non-alarming question she'd started with. The number continued falling in their independent, unprompted reports, matching the leaked federal data almost exactly, day for day.
 
-They were not being asked to name a leader or location. They were being asked to describe belonging.
+"Six," Dev told her on a Tuesday morning, drawing it absently in the corner of his math worksheet without looking up. "It was seven yesterday."
 
-Amira contacted participating schools. Within hours, playgrounds across the planet filled with maps unlike political maps. Children drew kitchens, rivers, ancestors, migration routes, pets, graves, and imaginary countries. A settlement of climate refugees drew three previous homes connected to the tent city where they lived. Children aboard an orbital station drew Earth and station inside the same looping line.
+"Does it feel scary?" Amira asked, the question she'd been most afraid to ask directly since the whole thing started.
 
-The empty center remained.
-
-“It means there is room,” Jun said.
-
-“For what?”
-
-“For someone not here yet.”
-
-Amira built a translation with Vale. The answer was not a word but a distributed pattern. At zero, the object expected Earth to create the shape at planetary scale, using light, radio, movement—whatever a civilization could coordinate.
-
-Haldane saw an opportunity. “A response beacon could reveal our military capacity.”
-
-“A playground already revealed our capacity,” Amira said. “We make maps of care.”
-
-He considered this naive. She considered his imagination armored.
-
-The countdown fell below eight days.
-
-Nadi could now see only the outer border. She copied younger children’s drawings into a public archive, working until her fingers cramped.
-
-“When it goes completely,” she told Amira, “I need proof we did not invent it.”
-
-Amira understood. Adulthood often began with losing access to something and being told it had never been real.`,
+Dev considered this with the same flat seriousness he brought to everything. "No. It doesn't feel like anything bad. It just feels like waiting for a bus that's actually coming, instead of one you're not sure is real."`,
   },
   {
-    chapter: "Chapter 3 — Recess Protocol",
-    text: `The planetary answer became known as Recess Protocol, a name Haldane detested and therefore could not prevent.
+    chapter: "Chapter 3 — The Countdown Confirmed",
+    text: `Kessler's team, now operating under a hastily assembled multinational research coordination that Amira suspected existed mostly to prevent six separate governments from independently panicking in six separate, contradictory directions, began treating the classroom itself as a kind of instrument, asking Amira to maintain her careful documentation with a rigor she'd never imagined applying to elementary school observations.
 
-At zero, city lights would trace local belonging maps. Radios would transmit the orbit rhythm. People without electricity would carry mirrors, lanterns, reflective cloth, or simply gather along drawn lines. Satellites would photograph the whole.
+"You're the control group's most reliable observer," Kessler told her, only half joking. "You noticed this before any adult with a research budget did."
 
-No central design could contain every place, so children’s councils selected common rules: no borders drawn as walls; no person placed outside the pattern; an empty space left for the unknown.
+"I noticed a kid muttering numbers at a window. That's not exactly a controlled study."
 
-Adults immediately complicated them. Governments wanted national outlines visible. Corporations offered branded lights. Religious coalitions argued over symbols. The children said no with varying degrees of politeness.
+"It's more than most of us managed. Half my colleagues spent the first week explaining why children couldn't possibly be perceiving anything real, instead of just asking the children."
 
-Amira became their translator in public meetings. The role brought praise and accusations of manipulation. She began each interview by directing questions to students, but broadcasters still quoted her.
+Amira found herself, over the following days, becoming an unofficial liaison between her students and a research apparatus that seemed, despite its resources, oddly unequipped for the specific task of listening carefully to eight-year-olds without either patronizing them or frightening them into performing an answer they thought adults wanted.
 
-At home, Nadi said, “You like being necessary.”
+"They keep asking Dev to describe the numbers in more technical language than he has," Amira told Kessler, after one session left the boy anxious and overexplained in a way she hadn't seen from him before. "He's eight. He doesn't have the vocabulary for whatever your team is hoping to hear, and pushing him toward it is just going to make him perform confidence he doesn't feel."
 
-Amira started to deny it, then stopped.
+Kessler looked genuinely chastened. "You're right. We keep forgetting the instrument is a person."
 
-After Nadi’s father died in a construction accident twelve years earlier, necessity had saved Amira. Meals, school, work, forms: every task offered a narrow bridge over grief. She had mistaken crossing bridges for knowing where Nadi needed to go.
-
-“Yes,” she said. “I do.”
-
-Nadi looked surprised.
-
-“When people need me,” Amira continued, “I know how not to lose them.”
-
-“That has never worked.”
-
-They sat on the kitchen floor where two moonshadows crossed the tiles. Amira told her daughter about the morning of her father’s death: the unfinished coffee, the officer removing his hat, the way Amira answered work email that afternoon because gravity seemed unreliable.
-
-Nadi listened. “I thought you did not love him enough.”
-
-“I loved him so much I became useful to avoid understanding it.”
-
-Outside, people tested the Recess lights. Blue lines climbed apartment walls and crossed streets.
-
-Nadi rested her head on Amira’s shoulder.
-
-For once, neither of them turned the moment into work.`,
+"He's not an instrument," Amira said. "He's a kid who happens to be able to see something the rest of us can't. Those aren't the same thing, and I need your team to treat them differently."`,
   },
   {
-    chapter: "Chapter 3 — Recess Protocol",
-    text: `Five days before zero, the second moon eclipsed the sun.
+    chapter: "Chapter 3 — The Countdown Confirmed",
+    text: `By the time the countdown reached four, Ashcombe had become, against Amira's every instinct toward normalcy, a site of quiet international attention—not the media circus she'd feared, since Okonjo and Kessler had both worked hard to keep the school itself out of the wider frenzy, but a steady, careful stream of researchers, translators, and eventually, a soft-spoken woman who introduced herself simply as Odalys and declined, with practiced pleasantness, to specify which government or agency she represented.
 
-The transit had not been predicted. The object changed orbit without acceleration, sliding across daylight until its white disk became a perfect black circle. Around it, the sun burned like a ring.
+Odalys asked to observe a session with Dev directly, and Amira, wary but out of practical options for refusing without escalating a fight she'd likely lose, agreed on the condition that she remain in the room throughout.
 
-Every child saw a new image within the darkness: countless points joined by delicate lines, a net thrown across impossible distance.
+"What do you think is going to happen at zero?" Odalys asked Dev gently, in a tone Amira noted was careful not to sound like an interrogation, though the room's tension suggested everyone present understood exactly how much weight the question carried.
 
-Jun collapsed in Calder’s yard.
+Dev thought about it with his usual unhurried seriousness. "I don't think anything bad. I think it's like when you're waiting for someone to knock on the door. The knocking isn't scary. It's just knocking."
 
-Amira reached him first. His eyes were open, tracking something above the eclipse. He whispered numbers too large for language. At the hospital, scans showed no damage, but children worldwide reported dizziness and a sense of “too many rooms.”
+"Do you think someone's coming?"
 
-The image was a map.
+"I think something's finishing," Dev said, in a tone that made the whole room go very quiet. "Not starting. Finishing. Like the moon's been getting ready this whole time, and the numbers are just it telling us how much longer until it's done getting ready."
 
-Vale compared the children’s drawings against deep-space surveys. Some points aligned with stars. Others occupied darkness between galaxies. The lines did not show travel routes but communication delays, messages crossing centuries.
-
-“A census,” he said. “Or an archive.”
-
-The second moon might be a relay carrying evidence of civilizations separated by time. Its question—one alone, or one among—had already been answered elsewhere.
-
-Haldane focused on the pulse that caused children to collapse. He moved the strike launch forward. Impact in thirty-six hours.
-
-Amira argued the pulse was data, not attack.
-
-“Intent does not reverse harm,” he said.
-
-He was right about that. Seven children remained unconscious. Parents who once supported Recess demanded protection. The moral clarity of playground signs fractured beneath hospital lights.
-
-At Jun’s bedside, his mother asked Amira, “Would you risk your child?”
-
-Nadi sat across the room, hearing.
-
-“No,” Amira said. “And yes. Every choice risks them now. The strike too.”
-
-It was an inadequate answer because the situation was inadequate.
-
-Jun woke after eleven hours. He asked for paper and drew one point in the stellar net brighter than the others.
-
-“That one stopped answering,” he said.
-
-“How do you know?”
-
-“The moon is carrying its last hello.”
-
-The room went quiet.
-
-The countdown continued, indifferent to whether grief made people wiser or merely afraid.`,
+Odalys wrote something down without comment, but Amira, watching her carefully, saw the exact moment the woman's practiced neutrality slipped into something closer to real unease.`,
   },
   {
-    chapter: "Chapter 4 — The Weapon Above",
-    text: `Amira entered the underground launch center under protest and security escort. Thirty nations had contributed to the strike, ensuring nobody could be blamed alone. Three uncrewed vehicles circled Earth carrying dense tungsten impactors. Once final authorization was distributed, no single government could recall them.
+    chapter: "Chapter 4 — Playground Chalk",
+    text: `It was Bea, not Dev, who first suggested answering back, in the offhand way children suggest the most consequential ideas: during afternoon recess, watching the second moon rise pale in the daylight sky, she asked Amira why nobody had tried writing something on the ground for the moon to read, the way the moon seemed to be writing something for the children to read.
 
-On the central display, the second moon appeared serene.
+Amira almost dismissed it as a child's whimsy, then found she couldn't, precisely because nothing about the previous three weeks had rewarded dismissing a child's observation before testing it. She brought the idea, feeling faintly ridiculous, to Kessler and Odalys during their next debrief.
 
-Vale presented new analysis. The energy pulse matched no known weapon. It compressed astronomical coordinates into developing neural pathways, using the flexibility that allowed children to learn language. Adult brains predicted too efficiently; they corrected the signal into blankness.
+"You want to let an eight-year-old write chalk messages to a celestial object," Odalys said, with the careful, diplomatic tone of someone trying not to laugh at a superior's idea in front of witnesses.
 
-“It did not choose children for innocence,” Amira said. “It chose them for bandwidth.”
+"I want to test whether whatever's generating the countdown is capable of receiving information, not just transmitting it," Amira said, more sharply than she intended, surprising herself with how thoroughly she'd stopped feeling ridiculous about any of this. "We've spent three weeks treating my students as passive recorders. Nobody's tried treating this like a conversation."
 
-That explanation comforted nobody. An alien system had used human minds without consent.
+Kessler, to her credit, didn't dismiss it either. "It's low-risk. Low-cost. If nothing happens, we've lost an afternoon of playground chalk. If something happens—" She didn't finish the sentence, though nobody in the room needed her to.
 
-Haldane sat at the long table, exhausted and newly gray. His son, Amira had learned, was eight and saw the countdown. He was not choosing between children and defense as abstract categories. He was trying to protect one face by making a planetary decision.
-
-“If we cancel,” he said, “we trust a machine that entered our orbit and neurologically affected a generation.”
-
-“If we strike, we teach it our first shared act was violence.”
-
-“Perhaps survival is an acceptable first impression.”
-
-The vote began.
-
-Eight delegates authorized. Six opposed. Four abstained until the final hour. Haldane held the deciding key.
-
-Amira had no new evidence, only a question.
-
-“What did your son draw?”
-
-The minister’s hand stopped above the console.
-
-“That is irrelevant.”
-
-“Probably. Tell me anyway.”
-
-He looked toward the cameras, then dismissed the room. When only Amira remained, he opened his phone.
-
-His son had drawn two houses after his parents’ divorce, connected by a road beneath both moons. In the empty center he placed a small blue chair.
-
-“He says it is for whoever arrives tired,” Haldane said.
-
-The strike clock showed nineteen hours.
-
-He did not cancel.
-
-But he had not yet turned the key.`,
+The proposal moved up whatever quiet chain of authority Odalys represented faster than Amira expected, and three days later, with the countdown sitting at two, she found herself standing on the Ashcombe playground at dusk, handing Dev a box of chalk while a small, carefully positioned research team watched from a respectful, unobtrusive distance.`,
   },
   {
-    chapter: "Chapter 4 — The Weapon Above",
-    text: `Nadi lost the countdown that night.
+    chapter: "Chapter 4 — Playground Chalk",
+    text: `Dev knelt on the blacktop for a long time before drawing anything, the particular unhurried concentration of a child who understood, on some instinctive level Amira didn't fully share, that this needed to be exactly right rather than merely fast. He drew, finally, not words but a shape: a large circle, representing—he explained afterward, with the patient clarity of someone stating the obvious—the new moon itself, and beside it, a smaller circle, representing the old one, connected by a single curved line he called "a path," though he couldn't articulate a path to what.
 
-One moment she saw four days, six hours. The next, the second moon became blank.
+Bea added a third element beside his, a simple sun, and beneath all three shapes, without any adult suggesting it, wrote in careful, uneven letters: WE SEE YOU. WE ARE NOT SCARED.
 
-She stood on the balcony blinking until tears came.
+Amira watched Odalys's team photograph the drawing from every angle, run whatever sensors they'd brought across the chalk itself, and record the children's exact process with a thoroughness that felt, for the first time since this whole ordeal began, genuinely respectful rather than merely clinical.
 
-“It is still there,” Amira said.
+Nothing happened immediately. The second moon hung silent and unchanged above them as the light faded, and Amira felt the specific, deflating anticlimax of having staked something meaningful on a moment that simply refused to arrive on schedule.
 
-“Do not say that as if seeing and believing are interchangeable.”
+Then Dev, still kneeling beside his drawing, went very still.
 
-Nadi went to Calder before dawn. Younger students were painting Recess lines across the yard. She moved among them asking what each symbol looked like, recording their corrections. Her loss made her more careful, not less involved.
+"It changed," he said quietly. "The number. It just skipped straight to zero."
 
-Amira watched from a classroom window. This was adulthood too: staying accountable to realities no longer available directly to one’s senses.
-
-At noon, Haldane announced the strike would proceed unless the second moon responded to a warning signal. Defense arrays transmitted prime numbers, chemical signatures, and a demand to alter orbit.
-
-The object remained silent.
-
-Public support for the strike rose after footage of collapsed children circulated. Recess preparations were attacked in several cities. Calder’s gate was painted with the words KEEP THEM OUT OF OUR HEADS.
-
-Lio wanted to paint over it. Nadi stopped him.
-
-“Leave it,” she said. “Belonging maps include fear, or they are advertisements.”
-
-They drew the Recess pattern around the words without hiding them.
-
-Amira received a secure message from Vale. The impactors’ approach path would cross the second moon’s directed signal cone. If the object defended itself with the same space-bending field used during arrival, trajectories could be redirected toward Earth.
-
-Probability was low. Consequence was extinction-level.
-
-Haldane’s analysts knew. They classified it to prevent panic.
-
-Amira faced the old temptation: manage truth because people might respond badly. Voss? Different story. Here Haldane. She thought of every institution that called secrecy protection.
-
-She gave the models to Nadi.
-
-“If you publish this, they may arrest us both,” she said.
-
-Nadi read the page. “Why give it to me?”
-
-“Because I am done deciding what you are allowed to risk knowing.”
-
-Together they sent it to the world.`,
+Amira felt the entire playground's attention shift toward the boy at once, researchers and teacher alike holding a breath none of them had planned to hold, waiting to learn what exactly zero was supposed to mean.`,
   },
   {
-    chapter: "Chapter 4 — The Weapon Above",
-    text: `The leak did not produce wisdom. It produced everything.
+    chapter: "Chapter 4 — Playground Chalk",
+    text: `Zero, it turned out, did not mean an ending in any sense the adults watching had braced themselves for. Dev described it carefully, prompted gently by Kessler, as the numbers simply resolving into "a shape, not a countdown anymore"—a shape he sketched with immediate, unhesitating confidence onto a fresh patch of blacktop: three overlapping circles, the largest representing the new moon, joined at their edges in a pattern none of the adults present recognized from any human alphabet or symbol system on file.
 
-Crowds surrounded launch facilities. Others demanded immediate impact before the object could act. Markets closed. Flights grounded. Parents pulled children indoors while children climbed onto roofs to keep seeing the countdown.
+Bea, watching over his shoulder, added something small at the center of the overlap: a single dot, which she labeled, in the same uneven handwriting as before, HELLO.
 
-Haldane ordered Amira detained, then rescinded the order seventeen minutes later when three delegate nations withdrew authorization. The strike system required twelve keys. It now had eleven.
+For the first time since the countdown began, every child present—not just the original five, but a dozen others from nearby classrooms who'd gathered at the edge of the playground once word spread—reported seeing the exact same shape simultaneously, described independently in matching detail down to the number and arrangement of overlapping circles.
 
-One government offered to restore its key in exchange for satellite access. Another discovered principle after calculating domestic polls. Humanity approached first contact with motives as mixed as any family argument.
+Odalys, watching the children's drawings accumulate into an unmistakable, coordinated pattern, finally allowed her careful neutrality to crack into something like genuine astonishment. "That's not a countdown ending," she said quietly, mostly to Kessler, though Amira was close enough to hear. "That's an opening move."
 
-Amira returned to Calder. She expected the students to celebrate delaying the strike. They were angry.
+The second moon, for the first time in the entire three-week ordeal, seemed to Amira—standing on an ordinary blacktop playground at dusk, surrounded by children drawing shapes she couldn't see with chalk she could—to hang very slightly, almost imperceptibly, brighter than it had a moment before.
 
-“You used Nadi to leak it,” Safiya said.
-
-“We decided together.”
-
-“Adults always say together after they choose who carries the danger.”
-
-Nadi did not rescue her. “She is not wrong.”
-
-Amira apologized. Not for releasing the models, but for making students the moral image of decisions adults remained responsible for. Children had information. They did not owe the world purity.
-
-Recess Protocol changed after that. Adult councils took over power logistics and security. Children retained authority over the grammar but could step away without being accused of abandoning Earth.
-
-Jun stepped away. So did thousands of others whose headaches had returned.
-
-Lio stayed because, he said, “I want to know what zero looks like.”
-
-With thirty hours remaining, the second moon sent another pulse. This one touched no brain. Every radio on Earth produced seven seconds of ocean sound.
-
-Amira heard waves, wind, and a low call unlike any living whale.
-
-Vale traced the recording to the vanished point in the stellar map. Not Earth’s ocean. Another world’s.
-
-Its last hello had crossed space inside a moon-shaped archive and arrived after the singers were gone.
-
-Haldane listened in the launch center.
-
-At 2:13 a.m., he removed his authorization key.
-
-The impactors continued in orbit, disarmed.
-
-Earth had chosen not to strike, which was not yet the same as choosing to answer.`,
+Nobody present could have proven that observation. Every adult present felt it anyway.`,
   },
   {
-    chapter: "Chapter 5 — Lines of Belonging",
-    text: `The final day began with rain.
+    chapter: "Chapter 5 — First Contact, Recess Edition",
+    text: `The three-circle shape spread within days to children under ten across every continent with reported second-moon perception, drawn independently in chalk, crayon, sand, and once, memorably, ketchup on a diner placemat, always with the same overlapping structure, always accompanied by some version of a greeting the children themselves chose to add without prompting from any adult.
 
-Chalk maps dissolved in schoolyards. Electrical storms disrupted satellites. A cyclone in the western ocean forced three island regions to evacuate instead of arranging lights. Recess Protocol, designed on clear maps, encountered weather and became real.
+Governments, having spent three weeks failing to agree on a unified response to an unexplained countdown, found themselves even less prepared for an unexplained greeting arriving through the least authoritative channel imaginable: their own unsupervised children's playground chalk. Diplomatic cables Amira would only learn about much later described the situation, with evident exasperation, as "first contact occurring through an demographic with no security clearance and an average attention span of eleven minutes."
 
-Children adapted first. They moved drawings onto walls, gym floors, bedsheets. Evacuation convoys traced lines with headlights. Fishing boats formed arcs beyond the storm. In places without grids, families lit cooking fires or stood together where coordinates had been marked.
+Amira, watching the phenomenon spread from a front-row seat she'd never asked for, found herself less interested in the diplomatic scramble than in Dev himself, who seemed entirely unbothered by having become, however briefly, one of the most significant witnesses on the planet.
 
-“The answer does not have to be visible from space,” Safiya said.
+"Does it feel like a big deal?" she asked him, during a quiet moment between the endless researcher visits.
 
-Amira almost asked how the object would detect it. Then she understood that the protocol had become more than a signal. The act of making it was already an answer to one alone, or one among.
+Dev considered the question with his usual unhurried seriousness. "It feels like when you make a new friend at a different school, and you're not sure yet if they're going to be a good friend or you're just going to see them at recess sometimes." He shrugged, entirely unimpressed with the scale of what he'd just described. "I think it's a good friend. But I don't actually know yet. Nobody does."
 
-At Calder, Haldane arrived without escort. His son, Owen, carried the drawing of two houses and the blue chair.
-
-The minister helped tape reflective foil across the roof. Nobody thanked him for not launching weapons. He did not ask.
-
-Nadi coordinated radio relays from the science room. She could no longer see the countdown, so Lio sat beside her calling time.
-
-“Six hours, twelve minutes.”
-
-“Is the border changing?”
-
-“No. Wait—there is another mark.”
-
-Across the world, children reported a small opening in the orbit symbol, like a door drawn ajar.
-
-Amira and Vale tried to translate it. They failed.
-
-Owen looked at their diagrams. “It means the answer can come through.”
-
-“How do you know?” Haldane asked.
-
-His son shrugged. “How do you know a door?”
-
-Scientific humility arrived wearing muddy shoes.
-
-The rain intensified. Power failed in the eastern district. Calder’s roof lights went dark.
-
-Without instruction, residents opened apartment windows and held up lamps.
-
-Blue, gold, white, battery-powered, candlelit—the line of belonging continued across the city in human hands.`,
+Amira found she had no better answer to offer than that, and didn't try to invent one.`,
   },
   {
-    chapter: "Chapter 5 — Lines of Belonging",
-    text: `With forty minutes remaining, one of the impactors reactivated.
+    chapter: "Chapter 5 — First Contact, Recess Edition",
+    text: `Odalys's superiors, whoever they ultimately answered to, made the decision Amira had privately hoped for and publicly doubted they'd have the wisdom to reach: rather than attempting to formalize contact through adult diplomatic channels the children's perception couldn't access anyway, they authorized a careful, monitored continuation of exactly what had already been working—supervised playground sessions where children could respond to whatever they perceived, using whatever simple materials made sense to them, while researchers documented everything without directing anything.
 
-A software fault, or sabotage; no one knew. The tungsten vehicle left orbit and accelerated toward the second moon.
+Amira became, almost by accident, the sessions' informal coordinator, less because of any authority she'd sought than because she remained the one adult the children trusted enough to keep behaving like themselves rather than performing significance for watching cameras.
 
-Launch control could not reach it. Haldane went pale when the alert appeared on Nadi’s screen.
+"You're basically running first contact through recess supervision," her sister Leila said over the phone, half amazed, half disbelieving, having finally abandoned her earlier skepticism somewhere around the third independently-verified overlapping circle drawing.
 
-“Can the object redirect it?” Amira asked.
+"I'm making sure eight-year-olds don't get so overwhelmed by adults that they stop being honest about what they're actually seeing," Amira said. "That's still just teaching, even if the subject matter got strange."
 
-“That is exactly what we feared.”
+The sessions continued for another two weeks, the children's chalk responses growing steadily more elaborate—not more alarming, Amira noted with real relief, just more detailed, the way a conversation naturally develops vocabulary once both parties trust the other is actually listening. Dev began drawing what he called "weather," small marks along the circles' edges that Kessler's team eventually theorized might correspond to fluctuations in the second moon's otherwise stable, unexplained energy signature, detected independently by orbital instruments with a lag of roughly six hours behind the children's drawings.
 
-The impactor would strike three minutes before zero.
-
-Vale proposed colliding a weather satellite with it, but trajectories missed by ninety kilometers. Nadi examined the orbital map. The impactor passed close to four communications satellites used for Recess Protocol.
-
-“Move those,” she said.
-
-“They have station-keeping thrusters, not interception capacity.”
-
-“Not one. Four.”
-
-Each satellite carried little mass. Together, striking at timed angles, they could alter the impactor enough to miss the object. Recess would lose coverage across a quarter of Earth at the decisive moment.
-
-Haldane understood the choice. Preserve the answer or prevent the weapon from speaking for them.
-
-“Move them,” he said.
-
-Operators in four countries entered commands. One satellite refused. Nadi routed through an amateur ground station whose owner had spent the week criticizing the entire protocol. He gave them control anyway.
-
-On the gym screen, four green paths converged with red.
-
-First contact missed, shattering a solar panel. Second changed the impactor’s roll. Third broke apart. The fourth struck near the guidance ring and pushed the vehicle into a long curve past the second moon.
-
-The room cheered, then saw the Recess network go dark across half the display.
-
-“Nine minutes,” Lio said.
-
-There was no time to replace satellites.
-
-Amira looked at the children’s original drawings. Belonging had never been a picture from above. It was relation, carried from point to point.
-
-“Use radio,” she said. “Every frequency. Have each region describe the next.”
-
-Voices replaced images. Cities named neighboring cities. Boats named shores. People passed the map around Earth without any one observer seeing it whole.
-
-The countdown entered its final minute.`,
+The children, it turned out, weren't just receiving. They were the fastest sensor humanity currently possessed.`,
   },
   {
-    chapter: "Chapter 5 — Lines of Belonging",
-    text: `Lio spoke the final numbers into a microphone heard by no central authority and millions of ordinary receivers.
+    chapter: "Chapter 5 — First Contact, Recess Edition",
+    text: `The turning point, when it came, arrived not through any dramatic escalation but through a small, ordinary act of trust: Marcus, the boy whose earlier "dots like dominoes" description had seemed the least reliable of the original five, drew a shape one Tuesday afternoon that none of the researchers present recognized, and none of the other children had drawn before—a single circle with a smaller circle inside it, connected by short radiating lines, which he labeled, in his own careful seven-year-old print, HOME.
 
-Ten.
+"Whose home?" Kessler asked gently, careful not to lead him.
 
-The city held its lamps in rain.
+Marcus considered the question with unusual gravity for a boy who rarely paused before answering anything. "I think it's asking if we know it's lost," he said finally. "Not lost like scared. Lost like far from somewhere it used to know how to get back to."
 
-Nine.
+The room went very quiet. Amira, watching the researchers' faces shift from clinical interest into something more careful, more human, understood before anyone said it aloud that the entire framework they'd been operating under—countdown, then contact, then negotiation—had just been quietly, completely upended by a seven-year-old's guess about loneliness.
 
-Amira took Nadi’s hand.
+"What do we say to that?" Odalys asked, and for the first time since Amira had met her, the question sounded genuinely uncertain rather than diplomatically careful.
 
-Eight.
-
-Haldane knelt beside Owen.
-
-Seven.
-
-Across the radio net, one place described another: mountain to valley, island to ship, apartment to shelter.
-
-Six.
-
-The second moon brightened.
-
-Five.
-
-Its smooth surface opened along thousands of invisible seams.
-
-Four.
-
-Light emerged—not white, but every color translated poorly through air.
-
-Three.
-
-Children saw the empty center fill with a point representing Earth.
-
-Two.
-
-Around it appeared the distant net of civilizations.
-
-One.
-
-The countdown vanished.
-
-Nothing exploded. No voice announced peace. The second moon unfolded into a vast ring, thin enough for stars to show through. Within its circumference, the sky became deep beyond depth.
-
-Then the answer came back.
-
-Not language. Sensations arrived through radios, screens, and the vibrating bones of buildings: methane rain on an orange sea; sunlight beneath red leaves; hands unlike hands shaping clay; the ocean call of the vanished singers; a city built along the interior of a turning cylinder; loneliness measured over ten thousand years; joy at receiving any reply.
-
-Adults perceived it too.
-
-Amira fell to her knees beneath the weight of lives that were not human and were nonetheless unmistakably lived. Nadi held her. Around them, people wept, laughed, covered their ears, reached toward the ring.
-
-The transmission lasted eleven seconds.
-
-When it ended, the rain returned to being rain.
-
-The ring folded itself back into a white moon.
-
-One new symbol appeared on every instrument and to every eye, child and adult alike.
-
-Vale translated the mathematical sequence first.
-
-MESSAGE RECEIVED.
-
-Owen shook his head. “Not exactly.”
-
-He drew the shape as two open hands.
-
-“It says,” he whispered, “you are among.”`,
+It was Dev, not any adult in the room, who answered first, already reaching for the chalk. "We tell it we don't know where its home is," he said, "but it can stay near ours until it figures it out. That's what you do for anybody lost. You don't send them away confused. You let them stay close while they think."`,
   },
   {
-    chapter: "Chapter 6 — After Zero",
-    text: `History did not know what to do the morning after.
+    chapter: "Chapter 6 — What the Children Decided",
+    text: `Dev's proposal—stay close while it thinks—became, almost without anyone official deciding it should, the working framework for humanity's entire response to the second moon, translated by exhausted diplomats into language formal enough for treaties and summits, though everyone involved understood, whether or not they said so publicly, that the actual insight had come from an eight-year-old's instinct about hospitality rather than any adult's carefully modeled strategy.
 
-Markets reopened because food still moved through money. Wars paused in some places and intensified in others. Thousands claimed the eleven-second transmission proved their oldest beliefs; thousands more said it was a neurological weapon. The second moon remained overhead, blank and quiet.
+The children drew their answer that afternoon: the HOME symbol, echoed back, with a small addition Bea insisted on including—a single line connecting it to Earth itself, labeled, in her uneven print, YOU CAN STAY.
 
-Children woke without the countdown.
+The response, when it came three days later, arrived not as new chalk-legible numbers or shapes but as something the orbital instruments finally caught independently of the children for the first time in the entire event: the second moon's stable, unexplained energy signature shifted, gently, into a new steady pattern that several physicists would spend the following months arguing about without full agreement, though the layperson's summary that eventually reached the press described it, not inaccurately, as "settling in."
 
-Some celebrated. Others grieved the loss of a sense adults had briefly depended on. Clinics treated headaches, insomnia, and what became known as distance sorrow: mourning for worlds glimpsed too quickly, especially the vanished ocean singers.
+Amira watched the reports scroll past on Kessler's tablet with a strange, quiet feeling she hadn't expected: not triumph exactly, and not relief, but something closer to the particular satisfaction of watching a difficult problem resolve itself through kindness rather than through force, when every institutional instinct around her had spent three weeks assuming force, or at least formal negotiation, would eventually become necessary.
 
-Jun refused all interviews. Safiya gave one and spent the entire broadcast criticizing the interviewer’s questions. Lio carried his marked notebook until its pages separated.
-
-Amira returned to teaching.
-
-The first lesson after zero was supposed to address orbital mechanics. Instead a student asked whether people on the other worlds were alive now.
-
-“Some may be,” Amira said. “The messages traveled a long time.”
-
-“So we met dead people?”
-
-“We met what they sent while living.”
-
-The answer reminded her of light from extinct stars and of Nadi’s father, present in habits neither of them had named.
-
-Haldane resigned. A public inquiry into the strike revealed no single saboteur; legacy software had interpreted delayed consensus as provisional authorization. The most dangerous intention had been stored in a system everyone assumed someone else controlled.
-
-He testified without minimizing his role. Afterward he came to Calder and repaired desks. Like many acts of accountability, it looked insufficient and required repetition.
-
-Nadi received offers from universities, political groups, and documentary companies. She declined them all.
-
-“I want one month in which nobody asks what children think about humanity.”
-
-Amira made tea. “What do you want?”
-
-Nadi looked startled, then relieved.
-
-“To sleep until lunch.”
-
-So for a month, that was the future they protected.`,
+"They never needed us to solve it," she said to Kessler, watching Dev and Bea and Marcus play an entirely unrelated game of tag at the edge of the playground, apparently uninterested in the historic reports being generated about their own testimony. "They just needed us to believe them long enough to let them try."`,
   },
   {
-    chapter: "Chapter 6 — After Zero",
-    text: `The Second Object Council met beneath a ceiling painted with both moons. Amira represented no country. She occupied a seat designated Scientific-Education Liaison, a phrase broad enough to hide several political compromises.
+    chapter: "Chapter 6 — What the Children Decided",
+    text: `Not everyone was satisfied with a resolution built on children's instincts rather than adult verification, and the weeks that followed brought a predictable wave of skepticism from researchers who hadn't been present for the playground sessions, arguing that correlation between chalk drawings and orbital instrument readings, however striking, didn't prove genuine communication rather than an elaborate coincidence dressed up by desperate adults eager for any resolution at all.
 
-The council’s first dispute concerned transmission.
+Amira found herself, somewhat to her own surprise, becoming an unlikely public defender of her students' credibility, invited to testify before a hastily assembled international science committee that clearly hadn't expected its most important witness to be a third-grade teacher rather than a physicist.
 
-Radio telescopes could send a focused response toward the ring. Governments drafted speeches. Children’s groups argued Earth had already answered and should listen before speaking again. Engineers warned every message might take centuries to reach its destination.
+"With respect," said one committee member, a physicist named Dr. Halloran with the particular impatience of someone used to being the most credentialed person in any room, "isn't it possible the children were simply responding to adult expectations, however subtly conveyed, rather than to any genuine external signal?"
 
-“We are accustomed to communication rewarding speed,” Amira said. “This may reward patience.”
+"It's possible," Amira agreed evenly. "It's also possible that six weeks of consistent, cross-cultural, independently corroborated observation from children who'd never met each other represents something your instruments simply weren't built to detect until the children showed you where to look. I'm not asking you to believe in magic, Dr. Halloran. I'm asking you to consider that a population you've spent your whole career treating as unreliable witnesses turned out to be the only reliable witnesses available."
 
-They established an archive for messages intended beyond a lifetime. No statement could claim to speak for all Earth. Submissions had to include dissent, uncertainty, and context. The rules made eloquence difficult.
-
-Calder’s first contribution was six minutes of lunchtime noise followed by Safiya saying, “We are not always like this, except mostly we are.”
-
-Nadi joined the archive as a junior translator after her month of sleep. She studied the children’s grammar without pretending childhood granted permanent authority. Lio teased her for becoming an adult expert in something she no longer saw.
-
-“That is most expertise,” she replied.
-
-Amira and Nadi still argued. About work hours, interviews, dishes, and whether Amira’s apologies sometimes sought quick forgiveness. The second moon did not heal them. It gave them a shared language for one alone, or one among, and they used it badly before using it better.
-
-On the anniversary of zero, they visited the construction site where Nadi’s father died. For years Amira avoided it. Now two shadows crossed the concrete.
-
-“He would have hated all the committees,” Nadi said.
-
-“He hated any meeting with no food.”
-
-They laughed. Then they cried without assigning either response a lesson.
-
-Above them, the new moon moved beside the old.
-
-Belonging did not require the absent to return. It required leaving room for the shape they had made.`,
+Halloran didn't concede the point outright, but he also didn't have a counterargument ready, and the silence that followed felt, to Amira, like the first real crack in institutional skepticism she'd encountered since this entire strange chapter began.`,
   },
   {
-    chapter: "Chapter 6 — After Zero",
-    text: `Two years after zero, the second moon changed orbit again.
+    chapter: "Chapter 6 — What the Children Decided",
+    text: `The formal designation eventually settled on for the second moon—Companion, chosen after months of committee argument that Amira found almost comically anticlimactic given everything that had led to it—struck her as fitting in a way the scientists who selected it probably hadn't fully intended: not a threat, not a mystery to be solved and dismissed, but something invited to stay close while it figured out where it belonged.
 
-Telescopes watched it drift outward toward a stable point beyond the old moon. Panic rose, familiar and almost comforting. Some believed it was leaving because Earth had failed a second test.
+Dev, now approaching his tenth birthday with the specific dread of a boy who understood, better than most adults around him, exactly what that milestone might cost him, asked Amira one afternoon whether he'd stop seeing the numbers once he crossed whatever invisible threshold separated the children who could perceive Companion's signals from those who couldn't.
 
-Children saw no secret signs.
+"I don't know," Amira admitted, because she genuinely didn't, and had decided months ago that pretending certainty with this particular child would cost her more than honesty would. "Nobody's tracked what happens to a kid who ages past the cutoff while actively communicating. You'd be the first."
 
-The object unfolded once, angled itself toward interstellar dark, and transmitted the Recess answer. Every dish on Earth could follow the signal as it carried their imperfect belonging map away.
+"Does that scare you?"
 
-“It is passing us on,” Vale said.
+"A little. Mostly I'm curious. And mostly I trust you to tell me the truth about it, whatever happens, the same way you've told me the truth about everything else since this started."
 
-To whom, nobody knew. Perhaps another relay. Perhaps civilizations not yet born when Earth’s signal arrived.
-
-The object settled as a bright moving star, no longer large enough to be called a moon by appearance. The name remained.
-
-Its departure altered culture more than its presence had. Night returned to familiar darkness. People missed the second shadow. Children born after asked why paintings showed two moons so close together.
-
-Amira found Nadi on the Calder roof after the final transmission. At twenty she had become taller than her mother, a fact both still found surprising.
-
-“I thought I would feel abandoned,” Nadi said.
-
-“Do you?”
-
-“No. I feel forwarded.”
-
-They watched students below repaint the weathered Recess lines. The school maintained the empty center, though weeds had broken through its chalk boundary.
-
-Nadi was leaving for the lunar farside archive in autumn. The old Amira wanted to list hazards until love sounded like opposition. She practiced another answer.
-
-“I will miss you.”
-
-“I know.”
-
-“I am proud.”
-
-“I know that too.”
-
-“You could pretend one of those surprised you.”
-
-Nadi smiled and leaned against her.
-
-The second moon flashed once at its distant station. Instruments detected a routine status pulse. Around the world, people still stepped outside.
-
-They had learned that not every light in the sky was meant for them.
-
-Looking remained worthwhile.`,
+Dev considered that with his familiar unhurried seriousness. "I think I want to draw one more thing before my birthday. Just in case." He didn't say what, and Amira didn't ask, understanding by now that some things needed to stay between a child and whatever, exactly, hung patiently in the sky above them, waiting to see who they'd become.`,
   },
   {
-    chapter: "Chapter 7 — The Far Listener",
-    text: `Nadi left Earth aboard the research vessel Ravel, carrying a box of Calder chalk in her personal allowance.
+    chapter: "Chapter 7 — The Last Drawing",
+    text: `Dev's tenth birthday arrived on an ordinary Thursday in October, and Amira, watching him from across the classroom that morning, found herself unable to stop checking his face for some visible sign of change, as though a threshold this significant should announce itself more dramatically than an unremarkable school day quietly proceeding on schedule.
 
-Amira watched the launch from the school yard with Lio, Safiya, and Jun, all adults now. They had gathered for no official reason. The rocket rose between the old moon and the distant point of the second.
+He asked to go out to the playground during afternoon recess, alone except for Amira and, at a respectful distance, two researchers Kessler had specifically requested remain unobtrusive. He knelt on the same patch of blacktop where the very first three-circle shape had appeared months earlier, chalk in hand, and drew for a long, careful time before finally sitting back to examine his work.
 
-“She will call when she reaches orbit,” Amira said.
+It was the HOME symbol again—the circle within a circle, radiating lines—but with something new added at its center: a single, small figure that Amira recognized, with a lurch she hadn't expected, as unmistakably a child, arms outstretched toward the larger shapes around it.
 
-Safiya handed her coffee. “You have said that six times.”
+"What does it mean?" she asked quietly.
 
-“I am establishing confidence.”
+"It means I'm saying goodbye, kind of. Or maybe just—see you differently." Dev studied his own drawing with an expression older than his ten years had any right to carry. "I don't know if I'll be able to see the numbers tomorrow. But I wanted it to know that even if I stop being able to hear it, I still know it's there. That doesn't go away just because I can't see the writing anymore."
 
-On the farside, Nadi joined a crew building receivers away from Earth’s radio noise. They listened for echoes from the network the children had glimpsed. Most days brought static, instrument faults, and committee messages. Contact, like astronomy, was largely maintenance.
+He looked up at Amira, and for a moment, in the honest morning light, he looked exactly like what he was: an ordinary child, about to become a slightly older one, having spent an extraordinary season carrying something most adults would have buckled under.
 
-Then Ravel detected a pattern from beyond the second moon.
+"Was I a good friend to it?" he asked.
 
-It was not the archive relay. The source was farther out, faint and moving. Prime intervals wrapped around a variation of the Recess rhythm.
-
-Earth debated whether it was natural for eleven months.
-
-Nadi found the key in old playground recordings. During zero, one island community had altered the rhythm because their generator failed. The new signal repeated that exact error.
-
-Something had received Earth’s answer and sent back its imperfect corner.
-
-The message carried no images, only timing. Distance estimates suggested it originated eighty light-years away. The sender might no longer exist. Or the relay might bend more than gravity.
-
-Nadi called Amira from the lunar archive.
-
-“I need you not to make this a public statement yet.”
-
-Amira felt pride rise beside the old urge to act.
-
-“What do you need?”
-
-“Help checking the school recordings. Quietly.”
-
-Amira spent three nights comparing rhythms with former students. They found the match.
-
-For the first time, humanity had not merely received an ancient archive. Someone had repeated their specific voice.
-
-Amira waited for Nadi to choose when to tell the world.
-
-Trust, she learned, was not stepping back once.
-
-It was a practice with no graduation.`,
+"You were the best friend it could have possibly had," Amira said, and meant every word of it completely.`,
   },
   {
-    chapter: "Chapter 7 — The Far Listener",
-    text: `The Far Listener announcement occurred at Calder because Nadi insisted the discovery belonged where its grammar began.
+    chapter: "Chapter 7 — The Last Drawing",
+    text: `The following morning, Dev reported, with visible sadness but no particular surprise, that the numbers and shapes had gone entirely silent for him—not erased, not forgotten, simply no longer perceptible, the way a radio station fades once you've driven far enough outside its broadcast range. Kessler's team confirmed the pattern held consistent with every other child who'd crossed the same threshold before him: the perception simply, gently, ended, without trauma, without any detectable harm, as though it had always been designed to be a temporary window rather than a permanent gift.
 
-She stood in the gymnasium beneath faded banners, now twenty-three and composed until the camera light came on. Amira sat in the back row.
+What surprised everyone, including Amira, was what happened next: within days, a new wave of younger children across the same communities began reporting fresh contact, picking up not from zero but from wherever the ongoing conversation had already progressed, as though Companion had simply widened its audience rather than starting over, folding each departing child's testimony into some continuity the newest arrivals somehow already understood without being taught.
 
-Nadi played the island rhythm, then the returned version. The difference between them was a pause no longer than a breath.
+"It's not talking to individual children," Kessler said, reviewing the pattern with something like genuine wonder replacing her earlier clinical caution. "It's talking to childhood itself, as a kind of continuous, ongoing witness. Each child is just a window it's using for a while."
 
-“We cannot determine who sent it,” she said. “We cannot promise they are alive by our measure of now. We can say our answer entered a relation. Someone, somewhere, made room and passed our imperfection back.”
+Amira thought of Dev's drawing, the outstretched arms, the deliberate goodbye that hadn't actually been a goodbye at all, just a handoff to whoever came next old enough to still see clearly and young enough to still believe without needing proof first.
 
-Questions came immediately. Was it an invitation? A threat? Could the relay transport matter? Would there be more moons?
-
-Nadi answered, “We do not know,” until the phrase sounded like strength.
-
-Afterward Haldane approached. He had brought Owen, now a lanky teenager embarrassed by the famous blue chair drawing.
-
-“You did well,” Haldane told Nadi.
-
-“You almost hit the moon with tungsten.”
-
-“I did.”
-
-He did not ask her to balance that fact against his later help. Nadi respected him enough to continue disliking him accurately.
-
-The world sent a reply containing the altered island rhythm and seven seconds of Earth ocean. No speeches. No declarations. The message would travel through the relay when it chose.
-
-That evening, former students drew a belonging map across the gym floor. The lines included Calder, the farside archive, two separated houses from Owen’s childhood, the vanished ocean world, and one distant unknown point.
-
-Amira stood at the edge.
-
-“You are outside,” Jun said.
-
-“I did not want to assume.”
-
-He handed her chalk. “That was never the rule.”
-
-She drew a line from herself toward Nadi, stopping before it touched.
-
-Nadi completed the distance.
-
-Around them, other hands extended the map until no single person could say who had begun it.`,
+"Then I suppose my job," she said slowly, "is just to keep believing the next kid who tells me something impossible, until it isn't impossible anymore."`,
   },
   {
-    chapter: "Chapter 7 — The Far Listener",
-    text: `The answer to the Far Listener took nine years.
+    chapter: "Chapter 7 — The Last Drawing",
+    text: `Bea and Marcus, both still young enough to perceive Companion's ongoing communication, took to describing themselves, with the casual grandiosity children apply to any responsibility handed to them, as "the current team," a phrase that spread through the younger grades at Ashcombe with the speed of any genuinely good playground joke, until half the school's youngest students had informally appointed themselves Companion's unofficial welcoming committee, regardless of whether they'd ever personally perceived a single number.
 
-During the wait, ordinary history resumed its claim. Governments changed. Coastlines retreated. The Recess generation aged into professions and parenthood, carrying the unsettling fact that adults could miss what was real.
+Amira found herself, nearly a year after the first pale shape appeared over her kitchen window, no longer the anxious, uncertain witness she'd been at the very beginning, but something closer to what Okonjo had once, half-joking, called her: the school's unofficial ambassador to whatever, exactly, Companion actually was.
 
-Amira retired from Calder after thirty-one years. Her final class gave her a telescope too heavy for her balcony and a card reading THANK YOU FOR BELIEVING THE DATA, EVENTUALLY US.
+She still didn't know. Nobody fully did, despite months of research, despite instruments finally catching pace with the children's testimony, despite treaties drafted in language too formal for what had actually happened between a handful of elementary schoolers and something patient enough to wait quietly in the sky until someone young enough believed it was really there.
 
-Nadi returned from the moon with lower-gravity habits and a reluctance to live beneath weather. She rented an apartment near Amira but not with her. They had learned proximity was not the only measure of love.
-
-The Far Listener’s second message arrived while Amira was buying tomatoes.
-
-Every public screen displayed a field of dark green beneath a copper sky. Thin structures moved in the distance. One approached the recorder and placed an object into view: a shape like a chair, blue by coincidence or translation.
-
-Sound followed. Not speech. A rhythm corresponding to two homes, a road, and a place for whoever arrived tired.
-
-Owen called first, too moved to speak.
-
-The transmission included astronomical coordinates. The world lay not eighty light-years away but eight thousand. The relay folded messages across paths physics had not yet understood. Its people were alive.
-
-Humanity celebrated with inadequate grandeur. Fireworks obscured telescopes. Networks named the beings before scientists could object. At Calder, someone simply set blue chairs in the yard.
-
-Amira and Nadi sat in two of them after dark.
-
-“Do you think we will meet them?” Amira asked.
-
-“Not in person.”
-
-The answer would once have sounded like failure. Now distance felt less like absence than a condition relation had learned to cross.
-
-Nadi rested her feet on the chalk line.
-
-The second moon blinked at its far station, carrying other goodbyes, warnings, recipes, errors, and proofs of life.
-
-For the first time, Earth knew one listener was listening now.`,
+What she'd filed her final report on, the one Kessler's team would eventually cite in the academic literature as the founding document of an entirely new field nobody had a proper name for yet, wasn't a scientific conclusion at all. It was simpler than that, and stranger, and she'd written it exactly as she felt it: First contact did not require expertise. It required someone willing to kneel down, listen carefully to a child, and refuse to explain away what they heard simply because it was inconvenient for the adults around them to believe.`,
   },
   {
-    chapter: "Chapter 8 — One Among",
-    text: `Amira was eighty when the second moon returned.
+    chapter: "Chapter 8 — Companion",
+    text: `A year after the second moon first appeared, Amira stood again at her kitchen window, coffee in hand, watching both moons hang in their now-familiar, unremarkable arrangement against an evening sky that had long since stopped feeling strange to look at. Companion had become, in the specific way extraordinary things eventually become ordinary simply through persistence, just another fact of the sky, mentioned in weather reports, referenced in children's homework, occasionally the subject of a documentary Amira still hadn't found the emotional distance to watch all the way through.
 
-It crossed dawn as it had forty years earlier, silent and impossible, growing from a bright point into a white disk. Children saw no countdown this time. Every eye saw its surface unfold into the great ring.
+Dev, now approaching eleven and thoroughly absorbed in the entirely mundane crisis of an upcoming multiplication test, visited her classroom sometimes after school, ostensibly for help with homework, though Amira suspected the real draw was simply the specific comfort of being near the one adult who had witnessed, without flinching, the strangest season of his young life.
 
-Within it appeared the copper sky of the Far Listener world.
+"Do you think it's happy?" he asked her once, apropos of nothing, while she checked his math worksheet.
 
-No hallucinated sensations accompanied the image. The relay had learned—or responded to Earth’s discomfort—with a screen anyone could refuse to watch.
+"I think," Amira said carefully, "that it found somewhere to stay while it figures out where it belongs. I think that's a kind of happiness, even if it's not the finished kind."
 
-Nadi arrived at Amira’s apartment breathless, though she was fifty-seven and disliked being seen hurrying. Together they stood on the balcony where the first countdown began.
+Dev considered this with his old, familiar seriousness, though something lighter had crept in around its edges over the past year, the specific lightness of a child who had carried something heavy and set it down successfully rather than dropping it. "I hope it finds its actual home eventually. But I also hope it stays here a really long time first."
 
-The beings beneath the copper sky were not shown clearly. Their bodies seemed distributed among slender moving forms, perhaps individuals, perhaps parts of one organism. They arranged blue mineral slabs in two clusters connected by a shining path.
+"Why?"
 
-At the center they left an empty place.
+"Because I think we needed it more than it needed us. I think that's usually how the good ones work out."
 
-Earth answered through revised Recess Protocol. No compulsory lights, no branded maps, no claim of unity. People participated or did not. Cities drew their complicated belonging; refugee camps drew lost homes; orbital habitats traced lines across darkness. Some regions darkened their grids in protest. Their absence was recorded, not erased.
-
-Calder’s yard filled with children born decades after zero. They knew the story but not the original feeling. Lio, now head teacher, let them change the grammar.
-
-Amira watched through a public feed. “They put the center at the edge.”
-
-“It makes more room,” Nadi said.
-
-The relay transmitted both versions.
-
-For eleven minutes, two worlds regarded one another across a distance no body could cross.
-
-Then the ring closed.
-
-No promise followed. No treaty. Only a shared construction placed where each could see.
-
-Amira’s hands had begun to tremble with age. Nadi wrapped both of hers around them.
-
-Two shadows crossed the balcony wall.
-
-This time, neither was afraid of what the other could not see.`,
+Amira didn't correct him. She wasn't at all sure he was wrong.`,
   },
   {
-    chapter: "Chapter 8 — One Among",
-    text: `In her final year, Amira wrote a book nobody expected from her. It contained no equations.
+    chapter: "Chapter 8 — Companion",
+    text: `The academic field Kessler's team had inadvertently founded—now formally, if unglamorously, titled Juvenile Perceptual Contact Studies—continued its slow, careful work long after the public's attention moved on to newer, louder anxieties, staffed increasingly by researchers who had learned, sometimes the hard way, that Amira's original insight remained the field's most important methodology: listen to the children first, verify carefully second, and never let institutional skepticism arrive at the conversation before genuine curiosity did.
 
-She called it Notes on Being Believed and filled it with corrections. Safiya had not first translated the orbit mark; three children did simultaneously. Jun’s collapse was not mystical but neurological overload. Haldane had delayed the strike before removing his key. Amira had used Nadi’s courage when she should have carried more risk herself.
+Amira herself never left Ashcombe Elementary, despite offers—several of them, increasingly prestigious—to join research teams, consult for governments, write books explaining what she'd witnessed to audiences hungry for a tidier narrative than the one she actually had to offer. She turned each one down for the same simple reason: the actual work, the work that had mattered, had never required credentials or a platform. It had only ever required a teacher willing to crouch down beside a distracted boy's desk and ask, without judgment, what exactly he was counting.
 
-Publishers asked for a cleaner heroic line. She refused.
-
-Nadi read the manuscript at Amira’s kitchen table. “You made yourself sound difficult.”
-
-“I was difficult.”
-
-“You still are.”
-
-The old moon rose outside. The second had resumed its distant station, visible only as a bright star. Amira’s apartment no longer produced two shadows.
-
-“Do you regret going to the school instead of the observatory that first day?” Nadi asked.
-
-“No.”
-
-“That was very quick.”
-
-“Some things become clear eventually.”
-
-She did regret not asking Nadi what she needed after her father died. She regretted confusing attention with knowledge and usefulness with love. Regret no longer demanded self-punishment; it had become information for the time remaining.
-
-They ate toast on the balcony. Nadi described a new archive project collecting messages no one expected to receive within a lifetime. Recipes were the largest category.
-
-“Of course,” Amira said. “Civilization is mostly deciding what strangers should eat.”
-
-Nadi laughed, the sound carrying into morning.
-
-Amira looked at the bright point of the relay. Somewhere, copper-sky beings might be receiving a grandmother’s lentil instructions while another ancient message crossed toward Earth.
-
-First contact had not been a door opening once.
-
-It was a correspondence: delayed, mistranslated, unfinished.
-
-Like every love that outlived certainty.`,
+New children arrived in her classroom each September, some of them, inevitably, perceiving whatever ongoing conversation Companion continued conducting with humanity's youngest witnesses, most of them simply ordinary eight-year-olds worried about ordinary eight-year-old things. Amira treated every one of them, whether they ever mentioned a single strange number or not, with the same careful attention she'd learned to offer only after the whole world's biggest mystery had first arrived disguised as an unremarkable classroom distraction.`,
   },
   {
-    chapter: "Chapter 8 — One Among",
-    text: `After Amira died, Nadi returned to Calder with the heavy telescope from her mother’s balcony.
+    chapter: "Chapter 8 — Companion",
+    text: `On the anniversary of the very first chalk drawing, the school held a small, unofficial gathering on the same patch of blacktop where it had all begun, Okonjo's now much older daughter among the crowd of former "current team" members who returned each year, whether or not they could still perceive anything, simply to mark the day together. Dev came, gangly and thirteen now, trailing a group of younger cousins who peppered him with questions about what it had actually felt like, questions he answered with the specific patience of someone who understood he was, in some small permanent way, part of a story that belonged to more people than just himself.
 
-The school had built a small observatory beside the yard. Its walls followed the original Recess lines, including the painted fear from before zero: KEEP THEM OUT OF OUR HEADS. The words remained under clear seal because belonging maps included what people wished they had not said.
+Bea, twelve now and characteristically blunt, brought chalk anyway, out of habit more than expectation, and drew the old three-circle shape on the blacktop one more time, adding beneath it, in handwriting far steadier than her first uneven letters had been, STILL HERE.
 
-Nadi installed the telescope badly. Lio corrected the mount while complaining that physicists should not own tools.
+Amira watched from the classroom window, coffee in hand, the same vantage point from which she'd first noticed a boy muttering numbers at an empty sky. Companion hung where it always hung now, pale and patient and utterly unremarkable to anyone who hadn't lived through the season that made it otherwise, and she found herself thinking, not for the first time, that the universe had chosen exactly the right witnesses for its first quiet knock on humanity's door: not the experts, not the instruments, but the ones young enough to simply look up, and old enough—in whatever way actually mattered—to keep believing what they saw long after the looking stopped.
 
-That night, families gathered to watch the relay pass. Children sprawled across mats. Adults checked phones. Clouds threatened the view, then opened without symbolism.
-
-A girl asked Nadi what the second moon had wanted.
-
-“An answer.”
-
-“Why did only kids see?”
-
-“Their brains were still learning how to expect the world.”
-
-The girl considered. “Do grown-ups stop?”
-
-Nadi looked at the faces around the yard: Haldane, very old, beside Owen and his children; Safiya arguing with a technician; Jun wearing ear protection beneath the stars. Adults who had learned slowly, incompletely, sometimes too late.
-
-“They can start again,” she said.
-
-Through the telescope, the second moon was not a moon at all. It was a point of moving geometry, relaying voices among civilizations that might never share a room.
-
-Nadi played Amira’s last archive contribution. No speech. Just a Calder lunch period: trays clattering, children shouting, rain beginning on the roof. At the end, Amira’s voice said, Is this recording?
-
-Then laughter.
-
-The relay accepted the file and sent it outward.
-
-Nadi stood in the empty center of the painted map. Around her, lines reached homes, graves, stations, storms, and one world beneath a copper sky.
-
-The universe had not become less lonely.
-
-It had become a loneliness with addresses.
-
-Above Calder, the old moon shone. Far beyond it, the second carried their ordinary noise into the dark.
-
-One alone.
-
-One among.`,
+She raised her coffee toward the window, a small, private toast to nobody in particular, and went back to grading spelling tests as the sky, both moons steady above her, settled quietly into another ordinary evening.`,
   },
 ];
