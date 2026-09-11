@@ -1,344 +1,941 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Harbor Lights — flagship adult template.
- * ~20 full reading pages (substantial paragraphs, not quote cards).
+ * Harbor Lights — finished YAJ original adult novella.
+ * 24 substantial reading pages, arranged as eight three-page chapters.
  */
 export const HARBOR_LIGHTS_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — Closing Time",
-    text: `The ferry horn rolled across the bay the way it always had—low, patient, a little mournful—as Mira turned the key in the bakery door. Flour dusted her sleeves. The last tray of rosemary rolls cooled on the rack behind her, and the glass still held the day’s heat like a held breath.
+    text: `The ferry horn rolled across the bay the way it always had—low, patient, a little mournful—as Mira Quinn turned the key in the bakery door. Flour dusted her sleeves. The last tray of rosemary rolls cooled on the rack behind her, and the front windows still held the day’s heat like a breath trapped in glass.
 
 Tonight the harbor lights blinked differently.
 
-Not the steady rhythm she’d known since childhood: green, pause, green. Tonight they stuttered—three short, two long—then vanished into fog so thick the pier looked erased. Mira stood with her palm on the cold metal handle and told herself it was only weather. Storms made systems lie. Storms made people remember things they preferred to keep shelved.
+Not the steady rhythm she had known since childhood: green, pause, green. Tonight the lamps stuttered—three short flashes, two long—then vanished into fog so thick the pier looked erased.
 
-She locked up anyway, checked the alley twice, and walked the seawall with her hood up. Salt wind found every gap in her jacket. Behind her, Port Meridian’s windows glowed in scattered yellow squares. Ahead, the abandoned boathouse crouched like a secret that had waited too long to be told.
+Mira kept one hand on the lock. Her father used to signal that way from the night shift on the harbor tug. Three short, two long meant I’m safe. Come down if you can. Don’t tell your mother I woke you.
 
-Her phone buzzed. A town alert: pier closed after dark. Structural concern. High surf warning until morning.
+He had been gone eleven years.
 
-Mira almost laughed. The pier had been “structurally concerning” for fifteen years. What had changed was not the wood. What had changed was the pattern in the lights—and the fact that she recognized it.
+Her phone buzzed with a town alert: PIER CLOSED AFTER DARK. HIGH SURF. STRUCTURAL INSPECTION PENDING.
 
-Her father used to signal that way from the night shift on the harbor tug: I’m safe. Come down if you can. Don’t tell your mother I woke you.
+Mira almost laughed. The pier had been "structurally concerning" for half her life. What had changed was not the wood. It was the pattern in the lights—and the fact that some part of her body recognized it before her mind agreed to.
 
-He had been gone eleven years.`,
+She checked the alley twice, pulled up her hood, and walked toward the seawall instead of upstairs to bed. Port Meridian glowed behind her in soft rectangles. Ahead, the abandoned boathouse crouched beside the water like a secret that had waited too long to be told.`,
   },
   {
     chapter: "Chapter 1 — Closing Time",
-    text: `At the community hall, folding chairs scraped linoleum and voices rose over a metal coffee urn. Mira slipped in late with a paper bag of rolls and set them on the donation table like a peace offering she wasn’t sure anyone wanted.
+    text: `The wind smelled of salt, diesel, and rain. Mira crossed the empty lot beside the bait shop, telling herself she was only looking. Looking was not the same as believing. Looking did not mean she had become one of the people who still claimed they saw her father’s tug on foggy mornings.
 
-Councilmember Hart spoke first, clipped and certain. The pier needed emergency reinforcement before tourist season. Insurance would not renew without it. The town could not float another season of “temporary” closures that somehow became permanent in people’s minds.
+A beam flashed from the boathouse window.
 
-Old Mr. Delaney stood next, cane tapping. He wanted the pier preserved as heritage, not turned into a boutique boardwalk with branded lanterns. “Some of us still fish,” he said. “Some of us still remember when the lights meant more than décor.”
+Three short. Two long.
 
-Mira heard her own name before she saw who said it.
+Mira stopped so quickly her heel skidded on wet gravel.
 
-“Ask Mira,” called Denise from the back row. “Her family kept the bakery through worse storms. She knows what this place costs.”
+"No," she said aloud.
 
-Dozens of faces turned. Mira felt the heat climb her neck. She hated being made into evidence. She hated more the quiet truth under Denise’s words: the town liked her flour-dusted reliability and quietly resented the way her father’s disappearance still stained every conversation about water and night.
+The side door stood open by an inch. Inside, rain tapped the corrugated roof in uneven applause. A battery lantern glowed on a workbench beside a thermos. When Mira touched it, the metal was warm.
 
-“I think,” Mira said carefully, “we should stop pretending the pier is only wood and bolts. It’s also where people learned to wait. If we rebuild it, we should rebuild it honest—repairs you can see, lights that work, and no more stories we refuse to finish.”
-
-Silence held for a beat too long. Then Hart cleared his throat and moved to budgets. Mira sat, hands clenched in her coat pockets, and watched the windows darken as fog pressed harder against the glass.`,
-  },
-  {
-    chapter: "Chapter 2 — Blackout",
-    text: `The blackout arrived without drama—one soft click through the hall, then darkness so complete that even the EXIT signs seemed shy. Someone laughed nervously. Someone else swore. Mira’s phone flashlight carved a thin tunnel toward the door.
-
-Outside, Port Meridian had become a charcoal sketch. Only the emergency beacon on the outer breakwater cut the fog: a hard white pulse, then nothing, then pulse again. Between those beats, Mira saw—or thought she saw—movement near the boathouse. A figure. A swing of an arm. Three short flashes answered from something smaller, handheld.
-
-Her stomach dropped.
-
-She walked toward it before she could invent a safer plan. Gravel popped under her shoes. The wind shoved the smell of diesel and wet rope into her face. When she reached the boathouse ramp, the figure was gone, but the side door hung open by an inch, as if whoever left had wanted the town to notice and not quite dare enter.
-
-Mira pushed it wider.
-
-Inside, rain tapped the corrugated roof in uneven applause. A single battery lantern glowed on a workbench beside a coil of rope and a thermos still warm to the touch. Taped beneath the lantern was a scrap of bakery parchment—her own stock, the kind she wrapped morning loaves in—with five words in a handwriting that made her throat close:
+Beneath the lantern, taped to the table, was a square of bakery parchment—the exact kind she wrapped morning loaves in. Five words were written across it in black marker.
 
 MIRA. NOT A GHOST. —D
 
-D. For Dad. Or for someone cruel enough to use the letter like a hook.
+Her throat closed.
 
-She folded the note into her pocket with shaking fingers and stepped back into the fog, counting her breaths the way the counselor had taught her after the memorial that never felt finished.`,
+D could mean Dad. It could mean Delaney, the old fisherman who knew every harbor story. It could mean someone who understood how easily grief could be turned into bait.
+
+Mira folded the note into her pocket and backed toward the door. Outside, the fog had swallowed the seawall. She heard one footstep somewhere behind the building, then another, but when she rounded the corner there was no one there.
+
+Only the harbor lights blinking steady again, as if nothing unusual had happened at all.`,
   },
   {
-    chapter: "Chapter 2 — Blackout",
-    text: `By the time power stuttered back, the hall had emptied into a caravan of headlights crawling home. Mira returned to the bakery not because she felt brave, but because empty ovens were easier than an empty apartment above them.
+    chapter: "Chapter 1 — Closing Time",
+    text: `Mira returned to the bakery because empty ovens were easier than an empty apartment. She boiled water for tea she never drank and pulled an old blue recipe tin from the highest shelf in the pantry.
 
-She boiled water for tea she didn’t drink and stared at the note until the ink seemed to move. Then she did what she always did when fear got loud: she inventoried. Flour, sugar, yeast. Door locks. Windows. The alley camera that sometimes worked if you threatened it politely.
+Inside were her mother’s biscuit cards, three birthday candles, a brass tugboat pin, and one photograph of her father standing on the deck of the Harbor Rose. Daniel Quinn was thirty-nine in the picture, sunburned and laughing as though the bay owed him money.
 
-At 1:14 a.m., her upstairs neighbor knocked—soft, apologetic. “You okay? Hall said you looked pale.”
+On the back he had written a string of numbers Mira always assumed were tide readings. Tonight she copied them beside the new note.
 
-“Storm nerves,” Mira said, and it was almost true.
+At 1:14 a.m., someone knocked softly on the bakery door.
 
-When she was alone again, she opened the old tin where she kept recipes and one photograph of her father on the tug, grinning like the bay owed him a favor. On the back, in faded pencil, a string of numbers: tide tables, or so she’d always assumed. Tonight she laid the parchment note beside the photo and felt the same stubborn certainty she’d felt locking the door earlier.
+Mira froze.
 
-The lights had blinked his pattern.
+"It’s me," called Denise Mercer through the glass. "You left the hall looking like you saw a dead man. I brought coffee and poor boundaries."
 
-Someone wanted her at the water.
+Denise had been Mira’s closest friend since seventh grade and had never learned how to arrive quietly in anyone’s life.
 
-She slept in intervals, waking each time the wind shoved the building and made the windows complain. In one dream the pier stretched forever and every plank was a sealed letter. In another, the ferry horn became her father’s laugh, and she hated how much she wanted that to be real.`,
+Mira let her in, locked the door behind her, and placed the parchment on the counter.
+
+Denise read it twice.
+
+"We call the police."
+
+"And tell them my dead father sent me stationery?"
+
+"We tell them somebody is using your dead father’s signal to lure you to an abandoned building in a storm. That sentence sounds bad enough without ghosts."
+
+Mira looked toward the black windows.
+
+"The thermos was warm."
+
+Denise set down her coffee. "Then we stop treating this like memory. Somebody was there."`,
   },
   {
-    chapter: "Chapter 3 — What the Tide Kept",
-    text: `Dawn arrived bruised and silver. Surf still hammered the outer rocks, but the fog had thinned enough to show the pier’s underside—and the dark rectangular shape lodged against a crossbeam like a secret the storm had finally gotten tired of holding.
+    chapter: "Chapter 2 — What the Storm Returned",
+    text: `Dawn arrived bruised and silver. The surf still hammered the outer rocks, but the fog lifted enough to show the underside of the pier. A dark rectangular shape had lodged against one of the crossbeams.
 
-By eight, half the town stood on the seawall with phones raised. Divers in town jackets worked carefully. Mira watched from the bakery doorway, apron on, because work was the only costume that made her feel permitted to stare.
+By eight o’clock half the town stood along the seawall with phones raised while harbor divers worked below. Mira watched from the bakery doorway in her apron. Work was the only costume that made standing still feel respectable.
 
-They hauled up a chest.
+The divers hauled up a marine locker.
 
-Not treasure-movie ornate—just a sealed marine locker, scratched, locked, heavy with silt and barnacle ghosts. Hart arrived in a pressed coat and spoke about chain of custody as if drama could be filed. Delaney muttered about omens. Kids pressed against the railing until someone shooed them back.
+It was not ornate or mysterious, just steel, scratched white at the corners and furred with old barnacles. Councilmember Evelyn Hart arrived in a pressed raincoat and began using phrases like chain of custody. Mr. Delaney leaned on his cane and muttered that the sea returned things when it was tired of keeping them.
 
-When the lock finally yielded under official tools, the first thing out was not gold. It was a stack of oilcloth-wrapped packets. Letters. Dozens. The top one bore Mira’s name in block print, dated the year she was born.
+When the lock finally yielded, the first thing removed was not money or contraband. It was a stack of oilcloth-wrapped packets.
 
-Hart glanced at her, then away, then back, as if recalculating the town’s favorite unfinished story.
+Letters.
 
-“Those should go to—” he began.
+Dozens of them.
 
-“They have my name,” Mira said, surprised by the steadiness of her voice. “I’ll sign whatever you need. But I’m reading them.”
+The top envelope had MIRA written across it in Daniel Quinn’s blocky handwriting. The date beneath her name was twenty-nine years old.
 
-A young officer nodded like she’d been waiting for someone to claim the human part of the procedure. She bagged a few for evidence photos, then handed Mira the rest in a cardboard box that still smelled like tide.`,
+The young harbor officer handling evidence looked at Mira. Her badge read LANG.
+
+"These may need to be photographed first," she said.
+
+"Photograph whatever you need," Mira answered. "Then I’m reading them."
+
+Hart opened his mouth to object and seemed to think better of it.
+
+Officer Lang gave the smallest nod. "Fair."`,
   },
   {
-    chapter: "Chapter 3 — What the Tide Kept",
-    text: `Mira did not open the letters in public. She carried the box upstairs, sat on the floor with her back against the oven-warm wall, and untied the first packet with the care of someone defusing a memory.
+    chapter: "Chapter 2 — What the Storm Returned",
+    text: `Mira carried the approved letters upstairs in a cardboard evidence box that still smelled faintly of tide. Denise closed the bakery early and taped a sign to the front door: STORM DELAY. BREAD TOMORROW. QUESTIONS NEVER.
 
-The earliest letters were not to her, not exactly. They were to “M,” written in her father’s looping hand, full of small harbor news: a seal on the buoy, a customer who tipped in fish, a confession that he was tired of pretending the tug’s night shifts didn’t scare him when fog erased the world.
+They spread the letters across the prep table.
 
-Then the tone shifted.
+The earliest were ordinary. Daniel wrote about night shifts, gulls, bad coffee, engine repairs, and how Mira’s mother sang when she thought no one was listening. He wrote that baby Mira slept only if the kitchen fan was running. He drew terrible pictures of boats.
 
-He wrote about money owed to men who did not send invoices. He wrote about a shipment he was told not to ask about. He wrote about choosing, badly, and then trying to unchoose without making Mira’s mother a widow in practice before she was one in paperwork.
+Then the tone changed.
 
-One letter stopped mid-sentence.
+A man named R. Kessler appeared. So did references to North Slip, late cargo, and a buyer called Glass. Daniel wrote about money he owed after trying to cover his brother’s medical bills. He wrote that the people offering him "easy work" had not been honest about what the crates contained.
 
-Another resumed weeks later with an apology and a sketch of the boathouse door. Beside the sketch: three short marks, two long.
+One letter read: I made a bad choice because I was scared. Then I made another because I was ashamed of the first.
 
-Mira pressed her forehead to her knees and cried the way adults cry when they finally have proof that grief had a plot all along—messy, incomplete, but no longer imaginary.
+Mira stopped there.
 
-When she could breathe, she called Denise.
+"That sounds like him," she whispered.
 
-“I need you at the bakery,” she said. “And I need you to not make this into theater.”
+Denise did not ask whether she meant the handwriting or the shame.
 
-Denise arrived in twelve minutes with coffee and the kind of quiet that friendship invents for emergencies.`,
+Near the bottom of the packet, Daniel had drawn the boathouse door. Beside it were five marks.
+
+Three short. Two long.
+
+Underneath he had written: If this signal ever comes after I’m gone, do not follow it alone.
+
+Mira looked at Denise.
+
+"Somebody knew," she said.
+
+"Then we find out who."`,
   },
   {
-    chapter: "Chapter 4 — Names Under the Pier",
-    text: `They spread the letters across the prep table like a second kind of pastry work—order from chaos, patience from sticky truth. Denise read aloud when Mira’s voice failed. Patterns emerged: initials, dates, a recurring mention of “North Slip,” and a warning never to trust the official channel on Channel 16 after midnight.
+    chapter: "Chapter 2 — What the Storm Returned",
+    text: `Officer Lang returned before noon. Her first name was Mara, which Mira found unfairly close to her own but decided not to hold against her.
 
-“Your dad wasn’t vanishing into romance,” Denise said gently. “He was vanishing into debt and bad company.”
+She photographed the note from the boathouse and listened without interrupting as Mira described the warm thermos and the footsteps in the fog.
 
-“Or both,” Mira said. “People are allowed to be complicated and still loved.”
+"You should have called us then," Lang said.
 
-They found a list of four names. Two were dead. One had moved inland years ago. The fourth—R. Kessler—still owned a boat repair stall near the marina office, according to Denise’s cousin who knew everyone’s business and considered it community service.
+"Yes."
 
-Mira washed her face, put on a clean sweater, and walked to the marina with the list folded small in her pocket. Kessler was sanding a railing, radio murmuring sports talk. He looked up, recognized her, and his expression did something careful.
+"You’re not going to argue?"
 
-“Bakery girl,” he said. “Storm treat you okay?”
+"I own a bakery. I argue before six a.m. After that I conserve energy."
 
-“You knew my father.”
+Lang almost smiled.
 
-Kessler’s hands went still. “A lot of people did.”
+They showed her the letters naming Kessler and Glass. Lang’s expression sharpened at Glass.
 
-“He left letters,” Mira said. “Your name is in them. I’m not here to ruin you. I’m here to finish a sentence he couldn’t.”
+"That name has come up in old harbor enforcement files. Not enough to charge anybody. Enough to make me interested."
 
-For a moment she thought he would walk away. Instead he set the sandpaper down, wiped dust from his palms, and nodded toward the office. “Not out here,” he said. “Walls have better manners than docks.”`,
+Mira gave her the photograph of her father. Lang turned it over, studying the string of numbers.
+
+"These aren’t tide readings," she said.
+
+"What are they?"
+
+"Could be radio channels and coordinates. I’ll check."
+
+Before leaving, Lang paused at the stairs. "One more thing. Whoever left that note wanted you frightened enough to move quickly. Don’t reward them."
+
+Mira looked at the letters spread across the flour-dusted table.
+
+For eleven years she had believed uncertainty was something passive, a room she had been locked inside.
+
+Now she understood it could also be constructed. Someone had benefited from her family never knowing exactly what happened to Daniel Quinn.
+
+That realization frightened her more than any ghost could have.`,
   },
   {
-    chapter: "Chapter 4 — Names Under the Pier",
-    text: `In the cramped office that smelled of varnish and old coffee, Kessler told a version of the story Mira had almost assembled herself. A side job. A crate that was not fish. A night when the plan went wrong and Mira’s father chose to hide evidence rather than deliver it. He meant to come back. He meant to explain. Then the bay took the night, and the town took the silence, and people who benefited from unfinished stories made sure it stayed unfinished.
+    chapter: "Chapter 3 — North Slip",
+    text: `Ronan Kessler still owned a repair stall near the marina office. Mira found him sanding the rail of a fishing boat while an old sports broadcast murmured from a radio.
 
-“I thought he drowned,” Kessler said. “We all did. Or we said we did.”
+He recognized her immediately.
 
-“Someone signaled from the boathouse last night,” Mira said. “His pattern.”
+"Bakery girl," he said. "Storm treat you all right?"
 
-Kessler’s face changed. “Then either a ghost got clever, or someone alive wants you walking into the same fog.”
+"You knew my father."
 
-He wrote an address on a receipt: a storage unit behind the hardware store. “If anything survived, it’s there. I never opened it. I was a coward with a key.”
+His hands stopped moving.
 
-Mira took the key he produced from a drawer like he’d been waiting years to be asked. Outside, noon light made the marina look almost ordinary again—tourists photographing gulls, kids chasing each other between rope coils, the pier in the distance wearing yellow caution tape like jewelry it didn’t deserve.
+"A lot of people knew Daniel."
 
-She texted Denise the address and added: Come with me. Bring light.`,
+"Your name is in his letters."
+
+Kessler stared at the sandpaper in his palm as though it had betrayed him. Then he locked the shop door and nodded toward the cramped office.
+
+Inside, the air smelled of varnish and old coffee.
+
+"Your father wasn’t a criminal," Kessler said.
+
+"That’s a suspicious way to begin."
+
+"He carried things he shouldn’t have. So did I. Prescription drugs at first. Untaxed electronics. Later, things I never opened because I was afraid to know. Daniel wanted out. Glass didn’t believe in people getting out."
+
+"What happened the night my father disappeared?"
+
+Kessler rubbed both hands over his face.
+
+"He took a crate before delivery. Said he finally had enough evidence to bring everything down. He was supposed to meet me at North Slip. He never arrived. His tug turned up drifting after sunrise."
+
+"And you said nothing."
+
+"I had a wife. Two little boys. Glass knew their school."
+
+Mira felt anger arrive clean and cold.
+
+"I was fifteen."
+
+Kessler looked at the floor.
+
+"I know."`,
   },
   {
-    chapter: "Chapter 5 — The Storage Key",
-    text: `Unit 14B smelled like dust and sealed time. Inside: a duffel, a waterproof case, and a sweater Mira remembered from photographs. Denise stood guard at the door while Mira unzipped the case.
+    chapter: "Chapter 3 — North Slip",
+    text: `Kessler opened the bottom drawer of his desk and removed a key attached to a faded orange float.
 
-Logbooks. A cracked radio. Cash in an envelope marked DO NOT USE. And a cassette labeled in block print: FOR MIRA IF I DON’T COME HOME.
+"Storage unit behind the old hardware store. Fourteen-B. Daniel rented it under my name. I never opened it after he vanished."
 
-They borrowed a player from the hardware clerk with a story about “old bakery ads.” In the alley, Mira pressed play, and her father’s voice filled the narrow space between dumpsters and brick—younger than she expected, tired, trying to sound braver than he felt.
+Mira stared at the key.
 
-He apologized for the secrets. He named Kessler. He named a buyer who went by Glass. He said if the pier lights ever flashed his pattern again, it meant someone was using his signal to lure her, and she should not go alone. He said he loved her more than he feared the men who wanted the crate. He said the harbor could keep a body, but it should not keep a daughter’s questions.
+"Eleven years and you kept this?"
 
-The tape clicked to silence.
+"Cowards keep souvenirs too."
 
-Mira sat on the curb and let the world tilt. Denise put a hand on her shoulder and said nothing clever. Some moments only needed witnesses.
+She wanted to throw it back at him. Instead she took it.
 
-When Mira stood, her plan had edges. Find Glass. Protect the letters. Tell the town enough truth to stop the pier vote from becoming another cover story.`,
+"You’re coming."
+
+His head jerked up.
+
+"No."
+
+"Then I give the key to Officer Lang and tell her where I got it."
+
+"You should do that anyway."
+
+"Good. We agree. And you’re still coming."
+
+An hour later, Mira, Denise, Lang, and Kessler stood outside Unit 14B while rain ticked against the metal doors. Lang documented the lock before opening it.
+
+Inside sat a duffel bag, a waterproof case, an old wool sweater Mira recognized from family photographs, and a portable radio with a cracked antenna.
+
+The case contained logbooks, photographs of numbered crates, photocopied shipping manifests, and an envelope marked CASH—DO NOT USE.
+
+At the bottom lay a cassette tape.
+
+FOR MIRA IF I DON’T COME HOME.
+
+Mira’s knees weakened.
+
+Denise reached for her elbow.
+
+"We can wait."
+
+Mira shook her head.
+
+"I’ve done eleven years of waiting."`,
   },
   {
-    chapter: "Chapter 5 — The Storage Key",
-    text: `Glass was not hard to find once you stopped pretending Port Meridian’s shadows were mysterious. He drank at the room above the chowder house where the windows faced the water and the conversations faced nowhere. Mira went at dusk with Denise and Officer Lang—the young one from the chest recovery—who had decided unofficial curiosity was still a kind of duty.
+    chapter: "Chapter 3 — North Slip",
+    text: `The hardware clerk found an old cassette player in a back office. They listened in the storage unit with the door half closed against the rain.
 
-Glass smiled like a man who practiced smiling. “Bakery,” he said. “You bake better bread than your father kept secrets.”
+Static came first.
 
-“You used his signal last night,” Mira said.
+Then Daniel Quinn’s voice.
 
-His smile thinned. “I used a story the town already loved. People come running for ghosts. They come slower for paperwork.”
+Younger than Mira remembered. Tired. Trying to sound steady.
 
-Lang set a recorder on the table. “We’re past poetry.”
+"Mira, if this is you, I’m sorry you’re hearing me from a tape instead of across the kitchen table. I made choices I thought would keep us afloat. They almost sank all of us instead."
 
-What followed was not cinematic. It was ugly and specific: debts, crates, a night of panic, a boat that never filed a return, and years of letting Mira’s unanswered grief act as free camouflage. Glass wanted the letters buried again. He offered money. He offered threats dressed as advice.
+He named Kessler. Named Glass. Explained that Glass had begun using Harbor Channel Nine to coordinate shipments because local authorities rarely monitored it after midnight.
 
-Mira leaned in. “You don’t get my father’s ending. You get accountability. The pier gets rebuilt without your kind of silence in the beams.”
+Then his voice changed.
 
-Outside, the harbor lights came on one by one—steady this time, ordinary, almost shy. Mira watched them and felt something in her chest loosen by a single notch.`,
+"If anyone flashes our signal after I’m gone, don’t trust it. Three short, two long belongs to us, but that means somebody else can steal it."
+
+Mira covered her mouth.
+
+On the tape Daniel said he had hidden copies of manifests and photographs because he planned to meet a state investigator. He did not say where.
+
+At the end he paused for so long they thought the tape was finished.
+
+Then: "The harbor can keep a body, Mira. Don’t let it keep your questions. And don’t make me better than I was just because you miss me. Love me accurately."
+
+The cassette clicked.
+
+Mira sat on an overturned bucket and cried without hiding her face.
+
+Kessler stood in the farthest corner of the unit and looked like a man finally hearing the full weight of his own silence.`,
   },
   {
-    chapter: "Chapter 6 — Town Meeting, Redux",
-    text: `The next emergency meeting filled the hall past fire code and into something like pilgrimage. Mira arrived early with copies of the letters’ key pages—enough to prove pattern, not enough to turn private pain into spectacle. Hart tried to control the agenda. The agenda refused.
+    chapter: "Chapter 4 — Glass",
+    text: `Glass turned out to be Gerald Voss, owner of a private dining room above the chowder house. Everyone in Port Meridian knew him. That was the ugly trick of it.
 
-Mira spoke from the front table, hands flat on wood that had held bake sales and breakups and every small civic war Port Meridian could invent.
+He sponsored the winter coat drive. His name appeared on plaques. He shook hands beside politicians and paid in cash when the bakery catered marina events.
 
-“My father made mistakes,” she said. “So did people who used those mistakes as a blanket. The pier is not just a budget line. It’s where this town practices what it owes the living and the missing. If we repair it, we repair it in daylight. No more midnight channels. No more signaling grief for leverage.”
+"Men like that are never called suspicious," Denise said. "They’re called generous until somebody checks the receipt."
 
-Delaney wiped his eyes without apology. Denise squeezed Mira’s shoulder. Lang confirmed an active investigation in language careful enough for cameras and honest enough for neighbors.
+Lang warned Mira not to approach him.
 
-The vote passed—not unanimously, but cleanly—for transparent repairs, public lighting audits, and a memorial plaque that would not pretend drowning was the only possible story.
+Mira agreed.
 
-Afterward, Mira stepped into cool night air and looked toward the breakwater. The emergency beacon pulsed. Somewhere a ferry horn answered the dark like an old friend clearing its throat.`,
+Then Voss approached her.
+
+At four-thirty the next morning, while Mira was shaping dough, the bakery bell chimed. Voss entered wearing a charcoal coat without a drop of rain on it.
+
+"You open obscenely early," he said.
+
+"People insist on breakfast."
+
+His smile was gentle enough to make Mira more afraid.
+
+"Your father and I did business. Poorly, near the end. I hear the storm returned some family things."
+
+"Funny how quickly private evidence becomes harbor gossip."
+
+"Small town."
+
+He placed an envelope on the counter.
+
+Mira did not touch it.
+
+"What’s that?"
+
+"A practical solution. You keep your father’s personal letters. The old shipping paperwork goes away. Everyone gets to remember Daniel as a hardworking man who had an accident."
+
+"And if I say no?"
+
+Voss looked toward the ovens.
+
+"Then old mistakes become expensive for people who had nothing to do with them."
+
+Mira understood exactly what kind of threat he intended her to hear.`,
   },
   {
-    chapter: "Chapter 6 — Town Meeting, Redux",
-    text: `On the walk home, Kessler caught up to her near the bait shop, breathing hard.
+    chapter: "Chapter 4 — Glass",
+    text: `Mira reached beneath the counter and pressed the silent alarm button Lang had installed the night before.
 
-“I should’ve talked years ago,” he said.
+Voss noticed the movement but not its purpose.
 
-“You talked today,” Mira answered. “That’s late. It’s not nothing.”
+"You know what my father wrote about you?" Mira asked.
 
-He hesitated. “There’s one more thing in the boathouse wall. Left side, behind the false panel. I never told Glass. I barely told myself.”
+"Daniel wrote too much."
 
-Mira almost said she was done with walls that hid things. Then she thought of the parchment note, the warm thermos, the possibility that unfinished did not always mean doomed.
+"He said you confused fear with loyalty."
 
-“Tomorrow,” she said. “With Lang. With daylight.”
+For the first time Voss’s smile disappeared.
 
-Kessler nodded, relieved to be refused romance and offered procedure.
+"Your father stole from me."
 
-Above the bakery, Mira slept deeper than she had in weeks. She dreamed not of endless piers but of a kitchen table with two cups of tea and a radio playing weather without secrets. When she woke, rain had softened to mist, and the town smelled like wet cedar and yeast—the ordinary perfume of a place still willing to feed itself.`,
+"Evidence isn’t yours just because it proves what you did."
+
+The bakery door opened. Officer Lang entered alone, coat unbuttoned, voice calm.
+
+"Morning, Gerald."
+
+Voss stepped back from the counter.
+
+"I’m buying bread."
+
+"Then you won’t mind leaving the envelope."
+
+He laughed once, but there was no humor in it. "You think old paper makes a case?"
+
+"No," Lang said. "I think old paper, current threats, recovered records, and two cooperating witnesses might make several."
+
+Kessler had finally agreed to give a statement.
+
+Voss looked at Mira with something colder than anger. Calculation.
+
+"Your town will turn on you when this gets ugly."
+
+Mira thought of all the years Port Meridian had whispered about her father while still buying birthday cakes from his daughter.
+
+"Maybe," she said. "But at least this time they’ll be arguing about the truth."
+
+After Voss left, Lang opened the envelope with gloves.
+
+Inside was twenty thousand dollars in cash.
+
+Mira stared at it.
+
+"That’s insulting," Denise said from the kitchen doorway. "For twenty thousand he should at least have included a gift card."`,
   },
   {
-    chapter: "Chapter 7 — Daylight in the Boathouse",
-    text: `They opened the boathouse at 10:12 a.m. under a sky the color of rinsed porcelain. Lang filmed. Kessler pointed. Mira pried the false panel free and found a narrow tin painted with peeling blue enamel.
+    chapter: "Chapter 4 — Glass",
+    text: `The case moved faster after the attempted payoff. State investigators arrived. Kessler surrendered old bank records and described the routes. Another retired deckhand came forward after seeing the police at Voss’s building.
 
-Inside: a second key, a laminated ferry schedule from eleven years ago, and a final letter sealed with bakery twine.
+But one question remained untouched.
 
-Mira read it standing up, because sitting felt like surrender.
+What happened to Daniel?
 
-Her father wrote that if she was reading this, he had failed to come home clean, but he had not failed to love her. He wrote that the crate’s contents were never worth a daughter’s inheritance of silence. He asked her to keep the bakery open on hard days, feed people who argued, and refuse to let Port Meridian confuse nostalgia with truth.
+Lang returned the photograph from the evidence locker. "We checked the numbers on the back. You were right to keep it."
 
-He ended with the signal meaning rewritten: three short, two long would now mean I’m choosing honesty. Meet me in the light.
+"Coordinates?"
 
-Mira laughed once, broken and grateful. “He always did think he could rename the world with a flashlight.”
+"Partly. They point to an old weather station on Gull Point. The other numbers are dates. One is the night he vanished."
 
-“Maybe he did,” Lang said softly.`,
+Gull Point sat three miles beyond the main harbor, reachable by an access road that washed out every winter.
+
+"Was anyone stationed there?"
+
+"Not officially. It had been decommissioned two years earlier."
+
+Mira felt the room narrow.
+
+"You’re going."
+
+"Tomorrow morning with a state team. You are not going tonight."
+
+Mira almost protested, then remembered the boathouse note.
+
+"Fine."
+
+Lang studied her face as if testing whether fine meant fine.
+
+"I mean it."
+
+"I own bread that requires eight hours of fermentation. I am capable of waiting until morning."
+
+That night Mira slept on the bakery office couch. Near midnight she woke to the distant ferry horn and did not mistake it for her father.
+
+For the first time, that felt like progress rather than betrayal.`,
   },
   {
-    chapter: "Chapter 7 — Daylight in the Boathouse",
-    text: `By afternoon the tin and letter were logged. Glass’s lawyer called. The pier crew measured beams. A reporter asked Mira for a quote about closure. She gave them one about continuation instead.
+    chapter: "Chapter 5 — Gull Point",
+    text: `The state team reached Gull Point under a sky so clear it seemed almost rude after days of storm. Mira was permitted to come only as far as the old service road with Lang.
 
-“Closure is a magazine word,” she said. “What we have is a town that can stop lying to itself while it hammers nails.”
+The weather station stood above black rocks, windows clouded with salt. Investigators photographed everything before entering.
 
-Denise posted a handwritten sign in the bakery window: FREE ROLLS FOR WORK CREWS. UNDERSTANDING FOR EVERYONE ELSE.
+Inside they found dust, mouse droppings, rusted instruments—and a compartment beneath the floorboards.
 
-Customers came in waves—curious, kind, awkward, sincere. Mira wrapped bread and accepted condolences that finally named the right shape of loss. A child asked if the harbor lights were magic. Mira knelt and said, “They’re maintenance and memory. Both matter.”
+No body.
 
-Near closing, she walked to the seawall alone. Gulls wheeled. The water slapped the rocks in a rhythm older than any human plot. She took out her phone flashlight, aimed it toward the breakwater, and flashed three short, two long—not as bait, not as ghost story, but as a private ceremony.
+Mira had not realized she was bracing for one until relief nearly knocked her over.
 
-No answering beam came.
+The compartment held a dry bag containing copies of Daniel’s evidence, a state investigator’s business card, and a handwritten note dated the night he disappeared.
 
-She didn’t need one.`,
+MEETING MOVED. NORTH BUOY. IF I MISS CHECK-IN, LOOK AT TUG CAMERA.
+
+The Harbor Rose had carried an early digital deck camera for insurance documentation. According to old records, the unit had been damaged by seawater and discarded after the tug was recovered.
+
+"Discarded where?" Mira asked.
+
+Lang called the municipal storage office.
+
+Twenty minutes later she hung up with an expression Mira could not read.
+
+"Apparently Port Meridian never throws anything away properly. There’s an evidence warehouse inland with property from closed marine cases."
+
+Mira laughed in disbelief.
+
+"Eleven years?"
+
+"Government shelving is one of nature’s most powerful preservation systems."
+
+For the first time since the storm began, Mira felt hope sharpen into something dangerous.
+
+Not hope that Daniel was alive.
+
+Hope that the truth might have left a picture behind.`,
   },
   {
-    chapter: "Chapter 8 — What We Rebuild",
-    text: `Two weeks later the pier smelled of fresh lumber and sun-warmed tar. Caution tape came down in sections. Hart gave a speech that almost avoided self-congratulation. Delaney insisted on a blessing that sounded suspiciously like a fisherman’s toast. Mira brought cinnamon rolls and stood at the edge where the chest had been found, watching workers laugh at a shared thermos.
+    chapter: "Chapter 5 — Gull Point",
+    text: `The recovered camera was corroded beyond repair, but the memory card inside it was not completely dead. A technician salvaged eighteen seconds of video.
 
-Officer Lang stopped by off duty. “Glass is talking. Kessler too. Your father’s case isn’t neat, but it’s moving.”
+Lang brought the footage to the bakery after closing.
 
-“Neat was never the goal,” Mira said.
+They watched on Mira’s laptop.
 
-They watched a teenager carve initials into a wet piling until someone yelled not to. Life, undeterred, kept being life.
+Dark water. Engine vibration. Daniel’s shoulder entering frame. A second boat approaching without navigation lights.
 
-That evening Mira climbed to the bakery roof with a blanket and the last unread letter—one she had saved because she suspected it was less evidence than love. It was short. It told her to trust her stubbornness. It told her the harbor would always try to keep things, and her job was to decide what deserved keeping.
+Then shouting.
 
-She folded it carefully and placed it back in the tin with the photo of the tug.`,
+A man climbed from the smaller boat onto the tug. Not Voss. Younger. Heavy jacket. Baseball cap.
+
+Daniel backed away.
+
+The camera jerked as though struck.
+
+For three frames, the stranger’s face turned toward the lens.
+
+Kessler identified him immediately.
+
+"Evan Voss," he whispered. "Gerald’s brother."
+
+Evan had died six years earlier in Arizona.
+
+The final seconds showed Daniel moving toward the stern while the second boat pulled alongside. There was no image of him going into the water. No proof he drowned. Only chaos, spray, and then black.
+
+Mira replayed it until Lang gently closed the laptop.
+
+"The absence of a body doesn’t prove survival," Lang said.
+
+"I know."
+
+"But it changes the case."
+
+Mira looked toward the window. Across the dark street, the harbor lights held steady.
+
+For eleven years she had pictured one ending because it was the only ending available.
+
+Now even grief had to make room for uncertainty again.`,
   },
   {
-    chapter: "Chapter 8 — What We Rebuild",
-    text: `On the first night the new pier lights came online, Port Meridian gathered without being told. Families, dogs, argumentative uncles, quiet teens—everyone facing the water as if waiting for a show. The lights rose in a clean sequence, tested, steady, almost shy in their competence.
+    chapter: "Chapter 5 — Gull Point",
+    text: `Three days later a retired ferry mechanic named Luis Ortega called the bakery.
 
-Then, for one deliberate moment, the control tech—Denise’s cousin, of course—ran a diagnostic pattern: three short, two long.
+"I saw the news," he said. "About Daniel Quinn. I should have spoken a long time ago."
 
-A murmur moved through the crowd. Mira felt eyes find her. She lifted a hand, not to claim spectacle, but to bless the rewrite.
+Mira sat down.
 
-“That’s ours now,” she said to Denise.
+Ortega had been working an overnight repair eleven years earlier when a small cabin boat arrived at the south fuel dock just before dawn. One passenger had a head wound. Ortega remembered because the injured man refused an ambulance and paid cash for fuel.
 
-“Damn right,” Denise answered.
+"Was it my father?"
 
-Music started from someone’s Bluetooth speaker. Kids ran the length of safe new planks. Mira locked the bakery later than usual and walked home along boards that no longer groaned like accusations. Fog stayed offshore, polite for once.
+"I can’t swear to it. But when I saw his photograph on television yesterday, I stopped sleeping."
 
-In her apartment she opened the window to let in salt air and the distant ferry horn. She whispered thank you to a man who had been flawed and beloved and finally, partially, found in the only way left: through the courage of the living.`,
+The boat registration traced to a shell company linked to Voss. Its last documented arrival was in Nova Scotia four days later.
+
+The new information did not give Mira her father back. It gave her something harder: a plausible road beyond the night she thought had ended him.
+
+Denise sat beside her on the bakery steps while rainwater dried in the gutters.
+
+"What if he lived?" Mira asked. "What if he chose not to come home?"
+
+Denise was quiet for a long moment.
+
+"Then you get to be angry at a living choice instead of worshiping a dead mystery."
+
+Mira wiped her eyes.
+
+"That is a terrible comfort."
+
+"It’s the only kind I had."
+
+They sat until the ovens beeped inside, calling Mira back to something she knew how to finish.`,
   },
   {
-    chapter: "Chapter 9 — Bread and Weather",
-    text: `Autumn arrived early, as it often did on that stretch of coast—less a calendar event than a change in how doors closed. Mira’s mornings returned to yeast and lists. The investigation continued in offices she didn’t have to enter every day. Sometimes Lang texted updates. Sometimes silence meant progress of a quieter kind.
+    chapter: "Chapter 6 — The Meeting",
+    text: `The emergency town meeting filled the community hall past fire code. People stood along the walls and crowded the doorway. Local reporters lined the back row.
 
-She started a Thursday table at the bakery: coffee, rolls, and a notebook labeled HARBOR STORIES for anyone who wanted to write what the water had taken or returned. Some entries were jokes. Some were prayers. One was a recipe for chowder that required three kinds of patience.
+Councilmember Hart wanted to discuss pier repairs. Port Meridian wanted to discuss everything else.
 
-Mr. Delaney became a regular. He never mentioned omens again. He talked about grandchildren and the ethics of seagulls.
+Mira had not planned to speak. Then she saw Voss’s name on the donor plaque beside the stage and changed her mind.
 
-Kessler came once, stood awkwardly, bought a loaf, and left a tip too large. Mira let him. Repair had many currencies.`,
+She walked to the microphone with Daniel’s final boathouse letter folded in her pocket.
+
+"My father made mistakes," she said. "He carried things he should not have carried. He lied because he was scared and because shame made him stupid. I’m not asking anybody to turn him into a saint because he disappeared."
+
+The room went still.
+
+"But people in this town used that disappearance. They used silence as protection. They used our harbor as if fog could erase responsibility. So if we repair the pier, we repair more than wood. We publish the contracts. We audit the lighting. We stop calling secrecy tradition when what we mean is fear."
+
+Mr. Delaney stood first.
+
+"Seconded," he said, though no motion had been made.
+
+Laughter broke the tension.
+
+Hart eventually called the vote. Transparent repairs passed by a wide margin.
+
+Outside afterward, Kessler waited near the steps.
+
+"You were right," he told Mira. "Late isn’t nothing. But late is still late."
+
+"Then keep talking," she said. "Make late useful."`,
   },
   {
-    chapter: "Chapter 9 — Bread and Weather",
-    text: `On a clear evening Mira walked to the outer beacon with Denise. They sat on cold stone and watched freighter lights crawl the horizon like slow punctuation.
+    chapter: "Chapter 6 — The Meeting",
+    text: `The next morning, contractors began removing damaged boards from the pier. Under one of the oldest sections they found a narrow blue tin wedged behind a support plate.
 
-“Do you still wait for him?” Denise asked.
+Kessler recognized it before anyone opened it.
 
-Mira considered the honest answers and chose the truest layered one. “I wait for weather reports. I wait for dough to rise. I wait for the town to keep its promises. Him? I carry. Waiting and carrying aren’t the same.”
+"Daniel used those for spare radio parts."
 
-Denise nodded. “Carrying looks good on you.”
+Inside was a laminated ferry schedule, a brass key, and one final letter wrapped in wax paper.
 
-They stayed until the beacon’s pulse felt like a heartbeat they’d agreed to share. Walking back, Mira noticed the pier lights holding steady—no stutter, no borrowed ghost code—just electricity doing its job in a town learning to do the same.
+Mira read it in Officer Lang’s presence.
 
-At the bakery door she paused, palm on the handle, and smiled at her own reflection in the dark glass: flour on her cheek, eyes tired, posture unbroken.`,
+If you are reading this, I may have failed to come home clean. Do not let anyone make a hero of me. Heroes are too easy to forgive and too easy to hate. I was a man who got scared, made bad choices, and tried late to make a good one.
+
+The key belonged to a safety deposit box at a bank two counties inland. Investigators opened it that afternoon.
+
+Inside were duplicate records—and a passport issued to Daniel Quinn eleven months after his disappearance.
+
+Mira stared at the scanned image on Lang’s tablet.
+
+Her father looked thinner. Older around the eyes. Alive.
+
+The passport contained one recorded entry into Canada. No documented return.
+
+Mira’s hands went numb.
+
+"He lived," she said.
+
+Lang nodded carefully. "At least that long."
+
+Joy did not arrive. Neither did relief.
+
+What arrived was anger so enormous it felt almost clean.
+
+Daniel had survived the night.
+
+And for nearly a year afterward, he had not come home.`,
   },
   {
-    chapter: "Chapter 10 — Harbor Lights",
-    text: `Years later—long enough for the new planks to gray, not long enough for the story to become myth without fingerprints—Mira stood on the pier at closing time and watched a summer storm arrange itself offshore. Tourists took photos. Locals pretended not to. The ferry horn rolled across the bay, low and patient.
+    chapter: "Chapter 6 — The Meeting",
+    text: `Mira closed the bakery for one full day.
 
-A child tugged her apron. “Miss Mira, why do the lights blink sometimes in threes?”
+No storm. No holiday. No equipment failure.
 
-She knelt. “Because once they meant a secret. Now they mean we check the system and tell the truth about what we find.”
+She simply could not stand behind the counter handing people warm bread while deciding whether her father’s survival was a gift or a second abandonment.
 
-The child accepted this with the solemnity kids save for rules that sound like magic.
+She took the final letter to the seawall.
 
-Mira locked the bakery, walked the length of the pier, and stopped where the chest had risen. She did not flash a signal. She did not need ceremony every night. Some love becomes infrastructure: quiet, load-bearing, visible if you know where to look.
+The second half was written in different ink.
 
-Behind her, Port Meridian glittered in ordinary rectangles of life. Ahead, water kept its old appetite and its older beauty. Between them, the harbor lights held—green, pause, green—reliable as bread, brave as weather, finished enough to live with.`,
+Mira, if I get away, I may need time before I can safely contact you. If that time becomes too long, that will be my failure, not yours. Do not build your life around my return.
+
+She read the sentence five times.
+
+Her father had known exactly what waiting could do to her, and still left her to do it.
+
+"You coward," she said to the water.
+
+The word felt terrible and necessary.
+
+Then she cried until her face hurt.
+
+When Denise found her an hour later, Mira handed over the letter.
+
+"I spent eleven years defending a dead man," Mira said. "Now I find out he might have been alive while I was defending him."
+
+Denise sat beside her.
+
+"You don’t have to decide today what he deserves."
+
+"What if I never decide?"
+
+"Then you keep living anyway. People act like forgiveness is a court ruling. Maybe sometimes it’s just refusing to let somebody else’s choices schedule your mornings."
+
+Mira looked back toward the bakery.
+
+Tomorrow’s dough still needed mixing.
+
+That, at least, was hers.`,
   },
   {
-    chapter: "Chapter 10 — Harbor Lights",
-    text: `If you asked her what the storm gave back, Mira would not say closure. She would say a pier you could trust in the dark, a town that learned to read its own signals, and a daughter who could finally put her palm on a cold door handle without bracing for the past to break it open.
+    chapter: "Chapter 7 — The Return Address",
+    text: `Two weeks later, a letter arrived from Halifax.
 
-She would say forgiveness is not a single beam cutting fog. It is a light you maintain—bulb by bulb, night by night—until the people coming home can find the shape of the shore.
+No return name. Just a post office box and Mira’s address written by hand.
 
-And on the nights when wind still shoved the windows and the ferry horn sounded almost like a laugh, she would bake anyway, feed whoever argued, and leave the porch lamp on.
+She knew the handwriting before she opened it.
 
-Not for a ghost.
+Daniel Quinn was alive.
 
-For anyone choosing honesty.
+He was living under his own name now, seventy-two years old, with a repaired heart and a small apartment above a hardware store. He wrote that he had entered witness protection briefly, then left it after the case collapsed. By then Mira’s mother had died, Voss still had people watching Port Meridian, and Daniel convinced himself that staying gone was protection.
 
-For the living harbor.
+Years accumulated around that decision until shame became a second country.
 
-For the long work of turning a warning pattern into a welcome.`,
+I kept thinking I would come home when I could explain everything cleanly, he wrote. There was never a clean version.
+
+At the bottom was a phone number.
+
+Mira placed the letter on the prep table and stared at it through an entire batch of sourdough.
+
+At noon, Denise arrived and saw the envelope.
+
+"Well?"
+
+"I haven’t called."
+
+"Do you want to?"
+
+Mira considered the question.
+
+"I want him to have called eleven years ago."
+
+"That wasn’t one of the options."
+
+Mira almost smiled.
+
+At six that evening, after the bakery closed, she dialed the number.
+
+A man answered on the third ring.
+
+"Hello?"
+
+Mira stopped breathing.
+
+The voice was older.
+
+It was still her father’s.`,
+  },
+  {
+    chapter: "Chapter 7 — The Return Address",
+    text: `Neither of them spoke for several seconds.
+
+Then Daniel said, "Mira?"
+
+She hated how quickly fifteen years old returned inside her.
+
+"You don’t get to sound relieved," she said.
+
+He inhaled sharply. "You’re right."
+
+"You were alive."
+
+"Yes."
+
+"Mom died thinking you drowned."
+
+His voice broke. "I know."
+
+"No, you know she died. You don’t know what she did every morning before that. She checked the harbor reports. She watched every unknown boat. She left your jacket on the hook for three years."
+
+Daniel did not defend himself.
+
+That helped and made it worse.
+
+"I thought staying away kept you safe," he said. "Then I knew it didn’t. By then I was ashamed. Every year made the next phone call harder."
+
+"So you solved that by giving me eleven years?"
+
+"No. I failed you for eleven years."
+
+Mira pressed her forehead to the bakery window.
+
+Outside, Port Meridian moved through an ordinary evening. A cyclist passed. Someone walked a dog. The harbor lights switched on.
+
+"I don’t forgive you," she said.
+
+"I didn’t call to ask you to."
+
+"Good."
+
+"Can I call again someday?"
+
+Mira closed her eyes.
+
+"Not tomorrow."
+
+"All right."
+
+"Maybe Sunday."
+
+Daniel exhaled, almost a sob.
+
+"Sunday," he said.`,
+  },
+  {
+    chapter: "Chapter 7 — The Return Address",
+    text: `Sunday became another Sunday, then a month of careful calls. Mira set rules.
+
+No surprise visits. No rewriting history. No using danger as an excuse for decisions already made. If Daniel did not know an answer, he had to say I don’t know instead of inventing a noble version.
+
+He followed the rules.
+
+Mostly.
+
+They spoke about small things first. Bread. Weather. His medication. The bakery mixer he had bought secondhand in 1999 and insisted was "basically immortal." Mira told him it had died dramatically during wedding season.
+
+Eventually they spoke about Mira’s mother.
+
+Daniel cried so quietly Mira almost pretended not to hear.
+
+In December he asked whether she wanted him to visit.
+
+Mira said no.
+
+In February she said maybe.
+
+In April she bought a second coffee mug from the thrift shop and became furious with herself for doing it.
+
+Denise found it in the cupboard.
+
+"That is an aggressively neutral mug," she observed.
+
+"It means nothing."
+
+"Of course. You always purchase meaningless ceramics for emotionally complicated men."
+
+Mira threw a dish towel at her.
+
+The truth was simpler. She was not rebuilding the father she had lost. That man existed only in memory.
+
+She was deciding whether there was room in her adult life for the flawed old man still living three hundred miles north.
+
+Those were different tasks.`,
+  },
+  {
+    chapter: "Chapter 8 — Harbor Lights",
+    text: `Daniel returned to Port Meridian on a gray morning in May.
+
+Mira met him at the ferry terminal because meeting him at the bakery felt too intimate and meeting him nowhere felt like another kind of fear.
+
+He stepped off carrying one small duffel.
+
+He was shorter than memory.
+
+That startled her most.
+
+His hair had gone white. His shoulders curved forward. But when he saw her, his left eyebrow lifted exactly the way it had when she was a child caught stealing cooling cookies.
+
+Neither moved.
+
+Then Daniel said, "You look like your mother when she was trying not to yell at me."
+
+Mira laughed before she could stop herself.
+
+It broke something open.
+
+She did not hug him.
+
+Not yet.
+
+They walked the repaired pier instead. Daniel stopped at every new beam, touching the wood as though reading braille.
+
+At the place where the marine locker had surfaced, he leaned on the railing.
+
+"I am sorry," he said.
+
+"I know."
+
+"That’s not the same as enough."
+
+"No."
+
+He nodded.
+
+They stood in silence while gulls argued above them.
+
+Finally Mira pointed toward the bakery.
+
+"I have lunch."
+
+Daniel looked at her carefully. "Is that an invitation?"
+
+"It is soup. Don’t make it dramatic."
+
+"Wouldn’t dream of it."
+
+He followed her home.`,
+  },
+  {
+    chapter: "Chapter 8 — Harbor Lights",
+    text: `Daniel stayed four days.
+
+He slept at the harbor inn, not upstairs. He visited the cemetery alone. He gave a formal statement to investigators and apologized to Kessler without asking to be forgiven.
+
+At the bakery, customers recognized him slowly, then all at once.
+
+Port Meridian did what small towns do best: stared, whispered, brought casseroles, and pretended none of those things counted as staring, whispering, or bringing casseroles.
+
+On his final morning, Daniel arrived before dawn and asked if he could help shape rolls.
+
+"You remember how?" Mira asked.
+
+"Hands remember things pride forgets."
+
+His first six rolls were terrible.
+
+By the second tray, muscle memory returned.
+
+They worked without discussing the missing years. The silence felt different now—not concealment, just concentration.
+
+At six-thirty Mira carried coffee to the seawall. Daniel followed.
+
+The harbor lights blinked green, pause, green.
+
+"I changed the meaning," Mira said.
+
+"Of what?"
+
+"Three short, two long. It doesn’t mean come down anymore. It means choose honesty. Meet me in the light."
+
+Daniel looked out across the water.
+
+"Better meaning."
+
+"It had to be."
+
+He nodded.
+
+When the ferry arrived, Mira hugged him once. Briefly. Awkwardly. Real.
+
+It was not forgiveness completed.
+
+It was a door unlocked.`,
+  },
+  {
+    chapter: "Chapter 8 — Harbor Lights",
+    text: `Years later, long enough for the repaired planks to gray but not long enough for the story to lose its fingerprints, Mira stood at the end of the pier while a summer storm arranged itself offshore.
+
+The bakery had expanded into the empty shop next door. Denise ran a Thursday story table where fishermen, teenagers, widows, tourists, and anyone else could write what the water had taken or returned. Officer Lang had become Harbor Chief Lang and still accepted payment for unofficial advice in cinnamon rolls.
+
+Daniel visited twice a year.
+
+Their relationship never became simple. Mira stopped requiring simplicity.
+
+A child tugged her apron and pointed toward the harbor lights.
+
+"Why do they blink sometimes?"
+
+Mira crouched beside him.
+
+"Because lights are how people find their way when it’s hard to see."
+
+"Like magic?"
+
+"Like maintenance," she said. Then, because his disappointed face deserved mercy, she added, "Maintenance with a little magic."
+
+The ferry horn rolled across the bay—low, patient, familiar.
+
+Mira looked toward the lighthouse, then back at Port Meridian glowing behind her.
+
+For years she had believed healing meant finally discovering one clean answer.
+
+Instead, it had been this: learning which truths could carry weight, repairing what could be repaired, and refusing to let love become another name for silence.
+
+The harbor lights held steady.
+
+So did she.`,
   },
 ];
+
