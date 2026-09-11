@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Calendar, Camera, Lock, Sparkles, Users, X } from "lucide-react";
+import { Calendar, Camera, ImageIcon, Lock, Sparkles, Users, Video, X } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ACTIVITY_META,
@@ -27,7 +27,7 @@ const ACTIVITY_OPTIONS: Exclude<CircleActivityType, "video">[] = [
 ];
 
 /**
- * Create a Circle post — photos, events, community activities, exclusives.
+ * Create a Circle post — photo or video from the library, plus activity type.
  * Stays inside My Circle (never published to the main feed).
  */
 export default function CircleCreatePostSheet({ open, onClose, circleId, userId, onCreated }: Props) {
@@ -41,6 +41,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
   const [eventLocation, setEventLocation] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [mediaKind, setMediaKind] = useState<"image" | "video" | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (!open) return null;
@@ -52,6 +53,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
     setEventLocation("");
     setPreview(null);
     setFile(null);
+    setMediaKind(null);
     setActivity("photo");
     setVisibility("circle_members");
     setDonationsEnabled(true);
@@ -59,33 +61,48 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
 
   const onPick = (f: File | null) => {
     if (!f) return;
-    if (!f.type.startsWith("image/")) {
-      toast({ title: "Choose a photo", description: "Posts use images from your library.", variant: "destructive" });
+    const isVideo = f.type.startsWith("video/");
+    const isImage = f.type.startsWith("image/");
+    if (!isVideo && !isImage) {
+      toast({ title: "Choose a photo or video", description: "Pick something from your library.", variant: "destructive" });
       return;
     }
     setFile(f);
+    setMediaKind(isVideo ? "video" : "image");
     setPreview(URL.createObjectURL(f));
-    if (activity === "update") setActivity("photo");
+    if (isVideo) {
+      // Keep activity as selected type, but content kind will be video.
+    } else if (activity === "update") {
+      setActivity("photo");
+    }
   };
 
   const publish = async () => {
     if (!body.trim() && !file && !title.trim()) {
-      toast({ title: "Add something", description: "Write a caption or add a photo.", variant: "destructive" });
+      toast({ title: "Add something", description: "Write a caption or add a photo/video.", variant: "destructive" });
       return;
     }
     setBusy(true);
     try {
       let mediaUrls: string[] = [];
-      let mediaType: "image" | "none" = "none";
-      if (file) {
-        mediaUrls = [await uploadCircleContentMedia(userId, file, "image")];
-        mediaType = "image";
+      let mediaType: "image" | "video" | "none" = "none";
+      let kind: "post" | "video" = "post";
+      let activityType: CircleActivityType = activity;
+
+      if (file && mediaKind) {
+        mediaUrls = [await uploadCircleContentMedia(userId, file, mediaKind)];
+        mediaType = mediaKind;
+        if (mediaKind === "video") {
+          kind = "video";
+          activityType = "video";
+        }
       }
+
       await createCircleContent({
         circleId,
         authorId: userId,
-        kind: "post",
-        activityType: activity,
+        kind,
+        activityType,
         title: title.trim() || undefined,
         body: body.trim() || undefined,
         mediaUrls,
@@ -95,7 +112,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
         eventAt: activity === "event" && eventAt ? new Date(eventAt).toISOString() : null,
         eventLocation: activity === "event" ? eventLocation.trim() || null : null,
       });
-      toast({ title: "Posted to your Circle", description: "Members can see it on Home. It stays off the main feed." });
+      toast({ title: "Posted to your Circle", description: "It shows on Home. Stays off the main feed." });
       reset();
       onCreated();
       onClose();
@@ -151,19 +168,24 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
             onClick={() => fileRef.current?.click()}
             className="flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/40 py-6"
           >
-            {preview ? (
+            {preview && mediaKind === "image" ? (
               <img src={preview} alt="" className="max-h-48 w-full object-cover" />
+            ) : preview && mediaKind === "video" ? (
+              <video src={preview} className="max-h-48 w-full object-cover" controls playsInline />
             ) : (
               <>
-                <Camera className="h-6 w-6 text-muted-foreground" />
-                <span className="text-[12px] font-semibold text-muted-foreground">Add photo from library</span>
+                <div className="flex items-center gap-3 text-muted-foreground">
+                  <ImageIcon className="h-6 w-6" />
+                  <Video className="h-6 w-6" />
+                </div>
+                <span className="text-[12px] font-semibold text-muted-foreground">Add photo or video from library</span>
               </>
             )}
           </button>
           <input
             ref={fileRef}
             type="file"
-            accept="image/*"
+            accept="image/*,video/*,.mp4,.mov,.m4v,.webm"
             className="hidden"
             onChange={(e) => {
               onPick(e.target.files?.[0] ?? null);
@@ -185,7 +207,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
             className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none"
           />
 
-          {activity === "event" && (
+          {activity === "event" && mediaKind !== "video" && (
             <div className="grid gap-2 sm:grid-cols-2">
               <input
                 type="datetime-local"

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Lock, Plus, Radio, Settings, Upload, Users } from "lucide-react";
+import { ArrowLeft, Lock, Plus, Radio, Settings, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { Circle, CircleMember, getMyMembership, getCircle, updateCircle, countPendingMembers } from "@/lib/circles";
@@ -12,11 +12,10 @@ import CircleTopFansWheel from "@/components/circle/CircleTopFansWheel";
 import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
 import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 import CircleCreatePostSheet from "@/components/circle/CircleCreatePostSheet";
-import CircleUploadVideoSheet from "@/components/circle/CircleUploadVideoSheet";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
 import LiveCameraView from "@/components/feed/create/LiveCameraView";
 
-type Tab = "home" | "posts" | "videos" | "members" | "about";
+type Tab = "home" | "members" | "about";
 
 export default function CirclePage() {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +29,6 @@ export default function CirclePage() {
   /** Owner prep overlay — same get-ready camera as Post → Live, scoped to this Circle. */
   const [showLivePrep, setShowLivePrep] = useState(false);
   const [showCreatePost, setShowCreatePost] = useState(false);
-  const [showUploadVideo, setShowUploadVideo] = useState(false);
   const [contentRefresh, setContentRefresh] = useState(0);
 
   const load = () => {
@@ -124,8 +122,6 @@ export default function CirclePage() {
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "home", label: "Home" },
-    { id: "posts", label: "Posts" },
-    { id: "videos", label: "Videos" },
     ...(isAdmin ? [{ id: "members" as Tab, label: "Members" }] : []),
     { id: "about", label: "About" },
   ];
@@ -176,6 +172,18 @@ export default function CirclePage() {
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {user?.id && <CircleJoinButton circle={circle} userId={user.id} membership={membership} isOwner={isOwner} onChanged={load} />}
+
+          {/* Creator actions sit beside Go Live — not in the viewer tabs. */}
+          {canCreate && (
+            <button
+              type="button"
+              onClick={() => setShowCreatePost(true)}
+              className="flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-[12.5px] font-black text-primary-foreground active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Post
+            </button>
+          )}
 
           {isOwner && !liveSession && (
             <button
@@ -232,21 +240,21 @@ export default function CirclePage() {
             <section>
               <div className="px-4 pt-1">
                 <h2 className="text-sm font-bold">Latest</h2>
-                <p className="text-[11px] text-muted-foreground">New posts & videos from this Circle</p>
+                <p className="text-[11px] text-muted-foreground">New posts from this Circle</p>
               </div>
               <CircleContentFeed
                 circleId={circle.id}
                 userId={user?.id}
                 canInteract={isApprovedMember}
                 refreshKey={contentRefresh}
-                emptyLabel="No posts or videos yet. Create one from Posts or Videos."
+                emptyLabel="No posts yet. Tap Post to share a photo or video."
               />
             </section>
           ) : (
             <div className="flex flex-col items-center gap-3 px-8 py-12 text-center">
               <Lock className="h-8 w-8 text-muted-foreground" />
               <p className="max-w-xs text-[13px] text-muted-foreground">
-                Join this Circle to see posts and videos under Home.
+                Join this Circle to see posts under Home.
               </p>
             </div>
           )}
@@ -259,68 +267,12 @@ export default function CirclePage() {
             <Lock className="h-9 w-9 text-muted-foreground" />
             <h2 className="text-base font-bold">This is a private Circle</h2>
             <p className="max-w-xs text-[13px] text-muted-foreground">
-              {circle.welcome_message || "Request to join to see posts, videos, and everything else in here."}
+              {circle.welcome_message || "Request to join to see posts and everything else in here."}
             </p>
           </div>
         )
       ) : (
         <>
-          {tab === "posts" && (
-            <div>
-              {canCreate && (
-                <div className="px-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreatePost(true)}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-bold text-primary-foreground"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Create post
-                  </button>
-                  <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                    Photos, events, community & more · Circle only
-                  </p>
-                </div>
-              )}
-              <CircleContentFeed
-                circleId={circle.id}
-                userId={user?.id}
-                canInteract={isApprovedMember}
-                kind="post"
-                refreshKey={contentRefresh}
-                emptyLabel="No posts yet. Share a photo, event, or update."
-              />
-            </div>
-          )}
-
-          {tab === "videos" && (
-            <div>
-              {canCreate && (
-                <div className="px-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowUploadVideo(true)}
-                    className="flex h-11 w-full items-center justify-center gap-2 rounded-full border border-border bg-card text-sm font-bold"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Upload video from library
-                  </button>
-                  <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                    Stays in My Circle · not shared to the main feed
-                  </p>
-                </div>
-              )}
-              <CircleContentFeed
-                circleId={circle.id}
-                userId={user?.id}
-                canInteract={isApprovedMember}
-                kind="video"
-                refreshKey={contentRefresh}
-                emptyLabel="No videos yet. Upload a clip from your photo library."
-              />
-            </div>
-          )}
-
           {tab === "members" && isAdmin && <CircleMemberManagement circle={circle} onChanged={load} />}
           {tab === "about" && (
             <div className="space-y-3 px-4 py-5 text-[13px]">
@@ -336,28 +288,16 @@ export default function CirclePage() {
       )}
 
       {user?.id && (
-        <>
-          <CircleCreatePostSheet
-            open={showCreatePost}
-            onClose={() => setShowCreatePost(false)}
-            circleId={circle.id}
-            userId={user.id}
-            onCreated={() => {
-              bumpContent();
-              setTab("home");
-            }}
-          />
-          <CircleUploadVideoSheet
-            open={showUploadVideo}
-            onClose={() => setShowUploadVideo(false)}
-            circleId={circle.id}
-            userId={user.id}
-            onCreated={() => {
-              bumpContent();
-              setTab("home");
-            }}
-          />
-        </>
+        <CircleCreatePostSheet
+          open={showCreatePost}
+          onClose={() => setShowCreatePost(false)}
+          circleId={circle.id}
+          userId={user.id}
+          onCreated={() => {
+            bumpContent();
+            setTab("home");
+          }}
+        />
       )}
 
       {showLivePrep && (
