@@ -1,7 +1,7 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Fog Station — an adult mystery novella by Bea Morin.
+ * Fog Station — finished YAJ original adult novella.
  * 24 substantial reading pages, arranged as eight three-page chapters.
  */
 export const FOG_STATION_PAGES: BookPage[] = [
@@ -79,7 +79,7 @@ Ruiz felt the case's shape sharpening, decade by decade, each ghost adding a lay
     chapter: "Chapter 2 — 1972",
     text: `"Tell me about the insurance policy," Ruiz said. "Details. Numbers, if you have them."
 
-Warren recited figures with the specific, aggrieved precision of a man who'd spent his final weeks alive memorizing exactly the story that had gotten him killed, unwilling to let a single detail blur even in whatever afterlife this train represented. Four times the building's replacement value. Taken out through a shell brokerage registered to an address that traced back, through two more shells, to Julian Aldrich's brother-in-law.
+Warren recited the figures precisely: four times the building's value, through shell brokerages tracing to Julian Aldrich's brother-in-law.
 
 "That's motive," Ruiz said. "That's real motive, if it holds up."
 
@@ -95,7 +95,7 @@ Warren's expression shifted, something like respect breaking through the old bit
   },
   {
     chapter: "Chapter 2 — 1972",
-    text: `Before Ruiz could move toward the connecting door, Warren caught her sleeve, his grip surprisingly solid for a man who shouldn't, by any rational measure, have had a physical body at all.
+    text: `Before Ruiz could move, Warren caught her sleeve.
 
 "One more thing," he said. "The claims adjuster who recanted. His name was Otto Bruann. I want you to remember that name specifically, because he's not the man in the next car, though they share a surname, and I don't want you confusing the two of them when you're trying to piece this together in daylight, when none of us will be here to correct you."
 
@@ -111,7 +111,7 @@ He released her sleeve, and the door to the next car swung open on its own, admi
   },
   {
     chapter: "Chapter 3 — 1985",
-    text: `The third car held a man in a detective's plain suit, considerably more recent in style than Warren's rumpled brown one, sitting with a case file spread across his knees that Ruiz recognized instantly as an earlier, thinner version of the same folder currently occupying her own desk drawer sixty-two years after the fire it documented.
+    text: `The third car held a detective with an earlier, thinner version of Ruiz's own case file spread across his knees.
 
 "Otto Marsh," he said, not looking up immediately. "Detective, City PD, 1985. I picked up this case eight years into my career, thinking it would be a straightforward cold file nobody had properly closed. I was wrong about the straightforward part."
 
@@ -131,7 +131,7 @@ Ruiz felt something settle into place with the specific, cold clarity of a detec
     chapter: "Chapter 3 — 1985",
     text: `"What happened to you?" Ruiz asked. "Specifically. I need to understand the pattern, if I'm going to avoid repeating it."
 
-Marsh's expression went distant, recalling something Ruiz suspected he'd replayed more times than any living memory should have to endure. "I found the matchbook in a locked drawer at Aldrich's own foundation office, during a records review he'd personally authorized because he didn't think anyone would look closely enough to recognize what they were seeing. I photographed it. I logged my findings with my captain. Three days later, my captain told me the case was being reassigned due to 'insufficient current evidence,' and two weeks after that, I was dead in what got ruled a hunting accident I have no memory of actually experiencing."
+Marsh's expression went distant. "I found the matchbook in a locked drawer at Aldrich's foundation office and logged it with my captain. Three days later, he reassigned the case. Two weeks after that, I was dead in what they called a hunting accident."
 
 "You don't remember dying?"
 
