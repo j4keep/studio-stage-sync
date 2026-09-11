@@ -89,7 +89,13 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
 
   return (
     <div className="flex flex-col items-center py-4">
-      <p className="mb-3 text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Top Fans</p>
+      <p
+        className={`mb-3 text-[11px] font-black uppercase tracking-[0.14em] ${
+          ember ? "text-[#C4A484]" : "text-muted-foreground"
+        }`}
+      >
+        Top Fans
+      </p>
       <div className="relative" style={{ width: center * 2, height: center * 2 }}>
         <svg className="absolute inset-0" width={center * 2} height={center * 2}>
           {Array.from({ length: SLOTS }).map((_, i) => {
@@ -103,9 +109,9 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
                 y1={center}
                 x2={x}
                 y2={y}
-                stroke="hsl(var(--border))"
+                stroke={ember ? "#3A2A1A" : "hsl(var(--border))"}
                 strokeWidth={1.5}
-                opacity={0.6}
+                opacity={0.9}
               />
             );
           })}
@@ -116,7 +122,11 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
           <button
             type="button"
             onClick={onCreateAvatar}
-            className="absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-lg"
+            className={`absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 flex-col items-center justify-center gap-0.5 rounded-full border-2 shadow-lg ${
+              ember
+                ? "border-[#E8A05A] bg-[#E8A05A] text-[#1A1410]"
+                : "border-primary bg-primary text-primary-foreground"
+            }`}
             style={{ left: center, top: center }}
           >
             <Plus className="h-5 w-5" />
@@ -124,7 +134,9 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
           </button>
         ) : (
           <div
-            className="absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-primary bg-gradient-to-br from-slate-400 to-slate-300 shadow-lg"
+            className={`absolute flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 bg-gradient-to-br from-slate-400 to-slate-300 shadow-lg ${
+              ember ? "border-[#E8A05A]" : "border-primary"
+            }`}
             style={{ left: center, top: center }}
           >
             {centerAvatarUrl ? (
@@ -144,9 +156,9 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
           return (
             <div
               key={i}
-              className={`absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 border-background bg-gradient-to-br shadow-sm ${
-                fan?.avatar_url ? "" : SLOT_GRADIENTS[i % SLOT_GRADIENTS.length]
-              }`}
+              className={`absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center overflow-hidden rounded-full border-2 bg-gradient-to-br shadow-sm ${
+                ember ? "border-[#120E0B]" : "border-background"
+              } ${fan?.avatar_url ? "" : SLOT_GRADIENTS[i % SLOT_GRADIENTS.length]}`}
               style={{ left: x, top: y }}
               title={fan?.display_name || "Open spot"}
             >
@@ -161,7 +173,7 @@ export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, to
           );
         })}
       </div>
-      <p className="mt-3 max-w-[240px] text-center text-[11px] text-muted-foreground">
+      <p className={`mt-3 max-w-[240px] text-center text-[11px] ${ember ? "text-[#8A7460]" : "text-muted-foreground"}`}>
         Fans who engage the most with this Circle rise onto the wheel.
       </p>
     </div>
