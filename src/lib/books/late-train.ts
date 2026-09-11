@@ -89,7 +89,7 @@ He met her eyes.
   },
   {
     chapter: "Chapter 1 — Delay",
-    text: `At 9:06 the conductor announced that the line ahead was underwater and the train would remain at the platform. Groans moved through the car like weather. A woman uncorked a thermos. Someone distributed mints.
+    text: `At 9:06 the conductor announced that the line ahead was underwater. Groans moved through the car like weather.
 
 Nora's phone showed six messages from her mother, escalating from Where are you? to I saved the lemon potatoes. She called, explained the delay, and endured instructions about keeping her feet dry. When she hung up, Julian was looking out the window.
 
@@ -135,8 +135,6 @@ The doors closed between them. Through the wet glass, Julian's face held neither
 
 She had spent four days inventing reasons not to board it. Yet Nora arrived early. Julian was on Platform Nine with two teas and no assumption in his posture. He wore a navy sweater beneath his coat. She remembered choosing that color for him once and hated memory for being so tactile.
 
-They found separate seats across an aisle. After the city gave way to rain-polished suburbs, Julian began.
-
 "The morning we were supposed to marry, my father called. He said he was having chest pain. I drove to his apartment."
 
 Nora knew Mateo Reyes had opposed their marriage with the solemn conviction of a man guarding a national border. Nora was too independent, too secular, too unwilling to let him choose where Julian lived.
@@ -144,8 +142,6 @@ Nora knew Mateo Reyes had opposed their marriage with the solemn conviction of a
 "Was he ill?"
 
 "Panicking. He had taken too much medication and whiskey. He said if I left, he'd kill himself." Julian's gaze stayed on his clasped hands. "I called an ambulance. At the hospital, he admitted he had staged it to stop the wedding."
-
-The train entered a tunnel. Their reflections replaced the windows.
 
 "You had a phone," Nora said.
 
@@ -171,7 +167,7 @@ The tunnel released them into evening. There it was—not the exonerating accide
   },
   {
     chapter: "Chapter 2 — What Happened",
-    text: `Julian told her he had gone to the municipal garden after midnight. The chairs had been folded. Rain had dissolved the chalkboard welcome sign into pale rivers. Nora's cousin had found him beneath the pergola and punched him once, efficiently, in the mouth.
+    text: `Julian told her he had gone to the empty municipal garden after midnight. Nora's cousin found him beneath the pergola and punched him once in the mouth.
 
 "The scar," Nora said.
 
@@ -186,8 +182,6 @@ Mateo died the following spring after an actual stroke. Julian spent the interve
 "Why didn't you come to me?"
 
 "Because I had already decided that my remorse was another burden I had no right to make you carry." He looked at her. "That sounds noble. It wasn't. It kept me from being rejected in person."
-
-Nora appreciated the accuracy against her will.
 
 At Bellwether, they remained seated while other passengers left.
 
@@ -321,7 +315,7 @@ They remained until the snow began to cling. Julian did not touch her. His restr
     chapter: "Chapter 3 — Stations Between",
     text: `Nora's mother opened the yellow door before they reached the porch.
 
-Elise Calder was seventy, five feet tall, and formidable in a flour-dusted apron. She looked from Nora to Julian, then at the snow on their shoulders.
+Elise Calder looked from Nora to Julian, then at the snow on their shoulders.
 
 "You," she said.
 
@@ -475,7 +469,7 @@ Julian followed her gaze. "All twenty-six."
 
 She waited for him to offer the box, explain it, turn it into evidence. He only returned to chopping parsley.
 
-They made lentil soup. Julian had exaggerated neither the quantity nor the quality. While it simmered, Nora danced beside the kettle—two ridiculous turns in her socks. He watched from the counter, smiling with such unguarded affection that she had to look away.
+They made lentil soup. While it simmered, Nora danced beside the kettle—two ridiculous turns in her socks. He watched with unguarded affection.
 
 Later, in bed, intimacy was familiar and entirely new. They laughed when a tram squealed around the curve below at an inopportune moment.
 
@@ -509,7 +503,7 @@ They walked through empty streets until dawn diluted the sky. She told him why s
     chapter: "Chapter 4 — Chosen Departures",
     text: `They established rules over breakfast in a twenty-four-hour cafe.
 
-No disappearing during conflict. No using the abandoned wedding as a weapon in arguments about dishes, lateness, or whose family hosted holidays. No confusing vigilance with honesty. Either person could ask for time, but time required a return: I need an hour, and I will call at ten.
+No disappearing during conflict. No using the abandoned wedding as a weapon. No confusing vigilance with honesty. Asking for time required a return: I need an hour, and I will call at ten.
 
 "This is deeply romantic," Julian said as Nora wrote on a paper placemat.
 

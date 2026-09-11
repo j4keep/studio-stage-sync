@@ -7,7 +7,7 @@ import type { BookPage } from "@/lib/books-catalog";
 export const CHROME_RAIN_PAGES: BookPage[] = [
   {
     chapter: "Chapter 1 — Licensed Weather",
-    text: `Chrome rain hissed against the transit glass, each drop engineered upstream by a Weather Guild tower that billed the city by the millimeter. Kai Ferro rode the tram with a satchel across one shoulder, three licensed storm tokens rattling in the outer pocket where any inspector would find them, and one contraband sun-disk sewn into the lining where none would think to look. The disk was warm against her ribs, as if it already knew it was going somewhere it wasn't supposed to exist. Below the tram, District 4 unrolled in its permanent dusk: neon doubled in wet pavement, awnings sagging under sanctioned drizzle, people walking with the hunch of a population that had forgotten what unscheduled light felt like. Port Lumen had traded its sky to the Guild eleven years ago, after the Ozone Riots, in exchange for climate stability nobody was allowed to call rationing. Rain on schedule. Fog on schedule. Sun sold in ten-minute increments to those who could afford a rooftop permit.
+    text: `Chrome rain hissed against the transit glass, engineered by a Weather Guild tower that billed the city by the millimeter. Kai Ferro rode with three licensed storm tokens in the pocket where any inspector would find them and one contraband sun-disk sewn into the lining. The disk was warm against her ribs. Below, District 4 unrolled in permanent dusk: neon doubled in wet pavement, awnings sagging under sanctioned drizzle, people hunched beneath a sky they no longer owned. Port Lumen had traded its weather to the Guild after the Ozone Riots in exchange for stability nobody could call rationing. Rain on schedule. Fog on schedule. Sun sold in ten-minute increments to those who could afford a rooftop permit.
 
 Kai worked the courier lanes because couriers moved fast enough that drones rarely ran a full scan. Tonight rarely was going to matter more. The disk in her lining held eight hours of unlicensed solar charge, drawn from a black-market array outside the city limits, bound for the pediatric respiratory ward at Third Rail Clinic, where a technician named ONeill had been begging her for a month to bring something that wasn't rationed fog therapy. She'd said yes before finishing the math on what getting caught would cost. That was, her brother used to say, her most reliable flaw and her only redeeming one.
 
@@ -88,6 +88,8 @@ She didn't tell Senna. She told herself that was protecting her, and knew, under
 "How do you know?"
 
 "A friend in records who owes me a favor. Kai. They have a name flagged. It isn't mine."
+
+Kai looked toward the window and imagined the audit moving through her life: tram fares, delivery scans, the unremarkable evidence of where a working person went each day. She had thought secrecy meant keeping names out of messages. The Guild had built a city in which movement itself could testify.
 
 The rain outside kept its scheduled rhythm, indifferent, and for the first time in fourteen months Kai heard it as something closer to a countdown than weather.`,
   },

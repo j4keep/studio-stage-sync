@@ -313,6 +313,8 @@ Afterward, walking past the booth's familiar pink glow one final time, Jules did
 
 Jules's journal had grown into six full volumes by then, an unglamorous archive of ordinary hours that would never sell for anything on any market, real or black, precisely because their value existed entirely in having been lived by the one person who wrote them down. Priya teased that Jules had become, against all odds, the most boring person she knew, spending evenings describing kitchen light and coffee instead of pursuing anything resembling excitement.
 
+The volumes held no attempt at perfect continuity. Jules sometimes contradicted an earlier entry or forgot to write for days. They left those absences visible. An ordinary gap no longer proved theft, and a record did not need to become another machine policing the mind. Some evenings deserved attention; others could pass without testimony and still have been lived.
+
 "I had enough excitement," Jules said, only half joking. "I'd like several decades of boring now, please. The kind nobody can take from me without me noticing this time."`,
   },
   {
