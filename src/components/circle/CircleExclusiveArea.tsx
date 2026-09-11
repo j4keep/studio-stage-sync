@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, Plus, Radio, ShieldAlert } from "lucide-react";
+import { Lock, Plus, Radio, Share2, ShieldAlert } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -12,7 +12,13 @@ import {
   setMemberRole,
   updateCircle,
 } from "@/lib/circles";
-import { CircleLiveSession, getActiveLiveSession } from "@/lib/circle-live";
+import {
+  CircleLiveSession,
+  getActiveLiveSession,
+  sessionExclusiveAudience,
+  sessionInviteToken,
+} from "@/lib/circle-live";
+import { liveWatchUrl, shareLiveInvite } from "@/lib/dual-camera";
 import { supabase } from "@/integrations/supabase/client";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
 import CircleExclusivePostSheet from "@/components/circle/CircleExclusivePostSheet";
@@ -30,6 +36,7 @@ type Props = {
 /**
  * Exclusive area — same Home / Post / Go Live pattern as the main Circle,
  * but gated by section-level Members vs Paid supporters + 18+ confirmation.
+ * Exclusive lives never appear on the main feed or Circle Home.
  */
 export default function CircleExclusiveArea({
   circle,
@@ -49,6 +56,9 @@ export default function CircleExclusiveArea({
 
   const access = getCircleExclusiveAccess(circle);
   const canView = canAccessCircleExclusive(circle, membership, isOwner);
+  const liveAudience = liveSession ? sessionExclusiveAudience(liveSession) : "all";
+  const inviteOnlyLive = Boolean(liveSession && liveAudience === "invite");
+  const liveInviteToken = liveSession ? sessionInviteToken(liveSession) : null;
 
   useEffect(() => {
     if (userId) setAgeOk(hasConfirmedExclusiveAge(userId, circle.id));
@@ -99,6 +109,34 @@ export default function CircleExclusiveArea({
     }
   };
 
+  const openExclusiveLive = () => {
+    if (!liveSession) return;
+    const invite =
+      liveAudience === "invite" && liveInviteToken
+        ? `&invite=${encodeURIComponent(liveInviteToken)}`
+        : "";
+    navigate(`/circle/c/${circle.id}/live?exclusive=1${invite}`);
+  };
+
+  const shareExclusiveInvite = async () => {
+    if (!liveSession) return;
+    const url = liveWatchUrl({
+      circleId: circle.id,
+      exclusive: true,
+      inviteToken: liveInviteToken,
+    });
+    const result = await shareLiveInvite({
+      url,
+      title: "Join my Exclusive live on YAJ",
+      circleScoped: true,
+    });
+    if (result === "copied") {
+      toast({ title: "Invite link copied", description: "Only people with this link can watch." });
+    } else if (result === "failed") {
+      toast({ title: "Couldn't share", description: url, variant: "destructive" });
+    }
+  };
+
   if (!userId) {
     return (
       <div className="px-6 py-12 text-center text-[13px] text-muted-foreground">
@@ -144,7 +182,7 @@ export default function CircleExclusiveArea({
         <div>
           <h2 className="text-sm font-black">Exclusive</h2>
           <p className="text-[11px] text-muted-foreground">
-            Private drops & lives for qualifying people · not on the main feed
+            Private drops & lives for qualifying people · never on the main feed
           </p>
         </div>
 
@@ -224,15 +262,34 @@ export default function CircleExclusiveArea({
                 Go Live
               </button>
             )}
-            {liveSession && (
+            {liveSession && (isOwner || !inviteOnlyLive) && (
               <button
                 type="button"
-                onClick={() => navigate(`/circle/c/${circle.id}/live?exclusive=1`)}
+                onClick={openExclusiveLive}
                 className="flex items-center gap-1.5 rounded-full bg-red-600 px-4 py-2 text-[12.5px] font-black text-white active:scale-95"
               >
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                {liveSession.host_user_id === userId ? "You're Live · Exclusive" : "Watch Exclusive Live"}
+                {liveSession.host_user_id === userId
+                  ? inviteOnlyLive
+                    ? "You're Live · Invite only"
+                    : "You're Live · Exclusive"
+                  : "Watch Exclusive Live"}
               </button>
+            )}
+            {liveSession && isOwner && inviteOnlyLive && (
+              <button
+                type="button"
+                onClick={() => void shareExclusiveInvite()}
+                className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-2 text-[12px] font-bold"
+              >
+                <Share2 className="h-3.5 w-3.5" />
+                Share invite
+              </button>
+            )}
+            {liveSession && inviteOnlyLive && !isOwner && (
+              <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
+                Invite-only live in progress
+              </span>
             )}
             <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
               {access === "paid" ? "Supporters" : "Members"} · 18+

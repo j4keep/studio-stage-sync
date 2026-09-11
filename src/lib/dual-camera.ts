@@ -234,9 +234,20 @@ async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function liveWatchUrl(opts: { circleId?: string | null; sessionId?: string | null }): string {
+export function liveWatchUrl(opts: {
+  circleId?: string | null;
+  sessionId?: string | null;
+  exclusive?: boolean;
+  inviteToken?: string | null;
+}): string {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  if (opts.circleId) return `${origin}/#/circle/c/${opts.circleId}/live`;
+  if (opts.circleId) {
+    const q = new URLSearchParams();
+    if (opts.exclusive) q.set("exclusive", "1");
+    if (opts.inviteToken) q.set("invite", opts.inviteToken);
+    const qs = q.toString();
+    return `${origin}/#/circle/c/${opts.circleId}/live${qs ? `?${qs}` : ""}`;
+  }
   if (opts.sessionId) return `${origin}/#/live/${opts.sessionId}`;
   return `${origin}/#/`;
 }

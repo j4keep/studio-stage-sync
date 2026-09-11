@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 const sb = supabase as any;
 
 export type CircleLiveLayoutMode = "live" | "multi" | "virtual";
+export type ExclusiveLiveAudience = "all" | "invite";
 
 export type CircleLiveSession = {
   id: string;
@@ -17,9 +18,49 @@ export type CircleLiveSession = {
   layout_mode?: CircleLiveLayoutMode;
   /** True when started from the Circle Exclusive area (gated separately). */
   is_exclusive?: boolean;
+  /** Exclusive live: all qualifying Exclusive people, or invite-link only. */
+  exclusive_audience?: ExclusiveLiveAudience;
+  /** Present when exclusive_audience is invite — required in the watch URL. */
+  invite_token?: string | null;
   started_at: string;
   ended_at: string | null;
 };
+
+/** Room-name fallback when is_exclusive column isn't migrated yet. */
+export function sessionLooksExclusive(row: Pick<CircleLiveSession, "is_exclusive" | "room">): boolean {
+  if (row.is_exclusive === true) return true;
+  if (row.is_exclusive === false) return false;
+  return /^(cexcl|cexclinv)_/i.test(row.room || "");
+}
+
+export function sessionExclusiveAudience(
+  row: Pick<CircleLiveSession, "exclusive_audience" | "room" | "is_exclusive">,
+): ExclusiveLiveAudience {
+  if (row.exclusive_audience === "invite") return "invite";
+  if (row.exclusive_audience === "all") return "all";
+  if (/^cexclinv_/i.test(row.room || "")) return "invite";
+  return "all";
+}
+
+/** Prefer DB invite_token; fall back to token embedded in room name. */
+export function sessionInviteToken(
+  row: Pick<CircleLiveSession, "invite_token" | "room">,
+): string | null {
+  if (row.invite_token) return row.invite_token;
+  const m = /^cexclinv_([a-zA-Z0-9]+)$/i.exec(row.room || "");
+  return m?.[1] ?? null;
+}
+
+function makeInviteToken(): string {
+  try {
+    if (typeof crypto !== "undefined" && crypto.randomUUID) {
+      return crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+    }
+  } catch {
+    /* fall through */
+  }
+  return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export async function endCircleLive(sessionId: string): Promise<void> {
   const { error } = await sb
@@ -72,15 +113,28 @@ export async function startCircleLive(
   circleId: string | null,
   hostUserId: string,
   layoutMode: CircleLiveLayoutMode = "live",
-  opts?: { isExclusive?: boolean },
+  opts?: { isExclusive?: boolean; exclusiveAudience?: ExclusiveLiveAudience },
 ): Promise<CircleLiveSession> {
   // One live at a time per host — kill ghost sessions left behind by a closed tab / white screen.
   await endActiveLivesForHost(hostUserId);
 
-  const room = `${circleId ? "circle" : "user"}_${circleId ?? hostUserId}_${Date.now()}`;
   const mode: CircleLiveLayoutMode =
     layoutMode === "multi" || layoutMode === "virtual" ? layoutMode : "live";
   const isExclusive = Boolean(opts?.isExclusive);
+  const exclusiveAudience: ExclusiveLiveAudience =
+    isExclusive && opts?.exclusiveAudience === "invite" ? "invite" : "all";
+  const inviteToken = isExclusive && exclusiveAudience === "invite" ? makeInviteToken() : null;
+
+  // Prefix encodes Exclusive + audience so Home/feed can filter even before DB columns exist.
+  // Invite token is embedded in the room name so invite links work before invite_token lands.
+  const room = circleId
+    ? isExclusive
+      ? exclusiveAudience === "invite"
+        ? `cexclinv_${inviteToken}`
+        : `cexcl_${circleId.replace(/-/g, "")}_${Date.now()}`
+      : `circle_${circleId.replace(/-/g, "")}_${Date.now()}`
+    : `user_${hostUserId.replace(/-/g, "")}_${Date.now()}`;
+
   const base = {
     circle_id: circleId,
     host_user_id: hostUserId,
@@ -88,12 +142,24 @@ export async function startCircleLive(
     status: "live" as const,
   };
 
-  // Prefer writing layout_mode + is_exclusive; fall back column-by-column if not migrated.
-  let { data, error } = await sb
-    .from("circle_live_sessions")
-    .insert({ ...base, layout_mode: mode, is_exclusive: isExclusive })
-    .select("*")
-    .single();
+  const full = {
+    ...base,
+    layout_mode: mode,
+    is_exclusive: isExclusive,
+    exclusive_audience: isExclusive ? exclusiveAudience : "all",
+    invite_token: inviteToken,
+  };
+
+  // Prefer writing all Exclusive columns; fall back column-by-column if not migrated.
+  let { data, error } = await sb.from("circle_live_sessions").insert(full).select("*").single();
+
+  if (error && /exclusive_audience|invite_token/i.test(error.message || "")) {
+    ({ data, error } = await sb
+      .from("circle_live_sessions")
+      .insert({ ...base, layout_mode: mode, is_exclusive: isExclusive })
+      .select("*")
+      .single());
+  }
 
   if (error && /is_exclusive/i.test(error.message || "")) {
     ({ data, error } = await sb
@@ -105,47 +171,40 @@ export async function startCircleLive(
 
   if (error && /layout_mode/i.test(error.message || "")) {
     ({ data, error } = await sb.from("circle_live_sessions").insert(base).select("*").single());
-    if (!error && data) {
-      return { ...(data as CircleLiveSession), layout_mode: mode, is_exclusive: isExclusive };
-    }
   }
+
   if (error) throw error;
-  return { ...(data as CircleLiveSession), is_exclusive: isExclusive };
+  return {
+    ...(data as CircleLiveSession),
+    layout_mode: mode,
+    is_exclusive: isExclusive,
+    exclusive_audience: isExclusive ? exclusiveAudience : "all",
+    invite_token: inviteToken ?? (data as CircleLiveSession).invite_token ?? null,
+  };
 }
 
 export async function getActiveLiveSession(
   circleId: string,
   opts?: { exclusive?: boolean },
 ): Promise<CircleLiveSession | null> {
-  let q = sb
+  // Fetch a few live rows and filter client-side so Exclusive never leaks onto Home
+  // when the is_exclusive column is missing or schema cache is stale.
+  const { data, error } = await sb
     .from("circle_live_sessions")
     .select("*")
     .eq("circle_id", circleId)
     .eq("status", "live")
     .order("started_at", { ascending: false })
-    .limit(1);
-
-  // Prefer filtering by is_exclusive when the column exists.
-  if (opts?.exclusive === true) q = q.eq("is_exclusive", true);
-  if (opts?.exclusive === false) q = q.or("is_exclusive.eq.false,is_exclusive.is.null");
-
-  let { data, error } = await q.maybeSingle();
-  if (error && /is_exclusive/i.test(error.message || "")) {
-    ({ data, error } = await sb
-      .from("circle_live_sessions")
-      .select("*")
-      .eq("circle_id", circleId)
-      .eq("status", "live")
-      .order("started_at", { ascending: false })
-      .limit(1)
-      .maybeSingle());
-  }
+    .limit(12);
   if (error) throw error;
-  const row = data as CircleLiveSession | null;
-  if (!row) return null;
-  if (opts?.exclusive === true && row.is_exclusive === false) return null;
-  if (opts?.exclusive === false && row.is_exclusive === true) return null;
-  return row;
+  const rows = (data as CircleLiveSession[]) || [];
+  const match = rows.find((row) => {
+    const exclusive = sessionLooksExclusive(row);
+    if (opts?.exclusive === true) return exclusive;
+    if (opts?.exclusive === false) return !exclusive;
+    return true;
+  });
+  return match ?? null;
 }
 
 export async function getLiveSession(sessionId: string): Promise<CircleLiveSession | null> {
@@ -191,7 +250,7 @@ export async function listActivePublicLiveSessions(limit = 20): Promise<PublicLi
     .order("started_at", { ascending: false })
     .limit(Math.max(limit * 3, 20));
   if (error) throw error;
-  const rows = (sessions as CircleLiveSession[]) || [];
+  const rows = ((sessions as CircleLiveSession[]) || []).filter((r) => !sessionLooksExclusive(r));
   if (!rows.length) return [];
 
   // One card / pitch bubble per host — heal older duplicate "still live" ghosts.
