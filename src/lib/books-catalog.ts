@@ -55,6 +55,27 @@ import harborLightsCover from "@/assets/books/harbor-lights-cover.jpg";
 import stageLeftCover from "@/assets/books/stage-left-cover.jpg";
 import quietRoomCover from "@/assets/books/quiet-room-cover.jpg";
 import afterTheBellCover from "@/assets/books/after-the-bell-cover.jpg";
+import glassElevatorCover from "@/assets/books/glass-elevator-cover.jpg";
+import orbitGardenCover from "@/assets/books/orbit-garden-cover.jpg";
+import signalNineCover from "@/assets/books/signal-nine-cover.jpg";
+import chromeRainCover from "@/assets/books/chrome-rain-cover.jpg";
+import memoryMarketCover from "@/assets/books/memory-market-cover.jpg";
+import secondMoonCover from "@/assets/books/second-moon-cover.jpg";
+import lateTrainCover from "@/assets/books/late-train-cover.jpg";
+import recipeForUsCover from "@/assets/books/recipe-for-us-cover.jpg";
+import inkPromiseCover from "@/assets/books/ink-promise-cover.jpg";
+import balconySeasonCover from "@/assets/books/balcony-season-cover.jpg";
+import postcardHomeCover from "@/assets/books/postcard-home-cover.jpg";
+import redLedgerCover from "@/assets/books/red-ledger-cover.jpg";
+import fogStationCover from "@/assets/books/fog-station-cover.jpg";
+import lockedGalleryCover from "@/assets/books/locked-gallery-cover.jpg";
+import midnightLibraryKeyCover from "@/assets/books/midnight-library-key-cover.jpg";
+import silentWitnessCover from "@/assets/books/silent-witness-cover.jpg";
+import emberCrownCover from "@/assets/books/ember-crown-cover.jpg";
+import riverOfNamesCover from "@/assets/books/river-of-names-cover.jpg";
+import clockworkSparrowCover from "@/assets/books/clockwork-sparrow-cover.jpg";
+import saltAndStarlightCover from "@/assets/books/salt-and-starlight-cover.jpg";
+import libraryWyrmCover from "@/assets/books/library-wyrm-cover.jpg";
 import { HARBOR_LIGHTS_PAGES } from "@/lib/books/harbor-lights";
 import { STAGE_LEFT_PAGES } from "@/lib/books/stage-left";
 import { QUIET_ROOM_PAGES } from "@/lib/books/quiet-room";
@@ -154,6 +175,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#0f172a",
     coverTo: "#64748b",
+    coverImage: glassElevatorCover,
     blurb: "Two strangers stuck between floors learn what they each left unsaid.",
     pages: GLASS_ELEVATOR_PAGES,
   },
@@ -168,6 +190,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#042f2e",
     coverTo: "#22d3ee",
+    coverImage: orbitGardenCover,
     blurb: "A botanist tends Earth’s last seed vault on a spinning station.",
     pages: ORBIT_GARDEN_PAGES,
   },
@@ -181,6 +204,7 @@ export const SEED_BOOKS: BookItem[] = [
     price: 6.99,
     coverFrom: "#1e1b4b",
     coverTo: "#818cf8",
+    coverImage: signalNineCover,
     blurb: "A deep-space listener hears a pattern that should not exist.",
     pages: SIGNAL_NINE_PAGES,
   },
@@ -193,6 +217,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#111827",
     coverTo: "#38bdf8",
+    coverImage: chromeRainCover,
     blurb: "In a city of weather machines, a courier delivers illegal sunshine.",
     pages: CHROME_RAIN_PAGES,
   },
@@ -205,6 +230,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "donation",
     coverFrom: "#3b0764",
     coverTo: "#e879f9",
+    coverImage: memoryMarketCover,
     blurb: "Bought memories come with receipts — and missing hours.",
     pages: MEMORY_MARKET_PAGES,
   },
@@ -217,6 +243,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#0c4a6e",
     coverTo: "#a5f3fc",
+    coverImage: secondMoonCover,
     blurb: "Earth wakes to a new moon — and a countdown only kids can see.",
     pages: SECOND_MOON_PAGES,
   },
@@ -231,6 +258,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#9f1239",
     coverTo: "#fb7185",
+    coverImage: lateTrainCover,
     blurb: "Two commuters share a delayed car and a second chance.",
     pages: LATE_TRAIN_PAGES,
   },
@@ -244,6 +272,7 @@ export const SEED_BOOKS: BookItem[] = [
     price: 3.99,
     coverFrom: "#9a3412",
     coverTo: "#fdba74",
+    coverImage: recipeForUsCover,
     blurb: "Rival food-truck chefs compete — then cook for each other.",
     pages: RECIPE_FOR_US_PAGES,
   },
@@ -256,6 +285,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#1e3a8a",
     coverTo: "#93c5fd",
+    coverImage: inkPromiseCover,
     blurb: "A bookstore owner finds love notes hidden in returned novels.",
     pages: INK_PROMISE_PAGES,
   },
@@ -268,6 +298,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "donation",
     coverFrom: "#831843",
     coverTo: "#f9a8d4",
+    coverImage: balconySeasonCover,
     blurb: "Neighbors share plants, playlists, and carefully timed glances.",
     pages: BALCONY_SEASON_PAGES,
   },
@@ -280,6 +311,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#be123c",
     coverTo: "#fecdd3",
+    coverImage: postcardHomeCover,
     blurb: "A travel writer falls for the town she meant only to review.",
     pages: POSTCARD_HOME_PAGES,
   },
@@ -294,6 +326,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#450a0a",
     coverTo: "#ef4444",
+    coverImage: redLedgerCover,
     blurb: "An accountant finds a second set of books — in blood-red ink.",
     pages: RED_LEDGER_PAGES,
   },
@@ -307,6 +340,7 @@ export const SEED_BOOKS: BookItem[] = [
     price: 5.49,
     coverFrom: "#1f2937",
     coverTo: "#9ca3af",
+    coverImage: fogStationCover,
     blurb: "A detective boards a train that was never on the timetable.",
     pages: FOG_STATION_PAGES,
   },
@@ -319,6 +353,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#312e81",
     coverTo: "#c4b5fd",
+    coverImage: lockedGalleryCover,
     blurb: "A missing painting leaves only a frame and a riddle.",
     pages: LOCKED_GALLERY_PAGES,
   },
@@ -331,6 +366,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "donation",
     coverFrom: "#0f172a",
     coverTo: "#6366f1",
+    coverImage: midnightLibraryKeyCover,
     blurb: "Night librarians guard a key that opens more than doors.",
     pages: MIDNIGHT_LIBRARY_KEY_PAGES,
   },
@@ -343,6 +379,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#18181b",
     coverTo: "#a1a1aa",
+    coverImage: silentWitnessCover,
     blurb: "A courtroom sketch artist sees the killer in the crowd — sketching her.",
     pages: SILENT_WITNESS_PAGES,
   },
@@ -357,6 +394,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#7c2d12",
     coverTo: "#fbbf24",
+    coverImage: emberCrownCover,
     blurb: "A forge apprentice inherits a crown that burns only liars.",
     pages: EMBER_CROWN_PAGES,
   },
@@ -370,6 +408,7 @@ export const SEED_BOOKS: BookItem[] = [
     price: 7.99,
     coverFrom: "#064e3b",
     coverTo: "#34d399",
+    coverImage: riverOfNamesCover,
     blurb: "To save her village, a girl must reclaim the names the river stole.",
     pages: RIVER_OF_NAMES_PAGES,
   },
@@ -382,6 +421,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#1e293b",
     coverTo: "#f59e0b",
+    coverImage: clockworkSparrowCover,
     blurb: "A brass bird leads a thief to a city under the city.",
     pages: CLOCKWORK_SPARROW_PAGES,
   },
@@ -394,6 +434,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "donation",
     coverFrom: "#1e3a8a",
     coverTo: "#fde68a",
+    coverImage: saltAndStarlightCover,
     blurb: "Sailors bargain with constellations for safe passage.",
     pages: SALT_AND_STARLIGHT_PAGES,
   },
@@ -406,6 +447,7 @@ export const SEED_BOOKS: BookItem[] = [
     listingType: "free",
     coverFrom: "#365314",
     coverTo: "#a3e635",
+    coverImage: libraryWyrmCover,
     blurb: "A tiny dragon eats plot holes — and grows wise.",
     pages: LIBRARY_WYRM_PAGES,
   },
