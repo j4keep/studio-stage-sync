@@ -2,7 +2,7 @@ import type { BookPage } from "@/lib/books-catalog";
 
 /**
  * After the Bell — fourth adult template.
- * School / counselor drama: warmer voice, hope without syrup; ~22 pages.
+ * School / counselor drama: warmer voice, hope without syrup; 24 full reading pages.
  */
 export const AFTER_THE_BELL_PAGES: BookPage[] = [
   {
@@ -232,6 +232,102 @@ He helped her find rollers anyway. At the register he used a staff discount with
 “September is just a Monday with backpacks,” Cole said. “You’ll be there.”
 
 She believed it without needing a guarantee. Belief, in her line of work, was a renewable resource if you didn’t spend it on control.`,
+  },
+  {
+    chapter: "Chapter 8 — July Email",
+    text: `The week before school reopened, Cole found herself at Lincoln with a ring of borrowed keys and no good reason to be there except that an empty building made preparation feel honest. The custodians had waxed the floors until the hallway lights doubled beneath her feet. Every classroom door was shut. Every bulletin board waited for optimism in construction paper.
+
+She carried two boxes into her office: new folders, index cards, and a cheap electric kettle Rosa had insisted counselors deserved. On top sat a note in Rosa's blocky handwriting: FOR TEA. NOT FOR EMERGENCIES.
+
+Cole laughed alone, which sounded louder in August.
+
+She opened the drawer where Devon's old restart chart lived. The paper had softened along the folds. One class. One safe person. One honest conversation. Ignore one rumor. Ask one future question.
+
+The list looked almost embarrassingly small beside what it had carried. That was the point, Cole thought. A bridge does not need to resemble the distance it crosses. It only needs to hold.
+
+She copied the headings onto a fresh stack of cards, then stopped. Not everyone would need Devon's bridge. Some students would need sleep. Some would need rent money, grief counseling, a bus pass, an adult who could pronounce their name correctly on the first try.
+
+She wrote a new title at the top instead: START WHERE YOU ARE.
+
+Then she left the rest blank.`,
+  },
+  {
+    chapter: "Chapter 8 — July Email",
+    text: `Rosa called that evening while Cole was carrying groceries up three flights of stairs. Devon had been offered more hours at the hardware store, she said, but the schedule overlapped with the coding workshop.
+
+"He's acting like choosing one means failing the other," Rosa said.
+
+Cole shifted the grocery bag to her other hand. "That sounds familiar."
+
+"To him or to you?"
+
+Cole stopped on the landing. Rosa had gotten annoyingly good at counseling the counselor.
+
+"Both," Cole admitted.
+
+They made no plan for Devon. Instead, Rosa promised to ask him what he wanted before listing what was practical. Cole promised not to turn every decision into a teachable moment.
+
+The next day Devon emailed on his own. He had chosen the workshop and asked the hardware manager for weekend shifts instead. The manager said yes.
+
+Cole stared at the message longer than necessary. The old version of Devon might have disappeared rather than risk hearing no. The new version had asked a question and survived the answer.
+
+She typed: Good decision-making. Also, excellent use of negotiation.
+
+Then deleted excellent because he would accuse her of sounding like a brochure.
+
+She sent: You asked. They answered. You adjusted. That's the whole game.
+
+His reply came thirty seconds later.
+
+No exclamation points. Proud of you.
+
+Cole smiled so hard she had to sit down.`,
+  },
+  {
+    chapter: "Chapter 8 — July Email",
+    text: `At the coding workshop's final showcase, Cole sat in the back row beside Rosa and tried very hard to look like a person who happened to be near a community-center projector on a Thursday night.
+
+Devon's project was small: a web page that tracked lab-supply inventory for the imaginary science department of an imaginary school. The colors were ugly. The buttons worked. He explained the logic without apologizing for it.
+
+When the instructor asked what problem he wanted to solve next, Devon said, "Stuff people forget because nobody thinks it's their job."
+
+Rosa whispered, "That child has been listening to you."
+
+"Terrifying," Cole whispered back.
+
+Afterward Devon caught them by the vending machines. "You both stalk now?"
+
+"Community support," Rosa said.
+
+"Primer shopping," Cole added.
+
+Devon rolled his eyes, but his shoulders stayed loose. He handed Cole a folded program. On the back he had written three words: STILL WALKING BACK.
+
+Cole did not correct the tense.
+
+Some journeys deserved to remain verbs.`,
+  },
+  {
+    chapter: "Chapter 8 — July Email",
+    text: `The Sunday before classes resumed, Cole made herself leave the office untouched. No labels. No laminated feelings chart. No heroic pre-semester email.
+
+She went to the park with her brother, who brought takeout and the kind of folding chairs that sink unevenly into grass. Kids played soccer nearby. A father taught a little girl to ride a bike by running behind her with one hand hovering over the seat.
+
+"You know he has to let go eventually," her brother said, following her gaze.
+
+"I know."
+
+"You say that like you're taking notes."
+
+Cole laughed.
+
+The father let go. The girl wobbled, shouted, nearly fell, then kept going. Nobody called it resilience. Nobody made a poster. The adults just cheered because she was upright.
+
+Cole thought about Devon, about every student whose progress she had secretly tried to hold with both hands. The work was not to ride the bike for them. It was not even to guarantee they would not fall.
+
+The work was to run beside them long enough that balance became something they could recognize in their own bodies.
+
+Monday morning, she decided, she would open the door and trust the walking.`,
   },
   {
     chapter: "Chapter 9 — First Bell Again",
