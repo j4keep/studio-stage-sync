@@ -2,7 +2,7 @@ import type { BookPage } from "@/lib/books-catalog";
 
 /**
  * Stage Left — second adult template (after Harbor Lights).
- * Theater/drama novella: ~22 substantial reading pages.
+ * Theater/drama novella: 24 substantial reading pages.
  */
 export const STAGE_LEFT_PAGES: BookPage[] = [
   {
@@ -143,6 +143,25 @@ Elias almost smiled. “I’ve been living in given circumstances. I just called
 
 Doors closed. Lena watched him shrink on the platform until the tunnel took the sight. In her bag, the two tickets rested against the binder like a promise with seat numbers.`,
   },
+
+  {
+    chapter: "Chapter 4 — Stage Door",
+    text: `The next morning Lena met Elias at the storage unit where the last pieces of their mother’s life had been waiting under fluorescent light. Neither of them had wanted to come alone. Neither said that out loud.
+
+Boxes held costumes from community theater, chipped mugs, tax folders, and a stack of programs tied with kitchen twine. On top sat a yellowed playbill from Lena’s first school production. Her mother had circled Lena’s name in blue ink and written, SHE FORGOT ONE LINE AND KEPT GOING. THAT IS THE WHOLE JOB.
+
+Elias sat on an overturned crate. “I found that after the funeral and almost threw it out because it hurt.”
+
+“Everything hurt.”
+
+“I know. I just made decisions like pain was a deadline.”
+
+Lena opened another box. Inside was a cheap plastic crown, a tree costume branch, and the red scarf their mother wore to every opening night. Lena laughed before she could stop herself. Elias laughed too, and the sound felt disloyal for half a second, then necessary.
+
+They divided nothing that morning. They labeled boxes instead: KEEP, SHARE, DECIDE LATER. It was the first family system they had made together in years that did not require a winner.
+
+When Lena left for call, she took the red scarf. Not to wear. Just to keep in her bag beside the binder—proof that memory could travel without becoming baggage.`
+  },
   {
     chapter: "Chapter 5 — Notes",
     text: `Morning notes were held in the rehearsal room with bagels and the smell of marker on schedule changes. Hannah replayed the stuck-set moment on a laptop, pausing on Lena’s invented line.
@@ -257,6 +276,29 @@ Elias was in row C again. He didn’t stand until the rest of the theater did, a
 
 Lena typed back: Working on it in both directions.`,
   },
+
+  {
+    chapter: "Chapter 8 — Cass Returns",
+    text: `A week into Cass’s return, Hannah asked Lena to stay after rehearsal. The house was empty except for work lights and a vacuum somewhere in the lobby.
+
+“There’s a workshop next month,” Hannah said. “New play. Small company. They asked for you.”
+
+Lena’s first response was embarrassment, as if opportunity were something overheard rather than offered. “As an understudy?”
+
+“As Lena.”
+
+The word landed harder than praise. For years she had built an identity around being ready for somebody else’s emergency. Readiness had protected her from the more frightening possibility that she might be chosen on purpose.
+
+She told Cass in the dressing room. Cass grinned. “Good. Go scare yourself somewhere new.”
+
+“What if saying yes means I’m less available here?”
+
+“Then the next understudy gets to become dangerous,” Cass said. “That is not betrayal. That is ecology.”
+
+Lena laughed, then looked at the costumes lined in their patient row. She understood suddenly that loyalty was not the same as staying small enough to be useful.
+
+She emailed yes before she could rehearse a reason not to.`
+  },
   {
     chapter: "Chapter 9 — Understudy Life",
     text: `The weeks settled into a rhythm: scan groceries by day, hold the play by night, run lines on the bus with earbuds in and lips barely moving. Lena took two more performances when Cass’s voice needed rest. Each time the doorway silence deepened. Each time the invented line earned its keep without clinging to the original accident.
@@ -310,6 +352,27 @@ Lena glanced back once, the way actors glance toward the wing before an entrance
 Some roles you rehearse your whole life before you finally step into the light.
 
 Some lights, she had learned, are not stolen from anyone. They are kept alive by the people who wait in the dark without wasting the wait—and by the people who learn, however late, how to clap without flinching.`,
+  },
+
+  {
+    chapter: "Chapter 10 — Places",
+    text: `Ten minutes before the new play’s first preview, a breaker tripped backstage and half the practical lamps went dark. Nobody panicked because panic had been rehearsed out of them by smaller disasters. Dee rerouted a cue. The electrician swore softly. Lena stood in the wing listening to the audience settle beyond the curtain.
+
+Elias texted from row C: No wagon tonight, right?
+
+Lena replied: Don’t tempt the building.
+
+Then she tucked the phone away.
+
+The lights returned with four minutes to spare. Hannah found Lena at stage left and said, “You know what to do if something fails.”
+
+Lena looked toward the dark stage. “Keep the story alive.”
+
+“Exactly.”
+
+For the first time, the sentence did not feel like a description of understudy work. It felt like a family rule, a grief rule, a life rule. Things failed. People missed cues. Sets stuck. Voices went out. Houses got sold. The work was not preventing every break. The work was staying present enough to build the next playable moment.
+
+Places was called. Lena rolled her shoulders back and stepped toward the entrance.`
   },
   {
     chapter: "Epilogue — Ghost Light",
