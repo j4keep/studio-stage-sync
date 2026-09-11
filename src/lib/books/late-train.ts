@@ -6,1181 +6,399 @@ import type { BookPage } from "@/lib/books-catalog";
  */
 export const LATE_TRAIN_PAGES: BookPage[] = [
   {
-    chapter: "Chapter 1 — Delay",
-    text: `At 8:11, Nora Calder watched the departure board erase her evening. The 8:12 to Bellwether blinked DELAYED, then 8:37, then PLEASE STAND BY, which was railway language for surrender.
+    chapter: "Chapter 1 — The 8:12",
+    text: `The 8:12 became the 9:03 somewhere around the second announcement, a clipped, apologetic voice explaining a signal failure at Kettering Junction with the practiced boredom of someone who had delivered the same excuse a hundred times that year. Nora Vance stood on platform three with her coffee going cold and her patience going colder, mentally rearranging a morning that had, until ninety seconds ago, contained a client meeting she genuinely could not afford to reschedule.
 
-Rain silvered the glass roof of Union Terminal. Wet coats steamed around her, coffee soured in paper cups, and someone farther down Platform Nine was playing the same four notes on a phone game. Nora set her portfolio between her sensible shoes and calculated how late she could arrive at her mother's birthday dinner before concern hardened into biography.
+She almost didn't notice the man near the pillar until he laughed—a short, disbelieving sound at whatever he was reading on his phone—and something about the specific shape of that laugh snagged in her memory before her conscious mind caught up to why. He was older around the eyes than she remembered, a little grayer at the temples, but the paperback sticking out of his coat pocket was the same worn, cracked-spine edition of the same Ishiguro novel he'd been reading, apparently, for the better part of a decade.
 
-"Nora?"
+Julian Reyes.
 
-She knew the voice before she turned. Seven years had lowered it, roughened one edge. Julian Reyes stood beneath the broken clock holding a worn green paperback she had given him when they were twenty-eight. His hair was shorter. There was gray at one temple. The scar beside his mouth remained a pale comma, as if his face still intended to finish a sentence.
+Nora's stomach performed a complicated, unwelcome maneuver that had nothing to do with the cold coffee. Six years since she'd stood in a church vestibule in a dress that had cost more than her first car, waiting for a groom who never called, never texted, never appeared at all until a single, devastating voicemail arrived two hours after the ceremony was supposed to have started: I'm sorry. I can't. I'll explain everything someday if you'll let me.
 
-The last time Nora had waited for Julian, she had worn an ivory dress in the Bellwether municipal garden while forty-three guests watched rain collapse the rented chairs. He had not come. No message had come either, not that day.
+She had never let him.
 
-"Hello, Julian."
-
-His hand tightened on the book. "I didn't know you took this train."
-
-"I didn't know you took any train."
-
-The cruelty landed. She saw it, disliked herself for noticing, and did not apologize.
-
-An announcement crackled overhead. Flooding had closed the northbound line. Passengers were instructed to board a local train that would proceed when cleared.
-
-The doors opened beside them with a tired pneumatic sigh.
-
-Julian stepped back. "I'll find another car."
-
-Nora looked into the crowded compartments, then at the rain and the man who had once made waiting feel like a future.
-
-"Don't," she said. "I am tired of people disappearing before anything is explained."`,
+He looked up from his phone as though her staring had finally registered as a physical pressure, and his face went through an entire, visible sequence of recognition, dread, and something else she refused to name before he managed, quietly, "Nora."`,
   },
   {
-    chapter: "Chapter 1 — Delay",
-    text: `The delayed local smelled of damp wool and overheated brakes. Every seat was taken except two facing each other in the final car, beneath a flickering light. Nora sat by the window. Julian lowered himself opposite her, leaving his rain-darkened coat on as if he might be asked to leave at any moment.
+    chapter: "Chapter 1 — The 8:12",
+    text: `"Julian." She said his name the way she might identify a species of spider she wasn't yet sure was venomous—careful, precise, prepared to step back if necessary.
 
-For six minutes they listened to strangers complain. Outside, signal lamps bled red through the rain.
+"I didn't know you still lived out this way."
 
-"Your mother still in Bellwether?" Julian asked.
+"I don't. Here for work. You?"
 
-"Still in the yellow house. Still believes basil can cure moral weakness."
+"Work too. Different kind." He gestured vaguely at nothing in particular, and Nora recognized, with an unwelcome flicker of old fondness, that he still did that—the vague gesture standing in for an explanation he hadn't decided whether to give yet.
 
-His mouth almost smiled. "And the museum?"
+The platform speaker crackled again: the 9:03 delayed further, now estimated 9:40, no explanation offered at all this time. A ripple of commuter frustration moved through the platform like weather. Nora felt it distantly, mostly occupied with the far more pressing problem of a man she had spent six years successfully not thinking about, standing eight feet away, looking at her like he wasn't sure whether to apologize or simply disappear again.
 
-"I run paper conservation now." She nodded at her portfolio. "A seventeenth-century atlas tried to become soup this afternoon."
+"You look good," Julian said, which was, of all the things he could have opened with, spectacularly the wrong one.
 
-"Congratulations. On running it, not the soup."
+"I look tired and irritated. Those aren't the same thing, but I appreciate the effort." She heard the bite in her own voice and didn't soften it. Six years had earned her the right to a little bite.
 
-The ordinary cadence of them frightened her more than anger did. Once, they had been good at filling silence without noticing it. She folded her hands.
+He didn't flinch, which surprised her. "Fair. I deserve more of that than you're currently giving me."
 
-"You live in the city?"
-
-"West Ward. I design accessible transit systems."
-
-"That's almost funny."
-
-"It often feels like punishment."
-
-He looked down at the paperback. It was The Winter Orchard, its spine repaired with clear tape, the cover soft from use. Nora had written inside it, For every journey after this one. She wished she did not remember.
-
-"Why do you still have that?"
-
-"Because you gave it to me."
-
-"People discard gifts."
-
-"I discarded enough."
-
-The train shuddered but did not move. A child began singing near the connecting door. Julian rubbed his thumb over the book's cracked corner.
-
-"I wrote to you," he said.
-
-"Eleven months later."
-
-"I wrote before that. I never sent any of it."
-
-"Those are thoughts, Julian. Mail requires risk."
-
-He accepted the correction with a small nod. The restraint irritated her. She wanted defensiveness she could strike against, not this careful sorrow.
-
-"Tell me one true thing," she said, "that you have not rehearsed."
-
-He met her eyes.
-
-"I saw you on this platform three Thursdays ago," he said. "I missed my train so I wouldn't have to decide whether to call your name."`,
+"I'm aware."`,
   },
   {
-    chapter: "Chapter 1 — Delay",
-    text: `At 9:06 the conductor announced that the line ahead was underwater and the train would remain at the platform. Groans moved through the car like weather. A woman uncorked a thermos. Someone distributed mints.
+    chapter: "Chapter 1 — The 8:12",
+    text: `They ended up, against every instinct Nora trusted, sitting on the same platform bench, not quite facing each other, watching the empty tracks the way people watch a fire they have no intention of putting out. The silence held the particular density of six years' worth of unasked questions, each too large to pick up casually while waiting for a delayed train.
 
-Nora's phone showed six messages from her mother, escalating from Where are you? to I saved the lemon potatoes. She called, explained the delay, and endured instructions about keeping her feet dry. When she hung up, Julian was looking out the window.
+"I've thought about calling you," Julian said finally, staring at the tracks rather than at her. "More than you'd probably believe."
 
-"She always liked you," Nora said.
+"I'd believe it less than you think, actually. You had six years and a working phone."
 
-"She threatened me with a garden trowel."
+"I know how that sounds."
 
-"That was afterward."
+"It doesn't sound like anything, Julian. It sounds like an excuse for something you never actually explained, delivered six years too late to matter." Nora kept her voice level, proud of how level it stayed despite the specific chaos happening somewhere beneath her ribs. "You left me standing in a church. You don't get to ease into that conversation slowly just because the universe stranded us on the same platform."
 
-"Fair."
+He was quiet a long moment, turning something over that looked, from where Nora sat, uncomfortably like genuine shame rather than performed regret. "You're right. I don't get to ease into it." He finally looked at her directly. "Can I actually tell you what happened? Not today, necessarily. Not on a platform with strangers listening. But at some point, properly, if you'd let me."
 
-He offered to buy coffee. She nearly said no, then handed him two coins because accepting nothing from him had become its own kind of performance. He returned with black coffee for himself and tea with one sugar for her. He remembered. She resented that too.
-
-The train finally rolled at 9:31, gathering speed so cautiously that pedestrians passed them beneath umbrellas. Julian braced his cup between his knees.
-
-"I am not going to ask you to forgive me," he said.
-
-"Good."
-
-"But if you want to know what happened, I'll tell you. No excuse. The whole ugly sequence."
-
-Nora watched warehouses slide past, their windows bright as open drawers. For years she had created an answer sturdy enough to live with: he had been afraid, and she had mistaken affection for courage. That answer had allowed her to marry someone dependable, divorce him kindly, and avoid every train that left from the old garden station.
-
-New facts could not return seven years. They could, however, disturb the furniture of grief.
-
-"Not tonight," she said.
-
-Julian nodded.
-
-At Bellwether, the platform lamps cast rain into gold needles. He stood aside while she gathered her portfolio.
-
-"Same train tomorrow?" he asked, then winced. "Sorry. Habit of scheduling."
-
-She stepped onto the platform. Her mother waited beyond the gate in a red coat, waving both arms.
-
-"Thursday," Nora said without looking back. "The 8:12. You can tell me then."
-
-The doors closed between them. Through the wet glass, Julian's face held neither triumph nor relief—only the sober attention of a man who understood that an invitation was not an arrival.`,
+Nora studied him, weighing six years of carefully maintained indifference against a small, treacherous curiosity she'd never quite extinguished. "The train's delayed another thirty-seven minutes," she said finally. "You have exactly that long. Start talking."`,
   },
   {
     chapter: "Chapter 2 — What Happened",
-    text: `On Thursday, the 8:12 left precisely on time, an act of efficiency Nora found personally insulting.
+    text: `Julian's explanation, when it finally arrived, was not the dramatic betrayal Nora had half-expected to eventually hear, nor the cowardly nothing she'd more often assumed. It was smaller, sadder, and somehow harder to forgive precisely because of how ordinary it was: three days before the wedding, his father had called from a hospital bed with a diagnosis nobody had prepared for, and Julian—twenty-six, terrified, entirely unequipped for watching a parent's mortality arrive on a deadline—had simply, catastrophically frozen.
 
-She had spent four days inventing reasons not to board it. There was the atlas, still damp along the Caspian Sea. Her mother needed help changing a smoke-detector battery. Her colleague Priya had suggested cocktails and used the phrase emotional field research with unseemly enthusiasm.
+"I didn't leave because I didn't want to marry you," he said, voice low enough that Nora had to lean slightly to catch it. "I left because I looked at everything happening at once—the wedding, my dad, the adulthood I was supposed to be stepping into—and I couldn't hold all of it. So I dropped the part I convinced myself I could pick back up later. That was the worst math I've ever done."
 
-Yet Nora arrived early. Julian was on Platform Nine with two teas and no assumption in his posture. He wore a navy sweater beneath his coat. She remembered choosing that color for him once and hated memory for being so tactile.
+"You could have told me any of that. Before. During. Even after, instead of one voicemail and six years of silence."
 
-They found separate seats across an aisle. After the city gave way to rain-polished suburbs, Julian began.
+"I know." He said it simply, without defense. "I told myself waiting to explain would matter less than an apology delivered immediately. That was cowardice wearing a strategy's clothes."
 
-"The morning we were supposed to marry, my father called. He said he was having chest pain. I drove to his apartment."
+Nora felt something complicated move through her chest—not forgiveness, but the grudging respect of hearing someone finally describe their own failure without flinching from how bad it looked. "Is your father okay?"
 
-Nora knew Mateo Reyes had opposed their marriage with the solemn conviction of a man guarding a national border. Nora was too independent, too secular, too unwilling to let him choose where Julian lived.
-
-"Was he ill?"
-
-"Panicking. He had taken too much medication and whiskey. He said if I left, he'd kill himself." Julian's gaze stayed on his clasped hands. "I called an ambulance. At the hospital, he admitted he had staged it to stop the wedding."
-
-The train entered a tunnel. Their reflections replaced the windows.
-
-"You had a phone," Nora said.
-
-"Yes."
-
-"You knew where I was."
-
-"Yes."
-
-Each answer was quiet and complete.
-
-"Then why didn't you call?"
-
-Julian breathed in. "Because some cowardly part of me felt relieved that the decision had been taken away. I loved you. I also knew marrying you meant finally standing against him. For three hours I told myself I was managing a crisis. Then I saw the time, understood what I had done, and became too ashamed to hear your voice."
-
-Nora's fingernails pressed crescents into her palm.
-
-"He manipulated you," she said. "And you abandoned me."
-
-"Both are true."
-
-The tunnel released them into evening. There it was—not the exonerating accident she had sometimes imagined, nor the clean betrayal she had taught herself to believe, but a frailty painfully human and entirely his.`,
+"He recovered, fully, eventually. I spent two years terrified he wouldn't and never told anyone how scared I actually was, including you, including him." Julian's voice cracked slightly. "I got so good at not saying the true thing that leaving you standing there started to feel, God help me, like the only honest thing I'd done in months."`,
   },
   {
     chapter: "Chapter 2 — What Happened",
-    text: `Julian told her he had gone to the municipal garden after midnight. The chairs had been folded. Rain had dissolved the chalkboard welcome sign into pale rivers. Nora's cousin had found him beneath the pergola and punched him once, efficiently, in the mouth.
+    text: `"That's not honesty, Julian. That's choosing the cruelest available version of the truth and calling it integrity because it was easier than the kind version." Nora's voice went rougher than she intended, old grief surfacing faster than her composure could keep pace with. "I stood in that dress for two hours. I called my own mother to come get me because I couldn't drive. I spent a year flinching every time my phone rang, hoping it was you, dreading exactly that."
 
-"The scar," Nora said.
+"I'm not asking you to say it was okay. It wasn't."
 
-"Deserved."
+"Then what are you asking?"
 
-"It wasn't. Not by him."
+Julian considered the question with the specific care of someone who had spent real time thinking about exactly this moment without expecting to actually reach it. "Nothing, today. I don't think there's anything I could ask for that wouldn't sound like skipping past six years of consequences I actually deserve. I just wanted you to have the real explanation instead of whatever version you'd built without one."
 
-"No. But I was grateful for a consequence I could understand."
+Nora sat with that, watching the empty tracks, feeling old anger finally allowed to breathe instead of staying locked in the box she'd built for it. "Why now? On a platform, instead of letting the small talk carry us both to our destinations like two reasonable strangers?"
 
-Mateo died the following spring after an actual stroke. Julian spent the intervening months caring for him and writing unsent letters. The first letter he mailed to Nora came after the funeral. By then she had moved out of their apartment and returned every unopened package except the paperback, which she had not known he kept.
-
-"Why didn't you come to me?"
-
-"Because I had already decided that my remorse was another burden I had no right to make you carry." He looked at her. "That sounds noble. It wasn't. It kept me from being rejected in person."
-
-Nora appreciated the accuracy against her will.
-
-At Bellwether, they remained seated while other passengers left. The conductor announced a two-minute stop. Julian did not move closer.
-
-"I married David," she said.
-
-"I heard."
-
-"He was kind, organized, emotionally available, and could assemble furniture without turning it into a referendum on his worth."
-
-"Sounds unbearable."
-
-She laughed once, surprised by it. "We loved each other. We also made each other smaller in very polite ways. Three years ago, he took a job in Copenhagen. I realized I was relieved not to be asked along."
-
-"I'm sorry."
-
-"Don't be. We send birthday messages. His husband has excellent taste."
-
-The doors chimed. Nora stood, but the story had loosened something she had held rigid for years—not forgiveness, certainly, but the shape of her own past. She had married David partly because he could never resemble Julian, then blamed the marriage for succeeding at exactly that.
-
-On the platform, Julian gave her the untouched second tea.
-
-"What happens now?" he asked.
-
-"Now I go help my mother bully a smoke detector."
-
-"And after now?"
-
-Nora studied the scar beside his mouth.
-
-"We take one train," she said, "then decide whether to take another."`,
+"Because I've had six years to rehearse something smooth and forgivable. And when it actually happened, I realized I didn't want smooth. I wanted honest, even if honest made you angrier than smooth would." He met her eyes. "You always deserved that from me. I just took six years too long to figure out how to give it."`,
   },
   {
     chapter: "Chapter 2 — What Happened",
-    text: `Their third shared commute was almost pleasant, which made Nora distrust it.
+    text: `The delayed train's departure updated again on the board, pushing back a further eleven minutes, and Nora found herself, despite every rational instinct, grateful for the delay rather than irritated. There was something about the platform's suspended, going-nowhere quality that made this conversation possible in a way an ordinary morning never would have allowed.
 
-Julian brought no tea. She brought two almond pastries and claimed the bakery had packaged them incorrectly. They discussed work. His firm was redesigning Bellwether's century-old platforms so passengers using wheelchairs could board without portable ramps. Nora described coaxing mold from an atlas with brushes fine enough for eyelashes.
+"What have you been doing?" she asked finally, surprising herself. "The last six years. Not the wedding part. Just—you."
 
-"You repair places people leave," he said.
+Julian seemed startled by the shift, as though braced for continued interrogation rather than actual curiosity. "I moved out to Millbrook, took care of my dad through the recovery, then stayed because leaving felt like abandoning the one relationship I'd actually repaired. I teach high school history now. Which is its own joke, considering how badly I handled my own history for a while there."
 
-"You repair how they get there."
+"Are you happy?"
 
-"We became metaphors."
+"Steadier than happy, most days. I stopped running from hard conversations, which sounds small until you've spent years organizing your whole life around avoiding them." He glanced at her, something careful and hopeful crossing his face before he reined it back. "What about you? Beyond the meeting you're currently missing."
 
-"A terrible fate."
+"Married, briefly, three years ago. Divorced two years after. No hard feelings on either side, which somehow made it sadder rather than easier." Nora said it plainly, without performing tragedy or triumph. "I run a small architecture firm now. I'm good at it. I like my life, mostly, even the parts that didn't go the way I planned."
 
-At North Junction, the train halted behind a freight signal. The conductor predicted fifteen minutes. Nora and Julian walked to the vestibule, where cold air threaded through the door seals.
+"You always were better at rebuilding than I gave you credit for."
 
-"I have a question," Nora said. "Did you love anyone after me?"
-
-Julian leaned against the wall. "Yes. Her name was Mara. We lived together for two years."
-
-The answer hurt with an old reflex she had no right to. "Why did it end?"
-
-"She wanted children. I kept saying someday while building a life that guaranteed someday never arrived. She told me I used patience as camouflage for fear."
-
-"Was she right?"
-
-"Completely."
-
-Nora looked through the door window at parallel tracks flashing under white signal light.
-
-"I don't want to be proof you've changed."
-
-"You aren't."
-
-"I don't want some grand redemption schedule in which loving me correctly balances the accounts."
-
-"It wouldn't."
-
-He was silent, then said, "I go to therapy on Tuesdays. I call my sister when I'm frightened instead of pretending I'm busy. I apologized to Mara without asking her to tell me I was good. None of that was for you. I didn't expect to see you again."
-
-The signal changed. Steel groaned beneath them.
-
-Nora believed him, which was less comfortable than disbelief. She offered him the second pastry.
-
-"This doesn't mean anything."
-
-"Naturally."
-
-"And we're not dating."
-
-"We are trapped in regional infrastructure."
-
-She bit back a smile. As the train moved, their shoulders touched once with the sway of the car. Neither stepped away immediately, and neither pretended not to notice.`,
+"I had practice," Nora said, and didn't need to specify when the practice had started.`,
   },
   {
-    chapter: "Chapter 3 — Stations Between",
-    text: `For the next month, Nora and Julian met twice a week on the 8:12 without naming the arrangement. Sometimes they sat together. Sometimes one worked while the other read. Julian's green paperback traveled between them like a quiet witness.
+    chapter: "Chapter 3 — Thirty-Seven Minutes",
+    text: `They talked through the rest of the delay in the loose, meandering way old friends talk rather than the weaponized way former almost-spouses were supposed to, and Nora noticed, with some alarm, how easily the old rhythm reasserted itself—dormant for six years but apparently not actually gone.
 
-Nora learned that he now cooked lentil soup on Sundays and froze it in alarming quantities. He learned that she had taken up boxing after her divorce and could deliver a left hook her cousin considered dynastic justice. They avoided the word future with mutual professionalism.
+"You still do the thing," Julian said, midway through a story about her firm's most difficult client, "where you gesture like you're conducting an orchestra whenever you're annoyed."
 
-One Tuesday, the train stopped at Calder Street because a dog had wandered onto the tracks. Passengers pressed to the windows as railway workers coaxed a muddy terrier toward safety with half a sandwich.
+"I do not do that."
 
-"You still want one?" Julian asked.
+"You're doing it right now."
 
-"A dog?"
+Nora looked down at her own hand, mid-gesture, and felt her face heat with embarrassment that had nothing to do with the gesture and everything to do with being known this easily, by someone she'd spent six years insisting she'd forgotten how to be known by.
 
-"You used to have names chosen."
+"Shut up," she said, without any real heat, and Julian laughed—the same short, disbelieving laugh she'd recognized across the platform an hour ago, before any of this had happened, before six years of carefully maintained distance had started, alarmingly, to feel less like protection and more like something she'd simply gotten used to carrying.
 
-"Beatrice for a dignified animal. Kevin for one with no judgment."
+The board finally updated with a real departure time: nine minutes out, platform three, no further delays anticipated. Nora felt an unexpected pang of disappointment, quickly suppressed, at the conversation ending exactly when it had started to feel worth continuing.
 
-He laughed, then grew careful. "There are things I remember that I don't know whether I'm allowed to mention."
+"This is my train too, actually," Julian said, following her gaze to the board. "I didn't mention that earlier because I wasn't sure you'd want to know we'd be riding together regardless of how this went."
 
-"Memory doesn't require a permit."
-
-"Sharing it might."
-
-Nora considered this. "Ask."
-
-"Do you still dance while you wait for the kettle?"
-
-She watched the terrier accept rescue as its natural due. "Only when no one's looking."
-
-"I was usually looking."
-
-The sentence warmed the narrow space between them. Nora turned toward the window.
-
-At Bellwether, snow had begun—soft, uncertain flakes that vanished on the platform. Her mother's car was in the shop, so Julian offered to walk her the twelve blocks to the yellow house. Nora agreed.
-
-They passed the municipal garden. Its iron gate was locked for winter, and dead hydrangeas rattled behind the fence. Nora stopped across the street.
-
-"I haven't stood here since that day," she said.
-
-Julian's face went still. "We can go another way."
-
-"No." She looked at the pergola, smaller than memory had built it. "I don't want the geography to belong only to the worst thing that happened there."
-
-They remained until the snow began to cling. Julian did not touch her. His restraint felt, for once, not like absence but company.`,
+"You're an idiot," Nora said, though it came out considerably fonder than she intended.`,
   },
   {
-    chapter: "Chapter 3 — Stations Between",
-    text: `Nora's mother opened the yellow door before they reached the porch.
+    chapter: "Chapter 3 — Thirty-Seven Minutes",
+    text: `They boarded together, an accident of geography rather than any decision either had consciously made, and found seats across from each other in a half-empty car smelling of old upholstery and someone's forgotten breakfast sandwich. The train pulled out with the specific lurch of a delayed departure trying, unsuccessfully, to pretend nothing unusual had happened.
 
-Elise Calder was seventy, five feet tall, and formidable in a flour-dusted apron. She looked from Nora to Julian, then at the snow on their shoulders.
+"I have a meeting in forty minutes I am now going to walk into visibly rattled," Nora said, checking her phone with the grimace of someone doing math she didn't want to do. "Thank you for that, incidentally."
 
-"You," she said.
+"You could tell them the train was delayed. It's not even a lie."
 
-"Mrs. Calder."
+"I could tell them I ran into the man who left me at the altar six years ago and had our entire unresolved history compressed into a thirty-seven-minute platform conversation. Also not a lie, but I don't think it'll go over well in a client meeting."
 
-"Elise is for people who did not leave my daughter standing in public."
+Julian winced, genuinely. "When you put it that way, I sound significantly worse than I already felt like I sounded."
 
-"Mama," Nora warned.
+"There isn't really a way to phrase leaving someone at the altar where you come out sounding good. I'm not trying to be cruel anymore. I'm just done pretending the facts are gentler than they are."
 
-"I have earned one minute." Elise pointed a wooden spoon at Julian. "Did you come back to make yourself feel forgiven?"
+"That's fair." He was quiet, watching the city slide past the window. "For what it's worth—I've never explained that to anyone else. Not fully. You're the only person who's ever gotten the truth instead of the smoothed-over version I tell everyone, including my own therapist, if I'm being fully honest."
 
-"No."
+"Why me? Why did I get the honest version after six years of silence?"
 
-"Do you expect her to repair whatever is wrong with you?"
-
-"No."
-
-"Are you going to vanish?"
-
-Julian took a breath. "I have vanished before. I can't ask you to trust a promise. I can only tell you I don't intend to."
-
-Elise studied him with the chilly concentration she usually reserved for slugs. Then she stepped aside.
-
-"The soup is getting cold. You may have a small bowl."
-
-Dinner lasted two hours. Elise interrogated Julian about public elevators, municipal budgets, and his cholesterol. Nora's brother called by video and swore eloquently before admitting he was glad Julian was alive. Underneath the sharpness was the old family's hurt, preserved separately from Nora's. She realized Julian had not merely left one bride. He had torn himself from a whole web of people who had made room for him.
-
-Afterward, on the porch, he said, "Your mother put enough salt in that soup to preserve me."
-
-"You got the guest portion. Mine was normal."
-
-Snow softened the street. Julian tucked his hands into his pockets.
-
-"Thank you for letting me come in."
-
-"I didn't. Mama did."
-
-"You could have stopped her."
-
-Nora knew that was true. "Julian, I am not the woman you left. I don't know if the woman I am would choose you."
-
-"I don't know if the man I am deserves to be chosen."
-
-"That's not your decision."
-
-He nodded. Nora leaned forward and kissed his cheek, close enough to feel the warmth beside his scar. It was not absolution. It was not a contract.
-
-But when she went inside, she watched through the curtain until he reached the corner, and Julian looked back once before he disappeared.`,
+"Because you're the only person I actually failed badly enough that a smoothed-over version felt insulting to even attempt."`,
   },
   {
-    chapter: "Chapter 3 — Stations Between",
-    text: `The museum's winter benefit arrived in February, full of donors holding champagne too close to irreplaceable paper. Nora wore a black dress and spent the first hour steering elbows away from an illuminated manuscript.
+    chapter: "Chapter 3 — Thirty-Seven Minutes",
+    text: `Nora didn't have a ready response, and the train's rhythm filled the silence, wheels clicking over rail joints she'd ridden past a thousand times without ever expecting to share the journey with the specific ghost sitting across from her, looking older, steadier, and unfairly more thoughtful than the man who had vanished with a single apologetic voicemail.
 
-Julian came because she invited him.
+"I should give you my number," Julian said finally, bracing for refusal. "Not to push anything. Just—if you ever want to finish this conversation somewhere that isn't a train I happen to also be riding. I understand completely if the answer is no."
 
-She had stared at his number for ten minutes before sending the message. He answered, I would like that, with no exclamation mark, an act of punctuation so cautious it made her laugh.
+Nora turned the offer over, feeling the tug-of-war between the woman who'd built a life that didn't require Julian Reyes's presence to feel complete, and the woman still, undeniably, curious about who he'd become.
 
-At the benefit, he listened while Nora explained iron-gall ink corrosion to a councilwoman. He asked Priya thoughtful questions about textile preservation. He did not perform intimacy by telling old stories that belonged to a previous version of them.
+"Give me your number," she said finally. "I'm not promising anything. But I'd rather have the option to finish this than spend another six years wondering what I would have said if I'd had it."
 
-"He's still devastating," Priya whispered when Julian went for water.
+Julian's relief was visible, quickly reined back. He wrote his number on the back of a receipt from his coat pocket—an oddly analog gesture from a man in his thirties, though Nora found she didn't mind it—and handed it over without further persuasion.
 
-"That is a shallow assessment."
+"Whatever you decide," he said, "thank you for thirty-seven minutes. I've owed you that conversation for six years. It doesn't erase anything. But I feel lighter having said it out loud, even if you never call."
 
-"I contain multitudes."
-
-Later, a quartet played beneath the suspended skeleton of a blue whale. Julian held out his hand.
-
-"Would dancing be too much?"
-
-"Almost certainly."
-
-"Good to establish."
-
-Nora placed her hand in his anyway.
-
-They moved carefully at first. Above them, the whale's ribs cast long bars of shadow over the marble floor. Julian's palm rested at the respectful center of her back. Nora could smell cedar soap and winter air.
-
-"You're counting," she said.
-
-"I don't trust my feet."
-
-"A broad philosophy."
-
-His laugh vibrated beneath her hand. Something in her yielded—not the locked door of the past, but the belief that opening any door would erase what had happened.
-
-After the quartet ended, they walked to Union Terminal. The 11:18 had been canceled. Julian looked at the board, then at her.
-
-"I can get you a car."
-
-"Or," Nora said, feeling both foolish and entirely awake, "we could have coffee until the midnight train."
-
-They sat in an all-night diner across from the station. At 12:04, over pie with a soggy bottom, Nora kissed him.
-
-Julian went still. "Are you sure?"
-
-"No," she said. "But I am present."
-
-He touched her face as if presence were the rarest thing he had ever been trusted to hold, and kissed her back.`,
+The train slowed toward Nora's stop, and she stood, receipt in hand, feeling considerably less certain about her own feelings than ninety minutes earlier, and strangely unbothered by the uncertainty for the first time in longer than she could easily measure.`,
   },
   {
-    chapter: "Chapter 4 — Chosen Departures",
-    text: `Their first official date was another late train, chosen on purpose.
+    chapter: "Chapter 4 — The Waiting",
+    text: `Nora did not call for eleven days, a delay she told herself was strategic rather than cowardly, though her best friend Delphine, hearing the entire platform story over wine that evening, offered a considerably less generous interpretation.
 
-Julian found a heritage railway that served dinner in a restored dining car along the river. Nora accused him of making transit his entire personality. He replied that she had once taken him to a paper-making workshop on their anniversary.
+"You're doing the thing," Delphine said, refilling both glasses with the confidence of someone who'd watched Nora's post-wedding recovery unfold in real time, six years earlier. "The thing where you decide something's too complicated to deal with, so you don't, and call that patience instead of avoidance."
 
-The dining car glowed with brass lamps and red velvet. Outside, bare trees combed the violet sky. They were halfway through mushroom risotto when the locomotive slowed and stopped beside a frozen field.
+"It's not avoidance. It's caution."
 
-The server apologized for a signal fault. Nora and Julian looked at each other and began laughing.
+"There's a difference when the stakes are low. When the stakes are the man who left you standing in a five-thousand-dollar dress in front of a hundred and twenty guests, caution starts looking a lot like the same old avoidance wearing a nicer outfit."
 
-"This is your fault," she said.
+Nora didn't have a satisfying counterargument, mostly because some private, honest part of her suspected Delphine wasn't entirely wrong. She'd read the receipt's phone number at least a dozen times over the past week, always stopping just short of dialing it, telling herself each time she needed more clarity first.
 
-"I asked them for authenticity."
+"What if I call and it's a disaster?" she asked finally, voicing the fear she'd been circling for eleven days. "What if six years of building a life that doesn't need him gets undone by one phone call?"
 
-Their laughter drew indulgent glances from nearby tables. It also broke the tension they had carried since sitting down—the knowledge that a date was a category, and categories came with expectations.
+Delphine considered the question seriously, setting down her glass. "Or what if you call, and it's not a disaster, and it turns out the life you built doesn't actually need undoing at all? What if it just gets to include one more honest conversation, and you find out you're strong enough now to have it without losing yourself in the process?"
 
-When the lights dimmed to conserve power, they shared a blanket supplied by the conductor. Julian told her about Mateo's final months: the tenderness and resentment tangled together, the relief after his death that had made grief feel shameful.
-
-Nora told him about David. She admitted that when he proposed, part of her had loved the unlikeness of it: no garden, no sweeping plan, just two toothbrushes and a question asked while assembling shelves.
-
-"He deserved better than being chosen as an antidote," she said.
-
-"Did you love him?"
-
-"Yes. In the way I could then."
-
-"Then don't reduce it because it ended."
-
-She looked at Julian, surprised by the generosity. "Mara taught you that?"
-
-"Mara taught me most useful things against her will."
-
-The train jerked forward. Applause rose from the dining car.
-
-At the final station, snow covered the platform in clean blue light. Julian did not ask to come home with her. Nora did not invite him. Desire could survive a boundary; she needed to know that.
-
-He kissed her beneath the station clock and left first.
-
-Watching his train pull away, Nora felt the old panic flare, then pass. This departure had been spoken, timed, and chosen. Not every leaving was abandonment.`,
+Nora didn't answer that night. But she took the receipt out of her wallet one more time before bed, and this time, she didn't put it back.`,
   },
   {
-    chapter: "Chapter 4 — Chosen Departures",
-    text: `By March, Nora had a toothbrush at Julian's apartment and a key she kept in her wallet rather than on her ring. Progress, she discovered, could be measured in deliberately inconvenient stages.
+    chapter: "Chapter 4 — The Waiting",
+    text: `She called on a Sunday afternoon, chosen deliberately for its low stakes. Julian answered on the second ring, and Nora heard, in the brief pause before he spoke, that he'd clearly been hoping for this call without quite letting himself expect it.
 
-His apartment overlooked the tram depot. It was spare but not sterile: cookbooks stained at the edges, framed sketches of ramps and platforms, a rubber plant leaning toward the glass. On the shelf beside his bed stood a wooden box.
+"I wasn't sure you'd actually call," he said.
 
-"The letters?" Nora asked.
+"I wasn't sure either. I've had several imaginary versions of this conversation, none of which I like enough to have used as a script."
 
-Julian followed her gaze. "All twenty-six."
+"Should I brace for a difficult one?"
 
-"I don't want to read them."
+"I don't know yet. That's the point of calling. I'm not doing this to forgive you, Julian. I want to be clear about that. I'm doing this because thirty-seven minutes wasn't enough, and I'd rather know the rest of whatever this is than spend another six years wondering."
 
-"Okay."
+"That's fair. More than fair." He exhaled, and Nora could hear the careful tension leaving his voice. "Can I take you to dinner? Not as a date, necessarily, unless you want it to be one. Just as two people finishing a conversation that got interrupted by a train schedule instead of a real ending."
 
-"I might someday."
+Nora considered the offer, weighing the vulnerability of seeing him somewhere more permanent than a train platform's fleeting suspended time. "On one condition," she said finally. "We take the late train. Not sentimentality, mostly. Just—it feels like the only kind of arrival this deserves. Something delayed enough to actually be worth waiting for."
 
-"Okay."
-
-She waited for him to offer the box, explain it, turn it into evidence. He only returned to chopping parsley.
-
-They made lentil soup. Julian had exaggerated neither the quantity nor the quality. While it simmered, Nora danced beside the kettle—two ridiculous turns in her socks. He watched from the counter, smiling with such unguarded affection that she had to look away.
-
-Later, in bed, intimacy was both familiar and entirely new. Julian asked before touching the scar on her knee, acquired in his absence. Nora traced the gray at his temple. They laughed when a tram squealed around the curve below at an inopportune moment.
-
-Afterward, Julian fell asleep with one hand open between them. Nora remained awake.
-
-The room was safe. That was the problem. Safety invited her imagination to build a future, and the future had once made a spectacle of her. Her chest tightened. She dressed quietly, intending only to walk around the block.
-
-At the door, Julian's voice came from the darkness. "Are you leaving?"
-
-The fear in it stopped her.
-
-"For air," she said. "I was going to leave a note."
-
-He switched on the lamp. Neither of them missed the symmetry.
-
-"Would you like company?" he asked.
-
-Nora almost refused out of pride. Then she nodded.
-
-They walked through empty streets until dawn diluted the sky. She told him why she had panicked. He did not call it irrational. He told her his fear too: that every happiness with her was borrowed against an inevitable verdict.
-
-"We can't keep holding a trial," Nora said.
-
-"No."
-
-"But we can't pretend there wasn't a crime."
-
-"Then maybe," Julian said, "we build something that isn't a courtroom."`,
+Julian's laugh, when it came, sounded lighter than any version she'd heard on the platform. "The late train. I can absolutely arrange that."`,
   },
   {
-    chapter: "Chapter 4 — Chosen Departures",
-    text: `They established rules over breakfast in a twenty-four-hour cafe.
+    chapter: "Chapter 4 — The Waiting",
+    text: `Nora spent the week before dinner suspended deliberately between anxious and excited, refusing to let either win outright before she'd had the conversation that would determine which deserved to. Delphine, watching with the satisfaction of someone who'd been right, mostly kept her opinions to herself, offering only the occasional raised eyebrow whenever Nora changed outfits for a dinner she kept insisting wasn't technically a date.
 
-No disappearing during conflict. No using the abandoned wedding as a weapon in arguments about dishes, lateness, or whose family hosted holidays. No confusing vigilance with honesty. Either person could ask for time, but time required a return: I need an hour, and I will call at ten.
+"It's reconnaissance," Nora said, holding up two nearly identical blue dresses for inspection. "I'm gathering information. That's all this is."
 
-"This is deeply romantic," Julian said as Nora wrote on a paper placemat.
+"Sure. Reconnaissance requires this much lip gloss, historically."
 
-"I can add illustrations."
+Nora threw a pillow at her, missing by a wide, deliberate margin, and settled on the second dress, telling herself the choice had nothing to do with wanting to look good for a man she was still, technically, furious with underneath six years of composure.
 
-"Please don't. Your horse drawings ruined childhood for me."
+The evening of the dinner, Julian texted a single line an hour before pickup: Whatever tonight turns into, thank you for giving it a chance to turn into anything at all. Nora read it three times before answering, finally settling on something honest without overpromising: We'll see. I'm choosing curiosity over certainty tonight. That's the most I've got.
 
-She drew one beside Rule Four.
-
-The rules helped until life, uninterested in systems, offered a larger test. Julian's firm won the contract to redesign a rail network in Lisbon. The project would require him there for eighteen months, beginning in June.
-
-He told Nora the same evening, on their regular train. He did not conceal his excitement. She loved him for that and hated the choice on sight.
-
-"Are you going?" she asked.
-
-"I don't know."
-
-"Do you want to?"
-
-"Yes."
-
-The direct answer struck like cold water. Nora looked around the car: tired commuters, grocery bags, a teenager asleep against a violin case. Their fragile second chance suddenly seemed scheduled between stations, dependent on repetition.
-
-"Then go," she said.
-
-"That sounded like a door closing."
-
-"It isn't my job to keep you from leaving."
-
-"I didn't say it was."
-
-"Your father made staying proof of love. I won't."
-
-"And I won't make going proof that I'm brave."
-
-They fell silent. The train crossed the river, sunset burning in every office window.
-
-At Bellwether, Nora stood too quickly.
-
-"I need tonight," she said. "I will call tomorrow at seven."
-
-Julian's face eased slightly. Their rule, used under pressure.
-
-"Tomorrow at seven," he agreed.
-
-Nora stepped onto the platform with anger, fear, and a fierce, inconvenient pride. Seven years ago he had made a life-changing choice without speaking to her. Now he had brought her uncertainty while it was still uncertainty.
-
-It hurt. It was also what change looked like before anyone knew whether it would be rewarded.`,
+It was, she realized, setting the phone down, the truest thing she'd said about any of this since the platform. She didn't know yet whether curiosity would resolve into forgiveness, friendship, something more complicated than either, or a clean, final closing of a door she'd left ajar far longer than she should have. But for the first time in six years, she genuinely wanted to find out.`,
   },
   {
-    chapter: "Chapter 5 — Signal Failure",
-    text: `At seven the next evening, Nora called.
+    chapter: "Chapter 5 — Dinner and Delay",
+    text: `The restaurant Julian chose was small, unpretentious, three blocks from the station where their thirty-seven minutes had first happened, close enough that Nora suspected the choice wasn't entirely coincidental. He was already seated when she arrived, standing immediately, visibly nervous in a way that struck her as strange from a man once, by his own admission, extremely skilled at avoiding difficult moments entirely.
 
-"I don't want to spend eighteen months waiting for you," she said.
+"You look nervous," she said, sitting.
 
-"I don't want you to."
+"I am. More than on the platform, actually. I think the platform felt like an accident neither of us chose. This feels like something we're both choosing on purpose, and that's a different kind of pressure."
 
-The words opened a pit. She paced her apartment, phone pressed hard to her ear.
+"For what it's worth, I'm nervous too. I just hide it better."
 
-Julian continued. "Waiting means your life is paused until mine returns. I want us to decide whether there is a version where both lives continue."
+"You always did." He smiled, testing whether the observation would land as fondness or accusation. Nora let it land as fondness, surprising herself with how easily she allowed it.
 
-"Long distance."
+Dinner unfolded slower than either seemed to expect, drifting between necessary territory—his father's health, her divorce, the specific loneliness of rebuilding a life around an absence neither had chosen cleanly—and lighter ground that reminded Nora, uncomfortably, of exactly why she'd fallen for him in the first place, six years and one voicemail ago.
 
-"Possibly. Or you come for part of it. Or I negotiate shorter rotations. Or I decline. But I don't want fear to make the decision before we do."
+"I keep waiting for this to feel like a mistake," she admitted, somewhere around the second course. "Some part of me expected sitting across from you again to feel like reopening a wound. It doesn't, mostly. It feels like something else I don't have a clean word for yet."
 
-Nora sat on the floor beside her sofa. She had expected a proposal or an exit, a clean shape she could accept or reject. Instead he offered work.
+"I've been calling it a second chance in my head, but that felt presumptuous to say before you'd decided whether you wanted to call it anything."
 
-They agreed to discuss it Sunday. On Saturday morning, a transformer fire shut Union Terminal. Smoke clouded the glass roof. News alerts showed passengers spilling onto streets while firefighters unrolled hoses.
-
-Julian was supposed to be on the 9:05.
-
-Nora called. No answer. She called again. The old garden rose around her in brutal detail: wet chairs, wilting flowers, every face turning toward the gate.
-
-She was pulling on shoes when her phone rang.
-
-"Nora? I'm all right." Sirens crowded Julian's voice. "We evacuated through the south tunnel. My phone was in my bag, and police separated us from the luggage."
-
-She gripped the kitchen counter. "You could have borrowed a phone."
-
-"I did. This one. It took fourteen minutes."
-
-Fourteen minutes. Her body had crossed seven years in less.
-
-"I'm coming," she said.
-
-"The streets are blocked."
-
-"I'm coming."
-
-She walked three miles through cold rain. At the barricade, Julian stood in a silver emergency blanket among hundreds of displaced passengers. When he saw her, he pushed through the crowd.
-
-Nora struck both palms against his chest, then held on.
-
-"Fourteen minutes," she said into the blanket.
-
-"I know."
-
-"It wasn't your fault."
-
-"I know that too."
-
-She cried anyway. Julian held her without turning the moment into a promise that nothing frightening would ever happen again.`,
+"Presumptuous," Nora agreed, "but not wrong, necessarily. Ask me again after dessert."`,
   },
   {
-    chapter: "Chapter 5 — Signal Failure",
-    text: `The terminal reopened after midnight, but Nora and Julian went to her apartment instead. She made tea neither drank. Adrenaline left them shaky and short-tempered.
+    chapter: "Chapter 5 — Dinner and Delay",
+    text: `Dessert arrived alongside a question Nora hadn't planned to ask, surfacing from beneath six years of composure finally cracking open under the warmth of an evening going better than she'd braced for. "Do you ever think about what would have happened if you'd shown up? If your dad's diagnosis had come a month later, and the wedding had just happened, the way it was supposed to?"
 
-"This cannot happen every time your phone dies," Julian said gently.
+Julian considered it with genuine care rather than rushing toward a comfortable answer. "I used to, constantly, the first year. I stopped, eventually, because I realized the version of me who'd have shown up that day wasn't actually ready for what marriage meant. I'd have shown up and probably still panicked eventually, just later, messier, with more collateral damage."
 
-"Do you think I don't know that?"
+"That's not exactly comforting."
 
-"Knowing isn't the same as having help."
+"It's not meant to be. It's meant to be honest. I think the version of me who left you at the altar was, in the worst possible way, telling you something true about how unready I actually was, even if I told it in the cruelest way available. I don't think showing up would have fixed that. It just would have delayed the reckoning until it cost us both more."
 
-"There it is."
+Nora sat with that longer than expected, feeling something shift quietly into place she hadn't known was still unsettled. "That's the first thing you've said tonight that sounds like growth instead of just apology."
 
-"What?"
+"I've had six years to work on the difference." He met her eyes, something steadier in his expression than even on the platform. "I'm not asking you to pick up where we left off. I don't think that version of us even exists anymore. I'm asking whether there's room for whatever new version might exist now, built by two people who've actually done the work instead of just wanting the outcome."
 
-"The reason you can leave for Lisbon. I'm damaged, and you'll recommend therapy from a picturesque distance."
-
-Julian recoiled. "That is not what I said."
-
-"It's convenient."
-
-"No. Convenient would be promising never to leave your sight. It would feel good tonight and poison us later."
-
-Nora turned away. The kettle clicked as it cooled.
-
-"I have done the work," she said. "After you. After the divorce."
-
-"I know."
-
-"Then don't speak to me like I'm broken."
-
-"You're not broken. You were hurt. Sometimes it still hurts." His voice tightened. "And sometimes my guilt tells me I have no right to name what I see. But silence isn't care."
-
-Nora wanted the abandoned wedding available as a blade. Rule Two said she could not use it for Lisbon, but this was not Lisbon, and pain was inventive. She picked up the placemat rules from the refrigerator.
-
-"I need an hour," she said. "I will come back to this room at one."
-
-Julian nodded and went to the bedroom.
-
-Nora sat alone. The transformer had failed because insulation wore thin over decades. No moral weakness, no betrayal—just hidden damage exposed by heat. She could not build a life where every ordinary failure became proof of catastrophe.
-
-At one, Julian returned. Nora said, "I am going back to Dr. Shah."
-
-"Okay."
-
-"Not so I can tolerate whatever you decide. For me."
-
-"Good."
-
-"And you don't get to solve my fear."
-
-"I know."
-
-"But you may sit with me when it's loud."
-
-He reached across the table, palm up. Nora placed her hand in his.
-
-They stayed there until the sirens outside faded, two adults accepting that love could accompany repair without claiming to be the repair itself.`,
+"I don't know yet," Nora said honestly. "But I want to find out. That's more than I expected to feel walking in here tonight."`,
   },
   {
-    chapter: "Chapter 5 — Signal Failure",
-    text: `Sunday's Lisbon conversation took place at Elise's kitchen table because Nora wanted neutral territory and her mother had never been neutral about anything.
+    chapter: "Chapter 5 — Dinner and Delay",
+    text: `They walked to the station afterward, unhurried, the comfortable silence of two people who'd said the difficult things already. The evening schedule, checked idly on Julian's phone, showed the last departure delayed twenty minutes—a small, almost absurd echo of the morning that had started all of this, and Nora laughed out loud before she could stop herself.
 
-Julian brought maps. Nora brought a notebook. Elise brought orange cake, then announced she would be upstairs "not listening through the heating vent."
+"The universe has a sense of humor," Julian said, checking the board himself. "Or a very limited set of scheduling options for us specifically."
 
-The firm's first offer allowed one flight home every six weeks. Julian had asked for alternating three-week rotations and remote design reviews. The directors were considering it.
+"I requested the late train, remember. I should stop being surprised when it delivers."
 
-"You already negotiated?" Nora asked.
+They sat on a bench nearly identical to the one from weeks earlier, though the season had shifted, evening air carrying the first real chill of autumn. Julian didn't reach for her hand, and Nora noticed the restraint, recognized it as deliberate rather than hesitant—a man clearly determined not to rush whatever was rebuilding past the pace she needed it to move.
 
-"I needed to know whether options were real before asking you to arrange your life around them."
+"Can I see you again?" he asked finally, as the delayed train flickered onto the board. "Not to resolve everything at once. Just—again. Slowly, if that's what it needs to be."
 
-Nora had spoken with the museum director. A Lisbon archive wanted a visiting conservator for a summer project restoring maritime charts. She had not applied.
+Nora looked at him a long moment, weighing six years of self-protection against the small, undeniable warmth she'd felt building across an entire evening she hadn't fully braced for. "Yes," she said finally. "Slowly. I think slowly is exactly the right speed for this. We tried fast once already. It cost us six years."
 
-"I found an option too," she said.
-
-Julian looked at the listing, then at her. "Do you want it?"
-
-"That question is becoming irritating."
-
-"Still necessary."
-
-She pictured tiled archive rooms, salt-stiff maps, a language she barely spoke. Excitement rose separately from him.
-
-"Yes," she said. "For three months. Not eighteen."
-
-"Then apply."
-
-"And after three months?"
-
-"We come home on alternating schedules. We complain about airports. We find out what we can bear."
-
-"That's not very sweeping."
-
-"I no longer trust sweeping."
-
-Nora smiled despite herself.
-
-Upstairs, a floorboard creaked with maternal subtlety.
-
-Julian closed the map. "There is another option. I can decline."
-
-"Would you resent me?"
-
-"Not deliberately. Resentment rarely asks permission."
-
-"Then I don't want that version." Nora laid her hand over Lisbon. "I am not waiting. I am traveling beside you for part of the way, and living my own life for the rest."
-
-He covered her hand with his.
-
-Elise descended immediately, carrying plates she could not plausibly have needed. "If you are both going to Europe, someone must water Nora's fern."
-
-"That fern died last year," Nora said.
-
-"Then this is an opportunity to begin with something more resilient."
-
-Julian cut the cake. Under the table, his knee touched Nora's. Their plan contained no guarantees. For the first time, uncertainty felt less like an ambush than a country they might learn to cross.`,
+Julian's smile held none of the careful restraint from before—open, relieved, genuinely happy in a way Nora found she'd missed more than she'd admitted. "Slowly," he agreed. "I've had a lot of practice with patience lately, as it turns out."`,
   },
   {
-    chapter: "Chapter 6 — The Honest Timetable",
-    text: `Nora received the Lisbon fellowship on a Wednesday in April. Julian's firm approved the rotation plan the same afternoon. They celebrated with sparkling wine on Platform Nine, hidden in coffee cups because Nora respected public regulations in principle.
+    chapter: "Chapter 6 — Slowly",
+    text: `Slowly, it turned out, meant something closer to three months of careful rebuilding than either had initially anticipated—dinners spaced far enough apart that neither felt rushed, calls stretching late discussing nothing consequential at all, and a gradual, hard-won trust that neither treated as guaranteed simply because the first conversation had gone well.
 
-"To logistics," Julian said.
+Delphine, watching with considerably more patience than she'd shown during the initial eleven-day delay, finally offered her verdict over the third bottle of wine in as many months. "I'll admit it. I expected this to blow up spectacularly by now. It hasn't. He's actually different."
 
-"To romance's least marketable foundation."
+"He's actually different," Nora agreed, turning her glass slowly. "I keep waiting to catch him performing growth instead of actually having grown, and I keep not catching that, which is either the best sign I've had in years or the setup for a worse disappointment than the first one."
 
-They drank as the 8:12 arrived.
+"Do you believe it's the good sign?"
 
-The weeks before departure filled with vaccinations, sublets, and arguments about electrical adapters. Beneath every practical question lay a larger one neither voiced: what were they to each other now?
+Nora considered it honestly, thinking of three months of consistent, unglamorous effort—Julian showing up early instead of on time, answering hard questions instead of deflecting them, never once asking her to move faster than she needed to. "I think people can actually change, if it happens somewhere private and unglamorous, over years nobody's watching, rather than performed suddenly for an audience who needs convincing. I think that's what happened to him. I think I'm allowed to believe that without it making me foolish."
 
-Julian answered accidentally while helping Elise repair a trellis. Nora came around the house carrying lemonade and heard her mother say, "Will you marry her again?"
-
-"There is no again," Julian replied. "We didn't marry."
-
-"Technicalities are the refuge of men holding pruning shears incorrectly."
-
-He corrected his grip. "I won't ask because I'm afraid of losing her. A proposal shouldn't be a lock."
-
-"You didn't answer."
-
-"Yes," Julian said after a moment. "If she ever wanted it. But I want Tuesday mornings with her too. I want grocery lists and separate work and knowing when she needs quiet. Marriage can't be the only shape that makes those things real."
-
-Nora backed away before they saw her. The lemonade shook in her hands.
-
-That night, she told Julian she had overheard.
-
-"Your mother weaponized shrubbery," he said.
-
-"She does."
-
-"Are you angry?"
-
-"No." Nora considered. "I am relieved you didn't say you were planning something."
-
-"No gardens. No crowds."
-
-"No public transport proposals."
-
-"That eliminates my strongest material."
-
-They stood in her half-packed bedroom. Nora touched the open collar of his shirt.
-
-"I don't know if I ever want to marry again."
-
-"Okay."
-
-"I do know I want Lisbon. And after Lisbon, I want Tuesdays."
-
-Julian kissed her forehead. "I can work with Tuesdays."
-
-They made love among cardboard boxes while trains sounded beyond the river. Nora no longer mistook the absence of a grand promise for the absence of devotion. Sometimes devotion was a date returned to, ordinary and exact.`,
+"You were never foolish, Nora. You were hurt. Those aren't the same thing, even though they can feel identical from the inside."`,
   },
   {
-    chapter: "Chapter 6 — The Honest Timetable",
-    text: `Lisbon smelled of hot stone, coffee, and the Atlantic. Nora's archive occupied a former convent where blue tiles cooled the corridors and gulls screamed above the courtyard.
+    chapter: "Chapter 6 — Slowly",
+    text: `The real test, when it arrived, came not from any dramatic crisis but from ordinary friction: a canceled dinner when Julian's father had a minor scare that turned out to be nothing serious, handled with immediate, transparent communication instead of six years of silence; a disagreement about pacing that Nora initiated herself, worried they were moving faster than she'd intended despite her own best efforts.
 
-She and Julian rented a narrow apartment with a lemon tree on the balcony. For six weeks, they built a domestic life in miniature. He left early for site surveys. She spent her days unfolding maps whose sea monsters had lost scales to damp. At night they ate sardines, learned the hills with aching calves, and argued cheerfully over Portuguese pronunciation.
+"I need us to actually talk about this instead of letting it build," she told him, over coffee on a gray Tuesday deliberately nothing like the dramatic platform where this had begun. "I think I'm scared that if this starts feeling easy, I'll stop being careful, and being careful is the only thing that's kept me from getting hurt the same way twice."
 
-Then Julian flew home for his first rotation.
+Julian didn't get defensive, which Nora had come to expect from him, though she still noticed and appreciated it every time. "That's fair. I'd rather you tell me you're scared than pretend you're fine and let it curdle into something worse later. That's the whole thing I learned the hard way, if you want the short version."
 
-At the airport, Nora's lungs tightened when he joined the security line. She named five blue things, four sounds, three textures, as Dr. Shah had taught her. Julian did not step out of line to rescue her.
+"I know. I'm trying to learn it the easier way, watching you instead of learning it myself from scratch."
 
-He called from the other side.
+"Then let's just keep doing this. The actual talking, I mean. Not the grand gestures. Just showing up, saying the uncomfortable thing out loud before it becomes a six-year silence instead."
 
-"I leave at eleven ten," he said. "I land at one forty local time. I will text from baggage claim."
-
-"I know."
-
-"What will you do today?"
-
-"Finish the Cape of Storms. Buy tomatoes. Not wait."
-
-"Exactly."
-
-She watched him disappear, then took the metro alone.
-
-The first week was difficult. Their calls misfired. Julian once forgot a dinner with Elise and apologized without blaming the time difference. Nora missed two messages while drinking vinho verde with archive colleagues and refused to feel guilty for enjoying the night.
-
-On Saturday, she took a train to Sintra by herself. Mist threaded the forest. From a palace terrace, the country opened green and gold below her.
-
-She mailed Julian a postcard: This is not waiting.
-
-He sent a photograph of himself watering Elise's newly purchased fern, a fierce little plant named Prudence. On the back of a transit diagram he wrote: This is not leaving.
-
-When he returned three weeks later, Nora met him outside the arrivals hall. No flowers, no spectacle. He set down his bag.
-
-"Hello," he said.
-
-"You're late."
-
-"Four minutes."
-
-"I noticed."
-
-She kissed him while taxis streamed around them, grateful for the difference between counting minutes in fear and counting them because someone had told you when to expect his face.`,
+Nora reached across the table, for the first time since their first dinner, and took his hand, feeling the deliberate weight of a choice made carefully rather than swept into. "Okay. Just this. I think just this might actually be enough."`,
   },
   {
-    chapter: "Chapter 6 — The Honest Timetable",
-    text: `The test came in July, when Julian's sister Sofia called from Bellwether. Elise had collapsed at the garden center and was in the hospital with an irregular heartbeat.
+    chapter: "Chapter 6 — Slowly",
+    text: `Six months after the delayed 8:12, Nora found herself standing on the same platform again, waiting for the same late train, though this time Julian stood beside her rather than eight feet away near a pillar, and the coffee in her hand had gone cold from conversation rather than from waiting alone.
 
-Nora stood in the archive courtyard, sunlight blazing on tile, while old terror changed clothes. This time the person endangered was her mother; the distance belonged to Nora.
+"Do you ever think about how different this would look if the train had actually been on time?" she asked, watching the board flicker with an entirely unremarkable, on-schedule departure for once.
 
-"I'm booking you a flight," Julian said beside her.
+"Constantly. If that train had left on schedule, I don't think either of us ever says a word to the other. You walk to your meeting. I get on with my day. We spend the rest of our lives as two people who almost got married once, filed away in the past tense."
 
-"The chart presentation is tomorrow."
+"That's a strange thing to owe a signal failure at Kettering Junction."
 
-"Nora."
+"I've sent Kettering Junction a great deal of unspoken gratitude, honestly." He smiled, and Nora felt, watching him, the settled warmth of six months' careful rebuilding finally starting to feel less like reconstruction and more like simply, ordinarily, her life.
 
-"I know. I just need one minute to hate the choice."
+"For the record," she said, as their train pulled in exactly on schedule for once, "I don't think I need it to be late anymore. I think I just needed the one time it was."
 
-He waited.
+"Careful," Julian said, taking her hand as they boarded. "That sounds dangerously close to you saying you're glad this happened."
 
-She called Priya, who promised to meet Elise at the hospital. She called the archive director and arranged for a colleague to present the chart. Julian booked the last two seats home.
-
-At the gate, a storm delayed their flight. The departure board pushed midnight to two, then canceled altogether.
-
-Nora stared at the red letters. "Of course."
-
-Julian approached the service desk while she called Priya. Elise was stable and furious about the hospital gown. Her voice came onto the line, thin but unmistakably hers.
-
-"Do not swim home," Elise ordered. "The doctor says I am too mean for death."
-
-Julian found seats on a morning flight through Madrid. They slept on the airport floor, his jacket beneath Nora's head.
-
-When they reached Bellwether, Elise was sitting up, criticizing the oatmeal. She took Nora's face between both hands, then waved Julian closer.
-
-"You came," she said to him.
-
-"So did Nora."
-
-Elise nodded toward her daughter. "That is what I meant."
-
-Nora understood. Seven years ago she had been the one left beside a ceremonial promise. Now crisis had come, transportation had failed, and nobody had vanished into shame. They had spoken, adapted, and arrived.
-
-Elise recovered with medication and orders to reduce salt, which she interpreted as a personal feud with cardiology. Nora's presentation succeeded without her. Nothing was restored exactly to plan.
-
-That evening, Nora and Julian walked past the locked garden. She took his hand.
-
-"Maybe arrival isn't a single moment," she said.
-
-"Transit professional agrees."
-
-"Don't ruin it."
-
-He squeezed her fingers, and they continued home.`,
+"I am glad this happened," Nora said, surprising herself with how easily the words arrived. "Eventually. After the anger. After the thirty-seven minutes. After all of it. I'm glad."`,
   },
   {
-    chapter: "Chapter 7 — Last Service",
-    text: `Autumn returned them permanently to Bellwether. Julian traveled to Lisbon every fourth week; Nora became consulting conservator for the archive and worked from the museum. They rented no shared home. Her toothbrush moved between apartments with comic regularity.
+    chapter: "Chapter 7 — On Purpose",
+    text: `A year after the delayed 8:12, Julian proposed on a train—not out of grand calculation, he admitted afterward, but because the moment simply arrived while they sat on yet another delayed departure, held up by nothing more dramatic than a mechanical check, and he'd found himself unable to wait for a more conventional setting once the words started arriving.
 
-For a while, the arrangement suited them. Then the city announced that the 8:12 line would close for six months during Julian's platform reconstruction.
+"I don't have a ring yet," he said, visibly flustered by his own timing, kneeling awkwardly in the narrow aisle while an elderly passenger two rows back began quietly filming on her phone. "I wanted to wait for the right moment, then realized I'd spent six years already waiting for moments that never came, and I didn't want to make that mistake again."
 
-"You are destroying the foundation of our relationship," Nora said.
+Nora laughed, delighted and startled, aware of every eye in the car now fixed on them. "You're proposing on a train. Unprepared. In front of an audience."
 
-"Temporary shuttle buses will be provided."
+"I'm proposing on purpose," Julian said, correcting her gently. "That's the point. Last time, everything about us happened by accident or avoidance. I wanted this moment to be the opposite of that. I wanted to choose it, badly-timed ring or not, completely on purpose."
 
-"I withdraw my complaint. Buses are famously erotic."
+"That's either the most romantic thing you've ever said to me, or the most chaotic proposal in the history of public transit."
 
-On the final night of service, railway enthusiasts crowded the platform with cameras. Julian had to inspect the closure, and Nora joined him after work. The old train arrived draped in farewell bunting.
+"Can it be both?"
 
-They boarded the last car, where their second chance had begun. The flickering light had been replaced. The upholstery remained aggressively brown.
+Nora looked around at the car full of strangers, all now visibly invested in her answer, and felt something settle into place that had taken a full year of careful, deliberate rebuilding to earn honestly. "Yes," she said, to the proposal and the question both. "It can absolutely be both. Yes, Julian. Ask me properly later, with an actual ring, but yes."
 
-"I have something for you," Julian said.
-
-Nora tensed. He noticed.
-
-"Not jewelry."
-
-"Thank you."
-
-He gave her the green paperback. Inside the front cover, beneath her faded inscription, he had added one line: For every journey we choose to name.
-
-"You don't want it?" she asked.
-
-"I want you to repair it. The pages are coming loose."
-
-Nora turned the book in her hands. This was trust in her actual skill, not a symbolic demand that she fix their past.
-
-"It will take a month."
-
-"I know a good bus route."
-
-As the train pulled away, passengers applauded. Nora rested her head against his shoulder. She had thought returning to Julian would require recovering the people they had been. Instead the old love had served mostly as a language through which two altered adults learned to speak.
-
-At Bellwether, Julian lingered.
-
-"My lease ends in December," he said. "Would you consider finding a place together?"
-
-Nora looked down at the damaged book, then at him.
-
-"Separate workrooms."
-
-"Nonnegotiable."
-
-"Near my mother, but not walking distance."
-
-"Strong preference."
-
-"And if it goes badly, we say so before the moving truck."
-
-Julian smiled. "Is that a yes?"
-
-"It is a request for floor plans."`,
+The elderly passenger burst into applause first, and the rest of the car followed, and Julian kissed her right there while the delayed train sat motionless, in no apparent hurry to arrive anywhere at all.`,
   },
   {
-    chapter: "Chapter 7 — Last Service",
-    text: `They found the apartment above a closed music shop, halfway between Union Terminal and Elise's yellow house. It had tall windows, crooked floors, and two small rooms at opposite ends that could become studios.
+    chapter: "Chapter 7 — On Purpose",
+    text: `The actual ring arrived two weeks later, delivered with considerably more ceremony, though Julian insisted on the exact platform bench where their thirty-seven minutes had first happened, treating the location with the reverence people usually reserve for places that genuinely changed the shape of their lives.
 
-Nora loved it immediately and concealed this for eleven minutes.
+"I know it's a little on the nose," he admitted, sliding the ring on properly this time, no strangers filming, no delayed train providing an accidental backdrop. "But I wanted this spot to have a better memory attached to it than just being the place I admitted I'd ruined something. I wanted it to also be the place we built something, on purpose, with our eyes open."
 
-Julian measured doorways while the landlord described planned renovations. In the kitchen, afternoon light lay honey-colored across scratched counters.
+"It's not on the nose," Nora said, examining the ring with the happiness of someone who'd genuinely stopped expecting to feel this way about anyone again. "It's exactly right. This bench has earned the upgrade."
 
-"There's only one closet," Nora said.
+They sat there afterward, watching an entirely unremarkable, on-schedule train arrive and depart without either needing to board it, simply enjoying the luxury of having nowhere urgent to be for once.
 
-"I own four shirts."
+"Delphine's going to be insufferable about being right," Nora said, watching the ring catch the platform's fluorescent light.
 
-"You own twelve identical blue shirts. That is worse."
+"About what specifically?"
 
-They signed the lease.
+"About the fact that avoidance dressed up as caution nearly cost me this. She's been saying some version of that since the day I met you back on this exact platform." Nora smiled, leaning into his shoulder. "I'm choosing to let her be right, this once."
 
-Moving day brought Sofia, Priya, Elise, Nora's brother, and an argument about a walnut desk that could not fit up the stairs. Julian began directing everyone with transit-engineer intensity. Nora snapped that furniture was not rolling stock. He snapped that geometry remained geometry.
-
-Silence fell on the landing.
-
-Once, conflict had meant flight. Julian put down the tape measure.
-
-"I am embarrassed and becoming controlling," he said.
-
-Nora exhaled. "I am overwhelmed and making this desk a referendum on our future."
-
-Priya, below them, called, "Do you need privacy, or can we appreciate the healthy communication?"
-
-They laughed. The desk went through a window with professional movers the next day.
-
-That evening, surrounded by boxes, Nora placed the repaired paperback on their shelf. She had resewn the signatures, lifted old adhesive, and made a new case in deep green cloth. The original cover rested over it, its scars preserved.
-
-Julian opened the book. "It's beautiful."
-
-"It won't look new."
-
-"I didn't ask it to."
-
-Nora touched his wrist. She had repaired thousands of objects. The goal was never to erase age or damage. It was to stabilize what remained, respect the evidence, and make future handling possible.
-
-They ate noodles from the carton on the kitchen floor. Trains passed four blocks away, their horns softened by buildings. When Julian carried the empty cartons downstairs, he said where he was going without self-consciousness.
-
-Nora noticed. She also noticed that she did not need to watch from the window until he returned.`,
+"Generous," Julian agreed, "and accurate. I think we owe Delphine a considerable amount of credit for this entire thing existing at all."`,
   },
   {
-    chapter: "Chapter 7 — Last Service",
-    text: `In December, the municipal garden announced it would be demolished for a parking structure.
+    chapter: "Chapter 7 — On Purpose",
+    text: `The wedding, when they planned it, bore almost no resemblance to the elaborate ceremony that had collapsed six years earlier under the weight of Julian's unspoken panic. This time they chose something small and deliberate: a courthouse ceremony followed by dinner with a dozen people who actually mattered, no elaborate vestibule for anyone to potentially fail to walk through.
 
-Nora read the notice twice. She had spent years avoiding the place and months reclaiming its edges, yet the thought of its disappearance felt like someone proposing to bury evidence without testimony.
+"Are you scared?" Nora asked him the morning of, only half joking, watching him adjust his collar in a mirror that reflected considerably more calm than the last time either had prepared for this milestone.
 
-She went alone on the final public afternoon. Frost silvered the pergola. The hydrangeas were skeletal; gravel crackled beneath her boots.
+"Terrified," Julian admitted honestly, which struck Nora as exactly right, precisely because he said it out loud instead of performing confidence he didn't feel. "Not of marrying you. Of somehow failing you again, in some way I can't currently predict. That fear doesn't fully go away just because I've done the work. I think it just gets quieter."
 
-At the center lawn, she could still locate the white aisle, the chair where her mother had sat, the gate everyone watched. Memory placed her younger self beneath the arbor, shoulders straight, refusing to cry until guests had gone.
+"Good. I'd be more worried if you weren't scared at all. Scared and showing up anyway is the whole thing, Julian. That's the entire lesson you apparently needed six years to learn."
 
-"You deserved an answer," Nora told her.
+"I did learn it. I'm here. Terrified, and here, and there's nowhere else I'd rather be standing right now than in front of you, about to do this properly, on purpose, with every hard conversation already had instead of avoided."
 
-Wind moved through bare vines.
-
-She did not say, It all worked out. It had not, in the sentimental mathematics people preferred. Seven years had contained a marriage, a death, other loves, and loneliness that could not be refunded because Julian returned improved.
-
-"You also survived without one," she said.
-
-Behind her, the gate clicked. Julian stood outside the garden, not entering.
-
-"Elise told me you were here," he said. "Do you want company?"
-
-Nora considered the pergola. "Yes."
-
-He joined her but stayed an arm's length away.
-
-"I'm sorry," he said. Not for the first time, and perhaps not the last.
-
-"I know."
-
-"Is this goodbye?"
-
-"To the garden." She looked at him. "Not to you."
-
-They walked the abandoned aisle side by side. At its end, Nora took his hand.
-
-The city clock struck four. Work crews waited beyond the fence, orange vests bright against winter brown. Nora felt grief, not only for what had happened but for the possible life that had never existed. Grief did not accuse her present happiness. It simply asked to be included.
-
-At the gate, she turned once more.
-
-"Ready?" Julian asked.
-
-"No," she said, and stepped out anyway.
-
-The gate closed behind them. Readiness, she had learned, was often a story people told after courage had already carried them through.`,
+Nora took his hand, steady despite the vulnerability of the day, and thought that some things arrived exactly when they were supposed to—not on the schedule anyone originally planned, but late enough, and honest enough, to actually be worth the wait that preceded them.`,
   },
   {
-    chapter: "Chapter 8 — Arrival",
-    text: `The new Bellwether platform opened in spring. Julian invited Nora to the accessibility inspection, where residents tested elevators, ramps, signs, and the textured edges beside the track.
+    chapter: "Chapter 8 — The Late Train",
+    text: `Years later, Nora and Julian still rode the late train sometimes, deliberately, choosing the delayed departure over the earlier one whenever their schedules allowed, a small private ritual neither had ever fully explained to anyone, including their own daughter, who found the habit charmingly, inexplicably strange whenever she was old enough to notice it.
 
-An older woman rolled her wheelchair directly from platform to train without waiting for staff. Her expression changed when the wheels crossed the narrow gap: not gratitude, exactly, but the fierce satisfaction of a person encountering a world briefly arranged as it should have been.
+"Why do you always pick the late one on purpose?" seven-year-old Mira asked once, swinging her legs from the platform bench while they waited for a delay Julian had, if Nora was being honest, deliberately checked for before leaving the house.
 
-Nora saw Julian watching from behind a column, eyes wet.
+"Because your dad and I met properly on a late train," Nora told her, "after almost not meeting at all on time. Sometimes the things that get delayed turn out to matter more than the things that arrive exactly when you expect them to."
 
-"You repaired how she gets there," Nora said.
+"That doesn't make any sense."
 
-He wiped his face. "You became a metaphor again."
+"It will, someday," Julian said, laughing, "on some very specific platform, at some very specific unexpected moment. You'll understand it immediately when it happens, and probably not a second before."
 
-"I regret everything."
+Mira rolled her eyes with the theatrical exasperation of a child who suspected the adults around her were being deliberately mysterious, and went back to swinging her legs, unbothered by an explanation she'd filed away as adult nonsense to be revisited later.
 
-After speeches, Elise produced a picnic from an enormous bag. Prudence the fern, now inexplicably thriving, had been brought as an honored guest. Priya toasted the line with contraband sparkling wine in coffee cups.
-
-Julian's director announced that he would lead a permanent regional accessibility team. Lisbon would remain a consulting trip, not a relocation.
-
-"Did you know?" Nora asked.
-
-"Since yesterday. I was waiting to tell you in person."
-
-The phrase no longer carried threat.
-
-They rode the first public train into the city. Sunlight flashed across the river. Nora's repaired copy of The Winter Orchard rested in her bag; she was taking it to a museum book club.
-
-"Dinner tonight?" Julian asked.
-
-"I have the atlas review until seven."
-
-"I'll cook at eight."
-
-"I may be late."
-
-"I know where you live."
-
-Home had become a set of shared coordinates rather than a promise nobody could break. Their life included keys on the same ring now, mornings quarreling over shower time, and messages that said delayed but moving.
-
-At Union Terminal, the train arrived exactly as scheduled. Nora felt almost disappointed.
-
-She and Julian parted beneath the clock, each walking toward separate work. He did not look back. Neither did she.
-
-Trust was not constant proof that someone remained in sight. It was the widening distance one could allow while still believing in return.`,
+Nora watched her daughter, then looked at Julian, feeling the settled gratitude of a life built slowly, deliberately, on purpose, out of exactly the kind of second chance she'd once been certain she would never receive. The overhead board flickered, announcing their train's arrival, six minutes later than scheduled, and neither of them minded the wait at all.`,
   },
   {
-    chapter: "Chapter 8 — Arrival",
-    text: `On a warm evening in June, Nora came home to find Julian sitting on the kitchen floor beside a dog.
+    chapter: "Chapter 8 — The Late Train",
+    text: `Delphine visited the following spring, older now and slightly softer around the edges of her old bluntness, and asked to see the famous bench for herself, having heard about it secondhand for years without ever standing on the platform where the whole improbable story had turned.
 
-The animal was small, mud-colored, and spectacularly undignified. One ear stood up. The other appeared to have resigned.
+"This is it?" she asked, surveying the unremarkable strip of concrete with visible skepticism. "This is the legendary bench?"
 
-"This is not what it looks like," Julian said.
+"This is it," Nora confirmed, sitting beside her old friend with the fondness of someone who'd finally stopped needing anyone's reassurance about the choice she'd made. "It doesn't look like much. It never did."
 
-"It looks like a dog."
+"You built a marriage out of thirty-seven minutes on a bench that doesn't look like much."
 
-"Then it is precisely what it looks like. He followed me from the temporary bus stop. No collar. The shelter scanned him, and there is no chip. They asked if we could foster him for forty-eight hours."
+"I built a marriage out of choosing to stay for thirty-seven minutes when leaving would have been easier and probably justified. The bench was just where it happened to happen." Nora watched Mira chase a pigeon further down the platform, laughing, entirely unaware of the significance of the ground beneath her feet. "You were right, about the avoidance. I think about that a lot."
 
-The dog sneezed on Julian's blue shirt.
+Delphine's smile held none of her old triumphant edge, only something warmer. "I wasn't trying to be right. I was trying to make sure you didn't talk yourself out of something good because the something good used to be something terrible. I'm glad you didn't."
 
-"Kevin," Nora said.
-
-"You haven't heard his shelter name."
-
-"His name is Kevin."
-
-Forty-eight hours became a week. Flyers produced no owner. Kevin feared the vacuum, adored Elise, and ate the corner of a transit proposal worth several million dollars. Julian repaired it with museum tissue under Nora's supervision.
-
-They adopted him on the last Friday of June.
-
-That night, Kevin asleep between them on the sofa, Julian handed Nora a plain envelope. Inside was a railway timetable for a coastal route they had once planned to take on their honeymoon.
-
-Nora's chest tightened, but not painfully.
-
-"A trip?" she asked.
-
-"Four days. No ceremony. Refundable tickets. Separate from any symbolic agenda."
-
-"You rehearsed that."
-
-"Extensively."
-
-She examined the route: cliffs, villages, a final station beside the sea. The old itinerary had represented a future they thought would begin after vows. This one was simply travel.
-
-"Yes," she said.
-
-Julian smiled. "Yes to the trip?"
-
-"Yes to the trip."
-
-Kevin woke and climbed across both of them, ending the kiss.
-
-On departure morning, Nora packed lightly. At the terminal, their train was delayed by twenty minutes. They bought coffee and stood beneath the clock.
-
-"Nervous?" Julian asked.
-
-"A little."
-
-"Me too."
-
-The honesty steadied them more than certainty could have. When the platform number appeared, they walked toward it with Kevin tugging ahead, eager for every destination and entirely uninterested in the history of trains.`,
+"So am I," Nora said, watching the board flicker toward another small, ordinary delay. "So am I."`,
   },
   {
-    chapter: "Chapter 8 — Arrival",
-    text: `The coastal train reached the sea near dusk. Cliffs dropped into water the color of beaten silver, and villages shone briefly in the windows before folding behind hills.
+    chapter: "Chapter 8 — The Late Train",
+    text: `On their tenth anniversary, they returned to the original bench for what had become an annual, quietly sacred tradition, this time with Mira old enough to sit between them and ask the real questions she'd been saving since the swinging-legs age of seven.
 
-Nora and Julian sat facing each other in the final car. Kevin slept beneath the table, exhausted by the moral demands of travel. The green paperback lay open on Nora's lap.
+"Were you scared?" she asked her mother directly. "When you saw Dad again after so long? Everyone tells this story like it was romantic, but were you actually scared?"
 
-"Read me the inscription," Julian said.
+Nora considered the question honestly, the way she'd learned to answer Mira's increasingly sharp questions rather than softening them into easier narratives. "Terrified. Six years of very carefully built anger, and there he was, and none of the anger knew what to do with itself anymore. Being scared and choosing to stay on that bench anyway is honestly the bravest thing I've ever done, harder than the wedding, harder than almost anything since."
 
-"Which one?"
+"Was it worth it? Being scared like that?"
 
-"Both."
+"Every single time," Julian answered, before Nora could, reaching across Mira to take her mother's hand the way he had on this exact bench more times than either had bothered to count. "Your mother gave a coward thirty-seven minutes to become someone worth trusting again. That's not romance, sweetheart. That's the hardest, most generous thing anyone's ever done for me, and I've spent every day since trying to make sure it was worth what it cost her."
 
-She read her younger handwriting: "For every journey after this one."
-
-Then his: "For every journey we choose to name."
-
-Julian looked toward the sea. "I spent years thinking if I could explain the day perfectly, it would change what I did."
-
-"It doesn't."
-
-"I know."
-
-Nora closed the book. "I spent years thinking forgiveness would mean saying it was acceptable."
-
-"It wasn't."
-
-"I know."
-
-The train entered the last tunnel. In darkness, she reached across the table. Julian's hand met hers without searching.
-
-At the seaside terminus, rain had begun. Their hotel stood half a mile away, but no taxis waited, and Kevin objected to the weather by sitting firmly on the platform.
-
-Julian lifted the dog. Nora carried the bags. They walked through rain laughing, wet within minutes.
-
-Nothing about the arrival resembled the life they had imagined seven years earlier. They were older. They knew promises could fail, illness could interrupt, trains could stop between stations. They also knew how to call, how to return, how to let love be a practice instead of an alibi.
-
-At the hotel door, Julian set Kevin down and held out his hand.
-
-"Ready?"
-
-Nora looked back at the tracks shining under station lamps. The late train waited before beginning its return journey, every window bright.
-
-"Present," she said.
-
-It was better than ready.
-
-She took his hand, and together they went inside—not arriving once and forever, but arriving as they meant to continue: honestly, imperfectly, and on purpose.`,
+Mira, apparently satisfied with an answer that finally treated her as old enough for the real version, leaned against her mother's shoulder and watched the tracks alongside them, waiting, the way her parents always had, for a train that would arrive exactly when it needed to—not a moment sooner, and not, either of them had long since agreed, a single moment too late.`,
   },
 ];
