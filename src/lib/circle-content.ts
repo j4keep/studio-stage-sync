@@ -1,19 +1,22 @@
 /**
- * My Circle exclusive content — posts & videos stay inside the circle
- * (never shared to the main YAJ feed).
- *
- * Prefers Supabase `circle_contents` tables; falls back to localStorage when
- * the migration isn't applied yet so the UI still works in preview.
+ * My Circle exclusive content — stays inside the circle (never the main feed).
+ * Prefers Supabase; falls back to localStorage when tables aren't applied yet.
  */
 
 import { supabase } from "@/integrations/supabase/client";
 
 const sb = supabase as any;
 const LOCAL_KEY = "yaj.circle.contents.v1";
+const LOCAL_RSVP_KEY = "yaj.circle.rsvps.v1";
+const LOCAL_POLL_KEY = "yaj.circle.polls.v1";
 
 export type CircleContentKind = "post" | "video";
 export type CircleActivityType = "photo" | "event" | "community" | "update" | "exclusive" | "video";
 export type CircleContentVisibility = "circle_members" | "paid_members" | "only_me" | "public_in_circle";
+export type CommunitySubtype = "poll" | "question" | "challenge" | "activity";
+export type EventRsvpStatus = "going" | "interested" | "cant_go";
+/** Circle-level access — separate from per-post Exclusive visibility. */
+export type CircleAccessMode = "public" | "private" | "paid";
 
 export type CircleContent = {
   id: string;
@@ -31,11 +34,23 @@ export type CircleContent = {
   view_count: number;
   comment_count: number;
   event_at: string | null;
+  event_end_at: string | null;
   event_location: string | null;
+  event_online_url: string | null;
+  event_capacity: number | null;
+  event_ticket_cents: number | null;
+  event_reminders: boolean;
+  community_subtype: CommunitySubtype | null;
+  poll_options: string[];
+  tags: string[];
+  is_pinned: boolean;
   created_at: string;
   updated_at: string;
-  /** Client-only */
   liked_by_me?: boolean;
+  my_rsvp?: EventRsvpStatus | null;
+  my_poll_vote?: number | null;
+  rsvp_counts?: Partial<Record<EventRsvpStatus, number>>;
+  poll_counts?: number[];
 };
 
 export type CircleContentComment = {
@@ -52,23 +67,63 @@ export const ACTIVITY_META: Record<
   Exclude<CircleActivityType, "video">,
   { label: string; hint: string }
 > = {
-  photo: { label: "Photo", hint: "Share a picture with your circle" },
-  event: { label: "Event", hint: "Announce a meetup or drop" },
-  community: { label: "Community", hint: "Activities & hangouts" },
-  update: { label: "Update", hint: "A quick note for members" },
-  exclusive: { label: "Exclusive", hint: "Members-only drop" },
+  photo: { label: "Photo / Video", hint: "Normal Circle media post" },
+  event: { label: "Event", hint: "Date, place, RSVP & calendar" },
+  community: { label: "Community", hint: "Polls, questions & challenges" },
+  update: { label: "Update", hint: "Fast announcement — pinable" },
+  exclusive: { label: "Exclusive", hint: "Members or paid supporters" },
 };
 
-export const VISIBILITY_META: Record<CircleContentVisibility, { label: string; hint: string }> = {
-  circle_members: { label: "Circle members", hint: "Approved members only" },
-  paid_members: { label: "Subscribers", hint: "Paid members only" },
-  only_me: { label: "Only me", hint: "Private draft / personal" },
-  public_in_circle: { label: "Circle page", hint: "Anyone who can open this Circle" },
+export const COMMUNITY_SUBTYPE_META: Record<CommunitySubtype, { label: string; hint: string }> = {
+  poll: { label: "Poll", hint: "Let members vote" },
+  question: { label: "Question", hint: "Ask the Circle" },
+  challenge: { label: "Challenge", hint: "Call people to join in" },
+  activity: { label: "Activity", hint: "Meetup or participation ask" },
 };
+
+export const EXCLUSIVE_VISIBILITY_OPTIONS: {
+  id: CircleContentVisibility;
+  label: string;
+  hint: string;
+}[] = [
+  { id: "circle_members", label: "Members only", hint: "Anyone approved in this Circle" },
+  { id: "paid_members", label: "Paid subscribers only", hint: "Requires Supporter Membership" },
+];
+
+export const CIRCLE_ACCESS_META: Record<
+  CircleAccessMode,
+  { label: string; hint: string }
+> = {
+  public: { label: "Public", hint: "Anybody can view and join" },
+  private: { label: "Private", hint: "Owner approves members" },
+  paid: { label: "Paid", hint: "Supporter Membership required to enter" },
+};
+
+export function deriveCircleAccessMode(circle: {
+  is_private: boolean;
+  is_paid: boolean;
+  requires_approval: boolean;
+}): CircleAccessMode {
+  if (circle.is_paid) return "paid";
+  if (circle.is_private) return "private";
+  return "public";
+}
+
+export function accessModeToCirclePatch(mode: CircleAccessMode): {
+  isPrivate: boolean;
+  requiresApproval: boolean;
+  isPaid: boolean;
+} {
+  if (mode === "paid") return { isPrivate: true, requiresApproval: true, isPaid: true };
+  if (mode === "private") return { isPrivate: true, requiresApproval: true, isPaid: false };
+  return { isPrivate: false, requiresApproval: false, isPaid: false };
+}
 
 type LocalStore = Record<string, CircleContent[]>;
-type LocalLikes = Record<string, string[]>; // contentId -> userIds
+type LocalLikes = Record<string, string[]>;
 type LocalComments = Record<string, CircleContentComment[]>;
+type LocalRsvps = Record<string, Record<string, EventRsvpStatus>>; // contentId -> userId -> status
+type LocalPolls = Record<string, Record<string, number>>; // contentId -> userId -> optionIndex
 
 function readLocal(): LocalStore {
   try {
@@ -108,10 +163,75 @@ function writeLocalComments(comments: LocalComments) {
   localStorage.setItem(`${LOCAL_KEY}.comments`, JSON.stringify(comments));
 }
 
+function readLocalRsvps(): LocalRsvps {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_RSVP_KEY) || "{}") as LocalRsvps;
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalRsvps(v: LocalRsvps) {
+  localStorage.setItem(LOCAL_RSVP_KEY, JSON.stringify(v));
+}
+
+function readLocalPolls(): LocalPolls {
+  try {
+    return JSON.parse(localStorage.getItem(LOCAL_POLL_KEY) || "{}") as LocalPolls;
+  } catch {
+    return {};
+  }
+}
+
+function writeLocalPolls(v: LocalPolls) {
+  localStorage.setItem(LOCAL_POLL_KEY, JSON.stringify(v));
+}
+
 function isMissingTable(err: unknown): boolean {
   const msg = err && typeof err === "object" && "message" in err ? String((err as { message?: string }).message) : String(err ?? "");
   const code = err && typeof err === "object" && "code" in err ? String((err as { code?: string }).code) : "";
-  return code === "42P01" || /circle_contents|does not exist|schema cache|Could not find/i.test(msg);
+  return (
+    code === "42P01" ||
+    code === "42703" ||
+    /circle_contents|circle_content_|does not exist|schema cache|Could not find|column .* does not exist/i.test(msg)
+  );
+}
+
+function normalizeRow(raw: Partial<CircleContent> & { id: string }): CircleContent {
+  return {
+    id: raw.id,
+    circle_id: raw.circle_id!,
+    author_id: raw.author_id!,
+    kind: raw.kind ?? "post",
+    activity_type: raw.activity_type ?? "photo",
+    title: raw.title ?? null,
+    body: raw.body ?? null,
+    media_urls: raw.media_urls ?? [],
+    media_type: raw.media_type ?? "none",
+    visibility: raw.visibility ?? "circle_members",
+    donations_enabled: raw.donations_enabled !== false,
+    like_count: raw.like_count ?? 0,
+    view_count: raw.view_count ?? 0,
+    comment_count: raw.comment_count ?? 0,
+    event_at: raw.event_at ?? null,
+    event_end_at: raw.event_end_at ?? null,
+    event_location: raw.event_location ?? null,
+    event_online_url: raw.event_online_url ?? null,
+    event_capacity: raw.event_capacity ?? null,
+    event_ticket_cents: raw.event_ticket_cents ?? null,
+    event_reminders: Boolean(raw.event_reminders),
+    community_subtype: raw.community_subtype ?? null,
+    poll_options: raw.poll_options ?? [],
+    tags: raw.tags ?? [],
+    is_pinned: Boolean(raw.is_pinned),
+    created_at: raw.created_at ?? new Date().toISOString(),
+    updated_at: raw.updated_at ?? new Date().toISOString(),
+    liked_by_me: raw.liked_by_me,
+    my_rsvp: raw.my_rsvp,
+    my_poll_vote: raw.my_poll_vote,
+    rsvp_counts: raw.rsvp_counts,
+    poll_counts: raw.poll_counts,
+  };
 }
 
 export type CreateCircleContentInput = {
@@ -125,13 +245,22 @@ export type CreateCircleContentInput = {
   mediaType?: "image" | "video" | "none";
   visibility?: CircleContentVisibility;
   donationsEnabled?: boolean;
+  tags?: string[];
   eventAt?: string | null;
+  eventEndAt?: string | null;
   eventLocation?: string | null;
+  eventOnlineUrl?: string | null;
+  eventCapacity?: number | null;
+  eventTicketCents?: number | null;
+  eventReminders?: boolean;
+  communitySubtype?: CommunitySubtype | null;
+  pollOptions?: string[];
+  isPinned?: boolean;
 };
 
 function toRow(input: CreateCircleContentInput): CircleContent {
   const now = new Date().toISOString();
-  return {
+  return normalizeRow({
     id: crypto.randomUUID(),
     circle_id: input.circleId,
     author_id: input.authorId,
@@ -143,18 +272,27 @@ function toRow(input: CreateCircleContentInput): CircleContent {
     media_type: input.mediaType ?? "none",
     visibility: input.visibility ?? "circle_members",
     donations_enabled: input.donationsEnabled !== false,
+    tags: (input.tags ?? []).map((t) => t.trim()).filter(Boolean),
+    event_at: input.eventAt ?? null,
+    event_end_at: input.eventEndAt ?? null,
+    event_location: input.eventLocation ?? null,
+    event_online_url: input.eventOnlineUrl ?? null,
+    event_capacity: input.eventCapacity ?? null,
+    event_ticket_cents: input.eventTicketCents ?? null,
+    event_reminders: Boolean(input.eventReminders),
+    community_subtype: input.communitySubtype ?? null,
+    poll_options: (input.pollOptions ?? []).map((o) => o.trim()).filter(Boolean),
+    is_pinned: Boolean(input.isPinned),
     like_count: 0,
     view_count: 0,
     comment_count: 0,
-    event_at: input.eventAt ?? null,
-    event_location: input.eventLocation ?? null,
     created_at: now,
     updated_at: now,
-  };
+  });
 }
 
-export async function createCircleContent(input: CreateCircleContentInput): Promise<CircleContent> {
-  const row = {
+function insertPayload(input: CreateCircleContentInput) {
+  return {
     circle_id: input.circleId,
     author_id: input.authorId,
     kind: input.kind,
@@ -165,14 +303,25 @@ export async function createCircleContent(input: CreateCircleContentInput): Prom
     media_type: input.mediaType ?? "none",
     visibility: input.visibility ?? "circle_members",
     donations_enabled: input.donationsEnabled !== false,
+    tags: (input.tags ?? []).map((t) => t.trim()).filter(Boolean),
     event_at: input.eventAt ?? null,
+    event_end_at: input.eventEndAt ?? null,
     event_location: input.eventLocation ?? null,
+    event_online_url: input.eventOnlineUrl ?? null,
+    event_capacity: input.eventCapacity ?? null,
+    event_ticket_cents: input.eventTicketCents ?? null,
+    event_reminders: Boolean(input.eventReminders),
+    community_subtype: input.communitySubtype ?? null,
+    poll_options: (input.pollOptions ?? []).map((o) => o.trim()).filter(Boolean),
+    is_pinned: Boolean(input.isPinned),
   };
+}
 
+export async function createCircleContent(input: CreateCircleContentInput): Promise<CircleContent> {
   try {
-    const { data, error } = await sb.from("circle_contents").insert(row).select("*").single();
+    const { data, error } = await sb.from("circle_contents").insert(insertPayload(input)).select("*").single();
     if (error) throw error;
-    return data as CircleContent;
+    return normalizeRow(data as CircleContent);
   } catch (err) {
     if (!isMissingTable(err)) throw err;
     const local = toRow(input);
@@ -183,39 +332,102 @@ export async function createCircleContent(input: CreateCircleContentInput): Prom
   }
 }
 
+function sortContents(rows: CircleContent[]): CircleContent[] {
+  return rows.slice().sort((a, b) => {
+    if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+    return b.created_at.localeCompare(a.created_at);
+  });
+}
+
+function attachLocalEngagement(rows: CircleContent[], userId?: string): CircleContent[] {
+  const likes = readLocalLikes();
+  const rsvps = readLocalRsvps();
+  const polls = readLocalPolls();
+  return rows.map((r) => {
+    const rsvpMap = rsvps[r.id] ?? {};
+    const pollMap = polls[r.id] ?? {};
+    const rsvp_counts: Partial<Record<EventRsvpStatus, number>> = { going: 0, interested: 0, cant_go: 0 };
+    Object.values(rsvpMap).forEach((s) => {
+      rsvp_counts[s] = (rsvp_counts[s] ?? 0) + 1;
+    });
+    const poll_counts = (r.poll_options ?? []).map((_, i) =>
+      Object.values(pollMap).filter((v) => v === i).length,
+    );
+    return {
+      ...r,
+      liked_by_me: userId ? (likes[r.id] ?? []).includes(userId) : false,
+      my_rsvp: userId ? rsvpMap[userId] ?? null : null,
+      my_poll_vote: userId && pollMap[userId] !== undefined ? pollMap[userId] : null,
+      rsvp_counts,
+      poll_counts,
+    };
+  });
+}
+
 export async function listCircleContents(
   circleId: string,
   opts: { kind?: CircleContentKind; userId?: string } = {},
 ): Promise<CircleContent[]> {
   try {
-    let q = sb.from("circle_contents").select("*").eq("circle_id", circleId).order("created_at", { ascending: false });
+    let q = sb.from("circle_contents").select("*").eq("circle_id", circleId);
     if (opts.kind) q = q.eq("kind", opts.kind);
     const { data, error } = await q;
     if (error) throw error;
-    const rows = (data as CircleContent[]) || [];
+    let rows = sortContents(((data as CircleContent[]) || []).map(normalizeRow));
     if (!opts.userId || !rows.length) return rows;
 
     const ids = rows.map((r) => r.id);
-    const { data: likes } = await sb
-      .from("circle_content_likes")
-      .select("content_id")
-      .eq("user_id", opts.userId)
-      .in("content_id", ids);
-    const liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
-    return rows.map((r) => ({ ...r, liked_by_me: liked.has(r.id) }));
+    let liked = new Set<string>();
+    let rsvpRows: { content_id: string; user_id: string; status: EventRsvpStatus }[] = [];
+    let voteRows: { content_id: string; user_id: string; option_index: number }[] = [];
+
+    try {
+      const [{ data: likes }, { data: rsvps }, { data: votes }] = await Promise.all([
+        sb.from("circle_content_likes").select("content_id").eq("user_id", opts.userId).in("content_id", ids),
+        sb.from("circle_content_rsvps").select("content_id, user_id, status").in("content_id", ids),
+        sb.from("circle_content_poll_votes").select("content_id, user_id, option_index").in("content_id", ids),
+      ]);
+      liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
+      rsvpRows = (rsvps as { content_id: string; user_id: string; status: EventRsvpStatus }[]) || [];
+      voteRows = (votes as { content_id: string; user_id: string; option_index: number }[]) || [];
+    } catch {
+      try {
+        const { data: likes } = await sb
+          .from("circle_content_likes")
+          .select("content_id")
+          .eq("user_id", opts.userId)
+          .in("content_id", ids);
+        liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
+      } catch {
+        /* ignore */
+      }
+    }
+
+    return rows.map((r) => {
+      const mine = rsvpRows.find((x) => x.content_id === r.id && x.user_id === opts.userId);
+      const rsvp_counts: Partial<Record<EventRsvpStatus, number>> = { going: 0, interested: 0, cant_go: 0 };
+      rsvpRows.filter((x) => x.content_id === r.id).forEach((x) => {
+        rsvp_counts[x.status] = (rsvp_counts[x.status] ?? 0) + 1;
+      });
+      const poll_counts = (r.poll_options ?? []).map((_, i) =>
+        voteRows.filter((v) => v.content_id === r.id && v.option_index === i).length,
+      );
+      const myVote = voteRows.find((v) => v.content_id === r.id && v.user_id === opts.userId);
+      return {
+        ...r,
+        liked_by_me: liked.has(r.id),
+        my_rsvp: mine?.status ?? null,
+        my_poll_vote: myVote ? myVote.option_index : null,
+        rsvp_counts,
+        poll_counts,
+      };
+    });
   } catch (err) {
     if (!isMissingTable(err)) throw err;
     const store = readLocal();
     let rows = store[circleId] ?? [];
     if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
-    const likes = readLocalLikes();
-    return rows
-      .slice()
-      .sort((a, b) => b.created_at.localeCompare(a.created_at))
-      .map((r) => ({
-        ...r,
-        liked_by_me: opts.userId ? (likes[r.id] ?? []).includes(opts.userId) : false,
-      }));
+    return attachLocalEngagement(sortContents(rows.map(normalizeRow)), opts.userId);
   }
 }
 
@@ -239,8 +451,7 @@ export async function toggleCircleContentLike(contentId: string, userId: string,
     likes[contentId] = [...set];
     writeLocalLikes(likes);
     const store = readLocal();
-    const list = store[circleId] ?? [];
-    store[circleId] = list.map((c) =>
+    store[circleId] = (store[circleId] ?? []).map((c) =>
       c.id === contentId
         ? { ...c, like_count: Math.max(0, c.like_count + (liked ? 1 : -1)), updated_at: new Date().toISOString() }
         : c,
@@ -257,8 +468,7 @@ export async function recordCircleContentView(contentId: string, circleId: strin
   } catch (err) {
     if (!isMissingTable(err)) return;
     const store = readLocal();
-    const list = store[circleId] ?? [];
-    store[circleId] = list.map((c) => (c.id === contentId ? { ...c, view_count: c.view_count + 1 } : c));
+    store[circleId] = (store[circleId] ?? []).map((c) => (c.id === contentId ? { ...c, view_count: c.view_count + 1 } : c));
     writeLocal(store);
   }
 }
@@ -310,10 +520,7 @@ export async function addCircleContentComment(
     if (error) throw error;
     const { data: row } = await sb.from("circle_contents").select("comment_count").eq("id", contentId).maybeSingle();
     if (row) {
-      await sb
-        .from("circle_contents")
-        .update({ comment_count: (row.comment_count ?? 0) + 1 })
-        .eq("id", contentId);
+      await sb.from("circle_contents").update({ comment_count: (row.comment_count ?? 0) + 1 }).eq("id", contentId);
     }
     return data as CircleContentComment;
   } catch (err) {
@@ -337,6 +544,40 @@ export async function addCircleContentComment(
   }
 }
 
+export async function setCircleContentRsvp(
+  contentId: string,
+  userId: string,
+  status: EventRsvpStatus,
+): Promise<void> {
+  try {
+    const { error } = await sb.from("circle_content_rsvps").upsert(
+      { content_id: contentId, user_id: userId, status, updated_at: new Date().toISOString() },
+      { onConflict: "content_id,user_id" },
+    );
+    if (error) throw error;
+  } catch (err) {
+    if (!isMissingTable(err)) throw err;
+    const all = readLocalRsvps();
+    all[contentId] = { ...(all[contentId] ?? {}), [userId]: status };
+    writeLocalRsvps(all);
+  }
+}
+
+export async function setCirclePollVote(contentId: string, userId: string, optionIndex: number): Promise<void> {
+  try {
+    const { error } = await sb.from("circle_content_poll_votes").upsert(
+      { content_id: contentId, user_id: userId, option_index: optionIndex },
+      { onConflict: "content_id,user_id" },
+    );
+    if (error) throw error;
+  } catch (err) {
+    if (!isMissingTable(err)) throw err;
+    const all = readLocalPolls();
+    all[contentId] = { ...(all[contentId] ?? {}), [userId]: optionIndex };
+    writeLocalPolls(all);
+  }
+}
+
 export async function donateToCircleContent(
   contentId: string,
   fromUserId: string,
@@ -352,7 +593,6 @@ export async function donateToCircleContent(
     if (error) throw error;
   } catch (err) {
     if (!isMissingTable(err)) throw err;
-    // Soft-record locally so the UI can confirm the gesture.
     const key = `${LOCAL_KEY}.donations`;
     try {
       const raw = JSON.parse(localStorage.getItem(key) || "[]") as unknown[];
@@ -379,7 +619,22 @@ export async function uploadCircleContentMedia(
     const { data } = sb.storage.from("media").getPublicUrl(path);
     return data.publicUrl as string;
   } catch {
-    // Offline / storage unavailable — use object URL so the creator can still preview locally.
     return URL.createObjectURL(file);
   }
+}
+
+/** Build a Google Calendar-style URL for an event post. */
+export function buildEventCalendarUrl(item: CircleContent): string | null {
+  if (!item.event_at) return null;
+  const start = new Date(item.event_at);
+  const end = item.event_end_at ? new Date(item.event_end_at) : new Date(start.getTime() + 60 * 60 * 1000);
+  const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+  const params = new URLSearchParams({
+    action: "TEMPLATE",
+    text: item.title || "Circle event",
+    dates: `${fmt(start)}/${fmt(end)}`,
+    details: item.body || "",
+    location: item.event_location || item.event_online_url || "",
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }

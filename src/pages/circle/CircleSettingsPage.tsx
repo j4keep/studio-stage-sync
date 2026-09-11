@@ -165,14 +165,50 @@ export default function CircleSettingsPage() {
           </Field>
         </Section>
 
-        <Section title="Privacy & discovery" hint="Change your mind any time — this updates who can see and join, immediately.">
-          <Toggle
-            label="Private"
-            hint="Only approved members can see posts and videos."
-            value={circle.is_private}
-            saving={savingField === "private"}
-            onChange={(v) => patch("private", () => updateCircle(circle.id, { isPrivate: v }))}
-          />
+        <Section title="Circle access" hint="Who can enter this Circle. Separate from Exclusive posts — free Circles can still post supporter-only drops.">
+          <div className="space-y-2">
+            {(
+              [
+                ["public", "Public", "Anybody can view and join"],
+                ["private", "Private", "Owner approves members"],
+                ["paid", "Paid · Supporter Membership", "Subscription required to enter (coming soon for billing)"],
+              ] as const
+            ).map(([id, label, hint]) => {
+              const mode = circle.is_paid ? "paid" : circle.is_private ? "private" : "public";
+              const active = mode === id;
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  disabled={savingField === "access"}
+                  onClick={() => {
+                    if (id === "paid") {
+                      void patch("access", () =>
+                        updateCircle(circle.id, { isPaid: true, isPrivate: true, requiresApproval: true }),
+                      );
+                    } else if (id === "private") {
+                      void patch("access", () =>
+                        updateCircle(circle.id, { isPaid: false, isPrivate: true, requiresApproval: true }),
+                      );
+                    } else {
+                      void patch("access", () =>
+                        updateCircle(circle.id, { isPaid: false, isPrivate: false, requiresApproval: false }),
+                      );
+                    }
+                  }}
+                  className={`flex w-full flex-col rounded-xl border px-3.5 py-3 text-left ${
+                    active ? "border-primary bg-primary/10" : "border-border bg-card"
+                  }`}
+                >
+                  <span className="text-[12.5px] font-bold">{label}</span>
+                  <span className="mt-0.5 text-[11px] text-muted-foreground">{hint}</span>
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+
+        <Section title="Privacy & discovery" hint="Fine-tune discovery and member permissions.">
           <Toggle
             label="Discoverable"
             hint="Show this Circle in search and Discover."
@@ -180,13 +216,15 @@ export default function CircleSettingsPage() {
             saving={savingField === "discoverable"}
             onChange={(v) => patch("discoverable", () => updateCircle(circle.id, { isDiscoverable: v }))}
           />
-          <Toggle
-            label="Automatically accept join requests"
-            hint={circle.requires_approval ? "Off — you review and approve each request yourself." : "On — anyone who asks to join gets in immediately."}
-            value={!circle.requires_approval}
-            saving={savingField === "approval"}
-            onChange={(v) => patch("approval", () => updateCircle(circle.id, { requiresApproval: !v }))}
-          />
+          {!circle.is_paid && (
+            <Toggle
+              label="Automatically accept join requests"
+              hint={circle.requires_approval ? "Off — you review and approve each request yourself." : "On — anyone who asks to join gets in immediately."}
+              value={!circle.requires_approval}
+              saving={savingField === "approval"}
+              onChange={(v) => patch("approval", () => updateCircle(circle.id, { requiresApproval: !v }))}
+            />
+          )}
           {!circle.is_personal && (
             <>
               <Toggle

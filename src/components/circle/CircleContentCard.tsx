@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Eye, Heart, MessageCircle, HeartHandshake } from "lucide-react";
+import { CalendarPlus, Eye, Heart, HeartHandshake, MessageCircle, Pin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import {
   ACTIVITY_META,
+  COMMUNITY_SUBTYPE_META,
   addCircleContentComment,
+  buildEventCalendarUrl,
   donateToCircleContent,
   listCircleContentComments,
   recordCircleContentView,
+  setCircleContentRsvp,
+  setCirclePollVote,
   toggleCircleContentLike,
   type CircleContent,
   type CircleContentComment,
+  type EventRsvpStatus,
 } from "@/lib/circle-content";
 
-const TIP_AMOUNTS = [100, 300, 500, 1000]; // cents
+const TIP_AMOUNTS = [100, 300, 500, 1000];
 
 type Props = {
   item: CircleContent;
@@ -31,12 +36,16 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
   const [draft, setDraft] = useState("");
   const [showDonate, setShowDonate] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [rsvp, setRsvp] = useState<EventRsvpStatus | null>(item.my_rsvp ?? null);
+  const [pollVote, setPollVote] = useState<number | null>(item.my_poll_vote ?? null);
 
   useEffect(() => {
     setLiked(Boolean(item.liked_by_me));
     setLikes(item.like_count);
     setViews(item.view_count);
-  }, [item.id, item.liked_by_me, item.like_count, item.view_count]);
+    setRsvp(item.my_rsvp ?? null);
+    setPollVote(item.my_poll_vote ?? null);
+  }, [item]);
 
   useEffect(() => {
     if (viewed.current) return;
@@ -45,9 +54,11 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
   }, [item.id, item.circle_id]);
 
   const activityLabel =
-    item.kind === "video"
-      ? "Video"
-      : ACTIVITY_META[item.activity_type as keyof typeof ACTIVITY_META]?.label ?? "Post";
+    item.activity_type === "video"
+      ? "Photo / Video"
+      : item.activity_type === "community" && item.community_subtype
+        ? COMMUNITY_SUBTYPE_META[item.community_subtype].label
+        : ACTIVITY_META[item.activity_type as keyof typeof ACTIVITY_META]?.label ?? "Post";
 
   const onLike = async () => {
     if (!userId || !canInteract) return;
@@ -99,25 +110,151 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
     }
   };
 
+  const chooseRsvp = async (status: EventRsvpStatus) => {
+    if (!userId || !canInteract) return;
+    try {
+      await setCircleContentRsvp(item.id, userId, status);
+      setRsvp(status);
+      onChanged();
+    } catch {
+      toast({ title: "Couldn't save RSVP", variant: "destructive" });
+    }
+  };
+
+  const vote = async (index: number) => {
+    if (!userId || !canInteract) return;
+    try {
+      await setCirclePollVote(item.id, userId, index);
+      setPollVote(index);
+      onChanged();
+    } catch {
+      toast({ title: "Couldn't record vote", variant: "destructive" });
+    }
+  };
+
+  const calUrl = item.activity_type === "event" ? buildEventCalendarUrl(item) : null;
+
   return (
     <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-      <div className="flex items-center justify-between px-3.5 pt-3">
-        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
-          {activityLabel}
-        </span>
+      <div className="flex items-center justify-between gap-2 px-3.5 pt-3">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
+            {activityLabel}
+          </span>
+          {item.is_pinned && (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300">
+              <Pin className="h-3 w-3" /> Pinned
+            </span>
+          )}
+          {item.activity_type === "exclusive" && (
+            <span className="rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:text-violet-300">
+              {item.visibility === "paid_members" ? "Supporters" : "Members"}
+            </span>
+          )}
+        </div>
         <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
           <Eye className="h-3 w-3" /> {views}
         </span>
       </div>
 
       {item.title && <h3 className="px-3.5 pt-2 text-[15px] font-bold tracking-tight">{item.title}</h3>}
-      {item.body && <p className="px-3.5 pt-1.5 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>}
+      {item.body && <p className="px-3.5 pt-1.5 text-[13px] leading-relaxed text-muted-foreground whitespace-pre-wrap">{item.body}</p>}
 
-      {item.activity_type === "event" && (item.event_at || item.event_location) && (
-        <p className="px-3.5 pt-2 text-[11px] font-semibold text-primary">
-          {item.event_at ? new Date(item.event_at).toLocaleString() : ""}
-          {item.event_location ? ` · ${item.event_location}` : ""}
-        </p>
+      {item.tags?.length > 0 && (
+        <div className="flex flex-wrap gap-1 px-3.5 pt-2">
+          {item.tags.map((t) => (
+            <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              #{t}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {item.activity_type === "event" && (
+        <div className="mx-3.5 mt-2 space-y-2 rounded-xl bg-muted/50 px-3 py-2.5 text-[12px]">
+          {item.event_at && (
+            <p className="font-semibold text-foreground">
+              {new Date(item.event_at).toLocaleString()}
+              {item.event_end_at ? ` – ${new Date(item.event_end_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : ""}
+            </p>
+          )}
+          {item.event_location && <p className="text-muted-foreground">{item.event_location}</p>}
+          {item.event_online_url && (
+            <a href={item.event_online_url} target="_blank" rel="noreferrer" className="font-semibold text-primary underline">
+              Online link
+            </a>
+          )}
+          {(item.event_capacity || item.event_ticket_cents) && (
+            <p className="text-muted-foreground">
+              {item.event_capacity ? `Capacity ${item.event_capacity}` : ""}
+              {item.event_capacity && item.event_ticket_cents ? " · " : ""}
+              {item.event_ticket_cents ? `$${(item.event_ticket_cents / 100).toFixed(2)} ticket` : ""}
+            </p>
+          )}
+          {canInteract && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {(
+                [
+                  ["going", "Going"],
+                  ["interested", "Interested"],
+                  ["cant_go", "Can't go"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => void chooseRsvp(id)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${
+                    rsvp === id ? "bg-primary text-primary-foreground" : "bg-background border border-border"
+                  }`}
+                >
+                  {label}
+                  {item.rsvp_counts?.[id] ? ` · ${item.rsvp_counts[id]}` : ""}
+                </button>
+              ))}
+              {calUrl && (
+                <a
+                  href={calUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2.5 py-1 text-[11px] font-bold"
+                >
+                  <CalendarPlus className="h-3 w-3" /> Calendar
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {item.activity_type === "community" && item.community_subtype === "poll" && item.poll_options.length > 0 && (
+        <div className="mx-3.5 mt-2 space-y-1.5">
+          {item.poll_options.map((opt, i) => {
+            const count = item.poll_counts?.[i] ?? 0;
+            const total = (item.poll_counts ?? []).reduce((a, b) => a + b, 0) || 1;
+            const pct = Math.round((count / total) * 100);
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={!canInteract}
+                onClick={() => void vote(i)}
+                className={`relative w-full overflow-hidden rounded-xl border px-3 py-2 text-left text-[12px] font-semibold disabled:opacity-60 ${
+                  pollVote === i ? "border-primary" : "border-border"
+                }`}
+              >
+                <span
+                  className="absolute inset-y-0 left-0 bg-primary/15"
+                  style={{ width: `${pct}%` }}
+                />
+                <span className="relative flex justify-between gap-2">
+                  <span>{opt}</span>
+                  <span className="text-muted-foreground">{pct}%</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
       )}
 
       {item.media_type === "image" && item.media_urls[0] && (
