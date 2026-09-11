@@ -69,3 +69,26 @@ export async function getOrCreateConversation(
 
   return conv.id as string;
 }
+
+/** Send a plain text DM (creates the conversation if needed). */
+export async function sendDirectMessage(
+  fromUserId: string,
+  toUserId: string,
+  content: string,
+  opts?: { context?: ConversationContext },
+): Promise<string> {
+  const conversationId = await getOrCreateConversation(fromUserId, toUserId, {
+    context: opts?.context ?? "circle",
+  });
+  const { error } = await supabase.from("messages").insert({
+    conversation_id: conversationId,
+    sender_id: fromUserId,
+    content,
+  });
+  if (error) throw new Error(error.message);
+  await supabase
+    .from("conversations")
+    .update({ updated_at: new Date().toISOString() })
+    .eq("id", conversationId);
+  return conversationId;
+}

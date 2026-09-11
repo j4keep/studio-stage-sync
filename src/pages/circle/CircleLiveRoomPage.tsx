@@ -29,6 +29,7 @@ import {
   sessionExclusiveAudience,
   sessionInviteToken,
   sessionLooksExclusive,
+  sessionUserIsInvited,
   type CircleLiveLayoutMode,
   type GiftType,
 } from "@/lib/circle-live";
@@ -44,6 +45,7 @@ import EnhancePanel from "@/components/feed/create/EnhancePanel";
 import EffectsPanel from "@/components/feed/create/EffectsPanel";
 import DualCameraLayoutSheet, { type DualCameraLayout } from "@/components/feed/create/DualCameraLayoutSheet";
 import LiveMotorGrid from "@/components/live/LiveMotorGrid";
+import ExclusiveLiveInviteSheet from "@/components/circle/ExclusiveLiveInviteSheet";
 import { useLiveStageDoor } from "@/hooks/useLiveStageDoor";
 import {
   liveWatchUrl,
@@ -106,6 +108,7 @@ export default function CircleLiveRoomPage() {
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [session, setSession] = useState<CircleLiveSession | null | undefined>(undefined);
   const [exclusiveAgeOk, setExclusiveAgeOk] = useState(false);
+  const [showExclusiveInviteSheet, setShowExclusiveInviteSheet] = useState(false);
   const [ending, setEnding] = useState(false);
   const [hostProfile, setHostProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -199,6 +202,20 @@ export default function CircleLiveRoomPage() {
     setExclusiveAgeOk(hasConfirmedExclusiveAge(user.id, circle.id));
   }, [user?.id, circle?.id]);
 
+  // After Exclusive invite Go Live, prompt host to pick Circle members + Message them.
+  useEffect(() => {
+    if (!session || session.host_user_id !== user?.id) return;
+    if (!sessionLooksExclusive(session) || sessionExclusiveAudience(session) !== "invite") return;
+    const key = `yaj.excl.invite.prompted.${session.id}`;
+    try {
+      if (sessionStorage.getItem(key) === "1") return;
+      sessionStorage.setItem(key, "1");
+    } catch {
+      /* ignore */
+    }
+    setShowExclusiveInviteSheet(true);
+  }, [session?.id, user?.id]);
+
   const isOwner = !isPublicRoute && !!circle && user?.id === circle.owner_id;
   const isApprovedMember = isPublicRoute ? !!user?.id : isOwner || membership?.status === "approved";
   const isHost = !!session && session.host_user_id === user?.id;
@@ -207,17 +224,18 @@ export default function CircleLiveRoomPage() {
   const hasValidInvite =
     !!inviteFromUrl &&
     inviteFromUrl === (session ? sessionInviteToken(session) : null);
+  const isAllowlisted = sessionUserIsInvited(session || { invited_user_ids: [] }, user?.id);
   const canWatchExclusive =
     !isExclusiveLive ||
     isHost ||
     (exclusiveAudience === "invite"
-      ? hasValidInvite
+      ? hasValidInvite || isAllowlisted
       : !!circle && canAccessCircleExclusive(circle, membership, isOwner));
-  // Invite-link Exclusive lives can be watched by anyone with the link (signed in), not only members.
+  // Invite-link Exclusive lives can be watched by anyone with the link or on the allowlist.
   const canEnterLiveRoom =
     isHost ||
     isApprovedMember ||
-    (isExclusiveLive && exclusiveAudience === "invite" && hasValidInvite);
+    (isExclusiveLive && exclusiveAudience === "invite" && (hasValidInvite || isAllowlisted));
   const displayName = (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "Guest";
   const backPath = isPublicRoute ? "/feed" : `/circle/c/${id}`;
 
@@ -990,6 +1008,16 @@ export default function CircleLiveRoomPage() {
         )}
 
         <div className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] flex items-center gap-2">
+          {isHost && isExclusiveLive && exclusiveAudience === "invite" && circle && (
+            <button
+              type="button"
+              onClick={() => setShowExclusiveInviteSheet(true)}
+              aria-label="Invite Circle members"
+              className="rounded-full bg-primary px-2.5 py-2 text-[11px] font-black text-primary-foreground backdrop-blur-sm"
+            >
+              Invite
+            </button>
+          )}
           <button
             type="button"
             onClick={() => void handleShareLive()}
@@ -1289,6 +1317,18 @@ export default function CircleLiveRoomPage() {
           </>
         )}
       </div>
+
+      {isHost && isExclusiveLive && exclusiveAudience === "invite" && circle && user?.id && session && (
+        <ExclusiveLiveInviteSheet
+          open={showExclusiveInviteSheet}
+          onClose={() => setShowExclusiveInviteSheet(false)}
+          circleId={circle.id}
+          circleName={circle.name}
+          hostUserId={user.id}
+          session={session}
+          onInvited={(next) => setSession(next)}
+        />
+      )}
     </div>
   );
 }
