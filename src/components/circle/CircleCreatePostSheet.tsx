@@ -111,41 +111,35 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/55 backdrop-blur-sm sm:items-center">
-      <div
-        className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-[#3A2A1A] bg-[#1A1410] text-[#F6EDE3] shadow-2xl sm:rounded-3xl"
-        style={{ fontFamily: '"DM Sans", system-ui, sans-serif' }}
-      >
-        <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-          <h2 className="text-base font-bold tracking-tight" style={{ fontFamily: '"Syne", sans-serif' }}>
-            New Circle post
-          </h2>
-          <button type="button" onClick={onClose} className="rounded-full bg-white/10 p-2" aria-label="Close">
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 sm:items-center">
+      <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-border bg-background text-foreground shadow-2xl sm:rounded-3xl">
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="text-base font-bold">New Circle post</h2>
+          <button type="button" onClick={onClose} className="rounded-full bg-muted p-2" aria-label="Close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-4 overflow-y-auto px-4 py-4">
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#C4A484]">What are you sharing?</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">What are you sharing?</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {ACTIVITY_OPTIONS.map((id) => {
                 const meta = ACTIVITY_META[id];
-                const Icon = id === "event" ? Calendar : id === "community" ? Users : id === "exclusive" ? Sparkles : id === "photo" ? Camera : Lock;
+                const Icon =
+                  id === "event" ? Calendar : id === "community" ? Users : id === "exclusive" ? Sparkles : id === "photo" ? Camera : Lock;
                 return (
                   <button
                     key={id}
                     type="button"
                     onClick={() => setActivity(id)}
                     className={`rounded-2xl border px-3 py-2.5 text-left transition ${
-                      activity === id
-                        ? "border-[#E8A05A] bg-[#E8A05A]/15"
-                        : "border-white/10 bg-white/5"
+                      activity === id ? "border-primary bg-primary/10" : "border-border bg-card"
                     }`}
                   >
-                    <Icon className="mb-1 h-4 w-4 text-[#E8A05A]" />
+                    <Icon className="mb-1 h-4 w-4 text-primary" />
                     <p className="text-[12px] font-bold">{meta.label}</p>
-                    <p className="text-[10px] text-[#C4A484]">{meta.hint}</p>
+                    <p className="text-[10px] text-muted-foreground">{meta.hint}</p>
                   </button>
                 );
               })}
@@ -155,14 +149,14 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
-            className="flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-[#E8A05A]/40 bg-[#241C16] py-6"
+            className="flex w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-dashed border-border bg-muted/40 py-6"
           >
             {preview ? (
               <img src={preview} alt="" className="max-h-48 w-full object-cover" />
             ) : (
               <>
-                <Camera className="h-6 w-6 text-[#E8A05A]" />
-                <span className="text-[12px] font-semibold text-[#C4A484]">Add photo from library</span>
+                <Camera className="h-6 w-6 text-muted-foreground" />
+                <span className="text-[12px] font-semibold text-muted-foreground">Add photo from library</span>
               </>
             )}
           </button>
@@ -181,14 +175,14 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Title (optional)"
-            className="h-11 w-full rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-[#8A7460]"
+            className="h-11 w-full rounded-xl border border-border bg-card px-3 text-sm outline-none"
           />
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="What's happening in your Circle?"
             rows={4}
-            className="w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-sm outline-none placeholder:text-[#8A7460]"
+            className="w-full resize-none rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none"
           />
 
           {activity === "event" && (
@@ -197,19 +191,19 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
                 type="datetime-local"
                 value={eventAt}
                 onChange={(e) => setEventAt(e.target.value)}
-                className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none"
+                className="h-11 rounded-xl border border-border bg-card px-3 text-sm outline-none"
               />
               <input
                 value={eventLocation}
                 onChange={(e) => setEventLocation(e.target.value)}
                 placeholder="Location (optional)"
-                className="h-11 rounded-xl border border-white/10 bg-white/5 px-3 text-sm outline-none placeholder:text-[#8A7460]"
+                className="h-11 rounded-xl border border-border bg-card px-3 text-sm outline-none"
               />
             </div>
           )}
 
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[#C4A484]">Who can see this</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Who can see this</p>
             <div className="flex flex-wrap gap-2">
               {(Object.keys(VISIBILITY_META) as CircleContentVisibility[]).map((id) => (
                 <button
@@ -217,7 +211,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
                   type="button"
                   onClick={() => setVisibility(id)}
                   className={`rounded-full px-3 py-1.5 text-[11px] font-bold ${
-                    visibility === id ? "bg-[#E8A05A] text-[#1A1410]" : "bg-white/10 text-[#F6EDE3]"
+                    visibility === id ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
                   }`}
                 >
                   {VISIBILITY_META[id].label}
@@ -226,30 +220,30 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
             </div>
           </div>
 
-          <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
+          <label className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card px-3 py-3">
             <div>
               <p className="text-[13px] font-bold">Show donation tab</p>
-              <p className="text-[11px] text-[#C4A484]">Members can tip this post when enabled</p>
+              <p className="text-[11px] text-muted-foreground">Members can tip this post when enabled</p>
             </div>
             <input
               type="checkbox"
               checked={donationsEnabled}
               onChange={(e) => setDonationsEnabled(e.target.checked)}
-              className="h-5 w-5 accent-[#E8A05A]"
+              className="h-5 w-5 accent-primary"
             />
           </label>
         </div>
 
-        <div className="border-t border-white/10 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <button
             type="button"
             disabled={busy}
             onClick={() => void publish()}
-            className="flex h-12 w-full items-center justify-center rounded-full bg-[#E8A05A] text-sm font-bold text-[#1A1410] disabled:opacity-50"
+            className="flex h-12 w-full items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground disabled:opacity-50"
           >
             {busy ? "Posting…" : "Post to Circle"}
           </button>
-          <p className="mt-2 text-center text-[10px] text-[#8A7460]">Circle-only · not shared to the main feed</p>
+          <p className="mt-2 text-center text-[10px] text-muted-foreground">Circle-only · not shared to the main feed</p>
         </div>
       </div>
     </div>

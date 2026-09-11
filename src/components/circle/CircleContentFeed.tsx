@@ -32,11 +32,11 @@ export default function CircleContentFeed({
   }, [load, refreshKey]);
 
   if (items === null) {
-    return <p className="px-4 py-10 text-center text-[12px] text-[#8A7460]">Loading…</p>;
+    return <p className="px-4 py-10 text-center text-[12px] text-muted-foreground">Loading…</p>;
   }
 
   if (!items.length) {
-    return <p className="px-4 py-12 text-center text-[13px] text-[#8A7460]">{emptyLabel}</p>;
+    return <p className="px-4 py-12 text-center text-[13px] text-muted-foreground">{emptyLabel}</p>;
   }
 
   return (

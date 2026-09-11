@@ -100,25 +100,21 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
   };
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-[#3A2A1A] bg-[#221A14]/90 shadow-lg shadow-black/20">
+    <article className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
       <div className="flex items-center justify-between px-3.5 pt-3">
-        <span className="rounded-full bg-[#E8A05A]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#E8A05A]">
+        <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary">
           {activityLabel}
         </span>
-        <span className="flex items-center gap-1 text-[10px] font-semibold text-[#8A7460]">
+        <span className="flex items-center gap-1 text-[10px] font-semibold text-muted-foreground">
           <Eye className="h-3 w-3" /> {views}
         </span>
       </div>
 
-      {item.title && (
-        <h3 className="px-3.5 pt-2 text-[15px] font-bold tracking-tight text-[#F6EDE3]" style={{ fontFamily: '"Syne", sans-serif' }}>
-          {item.title}
-        </h3>
-      )}
-      {item.body && <p className="px-3.5 pt-1.5 text-[13px] leading-relaxed text-[#D8C4B0]">{item.body}</p>}
+      {item.title && <h3 className="px-3.5 pt-2 text-[15px] font-bold tracking-tight">{item.title}</h3>}
+      {item.body && <p className="px-3.5 pt-1.5 text-[13px] leading-relaxed text-muted-foreground">{item.body}</p>}
 
       {item.activity_type === "event" && (item.event_at || item.event_location) && (
-        <p className="px-3.5 pt-2 text-[11px] font-semibold text-[#E8A05A]">
+        <p className="px-3.5 pt-2 text-[11px] font-semibold text-primary">
           {item.event_at ? new Date(item.event_at).toLocaleString() : ""}
           {item.event_location ? ` · ${item.event_location}` : ""}
         </p>
@@ -143,7 +139,7 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
           onClick={() => void onLike()}
           disabled={!canInteract}
           className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold disabled:opacity-40 ${
-            liked ? "text-[#FF6B6B]" : "text-[#C4A484]"
+            liked ? "text-red-500" : "text-muted-foreground"
           }`}
         >
           <Heart className={`h-4 w-4 ${liked ? "fill-current" : ""}`} />
@@ -153,7 +149,7 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
           type="button"
           onClick={() => void openComments()}
           disabled={!canInteract}
-          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-[#C4A484] disabled:opacity-40"
+          className="flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[12px] font-bold text-muted-foreground disabled:opacity-40"
         >
           <MessageCircle className="h-4 w-4" />
           {item.comment_count}
@@ -162,7 +158,7 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
           <button
             type="button"
             onClick={() => setShowDonate((v) => !v)}
-            className="ml-auto flex items-center gap-1 rounded-full bg-[#E8A05A]/15 px-2.5 py-1.5 text-[11px] font-bold text-[#E8A05A]"
+            className="ml-auto flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1.5 text-[11px] font-bold text-primary"
           >
             <HeartHandshake className="h-3.5 w-3.5" />
             Donate
@@ -171,14 +167,14 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
       </div>
 
       {showDonate && (
-        <div className="flex flex-wrap gap-2 border-t border-white/5 px-3 py-2.5">
+        <div className="flex flex-wrap gap-2 border-t border-border/60 px-3 py-2.5">
           {TIP_AMOUNTS.map((cents) => (
             <button
               key={cents}
               type="button"
               disabled={busy}
               onClick={() => void tip(cents)}
-              className="rounded-full bg-white/10 px-3 py-1.5 text-[11px] font-bold text-[#F6EDE3]"
+              className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-bold"
             >
               ${(cents / 100).toFixed(0)}
             </button>
@@ -187,12 +183,12 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
       )}
 
       {showComments && (
-        <div className="space-y-2 border-t border-white/5 px-3 py-3">
-          {comments.length === 0 && <p className="text-[11px] text-[#8A7460]">No comments yet — say hello.</p>}
+        <div className="space-y-2 border-t border-border/60 px-3 py-3">
+          {comments.length === 0 && <p className="text-[11px] text-muted-foreground">No comments yet — say hello.</p>}
           {comments.map((c) => (
-            <div key={c.id} className="rounded-xl bg-white/5 px-2.5 py-2">
-              <p className="text-[10px] font-bold text-[#E8A05A]">{c.display_name || "Member"}</p>
-              <p className="text-[12px] text-[#F6EDE3]">{c.body}</p>
+            <div key={c.id} className="rounded-xl bg-muted/50 px-2.5 py-2">
+              <p className="text-[10px] font-bold text-primary">{c.display_name || "Member"}</p>
+              <p className="text-[12px]">{c.body}</p>
             </div>
           ))}
           {canInteract && (
@@ -201,13 +197,13 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a comment…"
-                className="h-9 flex-1 rounded-full border border-white/10 bg-white/5 px-3 text-[12px] outline-none placeholder:text-[#8A7460]"
+                className="h-9 flex-1 rounded-full border border-border bg-background px-3 text-[12px] outline-none"
               />
               <button
                 type="button"
                 disabled={busy || !draft.trim()}
                 onClick={() => void sendComment()}
-                className="rounded-full bg-[#E8A05A] px-3 text-[11px] font-bold text-[#1A1410] disabled:opacity-40"
+                className="rounded-full bg-primary px-3 text-[11px] font-bold text-primary-foreground disabled:opacity-40"
               >
                 Send
               </button>
