@@ -37,6 +37,8 @@ type Props = {
   circle: Circle;
   isOwner?: boolean;
   onCreateAvatar?: () => void;
+  /** Match My Circle ember page without changing wheel layout. */
+  tone?: "default" | "ember";
 };
 
 /**
@@ -46,9 +48,10 @@ type Props = {
  * Analytics, Milestone D); empty spokes show a colorful person silhouette rather than a
  * flat gray dot, per the user's "real real people on there not white dots" note.
  */
-export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar }: Props) {
+export default function CircleTopFansWheel({ circle, isOwner, onCreateAvatar, tone = "default" }: Props) {
   const [owner, setOwner] = useState<FanProfile | null>(null);
   const [fans, setFans] = useState<FanProfile[]>([]);
+  const ember = tone === "ember";
 
   useEffect(() => {
     let cancelled = false;
