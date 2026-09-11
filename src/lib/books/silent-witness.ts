@@ -11,6 +11,8 @@ export const SILENT_WITNESS_PAGES: BookPage[] = [
 
 The press had named him the Framer before anyone had even been arrested, and June, hired by the wire service to provide the courtroom sketches cameras weren’t permitted to capture, had spent three weeks studying Marsh’s face across the defendant’s table until she could have drawn it blind: the deep grooves at the corners of his mouth, the way his left eye tracked half a second slower than his right, the stillness he wore like a coat he’d borrowed and never quite grown into.
 
+Marsh faced two arson counts and a third charge carrying the death of Talia Morn, a night nurse found above the Delancey fire. Prosecutors presented all three as one artist’s escalating signature.
+
 It was during the fourth week, in the gallery seating reserved for press and public, that June first noticed someone sketching her back.
 
 He sat three rows behind the family section, an ordinary-looking man in his thirties with an artist’s pad angled just enough that June could see the motion of his pencil without seeing the page itself.
@@ -45,7 +47,7 @@ June did not sleep well that night.`,
     chapter: "Chapter 1 — The Gallery Sketch",
     text: `The prosecution’s evidence the next morning was worse than June had braced for, mostly because she had spent three weeks studying Elias Marsh’s face and had, somewhere in that study, begun to half-believe the defense’s quiet insistence that a man this still, this exhausted, could not possibly be the architect of anything so theatrical as charcoal sketches left deliberately at burning buildings.
 
-BEFORE. The first read. BEFORE, AGAIN. The second. And the third, recovered from the most recent fire, three weeks old: TOMORROW BELONGS TO WHOEVER REMEMBERS IT BEST.
+BEFORE. The first read. BEFORE, AGAIN. The second. And the third, recovered from the fire that killed Talia Morn: TOMORROW BELONGS TO WHOEVER REMEMBERS IT BEST.
 
 June sat very still in the press gallery, staring at the projected caption, feeling the courtroom’s temperature seem to drop several degrees around her alone.
 
@@ -69,7 +71,7 @@ Nasser went very quiet, reading both, and June watched the detective’s exhaust
 
 “What profile?”
 
-Nasser hesitated. “Marsh has an alibi for the third fire that we never broke. Evidence from the first two carried the case, and the district attorney did not want multiple suspects complicating one trial.”
+Nasser hesitated. “Marsh has an alibi for the fatal third fire that we never broke. Evidence from the first two carried the case, and the district attorney did not want multiple suspects complicating one trial.”
 
 “You think two people were involved.”
 
@@ -175,7 +177,7 @@ At two in the morning, unable to stop turning the case over, she pulled up FRAME
 
 The house on Delancey. June checked the case file Nasser had shared: the third fire had occurred on Delancey Street, a detail that had not, according to the timestamp on the post, been released to the public until the following morning’s press briefing.
 
-FRAME.WORTHY had known the address before anyone outside the department should have.
+FRAME.WORTHY had known the address before anyone outside the department should have. At that hour, even Talia Morn’s death had not been confirmed publicly.
 
 “That confirms it,” Nasser said finally. “We’re not luring an obsessed fan tomorrow, June. We’re luring the person who actually set the third fire and let an innocent man take the blame for it because the timing, as he put it, wasn’t right yet.”
 
@@ -223,6 +225,8 @@ June did not stay. She was three steps behind Nasser before the detective had fi
 
 Wexler’s composure cracked at the name of the street, something desperate and almost childlike surfacing beneath the calculated calm he’d maintained through the gallery. “Nobody was supposed to get hurt,” he said. “The first two were his. Marsh’s. I studied them for months before I understood what made them matter — not the fire, the record of it, the proof someone left behind that they’d done something the world would remember.” His eyes found June’s again. “You draw the moment people finally get remembered for who they really are. I wanted that. I wanted someone like you to draw me the way you draw him.”
 
+Nasser’s face hardened. A traffic camera showed Wexler circling Delancey twice after Talia chained her bicycle outside. He had seen the light in her upstairs window and lit the accelerant anyway. Whatever name he gave his intention, Talia had not been an accident hidden from him.
+
 June felt something cold and clarifying move through her, the specific horror of understanding, finally and completely, that she had spent a week being stalked not by a threat to her safety exactly, but by a man auditioning her, unknowingly, for the role of witness to his own desperate bid for significance.
 
 “I’m not going to draw you,” she said quietly. “I’m going to testify against you.”`,
@@ -239,6 +243,8 @@ Nasser explained the confession over courthouse coffee.
 
 “Almost perfectly. The defense found a different accelerant. Everything else—the caption, fence, and house—came from careful research.”
 
+Nasser said Wexler admitted seeing Talia’s bicycle but insisted he thought she had left on foot. Prosecutors had the traffic footage and his forum post praising the occupied house before firefighters arrived. They would charge murder.
+
 “And me?”
 
 “Your sketches ran beside every article. Wexler said your work made the crimes feel like art instead of violence. He wanted you to draw him the same way.” Nasser’s mouth tightened. “He planned a public act for what he called the right tomorrow.”
@@ -249,7 +255,7 @@ June let her coffee cool. She had feared an attacker and found a man seeking aut
 
 “Those motives can end in the same place.”
 
-The district attorney would call the third fire an unfortunate complication. Marsh’s defense would call it proof that the entire case was poisoned. Between those convenient versions sat a burned house, a guilty copycat, and a defendant responsible for two fires rather than three.
+The district attorney would call the third fire an unfortunate complication. Marsh’s defense would call it proof that the entire case was poisoned. Between those versions sat Talia Morn, a killer who wanted an artist’s notice, and a defendant responsible for two fires rather than three.
 
 Outside the cafeteria, reporters gathered for the prosecution’s amended statement. June watched them prepare the next public version.
 
@@ -271,7 +277,7 @@ June found, filing the story without an accompanying sketch, a small, unfamiliar
   },
   {
     chapter: "Chapter 5 — Cracks in the Case",
-    text: `Wexler’s formal charges, filed a week later, included arson, evidence tampering, and obstruction of justice for allowing an innocent man to stand trial for a crime he knew he had committed himself. His attorney, in a brief statement to the press, described a client struggling with severe, untreated obsessive tendencies exacerbated by years of social isolation, a framing June found both clinically plausible and entirely insufficient as an explanation for the specific, deliberate cruelty of letting Marsh absorb three weeks of public scrutiny for a fire Wexler alone had set.
+    text: `Wexler’s formal charges included second-degree murder, arson, evidence tampering, and obstruction for allowing another man to stand trial for his fatal fire. His attorney described severe, untreated obsession and isolation, a framing June found plausible and entirely insufficient beside Talia Morn’s death.
 
 No one was. She checked, scanning the gallery the way old habit demanded, and found only ordinary spectators, ordinary reporters, nobody’s pencil moving in mirror to her own posture.
 
@@ -319,7 +325,7 @@ June considered the strange, complicated shape of the compliment — thanks for 
   },
   {
     chapter: "Chapter 6 — Alley",
-    text: `Wexler’s plea deal was finalized the following month, a reduced sentence in exchange for full cooperation, exactly as Nasser had predicted.
+    text: `Wexler pleaded guilty the following month to murder, arson, and evidence tampering. In exchange for waiving trial and documenting the Delancey imitation, prosecutors withdrew two lesser counts. The sentence would keep him imprisoned for decades.
 
 He did not look at her this time. He sat at the defense table with the same hollow-eyed stillness she remembered from the alley, listening to the judge’s sentence with an expression June found, watching it, neither triumphant nor devastated — simply, finally, quiet, the particular quiet of a man whose long, desperate performance for an audience had ended without anyone applauding.
 
