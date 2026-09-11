@@ -2,7 +2,7 @@ import type { BookPage } from "@/lib/books-catalog";
 
 /**
  * The Quiet Room — third adult template.
- * Mediation / courthouse drama: calm, precise voice; ~22 full pages.
+ * Mediation / courthouse drama: calm, precise voice; ~24 full pages.
  */
 export const QUIET_ROOM_PAGES: BookPage[] = [
   {
@@ -156,6 +156,26 @@ She typed, then deleted, then typed again: Neutral tables are my day job. Rain c
 She meant it kindly. She also meant the boundary. Some mediations were with other people. Some were with the version of yourself that used to confuse leaving with solving.`,
   },
   {
+    chapter: "Chapter 5 — Proposals",
+    text: `The next morning Nora met Marcus alone for the financial caucus they had both consented to. Separate meetings were dangerous if they became secret alliances, so she began by naming the boundaries out loud. Nothing said here would be carried into the joint room without permission. Nothing decided here would count as agreement.
+
+Marcus opened a spreadsheet and then, unexpectedly, closed it. “I keep making the case for selling because numbers are easier to defend than fear.”
+
+Nora waited.
+
+“My father lost his shop when I was sixteen. Everyone in town called him stubborn for refusing to sell early. I promised myself I would never confuse loyalty with wisdom.”
+
+“Do you think that is what Tessa is doing?” Nora asked.
+
+“I think I am afraid she might be right for reasons I cannot measure.”
+
+That sentence belonged in the room. With his permission, Nora wrote it on a yellow card and placed it in her file. Not evidence. Not leverage. A door handle.
+
+Later, when Tessa arrived for her own caucus, she confessed the opposite fear. “If we keep the bakery and fail, everyone will say grief made me sentimental.”
+
+Nora gave her the same answer she had given Marcus. “Fear is not a verdict. It is data. We still have to design.”`,
+  },
+  {
     chapter: "Chapter 6 — The Landlord",
     text: `The landlord was a man named Cole who collected late fees like baseball cards and believed himself fair because he smiled while doing it. In a conference call that Nora insisted remain triangular—no side deals—he listened to the cooperative plan with the skepticism of someone allergic to local idealism.
 
@@ -184,6 +204,20 @@ She placed a hand on Tessa’s and, after a beat, on Marcus’s. “You two can 
 The room exhaled. Nora did not cry. She was paid not to cry. She did allow her throat to ache in private.
 
 After Ruth left, the memorandum gained a paragraph about a scholarship seat in every kids’ class for a student who couldn’t pay. Marcus suggested it. Tessa wrote it. Nora felt the rare pleasure of watching adversaries become co-authors.`,
+  },
+  {
+    chapter: "Chapter 6 — The Landlord",
+    text: `The paperwork stalled for two days over one sentence in the landlord’s draft: any material change in ownership permitted immediate review of rent. Marcus called it standard. Tessa called it a trap. Nora called it unclear, which was the only description that helped.
+
+They spent an hour rewriting twelve words. The final clause limited review to defined ownership changes and capped any increase for the first renewal term. It was tiny work compared with grief, but tiny work kept grief from becoming expensive.
+
+When they finished, Tessa leaned back and laughed without humor. “Jonah would have skipped this paragraph and signed.”
+
+Marcus smiled despite himself. “Then blamed me six months later.”
+
+For the first time they remembered him in the same tense. Not as a saint. Not as a weapon. As the exasperating friend they had both actually known.
+
+Nora marked the moment privately. Agreements became durable when memory stopped needing a winner.`,
   },
   {
     chapter: "Chapter 7 — Almost",
@@ -240,6 +274,18 @@ She helped sweep. She declined a free pastry on ethics and then accepted half a 
 On the drive to the motor inn she passed the old house she had once shared and did not slow down. Forward motion can be a boundary too.`,
   },
   {
+    chapter: "Chapter 8 — First Class",
+    text: `The night before the first class, Nora received a voice message from Ruth. She almost let it wait until morning. Instead she listened in the motel parking lot with the engine off.
+
+“I wanted to thank you for making room for the version of my son who was difficult,” Ruth said. “People get strange around the dead. They sand off every rough edge until there is no one recognizable left.”
+
+Nora replayed the message once. Her own mother had been dead twelve years, long enough for memory to have edited her into someone more patient than she had ever been. Nora understood the temptation. Love liked clean narratives. Life rarely provided them.
+
+She called Ruth back. They talked about ordinary things: burnt toast, hospital parking, the stubbornness of adult children. Nothing about mediation. Nothing about settlements.
+
+Afterward Nora sat beneath the motel’s buzzing security light and realized that the week had changed something she had not named. She had come home determined not to belong. The town had asked for no such promise.`,
+  },
+  {
     chapter: "Chapter 9 — Closing the File",
     text: `The final mediation session was brief by design. They reviewed the signed agreements, named remaining risks, and wrote a contingency for disagreement that did not require returning to war. Nora congratulated them without fluff.
 
@@ -250,6 +296,28 @@ Marcus shook her hand with both of his. Tessa hugged her, then apologized for hu
 Judge Kim issued a consent order that afternoon. The clerk stamped papers. The quiet room returned to lemon polish and waiting.
 
 Nora packed her whiteboard markers. On the blank board she almost erased the leftover ghost of WHAT SHOULD THE TOWN REMEMBER? She left it. Let the next dispute inherit a better question.`,
+  },
+  {
+    chapter: "Chapter 9 — Closing the File",
+    text: `Before the signatures became final, Nora asked for one last exercise. No whiteboard. No numbers. Just one sentence each.
+
+“What do you owe the other person after today?”
+
+Tessa stared at her hands. “A chance to be wrong without calling him disloyal.”
+
+Marcus looked at the floor. “A chance to care about the place without proving it with spreadsheets.”
+
+Nora let the answers sit between them.
+
+“And what do you owe yourselves?”
+
+Marcus said, “Sleep.”
+
+Tessa surprised everyone by laughing. Then she said, “A future that is not just an argument with Jonah.”
+
+That was the closest thing to closure the room could responsibly offer. Not forgiveness as spectacle. Not a perfect reunion. Permission to stop using the dead as a courtroom.
+
+Nora wrote the final note in her file: Parties demonstrate capacity for direct repair without mediator present. It was the sentence every mediator hoped eventually to earn.`,
   },
   {
     chapter: "Chapter 9 — Closing the File",
