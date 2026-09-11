@@ -1,23 +1,104 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Orbit Garden — dedicated adult story file (placeholder pages preserved from catalog).
- * Replace this array with the finished novella when ready.
+ * Orbit Garden — YAJ Originals adult sci-fi novella.
+ * 24 full reading pages.
  */
 export const ORBIT_GARDEN_PAGES: BookPage[] = [
   {
-    text: "Hydroponic vines climbed the curved glass as Station Helix turned toward the sun. Dr. Sol patched a drip line and whispered to the tomato seedlings like old friends.",
+    chapter: "Chapter 1 — The Last Greenhouse",
+    text: `Hydroponic vines climbed the curved glass as Station Helix turned toward the sun. Dr. Amara Sol patched a drip line with one gloved hand and steadied a tray of tomato seedlings with the other. Beyond the greenhouse dome, Earth filled half the sky: blue, white, bruised brown, beautiful enough to make homesickness feel like a physical illness. Helix carried the last complete agricultural seed archive known to survive the climate collapse below, and Amara treated every drawer in the vault as if it held a living ancestor. Most of the station crew called the greenhouse Orbit Garden. Amara preferred not to. Gardens were meant to belong to a place. This one was a lifeboat. Still, every morning she spoke softly to the plants while checking nutrient lines, as though they could hear the promise hidden inside routine: not forever. One day, these roots would touch soil again.`
   },
   {
-    text: "An alert flashed: unauthorized drone approaching the vault hatch. Sol sealed the greenhouse and floated to the airlock with a toolkit and a stubborn hope.",
+    chapter: "Chapter 1 — The Signal",
+    text: `The alert came during artificial dawn. Unauthorized object approaching Vault Hatch Three. Amara sealed the greenhouse, clipped herself into the transit rail, and pushed through the central spine toward the airlock. Malik Reyes, systems engineer and the closest thing she had to family aboard Helix, was already there with a diagnostic tablet. “No transponder,” he said. “No registry code either.” Through the outer camera they watched a small drone tumble against the stars, one wing burned black, its casing scarred by atmospheric reentry. It should not have been able to reach orbit. It should not have been able to find them. Director Vale ordered it destroyed from Command. Amara refused before she had time to make the refusal sound diplomatic. “It came from Earth.” Malik looked at her, then at the drone. Together they overrode the disposal sequence and pulled the machine into quarantine.`
   },
   {
-    text: "The drone carried a cracked memory chip from Earthside — maps of soil that might still grow.",
+    chapter: "Chapter 2 — Earthside",
+    text: `Inside the drone they found no weapon, no pathogen, no living passenger. Only a cracked memory chip wrapped in insulation and a handwritten strip of polymer sealed beneath the casing. AMARA SOL — HELIX BOTANY. The sight of her own name made the room go quiet. The chip was damaged, but Malik recovered fragments: satellite maps, soil readings, water tables, and field notes tagged with coordinates from the old western agricultural zone. The readings made no sense. Organic nitrogen was rising. Fungal networks had returned in pockets once declared sterile. Moisture retention was increasing where the dust storms had thinned. Someone on Earth had been testing soil. Someone knew enough about Helix to address the message to her. The final intact file contained one sentence: WE CAN GROW AGAIN. Amara read it three times before realizing her hands were shaking.`
   },
   {
-    text: "Sol planted the first experimental tray that night under artificial dawn. Green returned like a promise.",
+    chapter: "Chapter 2 — The First Tray",
+    text: `That night Amara withdrew six tomato seeds, four beans, two wheat kernels, and a pinch of basil from the archive. She recorded every movement twice. The experiment was technically unauthorized because the retrieved soil sample data had not been validated, but she no longer cared about the distinction between caution and fear. Malik synthesized the mineral profile from the drone readings while Amara adjusted the greenhouse tray to match Earthside conditions. They lowered the nutrient support, introduced the harsher mineral balance, and switched the lighting to mimic a dusty terrestrial dawn. The tray looked ordinary when she finished. A rectangle of dark growing medium beneath a strip of pale light. Yet standing over it, Amara felt as if she had opened a door. In the official log she wrote only: Experimental terrestrial profile initiated. In her private notes she wrote what she actually believed: Orbit is temporary. Roots are the mission.`
   },
   {
-    text: "In the log she wrote: “Orbit is temporary. Roots are the mission.”",
+    chapter: "Chapter 3 — Council",
+    text: `Director Elias Vale called an emergency council session the next morning. The drone, he said, represented an unacceptable breach. Earth had been classified as agriculturally unstable for twenty-three years. Helix existed because the seed archive could not be risked on hope. Amara presented the recovered data. Vale presented models showing catastrophic uncertainty. “We are custodians,” he told her. “Not pioneers.” Amara had heard the phrase before. It had been written into Helix doctrine after the final evacuation waves: preserve, catalogue, wait. But waiting had become its own culture. Children had been born aboard the station who had never felt rain. Entire departments existed to protect a future no one was willing to attempt. Amara pointed to the fungal readings. “This isn’t hope. It’s evidence.” Vale’s answer was calm. “Evidence from a broken drone sent by an unknown source.” The council voted to quarantine the chip and suspend her experiment. Five to two.`
+  },
+  {
+    chapter: "Chapter 3 — Germination",
+    text: `The tomato seed sprouted anyway. Amara found the first green hook pushing through the dark medium thirty-seven hours later. She called Malik without speaking; she only turned the camera toward the tray. He stared, then laughed once, sharp with disbelief. The soil profile was incomplete and the conditions were harsh, yet the seedling had done what life had always done when given the smallest chance: it reached. Amara recorded measurements until her eyes blurred. The bean followed. Then basil. Vale ordered the trial terminated when he learned of the growth. Amara stood between the tray and the security team. “You can destroy it,” she said, “but then you’re not protecting the archive. You’re protecting the station from being wrong.” No one moved. Malik quietly broadcast the live greenhouse feed onto the public station channel. Within minutes half of Helix was watching a five-centimeter tomato shoot bend toward artificial light.`
+  },
+  {
+    chapter: "Chapter 4 — A Voice in the Static",
+    text: `The drone had one more secret. Buried under corrupted telemetry, Malik recovered a repeating burst transmission. It was too weak for Command to notice, but once isolated it resolved into a voice. A woman. Breathless, older, speaking over wind. “Helix, if you receive this, Valley Nine is alive. We have water. We have soil. We need seeds, not rescue. Repeat: seeds, not rescue.” The recording ended in static. Amara knew Valley Nine from childhood maps. It had once been a research basin in the high desert, later an emergency settlement, then a blank zone after communication collapsed. The message was eight months old. Vale argued that eight months made it useless. Amara argued that someone had survived long enough to build a drone, find Helix’s orbit, and send it upward. “They did their part,” she said. “Now we decide whether preservation means keeping seeds in drawers or returning them to the world.”`
+  },
+  {
+    chapter: "Chapter 4 — The Archive",
+    text: `Helix’s seed vault occupied three decks behind armored doors. Amara walked its aisles that evening alone. Rice from flood-resistant lines. Maize bred for heat. Millet. Lentils. Cassava tissue samples. Orchard stock held in cryogenic suspension. Every label carried a place name like a gravestone. Kenya. Punjab. Iowa. Ceará. Luzon. Sicily. Her mother had helped load some of these crates before Amara was old enough to understand what evacuation meant. “Seeds are memory with instructions,” she used to say. Amara placed her hand against a cold storage cabinet and finally understood why the phrase had always frightened her. Memory that never returned to use became a museum. Helix had become expert at remembering Earth. Perhaps the harder duty was trusting it again.`
+  },
+  {
+    chapter: "Chapter 5 — The Hidden File",
+    text: `Malik found evidence that someone aboard Helix already knew about the Valley Nine transmission. A command archive showed the station had received two weak Earthside signals six months earlier, both classified and buried under emergency protocol. Vale’s authorization code was attached. Amara confronted him privately. He did not deny it. “The first signal was incomplete,” he said. “The second could not be authenticated.” “So you chose silence?” “I chose not to gamble the last viable seed archive on a desperate message.” His voice cracked only once. Vale had been a child during the food riots. He had watched a regional seed bank burn after officials opened it too early and armed groups seized the stock. “I know what hope can cost,” he said. Amara softened, but not enough to retreat. “And I know what fear costs when it becomes policy.”`
+  },
+  {
+    chapter: "Chapter 5 — A Plan",
+    text: `The station had one surface-capable shuttle remaining: Cedar, designed for archive recovery missions that had never been approved. Its heat shield was aging but intact. Its cargo bay could carry a limited seed bank, water recyclers, soil scanners, and three people. Amara proposed a reconnaissance mission, not a full transfer. Take duplicate stock only. Confirm Valley Nine. Return with live soil, water, and human testimony. Malik volunteered before she finished. Dr. Hana Cho from medicine joined next, arguing that any surviving settlement needed more than botany. The council split. Vale threatened to lock down Cedar. Then the public channel filled with messages from residents who had watched the tomato sprout. For the first time in years, Helix was not debating survival in the abstract. People were asking what survival was for.`
+  },
+  {
+    chapter: "Chapter 6 — Departure",
+    text: `Cedar left Helix during station night. Officially, the mission was “provisional planetary verification.” Unofficially, half the station gathered at the observation windows to watch. Amara strapped into the shuttle beside Malik while Hana ran through medical checks for the third time. The seed case between them contained less than one ten-thousandth of Helix’s archive, yet it felt heavier than the ship. As the station receded, Earth grew until it filled the forward glass. Amara had spent her entire adult life looking down at the planet. Descending toward it felt like falling into a memory she did not personally own. Clouds rushed closer. Lightning flickered inside a storm front over the southern ocean. Malik whispered, “Still beautiful.” Amara answered, “Still ours.”`
+  },
+  {
+    chapter: "Chapter 6 — Reentry",
+    text: `The atmosphere hit Cedar like a fist. Heat alarms screamed. The shuttle bucked hard enough to blur the instrument panel. Hana swore in three languages while Malik fought a guidance fault. Amara watched the external temperature climb and thought absurdly of the basil seedlings back on Helix. Then the turbulence broke. The clouds opened beneath them. Earth. Not the dead gray sphere from old disaster reports, but a vast patchwork of color. Scarred land, yes. Dry riverbeds. Abandoned cities. Yet also green threading along waterways, algae shining in reclaimed wetlands, and scrub forests spreading where suburbs had once stood. The planet had not healed. But it had not stopped trying. Cedar descended toward Valley Nine on manual control.`
+  },
+  {
+    chapter: "Chapter 7 — Valley Nine",
+    text: `They landed beside a cracked solar field half buried in sand. No one greeted them at first. Wind moved through the remains of a fence. Then figures emerged from low structures cut into the hillside. Twenty people. Then forty. Then more. At the front stood an older woman with silver hair under a scarf and a weather-beaten tablet in her hand. “Dr. Sol?” she asked. Amara could only nod. The woman introduced herself as Mara Venn, agronomist, former Earth Recovery Network. She had sent the drone. Behind her, children stared at Cedar as if it were a myth that had landed. One boy held up a carrot no longer than Amara’s thumb. “We grew this,” he said proudly. Amara knelt to see it better. She had to blink hard before answering. “Then you already started without us.”`
+  },
+  {
+    chapter: "Chapter 7 — The Soil",
+    text: `Valley Nine’s fields were small and uneven, protected by wind barriers made from old transit panels. The survivors had rebuilt irrigation from a buried municipal line and cultivated soil using compost, algae cultures, and fungal inoculants. The first years had failed repeatedly. Crops yellowed. Roots burned. Dust swallowed beds overnight. But the ecosystem had begun to change. Lichens returned to rock. Insects appeared near seasonal water. Native grasses anchored the slopes. Mara showed Amara a test plot where hardy legumes had survived three seasons. “The planet is doing more work than we are,” she said. “We just learned to stop fighting the process.” Amara pressed both hands into the soil. It was gritty, cool beneath the surface, and alive with the smell of minerals and decay. Real soil. Nothing aboard Helix had ever smelled like this.`
+  },
+  {
+    chapter: "Chapter 8 — The Price of Return",
+    text: `Hope did not erase difficulty. Valley Nine had food shortages, failing batteries, respiratory illness, and only one reliable water pump. Their population could survive, but not expand safely without support. Hana spent two days treating infections while Malik repaired the solar array. Amara ran germination tests with seeds from Cedar. Wheat struggled. Beans held. Millet thrived. A drought-tolerant tomato variety opened its first leaves under Earth sunlight. Every success created a new question: how much could Helix send without endangering the archive? How quickly could a surface network distribute seeds without repeating the chaos Vale feared? Amara began designing a distributed system instead of a single drop — small seed libraries, locally managed, genetically diverse, each able to replenish the others. Preservation would no longer live in one station or one valley. It would live in many hands.`
+  },
+  {
+    chapter: "Chapter 8 — Vale’s Decision",
+    text: `Amara transmitted their findings to Helix. Soil scans, water reports, medical data, live footage of Valley Nine, and a video of the first tomato seedling opening beneath natural sun. Vale watched from orbit in silence. The council reconvened. This time Amara did not argue from emotion. She laid out redundancy models, seed replacement rates, transport capacity, and risk limits. Malik demonstrated that the archive could support controlled releases for decades without compromising core diversity. Mara spoke directly to the council from Earth. “We are not asking you to save us,” she said. “We are asking you to stop saving seeds from us.” The vote passed nine to one. Vale cast the only dissenting vote. Then, after the tally, he authorized the release protocol himself.`
+  },
+  {
+    chapter: "Chapter 9 — First Planting",
+    text: `The first official Helix seed delivery arrived six weeks later. Not thousands of crates. Twelve sealed cases. Carefully selected. Enough to begin, not enough to dominate. Amara stood with Valley Nine residents as they opened the cases beneath a shade canopy. Each packet was logged twice and assigned to a local steward. Children learned how to record germination rates. Elders mapped old wells. Farmers who had survived on improvised crops began testing varieties their grandparents had once known. The work was slow, procedural, sometimes frustrating. It was also the most alive Amara had ever felt. She realized she had spent years thinking her job was to protect possibility. Now possibility had become responsibility.`
+  },
+  {
+    chapter: "Chapter 9 — Rain",
+    text: `The rain came in the middle of planting. Not a storm, just a thin sheet moving across the valley, enough to darken the dust and send everyone running outside. Amara stood in it without a hood. Water touched her face, cold and uneven. She had studied rainfall cycles, modeled precipitation, watched storms from orbit — but she had never felt rain fall from a real sky. Malik laughed at her expression. “Botanist finally meets water,” he said. She shoved him lightly and kept looking upward. Around them, children opened their mouths to the clouds. Mara placed seed trays beneath the shelter and smiled. The rain lasted eleven minutes. By evening, the valley smelled different. Richer. Amara understood then why people had written songs about weather.`
+  },
+  {
+    chapter: "Chapter 10 — Return to Helix",
+    text: `Amara returned to Helix after three months on the surface. She expected the station to feel like home. Instead it felt like a place she loved and had outgrown at the same time. The greenhouse was brighter than she remembered. The original tomato trial now climbed nearly two meters along the curved glass, heavy with fruit. Residents had tied small notes to the support frame: FOR EARTH. FOR MY GRANDMOTHER. FOR RAIN. Vale met Amara beside the tray. He looked older. “You were right,” he said. She shook her head. “Not entirely.” He glanced at her. “That is a suspiciously diplomatic answer.” “You were right about risk. I was right about movement. We needed both.” For the first time, he smiled without authority in it.`
+  },
+  {
+    chapter: "Chapter 10 — The New Mission",
+    text: `Helix changed slowly because institutions always did. The station remained the central archive, but its mission statement was rewritten. PRESERVE became PRESERVE, CULTIVATE, RESTORE. Training programs opened for surface ecology. Children learned soil science alongside orbital navigation. Cedar began regular runs to Earth, and two additional shuttles were restored from storage. Signals arrived from other settlements once Valley Nine’s broadcast spread: coastal enclaves, mountain reservoirs, an underground community near the old Great Lakes. Not every message could be answered quickly. Not every place was ready. But Earth was no longer silent.`
+  },
+  {
+    chapter: "Chapter 11 — The Network",
+    text: `Within two years, nine regional seed libraries operated on the surface. None held everything. That was the point. Each community protected part of the genetic archive while exchanging stock through scheduled routes. If one failed, the others remained. Farmers sent data back to Helix: which wheat tolerated new heat patterns, which beans resisted revived pests, which fruit trees could survive shifting seasons. The archive stopped being a frozen collection and became a conversation between past and present. Amara divided her time between orbit and Earth, though everyone knew where she preferred to sleep. Gravity gave her sore muscles and peace.`
+  },
+  {
+    chapter: "Chapter 11 — Roots",
+    text: `At Valley Nine, the first orchard began with twelve young trees. Apricot, fig, pomegranate, olive. Children who had once known fruit mostly from preserved rations helped dig the planting holes. Amara watched a girl named Tessa pat soil around a sapling and ask how long before it gave food. “A few years,” Amara said. Tessa frowned. “That’s forever.” Mara laughed. “That’s gardening.” The answer stayed with Amara. Helix had been built by people terrified there would be no future. The orchard required people willing to invest in a future they might not personally harvest. Perhaps that was the difference between surviving and belonging.`
+  },
+  {
+    chapter: "Chapter 12 — Orbit Garden",
+    text: `Years later, visitors still called the Helix greenhouse Orbit Garden. Amara stopped correcting them. The name had changed meaning. It was no longer a garden stranded above Earth. It was one node in a living system that stretched between orbit and soil. On the greenhouse glass, someone had painted a small symbol: a root curling around a planet. Beneath it were the words Amara had once written privately in a log no one was meant to read. ORBIT IS TEMPORARY. ROOTS ARE THE MISSION. She never discovered who found the entry and turned it into a motto. She decided not to ask.`
+  },
+  {
+    chapter: "Chapter 12 — Home",
+    text: `Amara’s final transfer to Earth happened on a clear morning. Cedar touched down at Valley Nine beside fields that now reached beyond the original wind barriers. The air smelled of damp soil, basil, diesel, and flowering beans. Malik met her at the landing pad carrying two mugs of terrible coffee. “Welcome home,” he said. Amara looked across the valley. Children moved between garden beds. Solar towers turned toward the sun. Beyond them, green climbed the hills in patient bands. Earth was not restored. It might take generations. There would be droughts, losses, mistakes, and places that never recovered. But the work had begun in the only way real restoration ever began: not with certainty, but with care repeated long enough to become a future. Amara knelt beside a row of tomatoes, pressed her fingers into warm soil, and smiled when the roots held.`
   },
 ];
