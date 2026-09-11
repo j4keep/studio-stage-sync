@@ -14,9 +14,10 @@ import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 import CircleCreatePostSheet from "@/components/circle/CircleCreatePostSheet";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
 import CircleExclusiveArea from "@/components/circle/CircleExclusiveArea";
+import CircleDonationTab from "@/components/circle/CircleDonationTab";
 import LiveCameraView from "@/components/feed/create/LiveCameraView";
 
-type Tab = "home" | "exclusive" | "members" | "about";
+type Tab = "home" | "exclusive" | "members" | "about" | "donate";
 
 export default function CirclePage() {
   const { id } = useParams<{ id: string }>();
@@ -130,11 +131,12 @@ export default function CirclePage() {
     { id: "exclusive", label: "Exclusive" },
     ...(isAdmin ? [{ id: "members" as Tab, label: "Members" }] : []),
     { id: "about", label: "About" },
+    { id: "donate", label: "Donation" },
   ];
 
   return (
     <div className="min-h-[100dvh] bg-background pb-24 text-foreground">
-      <div className="relative h-40 w-full bg-muted">
+      <div className="relative h-40 w-full overflow-hidden bg-muted">
         {circle.cover_url ? (
           <img src={circle.cover_url} alt="" className="h-full w-full object-cover" />
         ) : (
@@ -159,13 +161,8 @@ export default function CirclePage() {
         )}
       </div>
 
-      <div className="px-4">
-        {/* Only the small avatar overlaps the cover photo — the name and stats always
-            render in clear space below it, so they're never covered by the image. */}
-        <div className="-mt-8 h-16 w-16 shrink-0 overflow-hidden rounded-2xl border-4 border-background bg-card shadow">
-          {circle.avatar_url ? <img src={circle.avatar_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center text-2xl">{meta.emoji}</div>}
-        </div>
-        <div className="mt-2 min-w-0">
+      <div className="px-4 pt-4">
+        <div className="min-w-0">
           <h1 className="truncate text-lg font-black">{circle.name}</h1>
           <p className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
             <span className="flex items-center gap-0.5"><Users className="h-3 w-3" /> {circle.member_count}</span>
@@ -223,13 +220,13 @@ export default function CirclePage() {
         )}
       </div>
 
-      <div className="mt-4 flex gap-1 border-b border-border px-4">
+      <div className="mt-4 flex gap-1 overflow-x-auto border-b border-border px-4 scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
-            className={`relative px-3 py-2.5 text-[12.5px] font-bold border-b-2 transition ${
+            className={`relative shrink-0 px-3 py-2.5 text-[12.5px] font-bold border-b-2 transition ${
               tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
             }`}
           >
@@ -286,8 +283,12 @@ export default function CirclePage() {
         />
       )}
 
+      {tab === "donate" && (
+        <CircleDonationTab circle={circle} userId={user?.id} canDonate={isApprovedMember} />
+      )}
+
       {!isApprovedMember && circle.is_private ? (
-        tab !== "home" && tab !== "exclusive" && (
+        tab !== "home" && tab !== "exclusive" && tab !== "donate" && (
           <div className="flex flex-col items-center gap-3 px-8 py-16 text-center">
             <Lock className="h-9 w-9 text-muted-foreground" />
             <h2 className="text-base font-bold">This is a private Circle</h2>

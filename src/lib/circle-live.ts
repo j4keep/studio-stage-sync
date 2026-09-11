@@ -22,6 +22,8 @@ export type CircleLiveSession = {
   exclusive_audience?: ExclusiveLiveAudience;
   /** Present when exclusive_audience is invite — required in the watch URL. */
   invite_token?: string | null;
+  /** Circle members explicitly invited (checkmarks) — can watch without the link. */
+  invited_user_ids?: string[] | null;
   started_at: string;
   ended_at: string | null;
 };
@@ -215,6 +217,37 @@ export async function getLiveSession(sessionId: string): Promise<CircleLiveSessi
   // Treat ended rows as missing so the room page shows "ended" instead of a white/broken room.
   if (row.status !== "live") return null;
   return row;
+}
+
+export function sessionUserIsInvited(
+  row: Pick<CircleLiveSession, "invited_user_ids">,
+  userId: string | undefined | null,
+): boolean {
+  if (!userId) return false;
+  const ids = row.invited_user_ids;
+  return Array.isArray(ids) && ids.includes(userId);
+}
+
+/** Merge checkmarked Circle members onto an Exclusive invite live (soft-fails if column missing). */
+export async function setExclusiveLiveInvites(
+  sessionId: string,
+  userIds: string[],
+): Promise<CircleLiveSession> {
+  const unique = Array.from(new Set(userIds.filter(Boolean)));
+  const { data, error } = await sb
+    .from("circle_live_sessions")
+    .update({ invited_user_ids: unique })
+    .eq("id", sessionId)
+    .select("*")
+    .single();
+  if (error && /invited_user_ids/i.test(error.message || "")) {
+    // Column not migrated — keep invite-link DMs as the access path.
+    const existing = await getLiveSession(sessionId);
+    if (existing) return { ...existing, invited_user_ids: unique };
+    throw error;
+  }
+  if (error) throw error;
+  return data as CircleLiveSession;
 }
 
 /** The active public (circle_id null) live for a given host, if any — mirrors

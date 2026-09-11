@@ -17,11 +17,13 @@ import {
   getActiveLiveSession,
   sessionExclusiveAudience,
   sessionInviteToken,
+  sessionUserIsInvited,
 } from "@/lib/circle-live";
 import { liveWatchUrl, shareLiveInvite } from "@/lib/dual-camera";
 import { supabase } from "@/integrations/supabase/client";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
 import CircleExclusivePostSheet from "@/components/circle/CircleExclusivePostSheet";
+import ExclusiveLiveInviteSheet from "@/components/circle/ExclusiveLiveInviteSheet";
 import LiveCameraView from "@/components/feed/create/LiveCameraView";
 
 type Props = {
@@ -50,6 +52,7 @@ export default function CircleExclusiveArea({
   const [ageOk, setAgeOk] = useState(() => (userId ? hasConfirmedExclusiveAge(userId, circle.id) : false));
   const [showPost, setShowPost] = useState(false);
   const [showLivePrep, setShowLivePrep] = useState(false);
+  const [showInviteSheet, setShowInviteSheet] = useState(false);
   const [liveSession, setLiveSession] = useState<CircleLiveSession | null>(null);
   const [refresh, setRefresh] = useState(0);
   const [savingAccess, setSavingAccess] = useState(false);
@@ -59,6 +62,8 @@ export default function CircleExclusiveArea({
   const liveAudience = liveSession ? sessionExclusiveAudience(liveSession) : "all";
   const inviteOnlyLive = Boolean(liveSession && liveAudience === "invite");
   const liveInviteToken = liveSession ? sessionInviteToken(liveSession) : null;
+  const iAmInvited = Boolean(liveSession && userId && sessionUserIsInvited(liveSession, userId));
+  const canWatchThisLive = Boolean(liveSession && (isOwner || !inviteOnlyLive || iAmInvited));
 
   useEffect(() => {
     if (userId) setAgeOk(hasConfirmedExclusiveAge(userId, circle.id));
@@ -262,7 +267,7 @@ export default function CircleExclusiveArea({
                 Go Live
               </button>
             )}
-            {liveSession && (isOwner || !inviteOnlyLive) && (
+            {liveSession && canWatchThisLive && (
               <button
                 type="button"
                 onClick={openExclusiveLive}
@@ -277,16 +282,25 @@ export default function CircleExclusiveArea({
               </button>
             )}
             {liveSession && isOwner && inviteOnlyLive && (
-              <button
-                type="button"
-                onClick={() => void shareExclusiveInvite()}
-                className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-2 text-[12px] font-bold"
-              >
-                <Share2 className="h-3.5 w-3.5" />
-                Share invite
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteSheet(true)}
+                  className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-2 text-[12px] font-bold text-primary-foreground"
+                >
+                  Invite members
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void shareExclusiveInvite()}
+                  className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-2 text-[12px] font-bold"
+                >
+                  <Share2 className="h-3.5 w-3.5" />
+                  Share link
+                </button>
+              </>
             )}
-            {liveSession && inviteOnlyLive && !isOwner && (
+            {liveSession && inviteOnlyLive && !isOwner && !iAmInvited && (
               <span className="rounded-full bg-muted px-2.5 py-1 text-[10px] font-bold text-muted-foreground">
                 Invite-only live in progress
               </span>
@@ -336,6 +350,18 @@ export default function CircleExclusiveArea({
             exclusiveLive
           />
         </div>
+      )}
+
+      {userId && liveSession && inviteOnlyLive && (
+        <ExclusiveLiveInviteSheet
+          open={showInviteSheet}
+          onClose={() => setShowInviteSheet(false)}
+          circleId={circle.id}
+          circleName={circle.name}
+          hostUserId={userId}
+          session={liveSession}
+          onInvited={(next) => setLiveSession(next)}
+        />
       )}
     </div>
   );

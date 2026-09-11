@@ -362,3 +362,35 @@ export function confirmExclusiveAge(userId: string, circleId: string) {
     /* ignore */
   }
 }
+
+const LOCAL_DONATIONS_KEY = "yaj.circle.donations.v1";
+
+/** Tip the Circle owner from the Donation tab (preview until real billing). */
+export async function donateToCircle(opts: {
+  circleId: string;
+  fromUserId: string;
+  toUserId: string;
+  amountCents: number;
+}): Promise<void> {
+  if (opts.amountCents <= 0) throw new Error("Invalid amount");
+  if (opts.fromUserId === opts.toUserId) throw new Error("You can’t donate to yourself");
+  const { error } = await sb.from("circle_donations").insert({
+    circle_id: opts.circleId,
+    from_user_id: opts.fromUserId,
+    to_user_id: opts.toUserId,
+    amount_cents: opts.amountCents,
+  });
+  if (error) {
+    if (/circle_donations|schema cache|does not exist/i.test(error.message || "")) {
+      try {
+        const raw = JSON.parse(localStorage.getItem(LOCAL_DONATIONS_KEY) || "[]") as unknown[];
+        raw.push({ ...opts, at: new Date().toISOString() });
+        localStorage.setItem(LOCAL_DONATIONS_KEY, JSON.stringify(raw));
+        return;
+      } catch {
+        /* fall through */
+      }
+    }
+    throw error;
+  }
+}
