@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Check, ChevronDown, Gift, Hand, Heart, Loader2, LogOut, Mic, MicOff, Send, Settings, Share2, Smile, Sparkles, UserCheck, UserPlus, Users, Video, VideoOff, Wand2, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Circle, CircleMember, getCircle, getMyMembership } from "@/lib/circles";
+import {
+  Circle,
+  CircleMember,
+  canAccessCircleExclusive,
+  confirmExclusiveAge,
+  getCircle,
+  getCircleExclusiveAccess,
+  getMyMembership,
+  hasConfirmedExclusiveAge,
+} from "@/lib/circles";
 import {
   CircleLiveComment,
   CircleLiveGift,
@@ -85,11 +94,14 @@ export default function CircleLiveRoomPage() {
   // shared page and data model for both, deliberately — see circle-live.ts.
   const { id, sessionId } = useParams<{ id?: string; sessionId?: string }>();
   const isPublicRoute = !!sessionId;
+  const [searchParams] = useSearchParams();
+  const wantExclusive = searchParams.get("exclusive") === "1";
   const navigate = useNavigate();
   const { user } = useAuth();
   const [circle, setCircle] = useState<Circle | null | undefined>(undefined);
   const [membership, setMembership] = useState<CircleMember | null>(null);
   const [session, setSession] = useState<CircleLiveSession | null | undefined>(undefined);
+  const [exclusiveAgeOk, setExclusiveAgeOk] = useState(false);
   const [ending, setEnding] = useState(false);
   const [hostProfile, setHostProfile] = useState<{ display_name: string | null; avatar_url: string | null } | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -172,12 +184,25 @@ export default function CircleLiveRoomPage() {
     if (!id) return;
     void getCircle(id).then(setCircle).catch(() => setCircle(null));
     if (user?.id) void getMyMembership(id, user.id).then(setMembership).catch(() => setMembership(null));
-    void getActiveLiveSession(id).then(setSession).catch(() => setSession(null));
-  }, [isPublicRoute, id, sessionId, user?.id]);
+    void getActiveLiveSession(id, { exclusive: wantExclusive }).then(setSession).catch(() => setSession(null));
+  }, [isPublicRoute, id, sessionId, user?.id, wantExclusive]);
+
+  useEffect(() => {
+    if (!user?.id || !circle?.id) {
+      setExclusiveAgeOk(false);
+      return;
+    }
+    setExclusiveAgeOk(hasConfirmedExclusiveAge(user.id, circle.id));
+  }, [user?.id, circle?.id]);
 
   const isOwner = !isPublicRoute && !!circle && user?.id === circle.owner_id;
   const isApprovedMember = isPublicRoute ? !!user?.id : isOwner || membership?.status === "approved";
   const isHost = !!session && session.host_user_id === user?.id;
+  const isExclusiveLive = Boolean(session?.is_exclusive) || wantExclusive;
+  const canWatchExclusive =
+    !isExclusiveLive ||
+    isHost ||
+    (!!circle && canAccessCircleExclusive(circle, membership, isOwner));
   const displayName = (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "Guest";
   const backPath = isPublicRoute ? "/feed" : `/circle/c/${id}`;
 
@@ -217,7 +242,7 @@ export default function CircleLiveRoomPage() {
     roomName: session?.room ?? "",
     displayName,
     hostIdentity: session?.host_user_id,
-    enabled: !!session && isApprovedMember,
+    enabled: !!session && isApprovedMember && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost),
     // Host always publishes. Multi guests get publish permission but only go live after host accepts.
     publish: isHost,
     canPublish: isHost || stageJoinEnabled,
@@ -226,7 +251,7 @@ export default function CircleLiveRoomPage() {
 
   const stageDoor = useLiveStageDoor({
     sessionId: session?.id,
-    enabled: !!session && isApprovedMember && stageJoinEnabled,
+    enabled: !!session && isApprovedMember && canWatchExclusive && (!isExclusiveLive || exclusiveAgeOk || isHost) && stageJoinEnabled,
     isHost,
     userId: user?.id,
     displayName,
@@ -678,6 +703,61 @@ export default function CircleLiveRoomPage() {
         <p className="font-bold">You don't have access to this live.</p>
         <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
           Back to Circle
+        </button>
+      </div>
+    );
+  }
+
+  // Exclusive lives are Circle-gated only — never open on the public /live/:sessionId route.
+  if (isPublicRoute && session?.is_exclusive) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
+        <p className="font-bold">This Exclusive live is for subscribers only.</p>
+        <button type="button" onClick={() => navigate("/feed")} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+          Back to Feed
+        </button>
+      </div>
+    );
+  }
+
+  if (isExclusiveLive && !canWatchExclusive) {
+    const paidOnly = circle ? getCircleExclusiveAccess(circle) === "paid" : true;
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-3 bg-black px-6 text-center text-white">
+        <p className="font-bold">
+          {paidOnly ? "Exclusive live — paid supporters only" : "Exclusive live — members only"}
+        </p>
+        <p className="max-w-xs text-[13px] text-white/70">
+          {paidOnly
+            ? "Subscribe to this creator’s Supporter Membership to watch Exclusive lives."
+            : "Join this Circle to watch Exclusive lives."}
+        </p>
+        <button type="button" onClick={() => navigate(backPath)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-black">
+          Back to Circle
+        </button>
+      </div>
+    );
+  }
+
+  if (isExclusiveLive && !isHost && user?.id && !exclusiveAgeOk) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center gap-4 bg-black px-6 text-center text-white">
+        <p className="text-lg font-black">18+ Exclusive live</p>
+        <p className="max-w-sm text-[13px] leading-relaxed text-white/75">
+          This live may include adult or age-restricted content. You must be 18 or older to continue.
+        </p>
+        <button
+          type="button"
+          onClick={() => {
+            if (circle) confirmExclusiveAge(user.id, circle.id);
+            setExclusiveAgeOk(true);
+          }}
+          className="rounded-full bg-white px-5 py-2.5 text-sm font-black text-black"
+        >
+          I am 18 or older — Watch
+        </button>
+        <button type="button" onClick={() => navigate(backPath)} className="text-[12px] font-semibold text-white/60">
+          Leave
         </button>
       </div>
     );

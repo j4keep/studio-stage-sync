@@ -71,7 +71,7 @@ export const ACTIVITY_META: Record<
   event: { label: "Event", hint: "Date, place, RSVP & calendar" },
   community: { label: "Community", hint: "Polls, questions & challenges" },
   update: { label: "Update", hint: "Fast announcement — pinable" },
-  exclusive: { label: "Exclusive", hint: "Members or paid supporters" },
+  exclusive: { label: "Exclusive", hint: "Posted from the Exclusive tab" },
 };
 
 export const COMMUNITY_SUBTYPE_META: Record<CommunitySubtype, { label: string; hint: string }> = {
@@ -366,14 +366,18 @@ function attachLocalEngagement(rows: CircleContent[], userId?: string): CircleCo
 
 export async function listCircleContents(
   circleId: string,
-  opts: { kind?: CircleContentKind; userId?: string } = {},
+  opts: { kind?: CircleContentKind; userId?: string; exclusiveOnly?: boolean } = {},
 ): Promise<CircleContent[]> {
   try {
     let q = sb.from("circle_contents").select("*").eq("circle_id", circleId);
     if (opts.kind) q = q.eq("kind", opts.kind);
+    if (opts.exclusiveOnly) q = q.eq("activity_type", "exclusive");
     const { data, error } = await q;
     if (error) throw error;
     let rows = sortContents(((data as CircleContent[]) || []).map(normalizeRow));
+    if (!opts.exclusiveOnly) {
+      rows = rows.filter((r) => r.activity_type !== "exclusive");
+    }
     if (!opts.userId || !rows.length) return rows;
 
     const ids = rows.map((r) => r.id);
@@ -427,6 +431,8 @@ export async function listCircleContents(
     const store = readLocal();
     let rows = store[circleId] ?? [];
     if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
+    if (opts.exclusiveOnly) rows = rows.filter((r) => r.activity_type === "exclusive");
+    else rows = rows.filter((r) => r.activity_type !== "exclusive");
     return attachLocalEngagement(sortContents(rows.map(normalizeRow)), opts.userId);
   }
 }

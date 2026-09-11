@@ -53,6 +53,8 @@ interface Props {
   circleId?: string | null;
   /** Hide POST / LIVE mode tabs when opened from My Circle (Circle-only prep). */
   hideModeTabs?: boolean;
+  /** Start from the Exclusive area — gated to supporters / members per Circle setting. */
+  exclusiveLive?: boolean;
 }
 
 const CAMERA_RETRY_ATTEMPTS = 6;
@@ -86,6 +88,7 @@ export default function LiveCameraView({
   initialStream,
   circleId = null,
   hideModeTabs = false,
+  exclusiveLive = false,
 }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -269,9 +272,11 @@ export default function LiveCameraView({
         /* ignore */
       }
 
-      const session = await startCircleLive(circleId ?? null, user.id, viewMode);
+      const session = await startCircleLive(circleId ?? null, user.id, viewMode, {
+        isExclusive: exclusiveLive,
+      });
       if (circleId) {
-        navigate(`/circle/c/${circleId}/live`);
+        navigate(`/circle/c/${circleId}/live${exclusiveLive ? "?exclusive=1" : ""}`);
       } else {
         navigate(`/live/${session.id}`);
       }

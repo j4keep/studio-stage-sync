@@ -32,6 +32,8 @@ export type Circle = {
    *  from the group Circles they can additionally create. Auto-provisioned on first
    *  visit via getOrCreatePersonalCircle(). */
   is_personal: boolean;
+  /** Exclusive area gate: free members, or paid supporters only. */
+  exclusive_access?: "members" | "paid";
   /** Owner-level prefs, editable any time from Circle Settings. */
   notify_new_requests: boolean;
   notify_new_members: boolean;
@@ -82,6 +84,7 @@ export type CreateCircleInput = {
   memberInvitesAllowed?: boolean;
   notifyNewRequests?: boolean;
   notifyNewMembers?: boolean;
+  exclusiveAccess?: "members" | "paid";
 };
 
 export async function getCircle(id: string): Promise<Circle | null> {
@@ -131,6 +134,7 @@ export async function updateCircle(id: string, patch: Partial<CreateCircleInput>
       ...(patch.memberInvitesAllowed !== undefined ? { member_invites_allowed: patch.memberInvitesAllowed } : {}),
       ...(patch.notifyNewRequests !== undefined ? { notify_new_requests: patch.notifyNewRequests } : {}),
       ...(patch.notifyNewMembers !== undefined ? { notify_new_members: patch.notifyNewMembers } : {}),
+      ...(patch.exclusiveAccess !== undefined ? { exclusive_access: patch.exclusiveAccess } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -269,4 +273,39 @@ export async function uploadCircleImageFromDataUrl(userId: string, dataUrl: stri
   if (error) throw error;
   const { data } = sb.storage.from("media").getPublicUrl(path);
   return data.publicUrl as string;
+}
+
+export function getCircleExclusiveAccess(circle: { exclusive_access?: string | null }): "members" | "paid" {
+  return circle.exclusive_access === "members" ? "members" : "paid";
+}
+
+/** Who can enter the Exclusive area (separate from joining the Circle itself). */
+export function canAccessCircleExclusive(
+  circle: Circle,
+  membership: CircleMember | null,
+  isOwner: boolean,
+): boolean {
+  if (isOwner) return true;
+  if (!membership || membership.status !== "approved") return false;
+  const access = getCircleExclusiveAccess(circle);
+  if (access === "members") return true;
+  return membership.role === "paid_member";
+}
+
+const AGE_KEY = (userId: string, circleId: string) => `yaj.circle.exclusive.age18.${userId}.${circleId}`;
+
+export function hasConfirmedExclusiveAge(userId: string, circleId: string): boolean {
+  try {
+    return localStorage.getItem(AGE_KEY(userId, circleId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function confirmExclusiveAge(userId: string, circleId: string) {
+  try {
+    localStorage.setItem(AGE_KEY(userId, circleId), "1");
+  } catch {
+    /* ignore */
+  }
 }
