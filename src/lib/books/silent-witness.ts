@@ -1,7 +1,7 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Silent Witness — finished YAJ original adult mystery novella.
+ * Silent Witness — finished YAJ original adult Mystery novella.
  * 24 substantial reading pages, arranged as eight three-page chapters.
  */
 export const SILENT_WITNESS_PAGES: BookPage[] = [

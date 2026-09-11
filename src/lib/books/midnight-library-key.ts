@@ -1,7 +1,7 @@
 import type { BookPage } from "@/lib/books-catalog";
 
 /**
- * Midnight Library Key — finished YAJ original adult mystery novella.
+ * Midnight Library Key — finished YAJ original adult Mystery novella.
  * 24 substantial reading pages, arranged as eight three-page chapters.
  */
 export const MIDNIGHT_LIBRARY_KEY_PAGES: BookPage[] = [
