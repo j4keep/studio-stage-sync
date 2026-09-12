@@ -81,6 +81,11 @@ import riverOfNamesCover from "@/assets/books/river-of-names-cover.jpg";
 import clockworkSparrowCover from "@/assets/books/clockwork-sparrow-cover.jpg";
 import saltAndStarlightCover from "@/assets/books/salt-and-starlight-cover.jpg";
 import libraryWyrmCover from "@/assets/books/library-wyrm-cover.jpg";
+import paperLanternsCover from "@/assets/books/paper-lanterns-cover.jpg";
+import nightsideRelayCover from "@/assets/books/nightside-relay-cover.jpg";
+import borrowedSkyCover from "@/assets/books/borrowed-sky-cover.jpg";
+import ashReceiptCover from "@/assets/books/ash-receipt-cover.jpg";
+import moonDebtCover from "@/assets/books/moon-debt-cover.jpg";
 import appleAdventureCover from "@/assets/books/apple-adventure-cover.jpg";
 import moonPajamasCover from "@/assets/books/moon-pajamas-cover.jpg";
 import busThatGiggledCover from "@/assets/books/bus-that-giggled-cover.jpg";
@@ -117,6 +122,11 @@ import { RIVER_OF_NAMES_PAGES } from "@/lib/books/river-of-names";
 import { CLOCKWORK_SPARROW_PAGES } from "@/lib/books/clockwork-sparrow";
 import { SALT_AND_STARLIGHT_PAGES } from "@/lib/books/salt-and-starlight";
 import { LIBRARY_WYRM_PAGES } from "@/lib/books/library-wyrm";
+import { PAPER_LANTERNS_PAGES } from "@/lib/books/paper-lanterns";
+import { NIGHTSIDE_RELAY_PAGES } from "@/lib/books/nightside-relay";
+import { BORROWED_SKY_PAGES } from "@/lib/books/borrowed-sky";
+import { ASH_RECEIPT_PAGES } from "@/lib/books/ash-receipt";
+import { MOON_DEBT_PAGES } from "@/lib/books/moon-debt";
 import { APPLE_ADVENTURE_PAGES } from "@/lib/books/kids/apple-adventure";
 import { MOON_PAJAMAS_PAGES } from "@/lib/books/kids/moon-pajamas";
 import { BUS_THAT_GIGGLED_PAGES } from "@/lib/books/kids/bus-that-giggled";
@@ -132,7 +142,7 @@ const UPLOADS_KEY = "yaj.books.user-uploads.v1";
 const INTRO_SEEN_KEY = "yaj.books.intro-seen.v1";
 const KIDS_INTRO_SEEN_KEY = "yaj.books.kids-intro-seen.v1";
 
-/** Five original titles per regular category + ten kids titles. */
+/** Six original titles per regular category + ten kids titles. */
 export const SEED_BOOKS: BookItem[] = [
   // Drama
   {
@@ -200,6 +210,19 @@ export const SEED_BOOKS: BookItem[] = [
     coverImage: glassElevatorCover,
     blurb: "Two strangers stuck between floors learn what they each left unsaid.",
     pages: GLASS_ELEVATOR_PAGES,
+  },
+  {
+    id: "drama-paper-lanterns",
+    title: "Paper Lanterns",
+    author: "Lena Cho",
+    audience: "regular",
+    category: "drama",
+    listingType: "free",
+    coverFrom: "#1e1b4b",
+    coverTo: "#fbbf24",
+    coverImage: paperLanternsCover,
+    blurb: "A family returns for Lantern Night — and chooses which truths to burn and which to keep.",
+    pages: PAPER_LANTERNS_PAGES,
   },
 
   // Sci-fi
@@ -269,6 +292,19 @@ export const SEED_BOOKS: BookItem[] = [
     blurb: "Earth wakes to a new moon — and a countdown only kids can see.",
     pages: SECOND_MOON_PAGES,
   },
+  {
+    id: "scifi-nightside-relay",
+    title: "Nightside Relay",
+    author: "Keira Sol",
+    audience: "regular",
+    category: "sci-fi",
+    listingType: "donation",
+    coverFrom: "#0f172a",
+    coverTo: "#38bdf8",
+    coverImage: nightsideRelayCover,
+    blurb: "On a tidally locked world, forged weather messages can kill — and a courier must stop them.",
+    pages: NIGHTSIDE_RELAY_PAGES,
+  },
 
   // Romance
   {
@@ -336,6 +372,20 @@ export const SEED_BOOKS: BookItem[] = [
     coverImage: postcardHomeCover,
     blurb: "A travel writer falls for the town she meant only to review.",
     pages: POSTCARD_HOME_PAGES,
+  },
+  {
+    id: "romance-borrowed-sky",
+    title: "Borrowed Sky",
+    author: "Mira Ell",
+    audience: "regular",
+    category: "romance",
+    listingType: "sale",
+    price: 4.49,
+    coverFrom: "#1e3a8a",
+    coverTo: "#fda4af",
+    coverImage: borrowedSkyCover,
+    blurb: "Two astronomers share one telescope — and one summer of almosts.",
+    pages: BORROWED_SKY_PAGES,
   },
 
   // Mystery
@@ -405,6 +455,20 @@ export const SEED_BOOKS: BookItem[] = [
     blurb: "A courtroom sketch artist sees the killer in the crowd — sketching her.",
     pages: SILENT_WITNESS_PAGES,
   },
+  {
+    id: "mystery-ash-receipt",
+    title: "Ash Receipt",
+    author: "N. Calder",
+    audience: "regular",
+    category: "mystery",
+    listingType: "sale",
+    price: 5.99,
+    coverFrom: "#450a0a",
+    coverTo: "#f97316",
+    coverImage: ashReceiptCover,
+    blurb: "A fire investigator finds paper that refuses to burn — and names written in ash.",
+    pages: ASH_RECEIPT_PAGES,
+  },
 
   // Fantasy
   {
@@ -472,6 +536,20 @@ export const SEED_BOOKS: BookItem[] = [
     coverImage: libraryWyrmCover,
     blurb: "A tiny dragon eats plot holes — and grows wise.",
     pages: LIBRARY_WYRM_PAGES,
+  },
+  {
+    id: "fantasy-moon-debt",
+    title: "Moon Debt",
+    author: "Ori Vale",
+    audience: "regular",
+    category: "fantasy",
+    listingType: "sale",
+    price: 6.49,
+    coverFrom: "#0c4a6e",
+    coverTo: "#e0f2fe",
+    coverImage: moonDebtCover,
+    blurb: "A village pays the moon in songs — until someone steals a verse and the tides go still.",
+    pages: MOON_DEBT_PAGES,
   },
 
   // Kids (10)
