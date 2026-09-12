@@ -85,7 +85,7 @@ import appleAdventureCover from "@/assets/books/apple-adventure-cover.jpg";
 import moonPajamasCover from "@/assets/books/moon-pajamas-cover.jpg";
 import busThatGiggledCover from "@/assets/books/bus-that-giggled-cover.jpg";
 import sockDetectiveCover from "@/assets/books/sock-detective-cover.jpg";
-import rainbowToastCover from "@/assets/books/rainbow-toast-cover.jpg";
+import jamPopToastCover from "@/assets/books/jam-pop-toast-cover.jpg";
 import tinyCaptainCover from "@/assets/books/tiny-captain-cover.jpg";
 import bearWhoCountedCover from "@/assets/books/bear-who-counted-cover.jpg";
 import robotRecessCover from "@/assets/books/robot-recess-cover.jpg";
@@ -121,7 +121,7 @@ import { APPLE_ADVENTURE_PAGES } from "@/lib/books/kids/apple-adventure";
 import { MOON_PAJAMAS_PAGES } from "@/lib/books/kids/moon-pajamas";
 import { BUS_THAT_GIGGLED_PAGES } from "@/lib/books/kids/bus-that-giggled";
 import { SOCK_DETECTIVE_PAGES } from "@/lib/books/kids/sock-detective";
-import { RAINBOW_TOAST_PAGES } from "@/lib/books/kids/rainbow-toast";
+import { JAM_POP_TOAST_PAGES } from "@/lib/books/kids/jam-pop-toast";
 import { TINY_CAPTAIN_PAGES } from "@/lib/books/kids/tiny-captain";
 import { BEAR_WHO_COUNTED_PAGES } from "@/lib/books/kids/bear-who-counted";
 import { ROBOT_RECESS_PAGES } from "@/lib/books/kids/robot-recess";
@@ -529,17 +529,17 @@ export const SEED_BOOKS: BookItem[] = [
     pages: SOCK_DETECTIVE_PAGES,
   },
   {
-    id: "kids-rainbow-toast",
-    title: "Rainbow Toast",
+    id: "kids-jam-pop-toast",
+    title: "Jam Pop Toast",
     author: "Chef Bean",
     audience: "kids",
     category: "kids",
     listingType: "free",
-    coverFrom: "#db2777",
+    coverFrom: "#dc2626",
     coverTo: "#fbbf24",
-    blurb: "Breakfast becomes a parade of colors and kindness.",
-    coverImage: rainbowToastCover,
-    pages: RAINBOW_TOAST_PAGES,
+    blurb: "A toaster surprises Sam with fruity jam toast to share.",
+    coverImage: jamPopToastCover,
+    pages: JAM_POP_TOAST_PAGES,
   },
   {
     id: "kids-tiny-captain",
