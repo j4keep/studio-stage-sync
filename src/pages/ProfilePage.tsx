@@ -1,10 +1,31 @@
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  BadgeCheck,
+  BarChart3,
+  Bookmark,
   Briefcase,
-  User, FolderHeart, Building2, Heart, Download, DollarSign,
-  Settings, Shield, BarChart3, HelpCircle, Trophy, Video, ShoppingBag,
-  CheckCircle, UserPlus, Share2, ChevronRight, Edit3, UserCheck, ExternalLink, Crown, Lock, Rocket, CalendarDays, Wrench, Sparkles, Headphones,
-  Bookmark, Ticket, Store, BadgeCheck
+  Building2,
+  CalendarDays,
+  CheckCircle,
+  ChevronRight,
+  Crown,
+  DollarSign,
+  Edit3,
+  FolderHeart,
+  Headphones,
+  HelpCircle,
+  Rocket,
+  Settings,
+  Share2,
+  Shield,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  Ticket,
+  UserCheck,
+  UserPlus,
+  Video,
+  Wrench,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
@@ -37,12 +58,12 @@ const ProfilePage = () => {
   const [showFollowers, setShowFollowers] = useState(false);
   const [showWins, setShowWins] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
-  const [profileInfo, setProfileInfo] = useState<{ display_name: string; email: string; avatar_url: string | null; banner_url: string | null }>({
-    display_name: "",
-    email: "",
-    avatar_url: null,
-    banner_url: null,
-  });
+  const [profileInfo, setProfileInfo] = useState<{
+    display_name: string;
+    email: string;
+    avatar_url: string | null;
+    banner_url: string | null;
+  }>({ display_name: "", email: "", avatar_url: null, banner_url: null });
   const { isPro, showProModal, gatedFeature, requirePro, closeProModal, activatePro } = useProGate();
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDealBusiness, setIsDealBusiness] = useState(false);
@@ -53,34 +74,29 @@ const ProfilePage = () => {
       setIsDealBusiness(false);
       return;
     }
-    void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => {
-      setIsAdmin(Boolean(data));
-    });
+    void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => setIsAdmin(Boolean(data)));
     void userHasDealBusiness(user.id).then(setIsDealBusiness);
   }, [user]);
 
   useEffect(() => {
     if (!user) return;
 
-    // Fetch profile info
-    supabase
+    void supabase
       .from("profiles")
       .select("display_name, avatar_url, banner_url")
       .eq("user_id", user.id)
       .single()
       .then(({ data }) => {
-        if (data) {
-          setProfileInfo({
-            display_name: data.display_name || user.email?.split("@")[0] || "",
-            email: user.email || "",
-            avatar_url: data.avatar_url,
-            banner_url: data.banner_url,
-          });
-        }
+        if (!data) return;
+        setProfileInfo({
+          display_name: data.display_name || user.email?.split("@")[0] || "",
+          email: user.email || "",
+          avatar_url: data.avatar_url,
+          banner_url: data.banner_url,
+        });
       });
 
-    // Fetch wins count
-    (supabase as any)
+    void (supabase as any)
       .from("battle_wins")
       .select("id", { count: "exact", head: true })
       .eq("winner_id", user.id)
@@ -89,7 +105,6 @@ const ProfilePage = () => {
         setWinsCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
       });
 
-    // Fetch projects count (all content)
     const fetchProjectsCount = async () => {
       const [songs, videos, podcasts, posts, battles] = await Promise.all([
         (supabase as any).from("songs").select("id", { count: "exact", head: true }).eq("user_id", user.id),
@@ -101,9 +116,9 @@ const ProfilePage = () => {
       const total = (songs.count || 0) + (videos.count || 0) + (podcasts.count || 0) + (posts.count || 0) + (battles.count || 0);
       setProjectsCount(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
     };
-    fetchProjectsCount();
+    void fetchProjectsCount();
 
-    (supabase as any)
+    void (supabase as any)
       .from("follows")
       .select("id", { count: "exact", head: true })
       .eq("following_id", user.id)
@@ -111,27 +126,8 @@ const ProfilePage = () => {
         const c = count || 0;
         setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
       });
-
-    const fetchViews = async () => {
-      const [{ data: songs }, { data: videos }, { data: podcasts }, { data: posts }, { data: battles }] = await Promise.all([
-        (supabase as any).from("songs").select("plays").eq("user_id", user.id),
-        (supabase as any).from("videos").select("views").eq("user_id", user.id),
-        (supabase as any).from("podcasts").select("plays").eq("user_id", user.id),
-        (supabase as any).from("posts").select("views").eq("user_id", user.id),
-        (supabase as any).from("battles").select("views").eq("challenger_id", user.id),
-      ]);
-      let total = 0;
-      (songs || []).forEach((s: any) => { total += parseInt(s.plays) || 0; });
-      (videos || []).forEach((v: any) => { total += parseInt(v.views) || 0; });
-      (podcasts || []).forEach((p: any) => { total += parseInt(p.plays) || 0; });
-      (posts || []).forEach((p: any) => { total += p.views || 0; });
-      (battles || []).forEach((b: any) => { total += b.views || 0; });
-      setTotalViews(total >= 1000 ? `${(total / 1000).toFixed(1)}K` : String(total));
-    };
-    fetchViews();
   }, [user]);
 
-  // Refetch likes when page regains focus (e.g. navigating back)
   const refetchViews = useCallback(async () => {
     if (!user) return;
     const [{ data: songs }, { data: videos }, { data: podcasts }, { data: posts }, { data: battles }] = await Promise.all([
@@ -151,32 +147,35 @@ const ProfilePage = () => {
   }, [user]);
 
   useEffect(() => {
-    const onFocus = () => refetchViews();
+    void refetchViews();
+    const onFocus = () => void refetchViews();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void refetchViews();
+    };
     window.addEventListener("focus", onFocus);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") refetchViews();
-    });
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [refetchViews]);
 
   const handleFollow = () => {
     setIsFollowing(!isFollowing);
-    toast({ title: isFollowing ? "Unfollowed" : "Following!", description: isFollowing ? "You unfollowed this artist" : "You're now following this artist" });
+    toast({
+      title: isFollowing ? "Unfollowed" : "Following!",
+      description: isFollowing ? "You unfollowed this artist" : "You're now following this artist",
+    });
   };
 
   const handleShare = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/artist/wheuat-artist`);
+    void navigator.clipboard.writeText(`${window.location.origin}/artist/wheuat-artist`);
     toast({ title: "Link copied!", description: "Share this link on social media" });
   };
 
   const proGatedNav = (featureName: string, route: string) => {
-    if (isPro) {
-      navigate(route);
-    } else {
-      requirePro(featureName);
-    }
+    if (isPro) navigate(route);
+    else requirePro(featureName);
   };
 
   const contentTabs = [
@@ -191,262 +190,211 @@ const ProfilePage = () => {
   };
 
   const quickActions = [
-    {
-      icon: Briefcase,
-      label: "Professional Dashboard",
-      sub: "Post & manage jobs, deals, listings, events",
-      action: () => navigate("/pro"),
-      pro: false,
-      section: null as NotifSection | null,
-    },
-    {
-      icon: Sparkles,
-      label: "YAJ AI Generator",
-      sub: `Voice · ${getYajAiVoiceLabel()}`,
-      action: () => navigate("/ask-yaj/settings"),
-      pro: false,
-      section: null as NotifSection | null,
-    },
-
+    { icon: Briefcase, label: "Professional Dashboard", sub: "Post and manage jobs, deals, listings and events", action: () => navigate("/pro"), pro: false, section: null as NotifSection | null },
+    { icon: Sparkles, label: "YAJ AI Generator", sub: `Voice · ${getYajAiVoiceLabel()}`, action: () => navigate("/ask-yaj/settings"), pro: false, section: null as NotifSection | null },
     { icon: Bookmark, label: "Saved Deals", sub: "Offers you bookmarked", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
-    { icon: Ticket, label: "My Coupons", sub: "Claimed & ready to use", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
+    { icon: Ticket, label: "My Coupons", sub: "Claimed and ready to use", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
     ...(isDealBusiness
-      ? [
-          {
-            icon: Store,
-            label: "Business Dashboard",
-            sub: "Post deals, analytics & verification",
-            action: () => navigate("/deals/business"),
-            pro: false,
-            section: null as NotifSection | null,
-          },
-        ]
-      : [
-          {
-            icon: Store,
-            label: "Become a Business",
-            sub: "Reach local shoppers with Deals",
-            action: () => navigate("/deals/become-business"),
-            pro: false,
-            section: null as NotifSection | null,
-          },
-        ]),
-    { icon: ShoppingBag, label: "Purchases", sub: "View history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
-    { icon: CalendarDays, label: "My Bookings", sub: "Sessions & receipts", action: () => goSection("bookings", "/my-bookings"), pro: false, section: "bookings" as NotifSection | null },
-    { icon: Building2, label: "Local Help Business", sub: "Handyman, DJ, cleaning & more", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },
-    { icon: Wrench, label: "My Gigs Dashboard", sub: "Posted, working & completed gigs", action: () => goSection("gigs", "/my-gigs"), pro: false, section: "gigs" as NotifSection | null },
-    { icon: Building2, label: "My Studios", sub: "Manage listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true, section: null as NotifSection | null },
-    { icon: BarChart3, label: "Analytics", sub: "View insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
-    { icon: DollarSign, label: "Earnings", sub: "Revenue", action: () => proGatedNav("Earnings", "/earnings"), pro: true, section: null as NotifSection | null },
-    { icon: Rocket, label: "My Boosts", sub: "Promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true, section: null as NotifSection | null },
-    { icon: HelpCircle, label: "Help & Support", sub: "Tickets & FAQs", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
+      ? [{ icon: Store, label: "Business Dashboard", sub: "Post deals, analytics and verification", action: () => navigate("/deals/business"), pro: false, section: null as NotifSection | null }]
+      : [{ icon: Store, label: "Become a Business", sub: "Reach local shoppers with Deals", action: () => navigate("/deals/become-business"), pro: false, section: null as NotifSection | null }]),
+    { icon: ShoppingBag, label: "Purchases", sub: "View purchase history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
+    { icon: CalendarDays, label: "My Bookings", sub: "Sessions and receipts", action: () => goSection("bookings", "/my-bookings"), pro: false, section: "bookings" as NotifSection | null },
+    { icon: Building2, label: "Local Help Business", sub: "Manage your local services", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },
+    { icon: Wrench, label: "My Gigs Dashboard", sub: "Posted, working and completed gigs", action: () => goSection("gigs", "/my-gigs"), pro: false, section: "gigs" as NotifSection | null },
+    { icon: Building2, label: "My Studios", sub: "Manage studio listings", action: () => proGatedNav("Studio Listings", "/my-studios"), pro: true, section: null as NotifSection | null },
+    { icon: BarChart3, label: "Analytics", sub: "View account insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
+    { icon: DollarSign, label: "Earnings", sub: "Revenue and payouts", action: () => proGatedNav("Earnings", "/earnings"), pro: true, section: null as NotifSection | null },
+    { icon: Rocket, label: "My Boosts", sub: "Manage promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true, section: null as NotifSection | null },
+    { icon: HelpCircle, label: "Help & Support", sub: "Tickets and FAQs", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
     ...(isAdmin
       ? [
-          {
-            icon: Shield,
-            label: "Trust & Safety",
-            sub: "Admin · warnings, timeouts, bans",
-            action: () => navigate("/admin/trust-safety"),
-            pro: false,
-            section: null as NotifSection | null,
-          },
-          {
-            icon: BadgeCheck,
-            label: "Deals Verification",
-            sub: "Admin · approve merchants & moderate deals",
-            action: () => navigate("/admin/deals-verification"),
-            pro: false,
-            section: null as NotifSection | null,
-          },
-          {
-            icon: Headphones,
-            label: "Customer Relations",
-            sub: "Admin · tickets, appeals, help replies",
-            action: () => navigate("/admin/customer-relations"),
-            pro: false,
-            section: null as NotifSection | null,
-          },
+          { icon: Shield, label: "Trust & Safety", sub: "Admin · warnings, timeouts and bans", action: () => navigate("/admin/trust-safety"), pro: false, section: null as NotifSection | null },
+          { icon: BadgeCheck, label: "Deals Verification", sub: "Admin · merchant approvals and moderation", action: () => navigate("/admin/deals-verification"), pro: false, section: null as NotifSection | null },
+          { icon: Headphones, label: "Customer Relations", sub: "Admin · tickets, appeals and replies", action: () => navigate("/admin/customer-relations"), pro: false, section: null as NotifSection | null },
         ]
       : []),
   ];
 
   return (
-    <div className="pb-4">
-      {/* Settings */}
-      <div className="px-4 pt-4 pb-2 flex items-center justify-end">
-        <button onClick={() => navigate("/settings")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
-          <Settings className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Artist Search */}
-      <div className="px-4 pb-3">
-        <ArtistSearchBar onSelectArtist={(artist) => {
-          navigate(`/artist/${artist.user_id}`);
-        }} />
-      </div>
-
-      {/* Banner */}
-      <div className="relative h-44 overflow-hidden">
-        {profileInfo.banner_url ? (
-          <img src={profileInfo.banner_url} alt="Banner" className="w-full h-full object-cover" />
-        ) : (
-          <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-      </div>
-
-      {/* Avatar & Info */}
-      <div className="px-4 -mt-12 relative z-10">
-        <div className="flex items-end gap-3">
-          {profileInfo.avatar_url ? (
-            <img src={profileInfo.avatar_url} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
-          ) : (
-            <div className="w-20 h-20 rounded-full border-[3px] border-background bg-primary/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
-            </div>
-          )}
-          <div className="flex-1 pb-1">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name || "Set Artist Name"}</h2>
-              {isPro && <CheckCircle className="w-4 h-4 text-primary fill-primary/20" />}
-            </div>
-            
+    <div className="min-h-[100dvh] bg-background pb-8 text-foreground">
+      <div className="mx-auto w-full max-w-3xl">
+        <div className="flex items-center justify-between px-4 pb-3 pt-4">
+          <div>
+            <h1 className="text-[26px] font-bold tracking-[-0.03em]">Profile</h1>
+            <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">Manage your presence on YAJ.</p>
           </div>
-        </div>
-
-        <button onClick={() => setShowEditProfile(true)} className="w-full mt-3 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:border-primary/30 transition-all">
-          <Edit3 className="w-3.5 h-3.5" /> Edit Profile
-        </button>
-
-        {/* YAJ AI Generator — Profile dashboard entry (Gemini-style row) */}
-        <button
-          type="button"
-          onClick={() => navigate("/ask-yaj/settings")}
-          className="mt-3 flex w-full items-center gap-3 rounded-xl border border-border bg-card p-3.5 text-left transition-all hover:border-primary/30"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-            <Sparkles className="h-5 w-5 text-primary" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-foreground">YAJ AI Generator</p>
-              <span className="rounded-full bg-sky-500 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                Dashboard
-              </span>
-            </div>
-            <p className="text-[11px] text-muted-foreground">
-              Dashboard · voice, avatar & settings · {getYajAiVoiceLabel()}
-            </p>
-          </div>
-          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-        </button>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-3">
-          <button onClick={handleFollow} className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${isFollowing ? "bg-card border border-primary text-primary" : "gradient-primary text-primary-foreground glow-primary"}`}>
-            {isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-            {isFollowing ? "Following" : "Follow"}
-          </button>
-          <button onClick={() => navigate("/my-projects")} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-xs font-semibold flex items-center justify-center gap-1.5 hover:border-primary/30 transition-all">
-            <DollarSign className="w-3.5 h-3.5" /> Contribute
-          </button>
-          <button onClick={handleShare} className="w-10 py-2.5 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center hover:border-primary/30 transition-all">
-            <Share2 className="w-4 h-4" />
+          <button
+            onClick={() => navigate("/settings")}
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border/80 bg-card text-foreground shadow-sm transition active:scale-95"
+            aria-label="Settings"
+          >
+            <Settings className="h-[18px] w-[18px]" />
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mt-4">
-          {[
-            { label: "Wins", value: winsCount, action: () => setShowWins(true) },
-            { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
-            { label: "Projects", value: projectsCount, action: () => setShowProjects(true) },
-            { label: "Views", value: totalViews },
-          ].map((s) => (
-            <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
-              <p className="text-base font-display font-bold text-primary">{s.value}</p>
-              <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </button>
-          ))}
+        <div className="px-4 pb-4">
+          <ArtistSearchBar onSelectArtist={(artist) => navigate(`/artist/${artist.user_id}`)} />
         </div>
 
-        {/* PRO Badge / Upgrade */}
-        {!isPro && (
-          <button onClick={() => requirePro("PRO Subscription")} className="w-full mt-4 p-3 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-3 hover:border-primary/40 transition-all">
-            <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center glow-primary">
-              <Crown className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-sm font-semibold text-foreground">Upgrade to PRO</p>
-              <p className="text-[10px] text-muted-foreground">Unlock all features · $10/mo</p>
-            </div>
-            <ChevronRight className="w-4 h-4 text-muted-foreground" />
-          </button>
-        )}
-      </div>
+        <section className="overflow-hidden border-y border-border/70 bg-card shadow-sm sm:mx-4 sm:rounded-[24px] sm:border">
+          <div className="relative h-44 overflow-hidden sm:h-52">
+            <img src={profileInfo.banner_url || profileBanner} alt="Profile banner" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+          </div>
 
-      {/* Content Tabs */}
-      <div className="mt-5 border-t border-border">
-        <div className="grid grid-cols-4 px-4 gap-1.5 pt-3">
-          {contentTabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => tab.pro ? proGatedNav(tab.label, tab.route) : navigate(tab.route)}
-              className="relative flex flex-col items-center gap-1 py-2 rounded-lg text-[10px] font-semibold transition-all text-muted-foreground bg-card border border-border hover:border-primary/30"
-            >
-              <tab.icon className="w-4 h-4" />
-              {tab.label}
-              {tab.pro && !isPro && (
-                <span className="absolute -top-1 -right-1 text-[7px] bg-primary text-primary-foreground px-1 py-0.5 rounded-full font-bold leading-none">PRO</span>
+          <div className="relative px-4 pb-5">
+            <div className="-mt-10 flex items-end justify-between gap-3">
+              {profileInfo.avatar_url ? (
+                <img src={profileInfo.avatar_url} alt="Profile" className="h-24 w-24 rounded-full border-4 border-card object-cover shadow-md" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-card bg-primary/10 shadow-md">
+                  <span className="text-3xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
+                </div>
               )}
-            </button>
-          ))}
-        </div>
-      </div>
+              <button
+                onClick={() => setShowEditProfile(true)}
+                className="mb-1 flex h-10 items-center justify-center gap-2 rounded-full border border-border bg-background px-4 text-[13px] font-semibold shadow-sm transition active:scale-[0.98]"
+              >
+                <Edit3 className="h-4 w-4" />
+                Edit profile
+              </button>
+            </div>
 
-      {/* Quick Actions */}
-      <div className="px-4 mt-5">
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Actions</p>
-        <div className="flex flex-col gap-1.5">
-          {quickActions.map((item) => (
-            <button
-              key={item.label}
-              onClick={item.action}
-              className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border hover:border-primary/30 transition-all"
-            >
-              <div className="relative w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <item.icon className="w-4 h-4 text-primary" />
-                {item.section && notifCounts[item.section] > 0 && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-destructive ring-2 ring-card" />
-                )}
+            <div className="mt-3">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-[22px] font-bold tracking-[-0.025em]">{profileInfo.display_name || "Set your name"}</h2>
+                {isPro && <CheckCircle className="h-4.5 w-4.5 fill-primary/15 text-primary" />}
               </div>
-              <span className="flex-1 text-sm font-medium text-foreground text-left">{item.label}</span>
-              {item.section && notifCounts[item.section] > 0 && (
-                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">
-                  {notifCounts[item.section]} new
-                </span>
-              )}
-              {item.pro && !isPro && (
-                <span className="text-[9px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">PRO</span>
-              )}
-              {item.sub && !item.pro && <span className="text-[11px] text-muted-foreground">{item.sub}</span>}
-              <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
+              <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">{profileInfo.email || "Your YAJ profile"}</p>
+            </div>
+
+            <div className="mt-4 grid grid-cols-4 divide-x divide-border/70 rounded-2xl border border-border/70 bg-background/60 py-3">
+              {[
+                { label: "Wins", value: winsCount, action: () => setShowWins(true) },
+                { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
+                { label: "Projects", value: projectsCount, action: () => setShowProjects(true) },
+                { label: "Views", value: totalViews, action: undefined },
+              ].map((stat) => (
+                <button key={stat.label} type="button" onClick={stat.action} className="px-1 text-center active:opacity-70">
+                  <p className="text-[16px] font-bold tracking-tight text-foreground">{stat.value}</p>
+                  <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">{stat.label}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={handleFollow}
+                className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[13px] font-semibold transition active:scale-[0.99] ${
+                  isFollowing ? "border border-primary bg-primary/5 text-primary" : "bg-primary text-primary-foreground shadow-sm"
+                }`}
+              >
+                {isFollowing ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                {isFollowing ? "Following" : "Follow"}
+              </button>
+              <button onClick={() => navigate("/my-projects")} className="flex h-11 flex-1 items-center justify-center rounded-xl border border-border bg-background text-[13px] font-semibold active:scale-[0.99]">
+                Projects
+              </button>
+              <button onClick={handleShare} className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-foreground active:scale-95" aria-label="Share profile">
+                <Share2 className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <div className="px-4 pt-5">
+          <button
+            type="button"
+            onClick={() => navigate("/ask-yaj/settings")}
+            className="flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card p-4 text-left shadow-sm transition active:scale-[0.99]"
+          >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-[14px] font-bold">YAJ AI Generator</p>
+                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-primary">Dashboard</span>
+              </div>
+              <p className="mt-0.5 truncate text-[11px] font-medium text-muted-foreground">Voice, avatar and settings · {getYajAiVoiceLabel()}</p>
+            </div>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+
+          {!isPro && (
+            <button onClick={() => requirePro("PRO Subscription")} className="mt-3 flex w-full items-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left transition active:scale-[0.99]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                <Crown className="h-5 w-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-bold">Upgrade to PRO</p>
+                <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">Unlock advanced creator tools · $10/mo</p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </button>
-          ))}
+          )}
         </div>
+
+        <section className="mt-6 border-y border-border/70 bg-card px-4 py-4 sm:mx-4 sm:rounded-2xl sm:border">
+          <div className="mb-3">
+            <h3 className="text-[16px] font-bold tracking-tight">Your content</h3>
+            <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">Manage what you create and publish.</p>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {contentTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => (tab.pro ? proGatedNav(tab.label, tab.route) : navigate(tab.route))}
+                className="relative flex min-h-[76px] flex-col items-center justify-center gap-2 rounded-xl border border-border/70 bg-background/60 px-2 text-[11px] font-semibold transition active:scale-[0.98]"
+              >
+                <tab.icon className="h-5 w-5 text-primary" />
+                {tab.label}
+                {tab.pro && !isPro && <span className="absolute right-1.5 top-1.5 rounded-full bg-primary px-1.5 py-0.5 text-[7px] font-bold text-primary-foreground">PRO</span>}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="px-4 pt-6">
+          <div className="mb-3">
+            <h3 className="text-[17px] font-bold tracking-tight">Account & tools</h3>
+            <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">Shortcuts for your activity, business and creator tools.</p>
+          </div>
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm">
+            {quickActions.map((item, index) => (
+              <button
+                key={item.label}
+                onClick={item.action}
+                className={`flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-muted/40 active:bg-muted/60 ${index > 0 ? "border-t border-border/60" : ""}`}
+              >
+                <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                  <item.icon className="h-[18px] w-[18px] text-primary" />
+                  {item.section && notifCounts[item.section] > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-[13px] font-semibold text-foreground">{item.label}</p>
+                    {item.pro && !isPro && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary">PRO</span>}
+                  </div>
+                  <p className="mt-0.5 truncate text-[10.5px] font-medium text-muted-foreground">{item.sub}</p>
+                </div>
+                {item.section && notifCounts[item.section] > 0 && <span className="rounded-full bg-destructive px-2 py-0.5 text-[9px] font-bold text-destructive-foreground">{notifCounts[item.section]} new</span>}
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {user && (
+          <section className="px-4 pt-7">
+            <div className="mb-3">
+              <h3 className="text-[17px] font-bold tracking-tight">My feed</h3>
+              <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">Posts and activity from your profile.</p>
+            </div>
+            <ProfileFeedSection userId={user.id} isOwner />
+          </section>
+        )}
       </div>
-
-      {/* My Posts */}
-      {user && (
-        <div className="px-4 mt-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">My Feed</p>
-          <ProfileFeedSection userId={user.id} isOwner={true} />
-        </div>
-      )}
-
-      
-
 
       <EditProfileSheet
         open={showEditProfile}
@@ -460,7 +408,7 @@ const ProfilePage = () => {
         onSave={async (data) => {
           if (!user) return;
           const updates: any = { display_name: data.name, updated_at: new Date().toISOString() };
-          
+
           if (data.avatarFile) {
             const ext = data.avatarFile.name.split(".").pop();
             const path = `avatars/${user.id}/${Date.now()}.${ext}`;
@@ -470,7 +418,7 @@ const ProfilePage = () => {
               updates.avatar_url = urlData.publicUrl;
             }
           }
-          
+
           if (data.bannerFile) {
             const ext = data.bannerFile.name.split(".").pop();
             const path = `banners/${user.id}/${Date.now()}.${ext}`;
@@ -480,9 +428,9 @@ const ProfilePage = () => {
               updates.banner_url = urlData.publicUrl;
             }
           }
-          
+
           await supabase.from("profiles").update(updates).eq("user_id", user.id);
-          setProfileInfo(prev => ({
+          setProfileInfo((prev) => ({
             ...prev,
             display_name: data.name,
             avatar_url: updates.avatar_url || prev.avatar_url,
@@ -492,7 +440,7 @@ const ProfilePage = () => {
         }}
       />
 
-      {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner={true} />}
+      {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner />}
       {user && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={user.id} />}
       {user && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={user.id} />}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
