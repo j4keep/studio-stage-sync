@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "./create-camera-fixes.css";
 
 // Ensure direct links like /feed resolve correctly with HashRouter.
 if (!window.location.hash) {
