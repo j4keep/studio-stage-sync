@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  ChevronDown,
+  ChevronUp,
   Loader2,
   Radio,
   Settings,
@@ -35,11 +37,13 @@ import {
 } from "@/lib/dual-camera";
 import type { DualCameraLayout } from "./DualCameraLayoutSheet";
 import DualCameraLayoutSheet from "./DualCameraLayoutSheet";
-import CreateModeTabs from "./CreateModeTabs";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
 import FaceFilterPanel from "./FaceFilterPanel";
-import VirtualAvatarStage, { type VirtualAvatarId } from "./VirtualAvatarStage";
+import VirtualAvatarStage, {
+  VIRTUAL_AVATARS,
+  type VirtualAvatarId,
+} from "./VirtualAvatarStage";
 
 interface Props {
   createMode: CreateMode;
@@ -88,11 +92,13 @@ export default function LiveCameraView({
   const pipVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const pipStreamRef = useRef<MediaStream | null>(null);
+
   const [facing, setFacing] = useState<"user" | "environment">("user");
   const [ready, setReady] = useState(false);
   const [denied, setDenied] = useState(false);
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
+  const [showControls, setShowControls] = useState(false);
   const [exclusiveAudience, setExclusiveAudience] = useState<ExclusiveLiveAudience>("all");
   const [virtualAvatarId, setVirtualAvatarId] = useState<VirtualAvatarId>(() => {
     try {
@@ -127,7 +133,7 @@ export default function LiveCameraView({
     (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "YAJ Creator";
   const avatarUrl = (user?.user_metadata as any)?.avatar_url as string | undefined;
   const isCircleScoped = Boolean(circleId);
-  const hasBottomModeTabs = !hideModeTabs && !isCircleScoped;
+  const canSwitchToPost = !hideModeTabs && !isCircleScoped;
 
   const closeEffectSheets = () => {
     setShowEnhance(false);
@@ -378,7 +384,7 @@ export default function LiveCameraView({
           profileAvatarUrl={avatarUrl}
           selectedId={virtualAvatarId}
           onSelectedIdChange={selectVirtualAvatar}
-          showPicker
+          showPicker={false}
         />
       )}
 
@@ -392,7 +398,7 @@ export default function LiveCameraView({
         } ${dualLayout === "circle" ? "rounded-full" : "rounded-2xl"}`}
         style={{
           top: "max(calc(env(safe-area-inset-top) + 4.5rem), 5.5rem)",
-          right: "4.75rem",
+          right: "1rem",
           width: dualLayout === "circle" ? "6.5rem" : "7.25rem",
           height: dualLayout === "circle" ? "6.5rem" : "9.5rem",
           transform: pipFacing === "user" ? "scaleX(-1)" : undefined,
@@ -417,7 +423,12 @@ export default function LiveCameraView({
       )}
 
       <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)]">
-        <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm" aria-label="Close live setup">
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-sm"
+          aria-label="Close live setup"
+        >
           <X className="h-6 w-6" />
         </button>
         <span className="rounded-full border border-white/10 bg-black/45 px-3.5 py-1.5 text-[12px] font-bold text-white/90 backdrop-blur-md">
@@ -432,103 +443,15 @@ export default function LiveCameraView({
         <div className="w-11" />
       </div>
 
-      <div className="absolute right-2 z-20 flex flex-col items-center gap-3 top-[max(calc(env(safe-area-inset-top)+3.5rem),4.25rem)]">
-        {PREP_TOOLS.map((tool) => {
-          const Icon = tool.icon;
-          const cameraTool = tool.id === "flip" || tool.id === "enhance" || tool.id === "effects" || tool.id === "face" || tool.id === "settings";
-          const disabled = startingLive || (viewMode === "virtual" && cameraTool);
-          const selected =
-            tool.id === "enhance"
-              ? showEnhance || isEnhanceActive(enhance)
-              : tool.id === "effects"
-                ? showEffects || selectedEffect !== "none"
-                : tool.id === "face"
-                  ? showFaceFilters || faceFilter !== "none"
-                  : tool.id === "settings"
-                    ? showDualSheet || dualLayout !== "none"
-                    : false;
-          return (
-            <button key={tool.id} type="button" disabled={disabled} onClick={() => onTool(tool.id)} className="flex flex-col items-center gap-1 disabled:opacity-35">
-              <span
-                className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-md transition ${
-                  selected ? "border-white bg-white text-black" : "border-white/15 bg-black/45 text-white"
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-              </span>
-              <span className="text-center text-[9.5px] font-semibold leading-tight text-white/90 drop-shadow">{tool.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
       <div
-        className="relative z-20 mt-auto flex flex-col items-center gap-3 px-4"
-        style={{
-          paddingRight: "4rem",
-          paddingBottom: hasBottomModeTabs
-            ? "calc(max(env(safe-area-inset-bottom), 0.5rem) + 6.75rem)"
-            : "calc(max(env(safe-area-inset-bottom), 0.5rem) + 2rem)",
-        }}
+        className="relative z-20 mt-auto flex flex-col items-center px-5"
+        style={{ paddingBottom: "calc(max(env(safe-area-inset-bottom), 0.75rem) + 1rem)" }}
       >
-        {exclusiveLive && (
-          <div className="w-full max-w-[20rem] space-y-2 rounded-2xl border border-white/15 bg-black/55 p-3 backdrop-blur-md">
-            <p className="text-center text-[11px] font-bold uppercase tracking-wide text-white/70">Who can watch this Exclusive live</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => setExclusiveAudience("all")} className={`rounded-xl px-2.5 py-2 text-left ${exclusiveAudience === "all" ? "bg-white text-black" : "bg-white/10 text-white"}`}>
-                <p className="text-[12px] font-black">All Exclusive</p>
-                <p className="mt-0.5 text-[10px] opacity-70">Everyone with Exclusive access</p>
-              </button>
-              <button type="button" onClick={() => setExclusiveAudience("invite")} className={`rounded-xl px-2.5 py-2 text-left ${exclusiveAudience === "invite" ? "bg-white text-black" : "bg-white/10 text-white"}`}>
-                <p className="text-[12px] font-black">Invite link</p>
-                <p className="mt-0.5 text-[10px] opacity-70">Only people you send the link</p>
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="w-full max-w-[20rem] rounded-[22px] border border-white/15 bg-black/55 p-1.5 shadow-xl backdrop-blur-md">
-          <div className="grid grid-cols-3 gap-1">
-            {VIEW_MODES.map((mode) => {
-              const Icon = mode.icon;
-              const selected = viewMode === mode.id;
-              return (
-                <button
-                  key={mode.id}
-                  type="button"
-                  onClick={() => selectViewMode(mode.id)}
-                  disabled={startingLive}
-                  className={`flex min-h-[3.25rem] flex-col items-center justify-center rounded-[16px] px-2 py-1.5 transition active:scale-[0.98] ${selected ? "bg-white text-black" : "text-white/75"}`}
-                >
-                  <span className="flex items-center gap-1.5 text-[12px] font-black">
-                    <Icon className="h-3.5 w-3.5" />
-                    {mode.label}
-                  </span>
-                  <span className={`mt-0.5 text-[8.5px] font-semibold ${selected ? "text-black/55" : "text-white/45"}`}>
-                    {mode.helper}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="w-full max-w-[20rem] rounded-xl bg-black/45 px-3 py-2 text-center backdrop-blur-sm">
-          <p className="text-[11px] font-semibold text-white/85">{activeMode.helper}</p>
-          <p className="mt-0.5 text-[9.5px] text-white/55">
-            {viewMode === "multi"
-              ? "Guests can request a stage seat after you start."
-              : viewMode === "virtual"
-                ? "Choose an avatar above. Your camera tracks face movement while staying hidden from viewers."
-                : "You control the broadcast and viewers watch live."}
-          </p>
-        </div>
-
         <button
           type="button"
           onClick={() => void handleGoLive()}
           disabled={denied || !ready || startingLive}
-          className="flex h-[58px] w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-[16px] font-black text-white shadow-2xl transition active:scale-[0.98] disabled:opacity-40"
+          className="flex h-[62px] w-full max-w-[22rem] items-center justify-center gap-2 rounded-full bg-red-600 text-[17px] font-black text-white shadow-2xl transition active:scale-[0.98] disabled:opacity-40"
           aria-label="Go live"
         >
           {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
@@ -544,7 +467,142 @@ export default function LiveCameraView({
                     ? "Start Virtual Live"
                     : "Go Live"}
         </button>
+
+        <button
+          type="button"
+          onClick={() => setShowControls((v) => !v)}
+          className="mt-3 flex h-10 items-center gap-2 rounded-full border border-white/15 bg-black/45 px-4 text-[12px] font-bold text-white backdrop-blur-md"
+          aria-expanded={showControls}
+        >
+          {showControls ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          {showControls ? "Hide controls" : "Controls"}
+        </button>
       </div>
+
+      {showControls && (
+        <div className="absolute inset-x-0 bottom-0 z-[80] max-h-[72dvh] overflow-y-auto rounded-t-[30px] border-t border-white/15 bg-zinc-950/95 px-4 pb-[calc(max(env(safe-area-inset-bottom),1rem)+1rem)] pt-3 text-white shadow-2xl backdrop-blur-xl">
+          <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-white/20" />
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[17px] font-black tracking-tight">Live controls</p>
+              <p className="text-[11px] text-white/50">Choose a mode, avatar, or camera tool.</p>
+            </div>
+            <button type="button" onClick={() => setShowControls(false)} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10" aria-label="Close controls">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {VIEW_MODES.map((mode) => {
+              const Icon = mode.icon;
+              const selected = mode.id === viewMode;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => selectViewMode(mode.id)}
+                  className={`rounded-2xl border px-2 py-3 text-center ${selected ? "border-white bg-white text-black" : "border-white/10 bg-white/5 text-white"}`}
+                >
+                  <Icon className="mx-auto h-5 w-5" />
+                  <p className="mt-1 text-[12px] font-black">{mode.label}</p>
+                  <p className={`mt-0.5 text-[9px] ${selected ? "text-black/55" : "text-white/45"}`}>{mode.helper}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {viewMode === "virtual" && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-black">Choose avatar</p>
+                <span className="text-[10px] text-white/45">Tap to switch</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {VIRTUAL_AVATARS.map((item) => {
+                  const selected = item.id === virtualAvatarId;
+                  const profileThumb = item.id === "profile" && avatarUrl;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectVirtualAvatar(item.id)}
+                      className={`rounded-2xl border p-3 ${selected ? "border-white bg-white/15 ring-2 ring-white/60" : "border-white/10 bg-white/5"}`}
+                    >
+                      <div className={`mx-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br ${item.bg}`}>
+                        {profileThumb ? (
+                          <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="text-2xl" aria-hidden>{item.emoji}</span>
+                        )}
+                      </div>
+                      <p className="mt-1.5 text-[11px] font-black">{item.label}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {viewMode !== "virtual" && (
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {PREP_TOOLS.map((tool) => {
+                const Icon = tool.icon;
+                const selected =
+                  tool.id === "enhance"
+                    ? showEnhance || isEnhanceActive(enhance)
+                    : tool.id === "effects"
+                      ? showEffects || selectedEffect !== "none"
+                      : tool.id === "face"
+                        ? showFaceFilters || faceFilter !== "none"
+                        : tool.id === "settings"
+                          ? showDualSheet || dualLayout !== "none"
+                          : false;
+                return (
+                  <button
+                    key={tool.id}
+                    type="button"
+                    onClick={() => {
+                      onTool(tool.id);
+                      if (tool.id === "flip" || tool.id === "share") setShowControls(false);
+                    }}
+                    className={`flex min-h-[72px] flex-col items-center justify-center rounded-2xl border ${selected ? "border-white bg-white text-black" : "border-white/10 bg-white/5 text-white"}`}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span className="mt-1 text-[10px] font-bold">{tool.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {exclusiveLive && (
+            <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-3">
+              <p className="mb-2 text-[12px] font-black">Exclusive audience</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => setExclusiveAudience("all")} className={`rounded-xl px-3 py-2 text-[11px] font-bold ${exclusiveAudience === "all" ? "bg-white text-black" : "bg-white/10"}`}>
+                  All Exclusive
+                </button>
+                <button type="button" onClick={() => setExclusiveAudience("invite")} className={`rounded-xl px-3 py-2 text-[11px] font-bold ${exclusiveAudience === "invite" ? "bg-white text-black" : "bg-white/10"}`}>
+                  Invite only
+                </button>
+              </div>
+            </div>
+          )}
+
+          {canSwitchToPost && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowControls(false);
+                onModeChange("post");
+              }}
+              className="mt-4 w-full rounded-2xl border border-white/10 bg-white/5 py-3 text-[13px] font-black"
+            >
+              Switch to Post
+            </button>
+          )}
+        </div>
+      )}
 
       <EnhancePanel open={showEnhance} tab={enhanceTab} onTabChange={setEnhanceTab} onClose={() => setShowEnhance(false)} settings={enhance} onChange={setEnhance} appearanceTool={appearanceTool} onAppearanceToolChange={setAppearanceTool} />
       <EffectsPanel open={showEffects} category={effectCategory} onCategoryChange={setEffectCategory} onClose={() => setShowEffects(false)} selectedId={selectedEffect} onSelect={setSelectedEffect} />
@@ -558,8 +616,6 @@ export default function LiveCameraView({
         }}
         onClose={() => setShowDualSheet(false)}
       />
-
-      {hasBottomModeTabs && <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />}
     </div>
   );
 }
