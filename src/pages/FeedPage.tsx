@@ -39,7 +39,6 @@ const FeedPage = () => {
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openBattleId = searchParams.get("battle");
   const openPostId = searchParams.get("post");
-  /** Prevent deep-link reopen loops that call stopAllPageMedia mid-playback. */
   const openedBattleDeepLinkRef = useRef<string | null>(null);
   const openedPostDeepLinkRef = useRef<string | null>(null);
 
@@ -71,7 +70,6 @@ const FeedPage = () => {
     queryFn: () => listActivePublicLiveSessions(20),
   });
 
-  // Realtime so "Live Now" appears/disappears without a manual refresh.
   useEffect(() => {
     const channel = supabase
       .channel("feed-live-now")
@@ -82,7 +80,6 @@ const FeedPage = () => {
     };
   }, [refetchLiveNow]);
 
-  // Posts rail: every regular post + battles (create flow no longer splits reels).
   const posts = useMemo(() => {
     const nextPosts: any[] = [];
     items.forEach((it: any) => {
@@ -102,7 +99,6 @@ const FeedPage = () => {
   }, [refetch, user?.id]);
 
   const openPostItem = (index: number) => {
-    // Kill grid / Happening preview media so the viewer gets a clean decoder.
     stopAllPageMedia();
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
@@ -116,7 +112,6 @@ const FeedPage = () => {
     setViewer(null);
   };
 
-  // Leaving the homepage must kill any escaped post/battle audio.
   useEffect(() => {
     return () => {
       stopAllPageMedia({ detachStreams: true });
@@ -125,24 +120,18 @@ const FeedPage = () => {
 
   const openHappeningItem = (item: HappeningItem) => {
     if (item.openInPostsViewer) {
-      const idx = posts.findIndex(
-        (p: any) => p.itemType === "post" && p.id === item.sourceId,
-      );
+      const idx = posts.findIndex((p: any) => p.itemType === "post" && p.id === item.sourceId);
       if (idx >= 0) {
         openPostItem(idx);
         return;
       }
     }
-    if (item.route) {
-      navigate(item.route);
-    }
+    if (item.route) navigate(item.route);
   };
 
-  // Deep-link battles: /?battle=<id> — open once, never re-stop media on refetch.
   useEffect(() => {
     if (!openBattleId || isLoading) return;
     if (openedBattleDeepLinkRef.current === openBattleId) {
-      // Param still present after a refetch — just clear it.
       const next = new URLSearchParams(searchParams);
       if (next.has("battle")) {
         next.delete("battle");
@@ -159,7 +148,6 @@ const FeedPage = () => {
     setSearchParams(next, { replace: true });
   }, [openBattleId, isLoading, posts, searchParams, setSearchParams]);
 
-  // Deep-link a post from Happening: /?post=<id>
   useEffect(() => {
     if (!openPostId || isLoading) return;
     if (openedPostDeepLinkRef.current === openPostId) {
@@ -179,23 +167,24 @@ const FeedPage = () => {
     setSearchParams(next, { replace: true });
   }, [openPostId, isLoading, posts, searchParams, setSearchParams]);
 
-  const trendingRow = (trending.length > 0 || liveNow.length > 0) && (
-    <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide h-scroll-isolate rounded-xl border border-border bg-card/95 px-2 py-2 shadow-sm dark:backdrop-blur-md">
+  const peopleRow = (trending.length > 0 || liveNow.length > 0) && (
+    <div className="flex max-w-full min-w-0 items-start gap-3 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
       <button
         onClick={() => navigate("/profile")}
-        className="flex shrink-0 flex-col items-center gap-1"
-        aria-label="Pitch your profile"
+        className="flex w-[3.65rem] shrink-0 flex-col items-center gap-1.5"
+        aria-label="Open your profile"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted text-lg font-light text-foreground ring-2 ring-primary">+</div>
-        <span className="text-[10px] font-medium leading-none text-foreground/80">Pitch</span>
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border border-border bg-card text-xl font-light text-foreground shadow-sm ring-2 ring-primary/70 ring-offset-2 ring-offset-background">+</div>
+        <span className="w-full truncate text-center text-[10px] font-semibold leading-none text-foreground/80">You</span>
       </button>
+
       {liveNow.map((s) => (
         <button
           key={s.id}
           onClick={() => navigate(`/live/${s.id}`)}
-          className="flex w-[3rem] shrink-0 flex-col items-center gap-1"
+          className="flex w-[3.65rem] shrink-0 flex-col items-center gap-1.5"
         >
-          <div className="h-10 w-10 overflow-hidden rounded-full bg-muted ring-2 ring-red-500">
+          <div className="relative h-12 w-12 overflow-hidden rounded-full bg-muted ring-2 ring-red-500 ring-offset-2 ring-offset-background">
             {s.host_avatar_url ? (
               <img src={s.host_avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -204,18 +193,17 @@ const FeedPage = () => {
               </div>
             )}
           </div>
-          <span className="w-full truncate rounded-full bg-red-600 px-1 text-center text-[8.5px] font-black uppercase leading-tight text-white">
-            Live
-          </span>
+          <span className="rounded-full bg-red-600 px-2 py-0.5 text-[8px] font-extrabold uppercase tracking-wide text-white">Live</span>
         </button>
       ))}
+
       {trending.map((c) => (
         <button
           key={c.user_id}
           onClick={() => navigate(`/artist/${c.user_id}`)}
-          className="flex w-[3rem] shrink-0 flex-col items-center gap-1"
+          className="flex w-[3.65rem] shrink-0 flex-col items-center gap-1.5"
         >
-          <div className="h-10 w-10 overflow-hidden rounded-full bg-muted ring-2 ring-border dark:bg-white/10 dark:ring-white/35">
+          <div className="h-12 w-12 overflow-hidden rounded-full bg-muted ring-1 ring-border ring-offset-2 ring-offset-background">
             {c.avatar_url ? (
               <img src={c.avatar_url} alt="" className="h-full w-full object-cover" />
             ) : (
@@ -224,7 +212,7 @@ const FeedPage = () => {
               </div>
             )}
           </div>
-          <span className="w-full truncate text-center text-[10px] font-medium leading-none text-foreground/80">
+          <span className="w-full truncate text-center text-[10px] font-semibold leading-none text-foreground/80">
             {c.display_name || "Artist"}
           </span>
         </button>
@@ -232,30 +220,30 @@ const FeedPage = () => {
     </div>
   );
 
-  const happeningColumn = (compact: boolean) => (
+  const happeningRail = (compact: boolean) => (
     <>
-      <div className={`${compact ? "-mx-1.5 px-2 py-1" : "-mx-2 px-3 py-1.5"} sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 backdrop-blur-sm`}>
-        <p className={`${compact ? "text-[10px]" : "text-[11px]"} font-black uppercase tracking-wider text-foreground`}>
-          Happening
-        </p>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <h2 className={`${compact ? "text-sm" : "text-[15px]"} font-bold tracking-tight text-foreground`}>Happening now</h2>
+          <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">Live moments, updates and community activity</p>
+        </div>
       </div>
       {happeningLoading ? (
-        <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">
-          Loading…
-        </p>
+        <div className="rounded-2xl border border-border bg-card px-4 py-5 text-center text-xs font-medium text-muted-foreground shadow-sm">Loading activity…</div>
       ) : happening.length === 0 ? (
-        <p className="mt-4 rounded-lg border border-border bg-card/90 px-2 py-3 text-center text-[10px] text-muted-foreground">
-          Nothing happening yet
-        </p>
+        <div className="rounded-2xl border border-border bg-card px-4 py-5 text-center text-xs font-medium text-muted-foreground shadow-sm">Nothing happening yet</div>
+      ) : compact ? (
+        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+          {happening.map((item) => (
+            <HappeningThumbCard key={item.id} item={item} compact onOpen={() => openHappeningItem(item)} />
+          ))}
+        </div>
       ) : (
-        happening.map((item) => (
-          <HappeningThumbCard
-            key={item.id}
-            item={item}
-            compact={compact}
-            onOpen={() => openHappeningItem(item)}
-          />
-        ))
+        <div className="space-y-2.5">
+          {happening.map((item) => (
+            <HappeningThumbCard key={item.id} item={item} onOpen={() => openHappeningItem(item)} />
+          ))}
+        </div>
       )}
     </>
   );
@@ -267,30 +255,24 @@ const FeedPage = () => {
         <LiveNowCard key={s.id} session={s} onOpen={() => navigate(`/live/${s.id}`)} />
       ))}
       {posts.length === 0 ? (
-        <div className="mt-6 flex flex-col items-center gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-sm">
-          <p className="text-xs text-muted-foreground">No posts yet</p>
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card p-6 text-center shadow-sm">
+          <div>
+            <p className="text-sm font-bold text-foreground">Your feed is ready</p>
+            <p className="mt-1 text-xs font-medium text-muted-foreground">Create the first post and start the conversation.</p>
+          </div>
           <button
             onClick={() => window.dispatchEvent(new Event("open-create-post"))}
-            className="rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+            className="rounded-full bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-sm transition active:scale-[0.98]"
           >
-            Create first post
+            Create post
           </button>
         </div>
       ) : (
         posts.map((item: any, i: number) =>
           item.itemType === "battle" ? (
-            <BattleCard
-              key={`battle-${item.id}`}
-              battle={item}
-              onOpen={() => openPostItem(i)}
-            />
+            <BattleCard key={`battle-${item.id}`} battle={item} onOpen={() => openPostItem(i)} />
           ) : (
-            <FeedThumbCard
-              key={item.id}
-              post={item}
-              onOpen={() => openPostItem(i)}
-              pressHoldMs={isDesktop ? 350 : undefined}
-            />
+            <FeedThumbCard key={item.id} post={item} onOpen={() => openPostItem(i)} pressHoldMs={isDesktop ? 350 : undefined} />
           ),
         )
       )}
@@ -298,65 +280,86 @@ const FeedPage = () => {
   );
 
   return (
-    <div className="relative flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden overscroll-none bg-background text-foreground dark:bg-background dark:text-foreground lg:h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
-      <FlagBackground className="opacity-80 dark:opacity-100 lg:opacity-40" />
+    <div className="relative flex h-[100dvh] w-full min-w-0 flex-col overflow-hidden overscroll-none bg-background text-foreground lg:h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-2xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+      <FlagBackground className="opacity-35 dark:opacity-45 lg:opacity-20" />
 
-      <div className="pointer-events-none absolute left-0 right-0 top-0 z-40 border-b border-border/70 bg-background/90 px-3 pb-1.5 pt-[calc(env(safe-area-inset-top)+0.5rem)] backdrop-blur-md lg:hidden">
-        <div className="pointer-events-auto flex items-center gap-1.5 text-foreground">
+      <header className="absolute left-0 right-0 top-0 z-40 border-b border-border/80 bg-background/95 px-3 pb-2 pt-[calc(env(safe-area-inset-top)+0.55rem)] shadow-[0_1px_0_rgba(0,0,0,0.03)] backdrop-blur-xl lg:hidden">
+        <div className="flex items-center gap-2 text-foreground">
           <img src={yajLogo} alt="YAJ" className="-my-3 h-16 w-auto shrink-0" />
           <div className="min-w-0 flex-1" />
-          <button onClick={() => navigate("/browse-songs")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Search">
-            <Search className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
+          <button onClick={() => navigate("/browse-songs")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted/80 transition active:scale-95 active:bg-muted" aria-label="Search">
+            <Search className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.3} />
           </button>
-          <button onClick={() => navigate("/circle")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="My Circle">
-            <Users className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
+          <button onClick={() => navigate("/circle")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted/80 transition active:scale-95 active:bg-muted" aria-label="My Circle">
+            <Users className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.3} />
           </button>
-          <IncognitoHeaderButton className="!h-8 !w-8 border border-border bg-card/80" />
-          <button onClick={() => navigate("/messages")} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/80 active:bg-muted" aria-label="Messages">
-            <MessageCircle className="h-[1.15rem] w-[1.15rem]" strokeWidth={2.25} />
+          <IncognitoHeaderButton className="!h-9 !w-9 !border-0 !bg-muted/80" />
+          <button onClick={() => navigate("/messages")} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted/80 transition active:scale-95 active:bg-muted" aria-label="Messages">
+            <MessageCircle className="h-[1.05rem] w-[1.05rem]" strokeWidth={2.3} />
           </button>
           <NotificationBell />
         </div>
-      </div>
-
-      {(trending.length > 0 || liveNow.length > 0) && (
-        <div className="pointer-events-none absolute left-0 right-0 top-[calc(env(safe-area-inset-top)+3.25rem)] z-30 px-3 lg:hidden">
-          <div className="pointer-events-auto">{trendingRow}</div>
-        </div>
-      )}
+      </header>
 
       {isLoading ? (
-        <div className="relative z-10 flex h-full items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+        <div className="relative z-10 flex h-full items-center justify-center pt-16">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted-foreground/30 border-t-foreground" />
         </div>
       ) : (
         <>
-          <div className="relative z-10 flex flex-1 overflow-hidden pt-[7.5rem] lg:hidden">
-            <div className="h-full w-1/4 space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-1.5 pb-24 scrollbar-hide">
-              {happeningColumn(true)}
-            </div>
+          <div className="relative z-10 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.4rem)] scrollbar-hide lg:hidden">
+            {(trending.length > 0 || liveNow.length > 0) && (
+              <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-sm backdrop-blur-sm">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h1 className="text-[15px] font-bold tracking-tight text-foreground">Your community</h1>
+                    <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">People and live rooms to check in on</p>
+                  </div>
+                </div>
+                {peopleRow}
+              </section>
+            )}
 
-            <div className="h-full w-3/4 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border/70 px-2 pb-24 scrollbar-hide dark:border-white/10">
-              <div className="-mx-2 sticky top-0 z-10 rounded-b-md border-b border-border bg-card/95 px-3 py-1 backdrop-blur-sm">
-                <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
+            <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
+              {happeningRail(true)}
+            </section>
+
+            <section>
+              <div className="mb-3 flex items-end justify-between px-0.5">
+                <div>
+                  <h2 className="text-[15px] font-bold tracking-tight text-foreground">Latest posts</h2>
+                  <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">Updates from the YAJ community</p>
+                </div>
               </div>
-              {postsColumn()}
-            </div>
+              <div className="space-y-4">{postsColumn()}</div>
+            </section>
           </div>
 
-          <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-hidden p-3 lg:flex">
-            {(trending.length > 0 || liveNow.length > 0) && <div className="mb-3 shrink-0">{trendingRow}</div>}
-            <div className="flex min-h-0 flex-1 overflow-hidden rounded-lg border border-border/60 bg-background/40">
-              <div className="h-full w-[32%] min-w-[180px] max-w-[280px] space-y-2 overflow-y-scroll overscroll-y-contain touch-pan-y px-2 pb-4 scrollbar-hide">
-                {happeningColumn(false)}
-              </div>
-
-              <div className="h-full min-w-0 flex-1 space-y-3 overflow-y-scroll overscroll-y-contain touch-pan-y border-l border-border px-3 pb-4 scrollbar-hide">
-                <div className="-mx-3 sticky top-0 z-10 border-b border-border bg-card/95 px-3 py-1.5 backdrop-blur-sm">
-                  <p className="text-[11px] font-black uppercase tracking-wider text-foreground">Posts</p>
+          <div className="relative z-10 hidden min-h-0 flex-1 flex-col overflow-hidden p-4 lg:flex">
+            {(trending.length > 0 || liveNow.length > 0) && (
+              <section className="mb-4 shrink-0 rounded-2xl border border-border/70 bg-background/70 p-3 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <div>
+                    <h1 className="text-base font-bold tracking-tight text-foreground">Your community</h1>
+                    <p className="text-xs font-medium text-muted-foreground">People and live rooms to check in on</p>
+                  </div>
                 </div>
-                {postsColumn()}
-              </div>
+                {peopleRow}
+              </section>
+            )}
+
+            <div className="grid min-h-0 flex-1 grid-cols-[minmax(210px,280px)_minmax(0,1fr)] gap-4 overflow-hidden">
+              <aside className="overflow-y-auto rounded-2xl border border-border/70 bg-background/70 p-3 scrollbar-hide">
+                {happeningRail(false)}
+              </aside>
+
+              <main className="min-w-0 overflow-y-auto rounded-2xl border border-border/70 bg-background/55 p-4 scrollbar-hide">
+                <div className="mb-4">
+                  <h2 className="text-base font-bold tracking-tight text-foreground">Latest posts</h2>
+                  <p className="mt-0.5 text-xs font-medium text-muted-foreground">Updates from the YAJ community</p>
+                </div>
+                <div className="space-y-4">{postsColumn()}</div>
+              </main>
             </div>
           </div>
         </>
