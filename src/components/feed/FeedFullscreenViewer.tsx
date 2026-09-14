@@ -22,6 +22,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(startIndex);
   const activeIdRef = useRef<string | null>(items[startIndex]?.id ?? null);
+  const autoAdvanceIdRef = useRef<string | null>(null);
   /** Ignore scroll-sync while we programmatically move — mid-smooth-scroll was snapping back. */
   const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -35,7 +36,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     if (!el) return false;
     const h = el.clientHeight || window.innerHeight || 1;
     const next = Math.max(0, Math.min(items.length - 1, index));
-    ignoreScrollSyncUntilRef.current = performance.now() + (behavior === "smooth" ? 650 : 120);
+    ignoreScrollSyncUntilRef.current = performance.now() + (behavior === "smooth" ? 650 : 180);
     el.scrollTo({ top: next * h, behavior });
     setCurrentIndex(next);
     currentIndexRef.current = next;
@@ -46,6 +47,8 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   useEffect(() => {
     currentIndexRef.current = currentIndex;
     activeIdRef.current = items[currentIndex]?.id ?? activeIdRef.current;
+    autoAdvanceIdRef.current = null;
+
     // Immediately mute/pause non-active slides so audio can't leak across swipes.
     // Depend on length (not items identity) so feed refetches don't remute/pause
     // the active post mid-play.
@@ -91,18 +94,31 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     }
   }, []);
 
-  /** After a regular video ends, swipe up to the next post. Returns false if stuck on last. */
-  const advanceAfterVideo = useCallback((): boolean => {
+  /**
+   * After a regular video ends, move to the next post exactly once.
+   * The originating index/id are supplied by the slide so a late `ended` event from
+   * a pre-mounted neighbor can never advance or replay the wrong card.
+   */
+  const advanceAfterVideo = useCallback((sourceIndex: number, sourceId: string): boolean => {
     if (scrollLocked) return false;
+
     const cur = currentIndexRef.current;
     const current = items[cur];
-    // Battles must never auto-advance — that fought snap-scroll and froze neighbors.
+
+    if (sourceIndex !== cur) return true;
+    if (current?.id !== sourceId) return true;
     if (current?.itemType === "battle") return false;
     if (cur >= items.length - 1) return false;
+
+    // `timeupdate` trim-end fallback and native `ended` can arrive almost together.
+    // Treat the first one as authoritative and ignore any duplicate for this item.
+    if (autoAdvanceIdRef.current === sourceId) return true;
+    autoAdvanceIdRef.current = sourceId;
+
     forceIosAudioSessionToPlayback();
-    // Instant jump is more reliable than smooth on mobile snap scrollers —
-    // smooth mid-frames were rounded back to the finished video (looked like a loop).
-    return goToIndex(cur + 1, "auto");
+    const advanced = goToIndex(cur + 1, "auto");
+    if (!advanced) autoAdvanceIdRef.current = null;
+    return advanced;
   }, [goToIndex, items, scrollLocked]);
 
   // Jump to the opened index after layout. Opening from Happening often hit
@@ -125,6 +141,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       setCurrentIndex(next);
       currentIndexRef.current = next;
       activeIdRef.current = items[next]?.id ?? null;
+      autoAdvanceIdRef.current = null;
     };
 
     jump();
@@ -248,7 +265,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
                     currentUserId={currentUserId}
                     isActive={index === currentIndex}
                     isNear={mounted}
-                    onVideoEnded={advanceAfterVideo}
+                    onVideoEnded={() => advanceAfterVideo(index, item.id)}
                   />
                 )
               ) : null}
