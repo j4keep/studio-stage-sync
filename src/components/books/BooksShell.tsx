@@ -11,7 +11,7 @@ export default function BooksShell({
   className?: string;
 }) {
   const kids = variant === "kids";
-  const style = (
+  const style: CSSProperties = (
     kids
       ? {
           "--books-bg": "#FFF9F0",
@@ -39,7 +39,7 @@ export default function BooksShell({
           color: "var(--books-ink)",
           fontFamily: '"Source Sans 3", "Helvetica Neue", Helvetica, Arial, sans-serif',
         }
-  ) as CSSProperties;
+  ) as Record<string, string> as CSSProperties;
 
   return (
     <div className={`min-h-[100dvh] pb-24 ${className}`} style={style}>

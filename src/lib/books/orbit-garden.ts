@@ -1,4 +1,4 @@
- "@/lib/books-catalog";
+ import type { BookPage } from "@/lib/books-catalog";
 
 /**
  * Orbit Garden — YAJ Originals adult sci-fi novella.
