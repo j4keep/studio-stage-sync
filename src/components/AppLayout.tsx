@@ -16,6 +16,7 @@ import { workoutMusic } from "@/lib/workout-music";
 
 function isDesktopShellPath(pathname: string) {
   if (pathname.startsWith("/jobs/interview")) return false;
+
   if (
     pathname === "/" ||
     pathname === "/feed" ||
@@ -33,7 +34,6 @@ function isDesktopShellPath(pathname: string) {
     pathname === "/radio" ||
     pathname === "/library" ||
     pathname === "/playlists" ||
-    pathname === "/my-songs" ||
     pathname === "/my-jobs" ||
     pathname === "/my-gigs" ||
     pathname === "/messages" ||
@@ -42,6 +42,7 @@ function isDesktopShellPath(pathname: string) {
   ) {
     return true;
   }
+
   if (pathname.startsWith("/jobs/")) return true;
   if (pathname.startsWith("/local-help/")) return true;
   if (pathname.startsWith("/marketplace/")) return true;
@@ -57,10 +58,6 @@ function isMobileFeedPath(pathname: string) {
 const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isPodcastWorkspace =
-    (location.pathname.startsWith("/tv/podcast/") && location.pathname !== "/tv/podcast") ||
-    location.pathname.startsWith("/podcast/room/");
-  const isPodcastLobby = location.pathname === "/tv/podcast";
   const isCircleLive = /^\/circle\/c\/[^/]+\/live$/.test(location.pathname) || /^\/live\/[^/]+$/.test(location.pathname);
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
@@ -68,56 +65,54 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isWellness = location.pathname === "/wellness" || location.pathname.startsWith("/wellness/");
   const isBookReader = location.pathname.startsWith("/books/read/");
 
-  // Workout music belongs only to the Move screen. This route-level guard
-  // also covers exits through bottom navigation, browser history, and links.
   useEffect(() => {
     if (location.pathname !== "/wellness/move") workoutMusic.stop();
   }, [location.pathname]);
-  // Marketplace / Wellness use their own headers (back → Explore); keep YAJ BottomNav for integration.
-  // Book reader is immersive — hide mobile top chrome and bottom tabs while reading.
+
   const showMobileTopBar =
     !["/auth", "/", "/feed"].includes(location.pathname) &&
-    !isPodcastWorkspace &&
-    !isPodcastLobby &&
     !isMarketplace &&
     !isWellness &&
     !isBookReader;
+
   const rootTabs = ["/", "/feed", "/explore", "/ask-yaj", "/profile", "/auth"];
   const showBackButton = !rootTabs.includes(location.pathname);
 
   const backSlot = showBackButton ? (
     <button
+      type="button"
       onClick={() => (window.history.length > 1 ? navigate(-1) : navigate("/"))}
-      className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+      className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-sm transition active:scale-95"
       aria-label="Go back"
     >
-      <ArrowLeft className="h-4 w-4 text-foreground" />
+      <ArrowLeft className="h-[18px] w-[18px]" />
     </button>
   ) : (
-    <span />
+    <span className="h-10 w-10" />
   );
 
+  const actionButtons = (
+    <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => navigate("/circle")}
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-sm transition active:scale-95"
+        aria-label="My Circle"
+      >
+        <Users className={`h-[18px] w-[18px] ${location.pathname.startsWith("/circle") ? "text-primary" : "text-foreground"}`} />
+      </button>
+      <MessagesInboxButton />
+      <NotificationBell />
+      <IncognitoHeaderButton />
+    </div>
+  );
 
   if (isCircleLive) {
-    // True full-screen, no header/bottom-nav — same escape hatch the Podcast workspace
-    // uses below. The live page itself is `fixed inset-0`, so this wrapper barely
-    // matters beyond not adding any chrome around it.
     return <>{children}</>;
   }
 
-  // Book reading mode: same immersive escape hatch for EVERY title (Harbor Lights,
-  // Stage Left, Quiet Room, etc.). No YAJ bottom nav, no top chrome, no players.
   if (isBookReader) {
     return <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#F7F1E8] text-foreground">{children}</div>;
-  }
-
-  if (isPodcastWorkspace || isPodcastLobby) {
-    return (
-      <div className="relative min-h-screen overflow-x-hidden overscroll-x-none bg-background text-foreground">
-        {children}
-        {location.pathname !== "/" && <IncognitoFeedWindow />}
-      </div>
-    );
   }
 
   if (desktopShell) {
@@ -128,30 +123,16 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
         </div>
 
         {showMobileTopBar && (
-          <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl lg:hidden">
+          <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-4 py-2.5 shadow-[0_1px_0_hsl(var(--border)/0.35)] backdrop-blur-xl lg:hidden">
             {backSlot}
-            <div className="flex items-center gap-2">
-
-            <button
-              onClick={() => navigate("/circle")}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-              aria-label="My Circle"
-            >
-              <Users className={`h-5 w-5 ${location.pathname.startsWith("/circle") ? "text-primary" : "text-foreground"}`} />
-            </button>
-            <MessagesInboxButton />
-            <NotificationBell />
-            <IncognitoHeaderButton />
-            </div>
+            {actionButtons}
           </div>
-
         )}
 
         <div
           className={
             mobileFeed
-              ? // Phone feed frame. Desktop: left nav | content | icon rail
-                "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
+              ? "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
               : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
@@ -163,20 +144,17 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className={
               mobileFeed
                 ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible lg:pb-4"
-                : isBookReader
-                  ? "min-w-0 pb-0 lg:pb-0"
-                  : "min-w-0 pb-20 lg:pb-4"
+                : "min-w-0 pb-20 lg:pb-4"
             }
           >
             {children}
           </main>
 
-          {/* Vertical menu icons on all desktop shell pages (same as Home) */}
           <div className="hidden lg:block">
             <DesktopHomeIconRail />
           </div>
 
-          {!isBookReader && <BottomNav />}
+          <BottomNav />
         </div>
 
         <GlobalRadioPlayer />
@@ -190,28 +168,17 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   return (
     <div className="relative mx-auto min-h-screen min-w-0 max-w-lg overflow-x-hidden overscroll-x-none bg-background text-foreground lg:max-w-3xl">
       {showMobileTopBar && (
-        <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border bg-background/90 px-4 py-2 backdrop-blur-xl">
+        <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-4 py-2.5 shadow-[0_1px_0_hsl(var(--border)/0.35)] backdrop-blur-xl">
           {backSlot}
-          <div className="flex items-center gap-2">
-          <button
-            onClick={() => navigate("/circle")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            aria-label="My Circle"
-          >
-            <Users className={`h-5 w-5 ${location.pathname.startsWith("/circle") ? "text-primary" : "text-foreground"}`} />
-          </button>
-          <MessagesInboxButton />
-          <NotificationBell />
-          <IncognitoHeaderButton />
-          </div>
+          {actionButtons}
         </div>
-
       )}
-      <main className={`min-w-0 ${isBookReader ? "pb-0" : "pb-20"}`}>{children}</main>
+
+      <main className="min-w-0 pb-20">{children}</main>
       <GlobalRadioPlayer />
       <GlobalPlaylistPlayer />
       <PlaylistPlayerSheet />
-      {!isBookReader && <BottomNav />}
+      <BottomNav />
       {location.pathname !== "/auth" && <IncognitoFeedWindow />}
     </div>
   );
