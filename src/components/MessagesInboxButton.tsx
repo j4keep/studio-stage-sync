@@ -10,10 +10,10 @@ type Props = {
   "aria-label"?: string;
 };
 
-/** Chat icon with the same red unread badge style as NotificationBell. */
+/** Shared Messages action used across the YAJ shell. */
 export default function MessagesInboxButton({
-  className = "relative flex h-9 w-9 items-center justify-center rounded-full bg-muted",
-  iconClassName = "h-4 w-4 text-foreground",
+  className = "relative flex h-9 w-9 items-center justify-center rounded-full border border-border/70 bg-card text-foreground shadow-sm transition hover:bg-muted/70 active:scale-95",
+  iconClassName = "h-[18px] w-[18px]",
   state,
   "aria-label": ariaLabel = "Messages",
 }: Props) {
@@ -26,11 +26,12 @@ export default function MessagesInboxButton({
       onClick={() => nav("/messages", state ? { state } : undefined)}
       className={className}
       aria-label={unread > 0 ? `${ariaLabel} (${unread} unread)` : ariaLabel}
+      title={ariaLabel}
     >
       <MessageCircle className={iconClassName} />
       {unread > 0 && (
-        <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
-          {unread > 9 ? "9+" : unread}
+        <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold leading-none text-destructive-foreground ring-2 ring-background">
+          {unread > 99 ? "99+" : unread}
         </span>
       )}
     </button>
