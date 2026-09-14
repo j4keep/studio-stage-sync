@@ -1,4 +1,4 @@
-/** Country + identity flag backgrounds. Colors are CSS-ready. */
+/** Country flag backgrounds. Colors are CSS-ready. */
 
 export type FlagPattern = "horizontal" | "vertical" | "solid";
 
@@ -11,14 +11,6 @@ export interface FlagTheme {
 }
 
 export const FLAG_THEMES: FlagTheme[] = [
-  // Identity
-  { id: "pride", label: "Pride", emoji: "🏳️‍🌈", pattern: "horizontal", colors: ["#e40303", "#ff8c00", "#ffed00", "#008026", "#004dff", "#750787"] },
-  { id: "trans", label: "Trans", emoji: "🏳️‍⚧️", pattern: "horizontal", colors: ["#5bcefa", "#f5a9b8", "#ffffff", "#f5a9b8", "#5bcefa"] },
-  { id: "nb", label: "Non-Binary", emoji: "🏳️", pattern: "horizontal", colors: ["#fcf434", "#ffffff", "#9c59d1", "#2c2c2c"] },
-  { id: "bi", label: "Bisexual", emoji: "🏳️", pattern: "horizontal", colors: ["#d60270", "#d60270", "#9b4f96", "#0038a8", "#0038a8"] },
-  { id: "lesbian", label: "Lesbian", emoji: "🏳️", pattern: "horizontal", colors: ["#d62900", "#ff9b55", "#ffffff", "#d461a6", "#a50062"] },
-
-  // Countries (A-Z)
   { id: "ar", label: "Argentina", emoji: "🇦🇷", pattern: "horizontal", colors: ["#74acdf", "#ffffff", "#74acdf"] },
   { id: "au", label: "Australia", emoji: "🇦🇺", pattern: "solid", colors: ["#012169", "#e4002b", "#ffffff"] },
   { id: "at", label: "Austria", emoji: "🇦🇹", pattern: "horizontal", colors: ["#ed2939", "#ffffff", "#ed2939"] },
@@ -81,11 +73,8 @@ export function getFlagById(id: string | null | undefined): FlagTheme | null {
   return FLAG_THEMES.find((f) => f.id === id) ?? null;
 }
 
-const IDENTITY_FLAG_IDS = new Set(["pride", "trans", "nb", "bi", "lesbian"]);
-
-/** Real flag image for country codes; identity flags use waved stripe art. */
+/** Real flag image for country codes. */
 export function getFlagImageUrl(flag: FlagTheme): string | null {
-  if (IDENTITY_FLAG_IDS.has(flag.id)) return null;
   if (/^[a-z]{2}$/.test(flag.id)) {
     return `https://flagcdn.com/w640/${flag.id}.png`;
   }
@@ -95,11 +84,9 @@ export function getFlagImageUrl(flag: FlagTheme): string | null {
 /** CSS `background` value that renders a stripe pattern from a flag. */
 export function flagBackgroundCss(flag: FlagTheme): string {
   if (flag.pattern === "solid") {
-    // Diagonal split of first two colors for a decorative but still-readable field.
     const c = flag.colors;
     if (c.length === 1) return c[0];
     if (c.length === 2) return `linear-gradient(135deg, ${c[0]} 0%, ${c[0]} 50%, ${c[1]} 50%, ${c[1]} 100%)`;
-    // 3+ colors: diagonal thirds
     const stops: string[] = [];
     const step = 100 / c.length;
     c.forEach((color, i) => {
