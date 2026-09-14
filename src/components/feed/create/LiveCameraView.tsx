@@ -39,21 +39,15 @@ import CreateModeTabs from "./CreateModeTabs";
 import EnhancePanel from "./EnhancePanel";
 import EffectsPanel from "./EffectsPanel";
 import FaceFilterPanel from "./FaceFilterPanel";
+import VirtualAvatarStage, { type VirtualAvatarId } from "./VirtualAvatarStage";
 
 interface Props {
   createMode: CreateMode;
   onModeChange: (mode: CreateMode) => void;
   onClose: () => void;
   initialStream?: MediaStream | null;
-  /**
-   * When set, this prep starts a Circle-scoped live (members only) and navigates to
-   * `/circle/c/:id/live`. When omitted/null, Go Live creates a public feed live at
-   * `/live/:sessionId` — same prep UI, deliberately different destinations.
-   */
   circleId?: string | null;
-  /** Hide POST / LIVE mode tabs when opened from My Circle (Circle-only prep). */
   hideModeTabs?: boolean;
-  /** Start from the Exclusive area — gated to supporters / members per Circle setting. */
   exclusiveLive?: boolean;
 }
 
@@ -65,7 +59,7 @@ type ViewMode = "live" | "multi" | "virtual";
 const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio; helper: string }[] = [
   { id: "live", label: "Live", icon: Radio, helper: "Solo broadcast" },
   { id: "multi", label: "Multi", icon: Users, helper: "Bring guests on stage" },
-  { id: "virtual", label: "Virtual", icon: UserRound, helper: "Avatar-style live" },
+  { id: "virtual", label: "Virtual", icon: UserRound, helper: "Face-tracked avatar" },
 ];
 
 type PrepToolId = "flip" | "enhance" | "effects" | "face" | "share" | "settings";
@@ -100,6 +94,13 @@ export default function LiveCameraView({
   const [startingLive, setStartingLive] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("live");
   const [exclusiveAudience, setExclusiveAudience] = useState<ExclusiveLiveAudience>("all");
+  const [virtualAvatarId, setVirtualAvatarId] = useState<VirtualAvatarId>(() => {
+    try {
+      return (localStorage.getItem("yaj.virtual.avatar") as VirtualAvatarId) || "nova";
+    } catch {
+      return "nova";
+    }
+  });
 
   const [showEnhance, setShowEnhance] = useState(false);
   const [showEffects, setShowEffects] = useState(false);
@@ -125,6 +126,8 @@ export default function LiveCameraView({
   const displayName =
     (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "YAJ Creator";
   const avatarUrl = (user?.user_metadata as any)?.avatar_url as string | undefined;
+  const isCircleScoped = Boolean(circleId);
+  const hasBottomModeTabs = !hideModeTabs && !isCircleScoped;
 
   const closeEffectSheets = () => {
     setShowEnhance(false);
@@ -162,11 +165,8 @@ export default function LiveCameraView({
   }, [facing, attachStream]);
 
   useEffect(() => {
-    if (initialStream) {
-      void attachStream(initialStream);
-    } else {
-      void startCamera();
-    }
+    if (initialStream) void attachStream(initialStream);
+    else void startCamera();
     return () => {
       releaseCameraStream(streamRef.current);
       releaseSecondaryCamera(pipStreamRef.current);
@@ -223,8 +223,15 @@ export default function LiveCameraView({
     setViewMode(mode);
     closeEffectSheets();
     setShowDualSheet(false);
-    if (mode === "virtual") {
-      setDualLayout("none");
+    if (mode === "virtual") setDualLayout("none");
+  };
+
+  const selectVirtualAvatar = (id: VirtualAvatarId) => {
+    setVirtualAvatarId(id);
+    try {
+      localStorage.setItem("yaj.virtual.avatar", id);
+    } catch {
+      /* ignore */
     }
   };
 
@@ -236,19 +243,11 @@ export default function LiveCameraView({
         : user?.id
           ? `${window.location.origin}/#/live/u/${user.id}`
           : `${window.location.origin}/#/`;
-    const result = await shareLiveInvite({
-      url: shareUrl,
-      title: "Join my YAJ live",
-      circleScoped: Boolean(circleId),
-    });
+    const result = await shareLiveInvite({ url: shareUrl, title: "Join my YAJ live", circleScoped: Boolean(circleId) });
     if (result === "copied") {
       toast({ title: "Link copied", description: "Share it by text or message so friends can join when you go live." });
     } else if (result === "failed") {
-      toast({
-        title: "Couldn't open share",
-        description: "Copy this link and send it: " + shareUrl,
-        variant: "destructive",
-      });
+      toast({ title: "Couldn't open share", description: "Copy this link and send it: " + shareUrl, variant: "destructive" });
     }
   };
 
@@ -267,6 +266,7 @@ export default function LiveCameraView({
             facing,
             dualLayout,
             viewMode,
+            virtualAvatarId,
             circleId: circleId ?? null,
             at: Date.now(),
           }),
@@ -282,17 +282,11 @@ export default function LiveCameraView({
       if (circleId) {
         const invite = exclusiveLive && exclusiveAudience === "invite" ? session.invite_token : null;
         const path = `/circle/c/${circleId}/live${
-          exclusiveLive
-            ? `?exclusive=1${invite ? `&invite=${encodeURIComponent(invite)}` : ""}`
-            : ""
+          exclusiveLive ? `?exclusive=1${invite ? `&invite=${encodeURIComponent(invite)}` : ""}` : ""
         }`;
         if (exclusiveLive && invite) {
           const inviteUrl = liveWatchUrl({ circleId, exclusive: true, inviteToken: invite });
-          void shareLiveInvite({
-            url: inviteUrl,
-            title: "Join my Exclusive live on YAJ",
-            circleScoped: true,
-          }).then((result) => {
+          void shareLiveInvite({ url: inviteUrl, title: "Join my Exclusive live on YAJ", circleScoped: true }).then((result) => {
             if (result === "copied") {
               toast({ title: "Invite link copied", description: "Send it only to people you want in this Exclusive live." });
             }
@@ -308,7 +302,6 @@ export default function LiveCameraView({
     }
   };
 
-  const isCircleScoped = Boolean(circleId);
   const looksActive = needsCanvas && faceFilters.active && !dualOn;
 
   const onTool = (id: PrepToolId) => {
@@ -359,14 +352,14 @@ export default function LiveCameraView({
           muted
           autoPlay
           style={{
-            visibility: looksActive ? "hidden" : "visible",
+            visibility: looksActive || viewMode === "virtual" ? "hidden" : "visible",
             transform: facing === "user" ? "scaleX(-1)" : undefined,
             filter: dualOn ? undefined : displayFilter,
           }}
         />
       )}
 
-      {!denied && needsCanvas && !dualOn && (
+      {!denied && needsCanvas && !dualOn && viewMode !== "virtual" && (
         <canvas
           ref={faceFilters.canvasRef}
           className="absolute inset-0 h-full w-full object-cover"
@@ -379,21 +372,14 @@ export default function LiveCameraView({
       )}
 
       {viewMode === "virtual" && (
-        <div className="absolute inset-0 z-[8] flex items-center justify-center bg-gradient-to-b from-violet-950/80 via-black/65 to-black/90 backdrop-blur-[2px]">
-          <div className="flex flex-col items-center px-8 text-center text-white">
-            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white/20 bg-white/10 shadow-2xl">
-              {avatarUrl ? (
-                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-4xl font-black">{displayName.slice(0, 1).toUpperCase()}</span>
-              )}
-            </div>
-            <p className="mt-4 text-lg font-black">{displayName}</p>
-            <p className="mt-1 max-w-[18rem] text-[12px] font-medium leading-relaxed text-white/70">
-              Virtual mode keeps the focus on your voice and YAJ identity.
-            </p>
-          </div>
-        </div>
+        <VirtualAvatarStage
+          videoTrack={rawVideoTrack}
+          displayName={displayName}
+          profileAvatarUrl={avatarUrl}
+          selectedId={virtualAvatarId}
+          onSelectedIdChange={selectVirtualAvatar}
+          showPicker
+        />
       )}
 
       <video
@@ -476,7 +462,15 @@ export default function LiveCameraView({
         })}
       </div>
 
-      <div className="relative z-20 mt-auto flex flex-col items-center gap-3 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.75rem)] pr-16">
+      <div
+        className="relative z-20 mt-auto flex flex-col items-center gap-3 px-4"
+        style={{
+          paddingRight: "4rem",
+          paddingBottom: hasBottomModeTabs
+            ? "calc(max(env(safe-area-inset-bottom), 0.5rem) + 6.75rem)"
+            : "calc(max(env(safe-area-inset-bottom), 0.5rem) + 2rem)",
+        }}
+      >
         {exclusiveLive && (
           <div className="w-full max-w-[20rem] space-y-2 rounded-2xl border border-white/15 bg-black/55 p-3 backdrop-blur-md">
             <p className="text-center text-[11px] font-bold uppercase tracking-wide text-white/70">Who can watch this Exclusive live</p>
@@ -493,7 +487,7 @@ export default function LiveCameraView({
           </div>
         )}
 
-        <div className="w-full max-w-[20rem] rounded-[22px] border border-white/15 bg-black/50 p-1.5 shadow-xl backdrop-blur-md">
+        <div className="w-full max-w-[20rem] rounded-[22px] border border-white/15 bg-black/55 p-1.5 shadow-xl backdrop-blur-md">
           <div className="grid grid-cols-3 gap-1">
             {VIEW_MODES.map((mode) => {
               const Icon = mode.icon;
@@ -519,13 +513,13 @@ export default function LiveCameraView({
           </div>
         </div>
 
-        <div className="w-full max-w-[20rem] rounded-xl bg-black/40 px-3 py-2 text-center backdrop-blur-sm">
+        <div className="w-full max-w-[20rem] rounded-xl bg-black/45 px-3 py-2 text-center backdrop-blur-sm">
           <p className="text-[11px] font-semibold text-white/85">{activeMode.helper}</p>
           <p className="mt-0.5 text-[9.5px] text-white/55">
             {viewMode === "multi"
               ? "Guests can request a stage seat after you start."
               : viewMode === "virtual"
-                ? "Camera tools are hidden while Virtual mode is selected."
+                ? "Choose an avatar above. Your camera tracks face movement while staying hidden from viewers."
                 : "You control the broadcast and viewers watch live."}
           </p>
         </div>
@@ -534,7 +528,7 @@ export default function LiveCameraView({
           type="button"
           onClick={() => void handleGoLive()}
           disabled={denied || !ready || startingLive}
-          className="flex h-[60px] w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-[16px] font-black text-white shadow-2xl transition active:scale-[0.98] disabled:opacity-40"
+          className="flex h-[58px] w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-[16px] font-black text-white shadow-2xl transition active:scale-[0.98] disabled:opacity-40"
           aria-label="Go live"
         >
           {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
@@ -565,7 +559,7 @@ export default function LiveCameraView({
         onClose={() => setShowDualSheet(false)}
       />
 
-      {!hideModeTabs && !isCircleScoped && <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />}
+      {hasBottomModeTabs && <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />}
     </div>
   );
 }
