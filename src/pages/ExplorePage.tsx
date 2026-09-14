@@ -29,16 +29,15 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "books",
     label: "Books",
-    subtitle: "Read. Flip pages. Share stories.",
+    subtitle: "Read, discover & share stories",
     route: "/books",
     image: booksImage,
     keywords: ["book", "books", "read", "reading", "library", "kids", "ebook", "story"],
   },
-
   {
     id: "careers",
     label: "Opportunities",
-    subtitle: "Jobs, internships & opportunities.",
+    subtitle: "Jobs, internships & new paths",
     route: "/jobs",
     image: careersImage,
     keywords: ["career", "careers", "opportunity", "opportunities", "jobs", "internship", "work"],
@@ -46,7 +45,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "deals",
     label: "Deals",
-    subtitle: "Local savings & limited offers.",
+    subtitle: "Local savings & limited offers",
     route: "/deals",
     image: dealsAsset.url,
     keywords: ["deal", "coupon", "discount", "offer", "local"],
@@ -54,7 +53,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "marketplace",
     label: "Marketplace",
-    subtitle: "Buy. Sell. Discover.",
+    subtitle: "Buy, sell & discover nearby",
     route: "/marketplace",
     image: marketplaceImage,
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
@@ -62,7 +61,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "battles",
     label: "Battles",
-    subtitle: "Compete. Rank. Win.",
+    subtitle: "Compete, rank & win",
     route: "/battles",
     image: battlesImage,
     keywords: ["battle", "creator", "music", "competition", "vote"],
@@ -70,7 +69,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "tv",
     label: "YAJ TV",
-    subtitle: "Watch. Enjoy. Share.",
+    subtitle: "Watch creators & original content",
     route: "/tv/watch",
     image: yajTvAsset.url,
     keywords: ["tv", "video", "live", "watch", "stream"],
@@ -78,7 +77,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "radio",
     label: "Radio",
-    subtitle: "Listen. Vibe. Connect.",
+    subtitle: "Listen, vibe & discover music",
     route: "/radio",
     image: radioAsset.url,
     keywords: ["radio", "music", "listen", "audio"],
@@ -86,7 +85,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "wellness",
     label: "Wellness",
-    subtitle: "Move. Breathe. Live better.",
+    subtitle: "Move, breathe & feel better",
     route: "/wellness",
     image: wellnessAsset.url,
     keywords: ["wellness", "sleep", "move", "relax", "health"],
@@ -94,7 +93,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "games",
     label: "Games",
-    subtitle: "Play together.",
+    subtitle: "Play solo or together",
     route: "/games",
     image: gamesImage,
     keywords: ["game", "games", "play", "domino", "pool", "trivia", "tic tac toe", "boxing", "battleship"],
@@ -127,23 +126,6 @@ export default function ExplorePage() {
   const gridRef = useRef<HTMLDivElement | null>(null);
   const holdTimer = useRef<number | null>(null);
   const movedRef = useRef(false);
-
-  // App-like behaviour: no page scroll on this screen only. Always fully reset on leave.
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    html.style.overflow = "hidden";
-    html.style.overscrollBehavior = "none";
-    body.style.overflow = "hidden";
-    return () => {
-      html.style.overflow = "";
-      html.style.overscrollBehavior = "";
-      body.style.overflow = "";
-      body.style.position = "";
-      body.style.width = "";
-    };
-  }, []);
-
 
   useEffect(() => {
     try {
@@ -226,26 +208,28 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="flex h-[100dvh] touch-none flex-col overflow-hidden overscroll-none bg-background pb-20 text-foreground">
-      <header className="shrink-0 border-b border-border/60 bg-background/95 px-4 pb-2.5 pt-2 backdrop-blur-xl">
-        <div className="flex items-baseline gap-2">
-          <h1 className="text-[22px] font-black tracking-tight">Explore</h1>
-          <p className="truncate text-[11px] text-muted-foreground">Local finds & live activity</p>
+    <div className="flex min-h-[100dvh] flex-col bg-background pb-20 text-foreground">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-border/70 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
+        <div>
+          <h1 className="text-[26px] font-bold tracking-[-0.025em] text-foreground">Explore</h1>
+          <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">
+            Discover more of what YAJ has to offer.
+          </p>
         </div>
 
-        <div className="relative mt-2">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <div className="relative mt-3">
+          <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search books, jobs, deals, marketplace…"
-            className="h-9 w-full touch-auto rounded-full border border-border bg-muted/70 pl-9 pr-9 text-[13px] outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/20"
+            placeholder="Search Explore"
+            className="h-11 w-full rounded-2xl border border-border/80 bg-muted/60 pl-10 pr-10 text-[14px] font-medium text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary/40 focus:bg-background focus:ring-2 focus:ring-primary/15"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground"
+              className="absolute right-2.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full bg-muted text-muted-foreground active:scale-95"
               aria-label="Clear search"
             >
               <X className="h-3.5 w-3.5" />
@@ -254,69 +238,92 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="min-h-0 flex-1 overflow-hidden px-3 pt-3">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-6 pt-4">
         {!query && (
-          <button
-            type="button"
-            onClick={() => navigate("/local-help")}
-            className="mb-3 block w-full overflow-hidden rounded-[20px] border border-border/60 bg-card shadow-[0_6px_18px_rgba(15,23,42,0.08)] active:scale-[0.99]"
-            aria-label="Open Find Local Help"
-          >
-            <img
-              src={localHelpBanner}
-              alt="Find local help — trusted pros near you"
-              className="block h-auto w-full"
-              draggable={false}
-            />
-          </button>
+          <section className="mb-5">
+            <div className="mb-2 flex items-end justify-between gap-3">
+              <div>
+                <p className="text-[15px] font-bold tracking-tight text-foreground">Local help</p>
+                <p className="text-[12px] font-medium text-muted-foreground">Find trusted people and services near you.</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate("/local-help")}
+              className="block w-full overflow-hidden rounded-[22px] border border-border/70 bg-card shadow-sm transition active:scale-[0.99]"
+              aria-label="Open Find Local Help"
+            >
+              <img
+                src={localHelpBanner}
+                alt="Find local help — trusted pros near you"
+                className="block h-auto w-full"
+                draggable={false}
+              />
+            </button>
+          </section>
         )}
 
-        <div className="mb-2 flex items-center justify-between gap-2">
-          <h2 className="text-[13px] font-black uppercase tracking-[0.12em] text-muted-foreground">
-            ⭐ Pick your fav
-          </h2>
-          <p className="shrink-0 text-[10px] font-medium text-muted-foreground/80">
-            Press &amp; hold to move
-          </p>
-        </div>
+        <section>
+          <div className="mb-3 flex items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[17px] font-bold tracking-tight text-foreground">
+                {query ? "Search results" : "Discover"}
+              </h2>
+              <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">
+                {query ? `${filteredItems.length} ${filteredItems.length === 1 ? "result" : "results"}` : "Your shortcuts to everything happening on YAJ."}
+              </p>
+            </div>
+            {!query && (
+              <p className="shrink-0 text-[11px] font-medium text-muted-foreground">
+                Hold to reorder
+              </p>
+            )}
+          </div>
 
-        {filteredItems.length ? (
-          <div ref={gridRef} className="grid grid-cols-3 gap-2">
-            {filteredItems.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                data-tile-id={item.id}
-                onPointerDown={handlePointerDown(item.id)}
-                onPointerMove={handlePointerMove}
-                onPointerUp={endDrag}
-                onPointerCancel={endDrag}
-                onContextMenu={(e) => e.preventDefault()}
-                onClick={handleClick(item)}
-                className={`group relative aspect-[4/3] select-none overflow-hidden rounded-[16px] border border-border/60 bg-card shadow-[0_4px_14px_rgba(15,23,42,0.08)] transition ${
-                  dragId === item.id
-                    ? "z-10 scale-[1.06] opacity-90 shadow-[0_10px_26px_rgba(15,23,42,0.22)]"
-                    : "active:scale-[0.97]"
-                }`}
-                aria-label={`Open ${item.label}`}
-              >
-                <img
-                  src={item.image}
-                  alt={`${item.label} — ${item.subtitle}`}
-                  className="pointer-events-none h-full w-full object-cover"
-                  draggable={false}
-                />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
-            <p className="font-bold">Nothing matched that search.</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Try books, jobs, deals, marketplace, battles, wellness, or local help.
-            </p>
-          </div>
-        )}
+          {filteredItems.length ? (
+            <div ref={gridRef} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {filteredItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  data-tile-id={item.id}
+                  onPointerDown={handlePointerDown(item.id)}
+                  onPointerMove={handlePointerMove}
+                  onPointerUp={endDrag}
+                  onPointerCancel={endDrag}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onClick={handleClick(item)}
+                  className={`group select-none overflow-hidden rounded-[20px] border border-border/70 bg-card text-left shadow-sm transition ${
+                    dragId === item.id
+                      ? "z-10 scale-[1.035] opacity-95 shadow-lg"
+                      : "hover:-translate-y-0.5 hover:shadow-md active:scale-[0.985]"
+                  }`}
+                  aria-label={`Open ${item.label}`}
+                >
+                  <div className="aspect-[16/10] w-full overflow-hidden bg-muted">
+                    <img
+                      src={item.image}
+                      alt=""
+                      className="pointer-events-none h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                      draggable={false}
+                    />
+                  </div>
+                  <div className="px-3 pb-3 pt-2.5">
+                    <p className="text-[14px] font-bold leading-tight tracking-[-0.01em] text-foreground">{item.label}</p>
+                    <p className="mt-1 line-clamp-2 text-[11px] font-medium leading-[1.35] text-muted-foreground">{item.subtitle}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
+              <p className="text-[15px] font-bold text-foreground">Nothing matched that search.</p>
+              <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
+                Try books, jobs, deals, marketplace, battles, wellness, games, or local help.
+              </p>
+            </div>
+          )}
+        </section>
       </main>
     </div>
   );
