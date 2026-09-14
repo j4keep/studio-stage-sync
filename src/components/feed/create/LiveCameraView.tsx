@@ -62,15 +62,14 @@ const CAMERA_RETRY_DELAY_MS = 400;
 
 type ViewMode = "live" | "multi" | "virtual";
 
-const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio }[] = [
-  { id: "live", label: "Live", icon: Radio },
-  { id: "multi", label: "Multi", icon: Users },
-  { id: "virtual", label: "Virtual", icon: UserRound },
+const VIEW_MODES: { id: ViewMode; label: string; icon: typeof Radio; helper: string }[] = [
+  { id: "live", label: "Live", icon: Radio, helper: "Solo broadcast" },
+  { id: "multi", label: "Multi", icon: Users, helper: "Bring guests on stage" },
+  { id: "virtual", label: "Virtual", icon: UserRound, helper: "Avatar-style live" },
 ];
 
 type PrepToolId = "flip" | "enhance" | "effects" | "face" | "share" | "settings";
 
-/** Right-rail tools — Fill Light / Collapse removed; Settings opens dual-camera layout. */
 const PREP_TOOLS: { id: PrepToolId; label: string; icon: typeof Sparkles }[] = [
   { id: "flip", label: "Flip", icon: SwitchCamera },
   { id: "enhance", label: "Enhance", icon: Sparkles },
@@ -80,7 +79,6 @@ const PREP_TOOLS: { id: PrepToolId; label: string; icon: typeof Sparkles }[] = [
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
-/** Pre-live camera check — flip, Enhance/Effects/Face, dual-camera Settings, then go live. */
 export default function LiveCameraView({
   createMode,
   onModeChange,
@@ -123,6 +121,10 @@ export default function LiveCameraView({
 
   const dualOn = dualLayout !== "none" && pipReady;
   const pipFacing: "user" | "environment" = facing === "user" ? "environment" : "user";
+  const activeMode = VIEW_MODES.find((mode) => mode.id === viewMode) ?? VIEW_MODES[0];
+  const displayName =
+    (user?.user_metadata as any)?.display_name || user?.email?.split("@")[0] || "YAJ Creator";
+  const avatarUrl = (user?.user_metadata as any)?.avatar_url as string | undefined;
 
   const closeEffectSheets = () => {
     setShowEnhance(false);
@@ -212,20 +214,22 @@ export default function LiveCameraView({
 
   const flipCamera = () => setFacing((f) => (f === "user" ? "environment" : "user"));
 
-  /** Tap PiP → swap which camera is full-screen vs inset. */
   const swapDualCameras = () => {
     if (!dualOn) return;
     setFacing((f) => (f === "user" ? "environment" : "user"));
   };
 
+  const selectViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    closeEffectSheets();
+    setShowDualSheet(false);
+    if (mode === "virtual") {
+      setDualLayout("none");
+    }
+  };
+
   const handleShare = async () => {
-    // Before go-live we don't have a session yet — share a deep link that lands on the
-    // Circle live room / public live once they're broadcasting.
-    const url = liveWatchUrl({
-      circleId: circleId ?? null,
-      sessionId: null,
-    });
-    // For public lives without a session id yet, point people at the host profile live gate.
+    const url = liveWatchUrl({ circleId: circleId ?? null, sessionId: null });
     const shareUrl =
       circleId
         ? url
@@ -246,13 +250,11 @@ export default function LiveCameraView({
         variant: "destructive",
       });
     }
-    // "shared" / "cancelled" — no error toast
   };
 
   const handleGoLive = async () => {
-    if (!ready || !streamHasLiveAudio(streamRef.current) || !user?.id || startingLive) {
-      return;
-    }
+    if (!ready || !streamHasLiveAudio(streamRef.current) || !user?.id || startingLive) return;
+
     setStartingLive(true);
     try {
       try {
@@ -285,21 +287,14 @@ export default function LiveCameraView({
             : ""
         }`;
         if (exclusiveLive && invite) {
-          const url = liveWatchUrl({
-            circleId,
-            exclusive: true,
-            inviteToken: invite,
-          });
+          const inviteUrl = liveWatchUrl({ circleId, exclusive: true, inviteToken: invite });
           void shareLiveInvite({
-            url,
+            url: inviteUrl,
             title: "Join my Exclusive live on YAJ",
             circleScoped: true,
           }).then((result) => {
             if (result === "copied") {
-              toast({
-                title: "Invite link copied",
-                description: "Send it only to people you want in this Exclusive live.",
-              });
+              toast({ title: "Invite link copied", description: "Send it only to people you want in this Exclusive live." });
             }
           });
         }
@@ -355,11 +350,11 @@ export default function LiveCameraView({
   };
 
   return (
-    <div className="absolute inset-0 bg-black flex flex-col touch-none">
+    <div className="absolute inset-0 flex touch-none flex-col overflow-hidden bg-black">
       {!denied && (
         <video
           ref={videoRef}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover"
           playsInline
           muted
           autoPlay
@@ -383,7 +378,24 @@ export default function LiveCameraView({
         />
       )}
 
-      {/* Secondary (PiP) camera — tappable to swap wide */}
+      {viewMode === "virtual" && (
+        <div className="absolute inset-0 z-[8] flex items-center justify-center bg-gradient-to-b from-violet-950/80 via-black/65 to-black/90 backdrop-blur-[2px]">
+          <div className="flex flex-col items-center px-8 text-center text-white">
+            <div className="flex h-28 w-28 items-center justify-center overflow-hidden rounded-full border-4 border-white/20 bg-white/10 shadow-2xl">
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <span className="text-4xl font-black">{displayName.slice(0, 1).toUpperCase()}</span>
+              )}
+            </div>
+            <p className="mt-4 text-lg font-black">{displayName}</p>
+            <p className="mt-1 max-w-[18rem] text-[12px] font-medium leading-relaxed text-white/70">
+              Virtual mode keeps the focus on your voice and YAJ identity.
+            </p>
+          </div>
+        </div>
+      )}
+
       <video
         ref={pipVideoRef}
         playsInline
@@ -391,9 +403,7 @@ export default function LiveCameraView({
         autoPlay
         className={`absolute z-10 object-cover border-2 border-white/80 shadow-lg ${
           dualOn ? "opacity-100" : "pointer-events-none opacity-0"
-        } ${
-          dualLayout === "circle" ? "rounded-full" : "rounded-2xl"
-        }`}
+        } ${dualLayout === "circle" ? "rounded-full" : "rounded-2xl"}`}
         style={{
           top: "max(calc(env(safe-area-inset-top) + 4.5rem), 5.5rem)",
           right: "4.75rem",
@@ -406,13 +416,9 @@ export default function LiveCameraView({
 
       {denied && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-5 px-8 text-center">
-          <p className="text-white text-base font-semibold">Camera access needed</p>
-          <p className="text-white/60 text-sm">Allow camera in Settings, then try again.</p>
-          <button
-            type="button"
-            onClick={() => void startCamera()}
-            className="px-6 py-3 rounded-full bg-white text-black font-bold text-sm"
-          >
+          <p className="text-base font-semibold text-white">Camera access needed</p>
+          <p className="text-sm text-white/60">Allow camera in Settings, then try again.</p>
+          <button type="button" onClick={() => void startCamera()} className="rounded-full bg-white px-6 py-3 text-sm font-bold text-black">
             Try again
           </button>
         </div>
@@ -425,25 +431,26 @@ export default function LiveCameraView({
       )}
 
       <div className="relative z-20 flex items-center justify-between px-3 pt-[max(env(safe-area-inset-top),0.5rem)]">
-        <button type="button" onClick={onClose} className="w-11 h-11 flex items-center justify-center text-white">
-          <X className="w-7 h-7" />
+        <button type="button" onClick={onClose} className="flex h-11 w-11 items-center justify-center rounded-full bg-black/25 text-white backdrop-blur-sm" aria-label="Close live setup">
+          <X className="h-6 w-6" />
         </button>
-        <span className="text-xs font-bold text-white/80 px-3 py-1 rounded-full bg-black/40">
+        <span className="rounded-full border border-white/10 bg-black/45 px-3.5 py-1.5 text-[12px] font-bold text-white/90 backdrop-blur-md">
           {startingLive
             ? "Starting…"
             : exclusiveLive
               ? "Exclusive Live"
               : isCircleScoped
                 ? "Circle Live"
-                : "Go Live"}
+                : activeMode.label}
         </span>
         <div className="w-11" />
       </div>
 
-      {/* Right-side tool rail */}
-      <div className="absolute right-2 z-20 flex flex-col items-center gap-3 top-[max(calc(env(safe-area-inset-top)+3.25rem),4rem)]">
+      <div className="absolute right-2 z-20 flex flex-col items-center gap-3 top-[max(calc(env(safe-area-inset-top)+3.5rem),4.25rem)]">
         {PREP_TOOLS.map((tool) => {
           const Icon = tool.icon;
+          const cameraTool = tool.id === "flip" || tool.id === "enhance" || tool.id === "effects" || tool.id === "face" || tool.id === "settings";
+          const disabled = startingLive || (viewMode === "virtual" && cameraTool);
           const selected =
             tool.id === "enhance"
               ? showEnhance || isEnhanceActive(enhance)
@@ -455,51 +462,30 @@ export default function LiveCameraView({
                     ? showDualSheet || dualLayout !== "none"
                     : false;
           return (
-            <button
-              key={tool.id}
-              type="button"
-              onClick={() => onTool(tool.id)}
-              className="flex flex-col items-center gap-0.5"
-            >
+            <button key={tool.id} type="button" disabled={disabled} onClick={() => onTool(tool.id)} className="flex flex-col items-center gap-1 disabled:opacity-35">
               <span
-                className={`flex h-11 w-11 items-center justify-center rounded-full border backdrop-blur-md ${
-                  selected ? "border-white bg-white text-black" : "border-white/15 bg-black/40 text-white"
+                className={`flex h-11 w-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-md transition ${
+                  selected ? "border-white bg-white text-black" : "border-white/15 bg-black/45 text-white"
                 }`}
               >
                 <Icon className="h-5 w-5" />
               </span>
-              <span className="text-center text-[9px] font-semibold leading-tight text-white/85 drop-shadow">
-                {tool.label}
-              </span>
+              <span className="text-center text-[9.5px] font-semibold leading-tight text-white/90 drop-shadow">{tool.label}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="relative z-20 mt-auto flex flex-col items-center gap-4 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.5rem)] pr-16">
+      <div className="relative z-20 mt-auto flex flex-col items-center gap-3 px-4 pb-[calc(max(env(safe-area-inset-bottom),0.5rem)+2.75rem)] pr-16">
         {exclusiveLive && (
-          <div className="w-full max-w-[20rem] space-y-2 rounded-2xl border border-white/15 bg-black/50 p-3 backdrop-blur-md">
-            <p className="text-center text-[11px] font-bold uppercase tracking-wide text-white/70">
-              Who can watch this Exclusive live
-            </p>
+          <div className="w-full max-w-[20rem] space-y-2 rounded-2xl border border-white/15 bg-black/55 p-3 backdrop-blur-md">
+            <p className="text-center text-[11px] font-bold uppercase tracking-wide text-white/70">Who can watch this Exclusive live</p>
             <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setExclusiveAudience("all")}
-                className={`rounded-xl px-2.5 py-2 text-left ${
-                  exclusiveAudience === "all" ? "bg-white text-black" : "bg-white/10 text-white"
-                }`}
-              >
+              <button type="button" onClick={() => setExclusiveAudience("all")} className={`rounded-xl px-2.5 py-2 text-left ${exclusiveAudience === "all" ? "bg-white text-black" : "bg-white/10 text-white"}`}>
                 <p className="text-[12px] font-black">All Exclusive</p>
                 <p className="mt-0.5 text-[10px] opacity-70">Everyone with Exclusive access</p>
               </button>
-              <button
-                type="button"
-                onClick={() => setExclusiveAudience("invite")}
-                className={`rounded-xl px-2.5 py-2 text-left ${
-                  exclusiveAudience === "invite" ? "bg-white text-black" : "bg-white/10 text-white"
-                }`}
-              >
+              <button type="button" onClick={() => setExclusiveAudience("invite")} className={`rounded-xl px-2.5 py-2 text-left ${exclusiveAudience === "invite" ? "bg-white text-black" : "bg-white/10 text-white"}`}>
                 <p className="text-[12px] font-black">Invite link</p>
                 <p className="mt-0.5 text-[10px] opacity-70">Only people you send the link</p>
               </button>
@@ -507,31 +493,48 @@ export default function LiveCameraView({
           </div>
         )}
 
-        <div className="flex items-center gap-1 rounded-full border border-white/15 bg-black/40 p-1 backdrop-blur-md">
-          {VIEW_MODES.map((mode) => {
-            const Icon = mode.icon;
-            const selected = viewMode === mode.id;
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => setViewMode(mode.id)}
-                className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[12px] font-bold transition-colors ${
-                  selected ? "bg-white text-black" : "text-white/70"
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {mode.label}
-              </button>
-            );
-          })}
+        <div className="w-full max-w-[20rem] rounded-[22px] border border-white/15 bg-black/50 p-1.5 shadow-xl backdrop-blur-md">
+          <div className="grid grid-cols-3 gap-1">
+            {VIEW_MODES.map((mode) => {
+              const Icon = mode.icon;
+              const selected = viewMode === mode.id;
+              return (
+                <button
+                  key={mode.id}
+                  type="button"
+                  onClick={() => selectViewMode(mode.id)}
+                  disabled={startingLive}
+                  className={`flex min-h-[3.25rem] flex-col items-center justify-center rounded-[16px] px-2 py-1.5 transition active:scale-[0.98] ${selected ? "bg-white text-black" : "text-white/75"}`}
+                >
+                  <span className="flex items-center gap-1.5 text-[12px] font-black">
+                    <Icon className="h-3.5 w-3.5" />
+                    {mode.label}
+                  </span>
+                  <span className={`mt-0.5 text-[8.5px] font-semibold ${selected ? "text-black/55" : "text-white/45"}`}>
+                    {mode.helper}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="w-full max-w-[20rem] rounded-xl bg-black/40 px-3 py-2 text-center backdrop-blur-sm">
+          <p className="text-[11px] font-semibold text-white/85">{activeMode.helper}</p>
+          <p className="mt-0.5 text-[9.5px] text-white/55">
+            {viewMode === "multi"
+              ? "Guests can request a stage seat after you start."
+              : viewMode === "virtual"
+                ? "Camera tools are hidden while Virtual mode is selected."
+                : "You control the broadcast and viewers watch live."}
+          </p>
         </div>
 
         <button
           type="button"
           onClick={() => void handleGoLive()}
           disabled={denied || !ready || startingLive}
-          className="flex h-16 w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-base font-black text-white shadow-xl active:scale-[0.98] transition-transform disabled:opacity-40"
+          className="flex h-[60px] w-full max-w-[20rem] items-center justify-center gap-2 rounded-full bg-red-600 text-[16px] font-black text-white shadow-2xl transition active:scale-[0.98] disabled:opacity-40"
           aria-label="Go live"
         >
           {startingLive ? <Loader2 className="h-5 w-5 animate-spin" /> : null}
@@ -541,39 +544,17 @@ export default function LiveCameraView({
               ? "Go Live · Invite only"
               : exclusiveLive
                 ? "Go Live · Exclusive"
-                : "Go Live"}
+                : viewMode === "multi"
+                  ? "Start Multi Live"
+                  : viewMode === "virtual"
+                    ? "Start Virtual Live"
+                    : "Go Live"}
         </button>
       </div>
 
-      <EnhancePanel
-        open={showEnhance}
-        tab={enhanceTab}
-        onTabChange={setEnhanceTab}
-        onClose={() => setShowEnhance(false)}
-        settings={enhance}
-        onChange={setEnhance}
-        appearanceTool={appearanceTool}
-        onAppearanceToolChange={setAppearanceTool}
-      />
-
-      <EffectsPanel
-        open={showEffects}
-        category={effectCategory}
-        onCategoryChange={setEffectCategory}
-        onClose={() => setShowEffects(false)}
-        selectedId={selectedEffect}
-        onSelect={setSelectedEffect}
-      />
-
-      <FaceFilterPanel
-        open={showFaceFilters}
-        onClose={() => setShowFaceFilters(false)}
-        selectedId={faceFilter}
-        onSelect={setFaceFilter}
-        loading={faceFilters.loading}
-        error={faceFilters.error}
-      />
-
+      <EnhancePanel open={showEnhance} tab={enhanceTab} onTabChange={setEnhanceTab} onClose={() => setShowEnhance(false)} settings={enhance} onChange={setEnhance} appearanceTool={appearanceTool} onAppearanceToolChange={setAppearanceTool} />
+      <EffectsPanel open={showEffects} category={effectCategory} onCategoryChange={setEffectCategory} onClose={() => setShowEffects(false)} selectedId={selectedEffect} onSelect={setSelectedEffect} />
+      <FaceFilterPanel open={showFaceFilters} onClose={() => setShowFaceFilters(false)} selectedId={faceFilter} onSelect={setFaceFilter} loading={faceFilters.loading} error={faceFilters.error} />
       <DualCameraLayoutSheet
         open={showDualSheet}
         layout={dualLayout}
@@ -584,9 +565,7 @@ export default function LiveCameraView({
         onClose={() => setShowDualSheet(false)}
       />
 
-      {!hideModeTabs && !isCircleScoped && (
-        <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />
-      )}
+      {!hideModeTabs && !isCircleScoped && <CreateModeTabs value={createMode} onChange={onModeChange} disabled={startingLive} />}
     </div>
   );
 }
