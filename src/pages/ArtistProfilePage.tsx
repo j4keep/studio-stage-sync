@@ -1,7 +1,5 @@
-import { useState, useEffect } from "react";
-import {
-  User, Music, Heart, Trophy, Video, UserPlus, Share2, UserCheck, DollarSign, FolderHeart, ShoppingBag, CheckCircle, Ban
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { Ban, MessageCircle, Share2, UserCheck, UserPlus } from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,12 +7,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import profileBanner from "@/assets/profile-banner.jpg";
 import FollowersSheet from "@/components/FollowersSheet";
 import MessageUserButton from "@/components/MessageUserButton";
-
 import ProfileFeedSection from "@/components/ProfileFeedSection";
-import BattleWinsSheet from "@/components/BattleWinsSheet";
-import UserProjectsSheet from "@/components/UserProjectsSheet";
 import BlockConfirmDialog from "@/components/BlockConfirmDialog";
 import { blockUser, isBlockedBetween } from "@/lib/blocks";
+
+const compactNumber = (value: number) =>
+  value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}K` : String(value);
 
 const ArtistProfilePage = () => {
   const navigate = useNavigate();
@@ -22,13 +20,11 @@ const ArtistProfilePage = () => {
   const { user } = useAuth();
   const [isFollowing, setIsFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState("0");
-  const [winsCount, setWinsCount] = useState("0");
-  const [projectsCount, setProjectsCount] = useState("0");
+  const [followingCount, setFollowingCount] = useState("0");
+  const [postCount, setPostCount] = useState("0");
   const [totalViews, setTotalViews] = useState("0");
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
-  const [showWins, setShowWins] = useState(false);
-  const [showProjects, setShowProjects] = useState(false);
   const [showBlock, setShowBlock] = useState(false);
   const [blockBusy, setBlockBusy] = useState(false);
   const [blockedPeer, setBlockedPeer] = useState(false);
@@ -39,18 +35,19 @@ const ArtistProfilePage = () => {
   }>({ display_name: "", avatar_url: null, banner_url: null });
 
   useEffect(() => {
-    if (userId && user && userId === user.id) {
-      navigate("/profile", { replace: true });
-    }
+    if (userId && user && userId === user.id) navigate("/profile", { replace: true });
   }, [userId, user, navigate]);
 
   useEffect(() => {
     if (!userId) return;
+    let alive = true;
+
     const load = async () => {
       setLoading(true);
 
       if (user && user.id !== userId) {
         const blocked = await isBlockedBetween(user.id, userId);
+        if (!alive) return;
         if (blocked) {
           setBlockedPeer(true);
           setLoading(false);
@@ -59,62 +56,33 @@ const ArtistProfilePage = () => {
         setBlockedPeer(false);
       }
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("display_name, avatar_url, banner_url")
-        .eq("user_id", userId)
-        .single();
+      const [{ data: profile }, followers, following, posts, { data: postViews }, { data: battles }] = await Promise.all([
+        supabase.from("profiles").select("display_name, avatar_url, banner_url").eq("user_id", userId).single(),
+        (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("following_id", userId),
+        (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("follower_id", userId),
+        (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+        (supabase as any).from("posts").select("views").eq("user_id", userId),
+        (supabase as any).from("battles").select("views").eq("challenger_id", userId),
+      ]);
+
+      if (!alive) return;
 
       if (profile) {
         setProfileInfo({
-          display_name: profile.display_name || "Artist",
+          display_name: profile.display_name || "YAJ member",
           avatar_url: profile.avatar_url,
           banner_url: profile.banner_url,
         });
       }
 
-      // Fetch wins count
-      const { count: winsC } = await (supabase as any)
-        .from("battle_wins")
-        .select("id", { count: "exact", head: true })
-        .eq("winner_id", userId);
-      const w = winsC || 0;
-      setWinsCount(w >= 1000 ? `${(w / 1000).toFixed(1)}K` : String(w));
+      setFollowerCount(compactNumber(followers.count || 0));
+      setFollowingCount(compactNumber(following.count || 0));
+      setPostCount(compactNumber(posts.count || 0));
 
-      // Fetch projects count
-      const [songsR, videosR, podcastsR, postsR, battlesR] = await Promise.all([
-        (supabase as any).from("songs").select("id", { count: "exact", head: true }).eq("user_id", userId),
-        (supabase as any).from("videos").select("id", { count: "exact", head: true }).eq("user_id", userId),
-        (supabase as any).from("podcasts").select("id", { count: "exact", head: true }).eq("user_id", userId),
-        (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
-        (supabase as any).from("battles").select("id", { count: "exact", head: true }).eq("challenger_id", userId),
-      ]);
-      const projTotal = (songsR.count || 0) + (videosR.count || 0) + (podcastsR.count || 0) + (postsR.count || 0) + (battlesR.count || 0);
-      setProjectsCount(projTotal >= 1000 ? `${(projTotal / 1000).toFixed(1)}K` : String(projTotal));
-
-      const { count } = await (supabase as any)
-        .from("follows")
-        .select("id", { count: "exact", head: true })
-        .eq("following_id", userId);
-      const c = count || 0;
-      setFollowerCount(c >= 1000 ? `${(c / 1000).toFixed(1)}K` : String(c));
-
-      const [{ data: songData }, { data: videoData }, { data: podcastData }, { data: postData }, { data: battleData }] = await Promise.all([
-        (supabase as any).from("songs").select("plays").eq("user_id", userId),
-        (supabase as any).from("videos").select("views").eq("user_id", userId),
-        (supabase as any).from("podcasts").select("plays").eq("user_id", userId),
-        (supabase as any).from("posts").select("views").eq("user_id", userId),
-        (supabase as any).from("battles").select("views").eq("challenger_id", userId),
-      ]);
-
-      let viewsTotal = 0;
-      (songData || []).forEach((s: any) => { viewsTotal += parseInt(s.plays) || 0; });
-      (videoData || []).forEach((v: any) => { viewsTotal += parseInt(v.views) || 0; });
-      (podcastData || []).forEach((p: any) => { viewsTotal += parseInt(p.plays) || 0; });
-      (postData || []).forEach((p: any) => { viewsTotal += p.views || 0; });
-      (battleData || []).forEach((b: any) => { viewsTotal += b.views || 0; });
-
-      setTotalViews(viewsTotal >= 1000 ? `${(viewsTotal / 1000).toFixed(1)}K` : String(viewsTotal));
+      let views = 0;
+      (postViews || []).forEach((post: any) => { views += Number(post.views) || 0; });
+      (battles || []).forEach((battle: any) => { views += Number(battle.views) || 0; });
+      setTotalViews(compactNumber(views));
 
       if (user) {
         const { data: followData } = await (supabase as any)
@@ -123,12 +91,16 @@ const ArtistProfilePage = () => {
           .eq("follower_id", user.id)
           .eq("following_id", userId)
           .maybeSingle();
-        setIsFollowing(!!followData);
+        if (alive) setIsFollowing(Boolean(followData));
       }
 
-      setLoading(false);
+      if (alive) setLoading(false);
     };
-    load();
+
+    void load();
+    return () => {
+      alive = false;
+    };
   }, [userId, user]);
 
   const handleFollow = async () => {
@@ -136,17 +108,27 @@ const ArtistProfilePage = () => {
     if (isFollowing) {
       await (supabase as any).from("follows").delete().eq("follower_id", user.id).eq("following_id", userId);
       setIsFollowing(false);
+      setFollowerCount((current) => current);
       toast({ title: "Unfollowed" });
     } else {
       await (supabase as any).from("follows").insert({ follower_id: user.id, following_id: userId });
       setIsFollowing(true);
-      toast({ title: "Following!" });
+      toast({ title: "Following" });
     }
   };
 
-  const handleShare = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/artist/${userId}`);
-    toast({ title: "Link copied!" });
+  const handleShare = async () => {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: `${profileInfo.display_name || "YAJ member"} on YAJ`, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      toast({ title: "Profile link copied" });
+    } catch {
+      // Native share can be cancelled.
+    }
   };
 
   const confirmBlock = async () => {
@@ -154,12 +136,12 @@ const ArtistProfilePage = () => {
     setBlockBusy(true);
     try {
       await blockUser(user.id, userId);
-      toast({ title: `${profileInfo.display_name || "User"} blocked on all YAJ pages` });
+      toast({ title: `${profileInfo.display_name || "User"} blocked on YAJ` });
       setShowBlock(false);
       setIsFollowing(false);
       navigate(-1);
-    } catch (e: any) {
-      toast({ title: e?.message || "Could not block", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: error?.message || "Could not block", variant: "destructive" });
     } finally {
       setBlockBusy(false);
     }
@@ -168,118 +150,128 @@ const ArtistProfilePage = () => {
   if (loading) {
     return (
       <div className="flex justify-center py-20">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+        <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
       </div>
     );
   }
 
   if (blockedPeer) {
     return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3 px-6 text-center">
+      <div className="flex min-h-[55vh] flex-col items-center justify-center gap-3 px-6 text-center">
         <Ban className="h-10 w-10 text-muted-foreground" />
-        <p className="text-base font-bold text-foreground">Profile unavailable</p>
-        <p className="max-w-sm text-sm text-muted-foreground">
-          You can&apos;t view this YAJ page because of a block. Manage blocks in Settings → Blocking.
+        <p className="text-[17px] font-bold text-foreground">Profile unavailable</p>
+        <p className="max-w-sm text-[13px] leading-relaxed text-muted-foreground">
+          You can&apos;t view this YAJ profile because of a block. You can manage blocked accounts in Settings.
         </p>
         <button
           type="button"
           onClick={() => navigate("/settings/blocking")}
           className="mt-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground"
         >
-          Open Blocking
+          Manage blocks
         </button>
       </div>
     );
   }
 
   return (
-    <div className="pb-4">
-      {/* Banner */}
-      <div className="relative h-44 overflow-hidden">
-        {profileInfo.banner_url ? (
-          <img src={profileInfo.banner_url} alt="Banner" className="w-full h-full object-cover" />
-        ) : (
-          <img src={profileBanner} alt="Banner" className="w-full h-full object-cover" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-      </div>
-
-      {/* Avatar & Info */}
-      <div className="px-4 -mt-12 relative z-10">
-        <div className="flex items-end gap-3">
-          {profileInfo.avatar_url ? (
-            <img src={profileInfo.avatar_url} alt="Profile" className="w-20 h-20 rounded-full border-[3px] border-background object-cover" />
-          ) : (
-            <div className="w-20 h-20 rounded-full border-[3px] border-background bg-primary/20 flex items-center justify-center">
-              <span className="text-2xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
-            </div>
-          )}
-          <div className="flex-1 pb-1">
-            <h2 className="text-lg font-display font-bold text-foreground">{profileInfo.display_name}</h2>
+    <div className="min-h-[100dvh] bg-background pb-8 text-foreground">
+      <div className="mx-auto w-full max-w-3xl">
+        <section className="overflow-hidden border-y border-border/70 bg-card shadow-sm sm:mx-4 sm:mt-4 sm:rounded-[24px] sm:border">
+          <div className="relative h-44 overflow-hidden sm:h-52">
+            <img src={profileInfo.banner_url || profileBanner} alt="Profile banner" className="h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={handleFollow}
-            className={`flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${isFollowing ? "bg-card border border-primary text-primary" : "gradient-primary text-primary-foreground glow-primary"}`}
-          >
-            {isFollowing ? <UserCheck className="w-3.5 h-3.5" /> : <UserPlus className="w-3.5 h-3.5" />}
-            {isFollowing ? "Following" : "Follow"}
-          </button>
-          <MessageUserButton
-            userId={userId}
-            displayName={profileInfo?.display_name}
-            avatarUrl={(profileInfo as any)?.avatar_url}
-            className="flex-1 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 bg-card border border-border text-foreground hover:border-primary/30 transition-all"
-          />
+          <div className="relative px-4 pb-5">
+            <div className="-mt-10 flex items-end justify-between gap-3">
+              {profileInfo.avatar_url ? (
+                <img src={profileInfo.avatar_url} alt="Profile" className="h-24 w-24 rounded-full border-4 border-card object-cover shadow-md" />
+              ) : (
+                <div className="flex h-24 w-24 items-center justify-center rounded-full border-4 border-card bg-primary/10 shadow-md">
+                  <span className="text-3xl font-bold text-primary">{(profileInfo.display_name || "?")[0]?.toUpperCase()}</span>
+                </div>
+              )}
+            </div>
 
-          <button onClick={handleShare} className="w-10 py-2.5 rounded-xl bg-card border border-border text-muted-foreground flex items-center justify-center hover:border-primary/30 transition-all">
-            <Share2 className="w-4 h-4" />
-          </button>
-          {user && userId && user.id !== userId && (
-            <button
-              type="button"
-              onClick={() => setShowBlock(true)}
-              className="w-10 py-2.5 rounded-xl bg-card border border-border text-destructive flex items-center justify-center hover:border-destructive/40 transition-all"
-              aria-label="Block"
-            >
-              <Ban className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+            <div className="mt-3">
+              <h1 className="text-[22px] font-bold leading-tight tracking-[-0.025em]">{profileInfo.display_name || "YAJ member"}</h1>
+              <p className="mt-1 text-[12px] font-medium text-muted-foreground">Member of the YAJ community</p>
+            </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-4 gap-2 mt-4">
-          {[
-            { label: "Wins", value: winsCount, action: () => setShowWins(true) },
-            { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
-            { label: "Projects", value: projectsCount, action: () => setShowProjects(true) },
-            { label: "Views", value: totalViews },
-          ].map((s) => (
-            <button key={s.label} onClick={(s as any).action} className="p-2.5 rounded-xl bg-card border border-border text-center hover:border-primary/30 transition-all">
-              <p className="text-base font-display font-bold text-primary">{s.value}</p>
-              <p className="text-[9px] text-muted-foreground">{s.label}</p>
-            </button>
-          ))}
-        </div>
+            <div className="mt-5 grid grid-cols-4 overflow-hidden rounded-2xl border border-border/70 bg-background/55">
+              {[
+                { label: "Posts", value: postCount },
+                { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
+                { label: "Following", value: followingCount },
+                { label: "Views", value: totalViews },
+              ].map((stat, index) => (
+                <button
+                  key={stat.label}
+                  type="button"
+                  onClick={stat.action}
+                  className={`min-w-0 px-1 py-3 text-center ${index > 0 ? "border-l border-border/70" : ""}`}
+                >
+                  <p className="text-[17px] font-bold tracking-tight">{stat.value}</p>
+                  <p className="mt-0.5 truncate text-[10px] font-medium text-muted-foreground">{stat.label}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleFollow()}
+                className={`flex h-11 flex-1 items-center justify-center gap-2 rounded-xl text-[13px] font-semibold transition active:scale-[0.98] ${
+                  isFollowing ? "border border-primary bg-background text-primary" : "bg-primary text-primary-foreground"
+                }`}
+              >
+                {isFollowing ? <UserCheck className="h-4 w-4" /> : <UserPlus className="h-4 w-4" />}
+                {isFollowing ? "Following" : "Follow"}
+              </button>
+
+              <MessageUserButton
+                userId={userId}
+                displayName={profileInfo.display_name}
+                avatarUrl={profileInfo.avatar_url}
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-border bg-background text-[13px] font-semibold transition active:scale-[0.98]"
+              />
+
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-muted-foreground transition active:scale-[0.96]"
+                aria-label="Share profile"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+
+              {user && userId && user.id !== userId && (
+                <button
+                  type="button"
+                  onClick={() => setShowBlock(true)}
+                  className="flex h-11 w-11 items-center justify-center rounded-xl border border-border bg-background text-destructive transition active:scale-[0.96]"
+                  aria-label="Block"
+                >
+                  <Ban className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {userId && (
+          <section className="px-4 pt-6">
+            <div className="mb-3">
+              <h2 className="text-[17px] font-bold tracking-tight">Posts</h2>
+              <p className="mt-0.5 text-[12px] font-medium text-muted-foreground">Recent activity shared on YAJ.</p>
+            </div>
+            <ProfileFeedSection userId={userId} isOwner={false} />
+          </section>
+        )}
       </div>
-
-      {/* Artist's Posts Feed */}
-      {userId && (
-        <div className="px-4 mt-5">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Feed</p>
-          <ProfileFeedSection userId={userId} isOwner={false} />
-        </div>
-      )}
-
-      
-
 
       {userId && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={userId} isOwner={false} />}
-      {userId && <BattleWinsSheet open={showWins} onClose={() => setShowWins(false)} userId={userId} />}
-      {userId && <UserProjectsSheet open={showProjects} onClose={() => setShowProjects(false)} userId={userId} />}
       <BlockConfirmDialog
         open={showBlock}
         name={profileInfo.display_name || "User"}
