@@ -66,14 +66,15 @@ const ProfilePage = () => {
       setIsDealBusiness(false);
       return;
     }
+
     void supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => setIsAdmin(Boolean(data)));
     void userHasDealBusiness(user.id).then(setIsDealBusiness);
   }, [user]);
 
-  const refreshProfileStats = useCallback(async () => {
+  const refreshProfile = useCallback(async () => {
     if (!user) return;
 
-    const [{ data: profile }, followers, following, posts, { data: postViews }, { data: battles }] = await Promise.all([
+    const [{ data: profile }, followers, following, posts, { data: postViews }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, avatar_url, banner_url")
@@ -83,7 +84,6 @@ const ProfilePage = () => {
       (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("follower_id", user.id),
       (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       (supabase as any).from("posts").select("views").eq("user_id", user.id),
-      (supabase as any).from("battles").select("views").eq("challenger_id", user.id),
     ]);
 
     if (profile) {
@@ -100,24 +100,26 @@ const ProfilePage = () => {
     setPostCount(compactNumber(posts.count || 0));
 
     let views = 0;
-    (postViews || []).forEach((post: any) => { views += Number(post.views) || 0; });
-    (battles || []).forEach((battle: any) => { views += Number(battle.views) || 0; });
+    (postViews || []).forEach((post: any) => {
+      views += Number(post.views) || 0;
+    });
     setTotalViews(compactNumber(views));
   }, [user]);
 
   useEffect(() => {
-    void refreshProfileStats();
-    const onFocus = () => void refreshProfileStats();
+    void refreshProfile();
+    const onFocus = () => void refreshProfile();
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void refreshProfileStats();
+      if (document.visibilityState === "visible") void refreshProfile();
     };
+
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refreshProfileStats]);
+  }, [refreshProfile]);
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
@@ -129,7 +131,7 @@ const ProfilePage = () => {
       await navigator.clipboard.writeText(shareUrl);
       toast({ title: "Profile link copied", description: "Your YAJ profile is ready to share." });
     } catch {
-      // Native share can be cancelled; no error toast is needed.
+      // Native share cancellation is not an error.
     }
   };
 
@@ -169,10 +171,10 @@ const ProfilePage = () => {
   return (
     <div className="min-h-[100dvh] bg-background pb-8 text-foreground">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="flex items-center justify-between px-4 pb-3 pt-4">
+        <header className="flex items-center justify-between px-4 pb-3 pt-4">
           <div>
             <h1 className="text-[26px] font-bold tracking-[-0.03em]">Profile</h1>
-            <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">Your identity, activity and shortcuts on YAJ.</p>
+            <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">Your identity, activity and account on YAJ.</p>
           </div>
           <button
             type="button"
@@ -182,7 +184,7 @@ const ProfilePage = () => {
           >
             <Settings className="h-[18px] w-[18px]" />
           </button>
-        </div>
+        </header>
 
         <div className="px-4 pb-4">
           <ArtistSearchBar onSelectArtist={(person) => navigate(`/artist/${person.user_id}`)} />
@@ -247,7 +249,7 @@ const ProfilePage = () => {
               </button>
               <button
                 type="button"
-                onClick={() => navigate("/my-circle")}
+                onClick={() => navigate("/circle")}
                 className="flex h-11 items-center justify-center gap-2 rounded-xl border border-border bg-background text-[13px] font-semibold transition active:scale-[0.98]"
               >
                 <Users className="h-4 w-4" /> My Circle
@@ -313,12 +315,16 @@ const ProfilePage = () => {
               >
                 <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
                   <item.icon className="h-[18px] w-[18px] text-primary" />
-                  {item.section && notifCounts[item.section] > 0 && <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />}
+                  {item.section && notifCounts[item.section] > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-card" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <p className="truncate text-[13px] font-semibold text-foreground">{item.label}</p>
-                    {item.pro && !isPro && <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary">PRO</span>}
+                    {item.pro && !isPro && (
+                      <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[8px] font-bold text-primary">PRO</span>
+                    )}
                   </div>
                   <p className="mt-0.5 truncate text-[10.5px] font-medium text-muted-foreground">{item.sub}</p>
                 </div>
