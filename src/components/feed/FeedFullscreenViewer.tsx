@@ -27,8 +27,10 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
-  // Pre-mount ±1 on phones so swipe/auto-advance isn't a black cold-start.
-  const mountRadius = Math.max(1, getFeedMountRadius());
+  // On phones mount ONLY the active media card. Keeping neighboring <video>/<audio>
+  // decoders alive is a repeatable cause of iOS Safari audio-only/frozen-video replays.
+  // Desktop still gets a neighbor on either side for smoother wheel navigation.
+  const mountRadius = getFeedMountRadius();
 
   const getSlideTop = useCallback((index: number) => {
     const el = scrollRef.current;
