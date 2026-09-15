@@ -28,21 +28,31 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const [currentIndex, setCurrentIndex] = useState(startIndex);
   const [scrollLocked, setScrollLocked] = useState(false);
   // Pre-mount ±1 on phones so swipe/auto-advance isn't a black cold-start.
-  // Radius 0 left the next snap shell empty until mount → dark frame + frozen play.
   const mountRadius = Math.max(1, getFeedMountRadius());
+
+  const getSlideTop = useCallback((index: number) => {
+    const el = scrollRef.current;
+    if (!el) return null;
+    const slide = el.children.item(index) as HTMLElement | null;
+    return slide ? slide.offsetTop : null;
+  }, []);
 
   const goToIndex = useCallback((index: number, behavior: ScrollBehavior = "smooth") => {
     const el = scrollRef.current;
     if (!el) return false;
-    const h = el.clientHeight || window.innerHeight || 1;
+
     const next = Math.max(0, Math.min(items.length - 1, index));
-    ignoreScrollSyncUntilRef.current = performance.now() + (behavior === "smooth" ? 650 : 180);
-    el.scrollTo({ top: next * h, behavior });
+    const targetTop = getSlideTop(next);
+    const fallbackHeight = el.clientHeight || window.innerHeight || 1;
+    const top = targetTop ?? next * fallbackHeight;
+
+    ignoreScrollSyncUntilRef.current = performance.now() + (behavior === "smooth" ? 700 : 260);
+    el.scrollTo({ top, behavior });
     setCurrentIndex(next);
     currentIndexRef.current = next;
     activeIdRef.current = items[next]?.id ?? activeIdRef.current;
     return true;
-  }, [items]);
+  }, [getSlideTop, items]);
 
   useEffect(() => {
     currentIndexRef.current = currentIndex;
@@ -50,8 +60,6 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     autoAdvanceIdRef.current = null;
 
     // Immediately mute/pause non-active slides so audio can't leak across swipes.
-    // Depend on length (not items identity) so feed refetches don't remute/pause
-    // the active post mid-play.
     const root = scrollRef.current;
     if (!root) return;
     root.querySelectorAll<HTMLElement>(".snap-start").forEach((slide, i) => {
@@ -94,36 +102,69 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     }
   }, []);
 
-  /**
-   * After a regular video ends, move to the next post exactly once.
-   * The originating index/id are supplied by the slide so a late `ended` event from
-   * a pre-mounted neighbor can never advance or replay the wrong card.
-   */
+  const silenceSlide = useCallback((index: number) => {
+    const root = scrollRef.current;
+    const slide = root?.children.item(index) as HTMLElement | null;
+    if (!slide) return;
+    slide.querySelectorAll("video, audio").forEach((node) => {
+      const media = node as HTMLMediaElement;
+      try {
+        media.pause();
+        media.muted = true;
+        media.volume = 0;
+      } catch {
+        /* ignore */
+      }
+    });
+  }, []);
+
+  /** Move to the next post exactly once when the active video ends. */
   const advanceAfterVideo = useCallback((sourceIndex: number, sourceId: string): boolean => {
     if (scrollLocked) return false;
 
     const cur = currentIndexRef.current;
     const current = items[cur];
 
+    // Ignore late events from pre-mounted neighbors.
     if (sourceIndex !== cur) return true;
     if (current?.id !== sourceId) return true;
     if (current?.itemType === "battle") return false;
-    if (cur >= items.length - 1) return false;
+    if (cur >= items.length - 1) {
+      silenceSlide(cur);
+      return false;
+    }
 
-    // `timeupdate` trim-end fallback and native `ended` can arrive almost together.
-    // Treat the first one as authoritative and ignore any duplicate for this item.
     if (autoAdvanceIdRef.current === sourceId) return true;
     autoAdvanceIdRef.current = sourceId;
 
+    // Kill the finished card's media before changing slides. This prevents the
+    // iOS case where the audio element keeps running while the finished video
+    // remains visually frozen on its last frame.
+    silenceSlide(cur);
+
     forceIosAudioSessionToPlayback();
     const advanced = goToIndex(cur + 1, "auto");
-    if (!advanced) autoAdvanceIdRef.current = null;
-    return advanced;
-  }, [goToIndex, items, scrollLocked]);
+    if (!advanced) {
+      autoAdvanceIdRef.current = null;
+      return false;
+    }
 
-  // Jump to the opened index after layout. Opening from Happening often hit
-  // clientHeight=0 on first paint → scroll stayed at 0 while currentIndex was N,
-  // so the on-screen slide was frozen/empty while the real active video was off-screen.
+    // Reassert the exact snap target after layout settles. 100dvh can differ from
+    // the scroll container height while Safari's browser chrome expands/collapses.
+    window.requestAnimationFrame(() => {
+      if (currentIndexRef.current !== cur + 1) return;
+      const el = scrollRef.current;
+      const top = getSlideTop(cur + 1);
+      if (el && top != null && Math.abs(el.scrollTop - top) > 2) {
+        ignoreScrollSyncUntilRef.current = performance.now() + 220;
+        el.scrollTo({ top, behavior: "auto" });
+      }
+    });
+
+    return true;
+  }, [getSlideTop, goToIndex, items, scrollLocked, silenceSlide]);
+
+  // Jump to the opened index after layout.
   useEffect(() => {
     forceIosAudioSessionToPlayback();
     unlockFeedAudioSession();
@@ -133,11 +174,11 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       if (cancelled) return;
       const el = scrollRef.current;
       if (!el) return;
-      const h = el.clientHeight || window.innerHeight || 0;
-      if (h <= 0) return;
       const next = Math.max(0, Math.min(items.length - 1, startIndex));
-      ignoreScrollSyncUntilRef.current = performance.now() + 200;
-      el.scrollTo({ top: next * h, behavior: "auto" });
+      const top = getSlideTop(next);
+      if (top == null) return;
+      ignoreScrollSyncUntilRef.current = performance.now() + 240;
+      el.scrollTo({ top, behavior: "auto" });
       setCurrentIndex(next);
       currentIndexRef.current = next;
       activeIdRef.current = items[next]?.id ?? null;
@@ -148,7 +189,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
     const raf1 = window.requestAnimationFrame(jump);
     const raf2 = window.requestAnimationFrame(() => window.requestAnimationFrame(jump));
     const t1 = window.setTimeout(jump, 50);
-    const t2 = window.setTimeout(jump, 200);
+    const t2 = window.setTimeout(jump, 220);
 
     return () => {
       cancelled = true;
@@ -157,14 +198,13 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       window.clearTimeout(t1);
       window.clearTimeout(t2);
     };
-  }, [startIndex, items.length]); // eslint-disable-line react-hooks/exhaustive-deps -- open jump only
+  }, [getSlideTop, startIndex, items.length]); // eslint-disable-line react-hooks/exhaustive-deps -- open jump only
 
   useEffect(() => {
     const onVis = () => {
       if (document.visibilityState === "visible") {
         rearmFeedAudioAfterForeground();
       } else {
-        // Backgrounding the app should silence everything immediately.
         stopAllPageMedia();
       }
     };
@@ -187,12 +227,20 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       rafId = window.requestAnimationFrame(() => {
         rafId = 0;
         if (performance.now() < ignoreScrollSyncUntilRef.current) return;
-        const h = el.clientHeight;
-        if (h <= 0) return;
-        const next = Math.min(
-          items.length - 1,
-          Math.max(0, Math.round(el.scrollTop / h)),
-        );
+
+        const slides = Array.from(el.children) as HTMLElement[];
+        if (slides.length === 0) return;
+        const top = el.scrollTop;
+        let next = 0;
+        let bestDistance = Number.POSITIVE_INFINITY;
+        slides.forEach((slide, index) => {
+          const distance = Math.abs(slide.offsetTop - top);
+          if (distance < bestDistance) {
+            bestDistance = distance;
+            next = index;
+          }
+        });
+        next = Math.min(items.length - 1, Math.max(0, next));
         setCurrentIndex((prev) => (prev === next ? prev : next));
       });
     };
@@ -249,7 +297,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
             <div
               key={item.id}
               className="h-[100dvh] w-full snap-start snap-always relative bg-black"
-              style={{ scrollSnapAlign: "start" }}
+              style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }}
             >
               {mounted ? (
                 item?.itemType === "battle" ? (
