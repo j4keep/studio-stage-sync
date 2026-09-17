@@ -1,6 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, CalendarClock, MapPin, Search, Share2, SlidersHorizontal } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  ChevronRight,
+  MapPin,
+  Plus,
+  Search,
+  Share2,
+  SlidersHorizontal,
+  Sparkles,
+  Ticket,
+  Users,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -30,10 +42,11 @@ type EventRow = {
 };
 
 type HostProfile = { user_id: string; display_name: string | null; avatar_url: string | null };
+type FeedMode = "for-you" | "following" | "going";
 
 function formatPrice(cents: number | null) {
-  if (cents == null) return null;
-  if (cents === 0) return "Free";
+  if (cents == null) return "RSVP";
+  if (cents === 0) return "Free RSVP";
   return `From $${(cents / 100).toFixed(cents % 100 === 0 ? 0 : 2)}`;
 }
 
@@ -48,7 +61,12 @@ function formatWhen(iso: string | null) {
   });
 }
 
-/** Explore → Events: discovery only. Creating/managing events lives in the Professional Dashboard. */
+function compactWhen(iso: string | null) {
+  if (!iso) return null;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" }).toUpperCase();
+}
+
+/** Bold My Circle event discovery. Event creation/management stays in the existing host dashboard. */
 export default function EventsPage() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -61,6 +79,8 @@ export default function EventsPage() {
   const [filters, setFilters] = useState<EventFilters>(DEFAULT_EVENT_FILTERS);
   const [showFilters, setShowFilters] = useState(false);
   const [shareEvent, setShareEvent] = useState<EventRow | null>(null);
+  const [feedMode, setFeedMode] = useState<FeedMode>("for-you");
+  const [category, setCategory] = useState<string>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,6 +112,7 @@ export default function EventsPage() {
         .select("event_id, user_id")
         .eq("user_id", user.id);
       setGoingIds(((rsvps as { event_id: string }[]) || []).map((r) => r.event_id));
+
       const { data: fol } = await (supabase as any)
         .from("follows")
         .select("following_id")
@@ -116,11 +137,7 @@ export default function EventsPage() {
     const isFollowing = followingIds.includes(hostId);
     setFollowingIds((prev) => (isFollowing ? prev.filter((id) => id !== hostId) : [...prev, hostId]));
     if (isFollowing) {
-      await (supabase as any)
-        .from("follows")
-        .delete()
-        .eq("follower_id", user.id)
-        .eq("following_id", hostId);
+      await (supabase as any).from("follows").delete().eq("follower_id", user.id).eq("following_id", hostId);
     } else {
       const { error } = await (supabase as any)
         .from("follows")
@@ -157,7 +174,7 @@ export default function EventsPage() {
         setGoingIds((prev) => prev.filter((id) => id !== eventId));
         toast.error("Could not update RSVP");
       } else {
-        toast.success("You're going — only the host sees this");
+        toast.success("Reservation saved");
       }
     }
   };
@@ -179,6 +196,10 @@ export default function EventsPage() {
         );
       });
     }
+
+    if (feedMode === "following") list = list.filter((r) => followingIds.includes(r.user_id));
+    if (feedMode === "going") list = list.filter((r) => goingIds.includes(r.id));
+    if (category !== "all") list = list.filter((r) => r.category === category);
     if (filters.categories.length) list = list.filter((r) => filters.categories.includes(r.category));
     if (filters.price === "free") list = list.filter((r) => (r.price_cents ?? 0) === 0);
     if (filters.price === "25") list = list.filter((r) => (r.price_cents ?? 0) <= 2500);
@@ -189,170 +210,248 @@ export default function EventsPage() {
       );
     }
     return list;
-  }, [rows, query, filters, hosts]);
+  }, [rows, query, feedMode, category, filters, hosts, followingIds, goingIds]);
+
+  const categoryChoices = [{ id: "all", label: "All" }, ...EVENT_CATEGORIES.slice(0, 8)];
 
   return (
-    <div className="min-h-screen bg-background pb-32 text-foreground">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 pb-3 pt-3 backdrop-blur">
-        <div className="flex items-center gap-2">
+    <div className="min-h-[100dvh] bg-black pb-32 text-white">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-black/88 px-4 pb-3 pt-[max(env(safe-area-inset-top),0.75rem)] backdrop-blur-2xl">
+        <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={() => nav("/explore")}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted"
-            aria-label="Back"
+            onClick={() => nav("/circle")}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]"
+            aria-label="Back to My Circle"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <div className="flex h-11 flex-1 items-center gap-2 rounded-full border border-border bg-card px-4 shadow-sm">
-            <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find things to do"
-              className="h-full w-full bg-transparent text-sm font-medium outline-none placeholder:text-muted-foreground"
-            />
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/40">My Circle</p>
+            <h1 className="truncate text-[20px] font-black tracking-[-0.03em]">Events</h1>
           </div>
+          <button
+            type="button"
+            onClick={() => nav("/pro/events")}
+            className="flex h-11 items-center gap-1.5 rounded-full bg-white px-4 text-[12px] font-black text-black"
+          >
+            <Plus className="h-4 w-4" /> Host
+          </button>
+        </div>
+      </header>
+
+      <section className="px-4 pb-2 pt-7">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-fuchsia-300">
+              <Sparkles className="h-3.5 w-3.5" /> Find your next thing
+            </div>
+            <h2 className="max-w-[320px] text-[42px] font-black leading-[0.9] tracking-[-0.055em] sm:text-[52px]">
+              Your city. Your people.
+            </h2>
+          </div>
+          <div className="mb-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-xl shadow-fuchsia-500/20">
+            <Ticket className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="mt-6 flex h-13 items-center gap-2 rounded-full border border-white/10 bg-white/[0.07] px-4">
+          <Search className="h-4 w-4 shrink-0 text-white/45" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search events, hosts, places"
+            className="h-12 w-full bg-transparent text-[13px] font-semibold text-white outline-none placeholder:text-white/35"
+          />
           <button
             type="button"
             onClick={() => setShowFilters(true)}
-            aria-label="Filter"
-            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border bg-card"
+            aria-label="Filter events"
+            className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10"
           >
             <SlidersHorizontal className="h-4 w-4" />
-            {activeFilterCount ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            {activeFilterCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-fuchsia-500 px-1 text-[9px] font-black">
                 {activeFilterCount}
               </span>
-            ) : null}
+            )}
           </button>
         </div>
-        {filters.categories.length ? (
-          <div className="-mx-4 mt-2 flex gap-2 overflow-x-auto px-4">
-            {filters.categories.map((c) => (
-              <span
-                key={c}
-                className="whitespace-nowrap rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground"
-              >
-                {EVENT_CATEGORIES.find((x) => x.id === c)?.label || c}
-              </span>
-            ))}
-          </div>
-        ) : null}
-      </header>
+      </section>
 
-      <section className="space-y-6 px-4 py-4">
+      <section className="mt-4">
+        <div className="flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
+          {([
+            ["for-you", "For You"],
+            ["following", "Following"],
+            ["going", "Saved / Going"],
+          ] as [FeedMode, string][]).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => setFeedMode(id)}
+              className={`shrink-0 rounded-full px-4 py-2 text-[12px] font-black ${
+                feedMode === id ? "bg-white text-black" : "border border-white/10 bg-white/[0.04] text-white/55"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-2 flex gap-2 overflow-x-auto px-4 pb-2 scrollbar-none">
+          {categoryChoices.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setCategory(item.id)}
+              className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold transition ${
+                category === item.id ? "bg-fuchsia-500 text-white" : "bg-white/[0.06] text-white/45"
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-5 space-y-8 px-4">
         {loading ? (
-          <p className="text-center text-sm text-muted-foreground">Loading…</p>
+          <div className="flex min-h-[35dvh] items-center justify-center">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          </div>
         ) : visible.length === 0 ? (
-          <p className="rounded-xl border border-border bg-card px-4 py-8 text-center text-sm text-muted-foreground">
-            No events match your search.
-          </p>
+          <div className="rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-14 text-center">
+            <CalendarClock className="mx-auto h-8 w-8 text-white/35" />
+            <h3 className="mt-4 text-xl font-black">Nothing here yet</h3>
+            <p className="mx-auto mt-2 max-w-xs text-[13px] text-white/45">
+              Try another category, follow more hosts, or create the first event for your crowd.
+            </p>
+            <button type="button" onClick={() => nav("/pro/events")} className="mt-6 rounded-full bg-white px-5 py-3 text-[12px] font-black text-black">
+              Host an event
+            </button>
+          </div>
         ) : (
           visible.map((row) => {
             const host = hosts[row.user_id];
             const isGoing = goingIds.includes(row.id);
             const isHost = user?.id === row.user_id;
             return (
-              <article key={row.id} className="text-left">
-                <div className="mb-2 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => nav(`/artist/${row.user_id}`)}
-                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                  >
-                    <span className="flex h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted">
-                      {host?.avatar_url ? (
-                        <img src={host.avatar_url} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        <span className="flex h-full w-full items-center justify-center text-[11px] font-bold text-muted-foreground">
-                          {(host?.display_name || "?")[0]?.toUpperCase()}
-                        </span>
-                      )}
-                    </span>
-                    <span className="min-w-0 truncate text-[13px] font-bold">
-                      {host?.display_name || "Creator"}
-                    </span>
-                  </button>
-                  {!isHost ? (
-                    <button
-                      type="button"
-                      onClick={() => void toggleFollow(row.user_id)}
-                      className={`shrink-0 rounded-full px-3 py-1.5 text-[11px] font-bold ${
-                        followingIds.includes(row.user_id)
-                          ? "border border-border bg-muted text-foreground"
-                          : "bg-primary text-primary-foreground"
-                      }`}
-                    >
-                      {followingIds.includes(row.user_id) ? "Following" : "Follow"}
-                    </button>
-                  ) : null}
-                </div>
-
+              <article key={row.id} className="overflow-hidden rounded-[30px] border border-white/10 bg-white/[0.045]">
                 <button
                   type="button"
                   onClick={() => nav(`/events/${row.id}`)}
-                  className="w-full overflow-hidden rounded-2xl text-left"
+                  className="relative block aspect-[4/5] w-full overflow-hidden bg-zinc-900 text-left"
                 >
                   {row.media_url ? (
-                    <div className="aspect-[3/2] w-full overflow-hidden rounded-2xl bg-muted">
-                      {row.media_type === "video" ? (
-                        <video src={row.media_url} muted playsInline className="h-full w-full object-cover" />
-                      ) : (
-                        <img src={row.media_url} alt="" className="h-full w-full object-cover" />
-                      )}
-                    </div>
+                    row.media_type === "video" ? (
+                      <video src={row.media_url} muted playsInline className="h-full w-full object-cover" />
+                    ) : (
+                      <img src={row.media_url} alt="" className="h-full w-full object-cover" />
+                    )
                   ) : (
-                    <div className="flex aspect-[3/2] items-center justify-center rounded-2xl bg-muted text-sm text-muted-foreground">
-                      Event
-                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-700 via-fuchsia-700 to-orange-500" />
                   )}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-transparent to-black/90" />
+                  <div className="absolute left-4 top-4 rounded-full bg-black/55 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] backdrop-blur-xl">
+                    {compactWhen(row.starts_at) || row.category}
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 p-5">
+                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-white/58">{row.category}</p>
+                    <h3 className="mt-1 text-[30px] font-black leading-[0.95] tracking-[-0.045em]">{row.title}</h3>
+                    {row.address ? (
+                      <p className="mt-3 flex items-center gap-1.5 text-[12px] font-semibold text-white/65">
+                        <MapPin className="h-3.5 w-3.5" />
+                        <span className="truncate">{row.address}</span>
+                      </p>
+                    ) : null}
+                  </div>
                 </button>
 
-                <div className="mt-2 flex items-start gap-3">
-                  <button
-                    type="button"
-                    onClick={() => nav(`/events/${row.id}`)}
-                    className="min-w-0 flex-1 space-y-1 text-left"
-                  >
-                    <p className="text-[17px] font-black leading-snug">{row.title}</p>
-                    {formatWhen(row.starts_at) ? (
-                      <p className="flex items-center gap-1 text-[13px] text-muted-foreground">
-                        <CalendarClock className="h-3.5 w-3.5" />
-                        {formatWhen(row.starts_at)}
-                      </p>
-                    ) : null}
-                    {row.address ? (
-                      <p className="flex items-center gap-1 text-[13px] text-muted-foreground">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {row.address}
-                      </p>
-                    ) : null}
-                    {formatPrice(row.price_cents) ? (
-                      <p className="text-[13px] font-bold">{formatPrice(row.price_cents)}</p>
-                    ) : null}
-                  </button>
-                  <div className="flex shrink-0 items-center gap-2 pt-1">
+                <div className="p-4">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => nav(`/artist/${row.user_id}`)} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+                      <span className="flex h-10 w-10 shrink-0 overflow-hidden rounded-full bg-white/10">
+                        {host?.avatar_url ? (
+                          <img src={host.avatar_url} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[12px] font-black text-white/50">
+                            {(host?.display_name || "?")[0]?.toUpperCase()}
+                          </span>
+                        )}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-[13px] font-black">{host?.display_name || "YAJ Host"}</span>
+                        <span className="mt-0.5 block text-[10px] font-semibold text-white/40">Host</span>
+                      </span>
+                    </button>
+                    {!isHost && (
+                      <button
+                        type="button"
+                        onClick={() => void toggleFollow(row.user_id)}
+                        className={`rounded-full px-3 py-2 text-[11px] font-black ${
+                          followingIds.includes(row.user_id) ? "bg-white/10 text-white" : "bg-white text-black"
+                        }`}
+                      >
+                        {followingIds.includes(row.user_id) ? "Following" : "Follow"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2 text-[12px] font-semibold text-white/58">
+                    {formatWhen(row.starts_at) && (
+                      <span className="flex min-w-0 flex-1 items-center gap-1.5">
+                        <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{formatWhen(row.starts_at)}</span>
+                      </span>
+                    )}
+                    <span className="shrink-0 font-black text-white">{formatPrice(row.price_cents)}</span>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-[1fr_auto_auto] gap-2">
+                    {isHost ? (
+                      <button
+                        type="button"
+                        onClick={() => nav(`/events/${row.id}`)}
+                        className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-white text-[12px] font-black text-black"
+                      >
+                        Manage event <ChevronRight className="h-4 w-4" />
+                      </button>
+                    ) : row.price_cents && row.price_cents > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => nav(`/events/${row.id}`)}
+                        className="flex h-11 items-center justify-center gap-2 rounded-2xl bg-white text-[12px] font-black text-black"
+                      >
+                        View tickets <Ticket className="h-4 w-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void toggleGoing(row.id)}
+                        className={`h-11 rounded-2xl text-[12px] font-black ${
+                          isGoing ? "border border-white/15 bg-white/10 text-white" : "bg-white text-black"
+                        }`}
+                      >
+                        {isGoing ? "Reserved ✓" : "Reserve spot"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setShareEvent(row)}
                       aria-label="Share event"
-                      className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card"
+                      className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]"
                     >
                       <Share2 className="h-4 w-4" />
                     </button>
-                    {!isHost ? (
-                      <button
-                        type="button"
-                        onClick={() => void toggleGoing(row.id)}
-                        className={`rounded-full px-4 py-2 text-[12px] font-bold active:scale-95 ${
-                          isGoing
-                            ? "border border-border bg-muted text-foreground"
-                            : "bg-primary text-primary-foreground"
-                        }`}
-                      >
-                        {isGoing ? "Going ✓" : "Going"}
-                      </button>
-                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => nav(`/events/${row.id}`)}
+                      aria-label="View event"
+                      className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06]"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </article>
@@ -361,11 +460,16 @@ export default function EventsPage() {
         )}
       </section>
 
-      {showFilters ? (
-        <EventFilterSheet value={filters} onApply={setFilters} onClose={() => setShowFilters(false)} />
-      ) : null}
+      <button
+        type="button"
+        onClick={() => nav("/pro/events")}
+        className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-4 z-20 flex h-14 items-center gap-2 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-5 text-[13px] font-black text-white shadow-2xl shadow-fuchsia-500/20"
+      >
+        <Plus className="h-5 w-5" /> Create event
+      </button>
 
-      {shareEvent ? <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} /> : null}
+      {showFilters && <EventFilterSheet value={filters} onApply={setFilters} onClose={() => setShowFilters(false)} />}
+      {shareEvent && <ShareEventSheet event={shareEvent} onClose={() => setShareEvent(null)} />}
     </div>
   );
 }
