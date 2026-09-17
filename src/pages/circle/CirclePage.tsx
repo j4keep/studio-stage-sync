@@ -53,9 +53,7 @@ export default function CirclePage() {
 
   const load = () => {
     if (!id) return;
-    void getCircle(id)
-      .then(setCircle)
-      .catch(() => setCircle(null));
+    void getCircle(id).then(setCircle).catch(() => setCircle(null));
     if (user?.id) void getMyMembership(id, user.id).then(setMembership).catch(() => setMembership(null));
   };
 
@@ -84,10 +82,7 @@ export default function CirclePage() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "circle_live_sessions", filter: `circle_id=eq.${circle.id}` },
-        () =>
-          void getActiveLiveSession(circle.id, { exclusive: false })
-            .then(setLiveSession)
-            .catch(() => setLiveSession(null)),
+        () => void getActiveLiveSession(circle.id, { exclusive: false }).then(setLiveSession).catch(() => setLiveSession(null)),
       )
       .subscribe();
     return () => {
@@ -134,9 +129,7 @@ export default function CirclePage() {
         userId={user.id}
         circleName={circle.name}
         fullScreen
-        onSaved={(url) => {
-          void updateCircle(circle.id, { coverUrl: url }).then(load);
-        }}
+        onSaved={(url) => void updateCircle(circle.id, { coverUrl: url }).then(load)}
       />
     );
   }
@@ -159,11 +152,9 @@ export default function CirclePage() {
         toast({ title: "Circle link copied" });
       }
     } catch {
-      // Native share sheets can be dismissed; no error toast needed.
+      // Native share sheets can be dismissed.
     }
   };
-
-  const bumpContent = () => setContentRefresh((n) => n + 1);
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "home", label: "Home" },
@@ -175,14 +166,13 @@ export default function CirclePage() {
 
   return (
     <div className="min-h-[100dvh] bg-black pb-28 text-white">
-      <section className="relative min-h-[48dvh] overflow-hidden bg-zinc-950">
+      <section className="relative h-[34dvh] min-h-[260px] max-h-[420px] overflow-hidden bg-zinc-950">
         {circle.cover_url ? (
           <img src={circle.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 bg-gradient-to-br from-violet-700 via-fuchsia-700 to-orange-500" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/15 to-black" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_25%,rgba(255,255,255,0.18),transparent_28%)]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/25 via-transparent to-black/25" />
 
         <div className="relative z-10 flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),1rem)]">
           <button
@@ -214,33 +204,21 @@ export default function CirclePage() {
             )}
           </div>
         </div>
-
-        <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-6">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] backdrop-blur-xl">
-              {meta.label}
-            </span>
-            {circle.is_private && (
-              <span className="flex items-center gap-1 rounded-full border border-white/15 bg-black/35 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.15em] backdrop-blur-xl">
-                <Lock className="h-3 w-3" /> Private
-              </span>
-            )}
-          </div>
-          <h1 className="max-w-[92%] text-[clamp(38px,12vw,64px)] font-black leading-[0.92] tracking-[-0.055em]">
-            {circle.name}
-          </h1>
-          <div className="mt-4 flex items-center gap-4 text-[12px] font-bold text-white/72">
-            <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {circle.member_count} members</span>
-            {circle.city ? <span>{circle.city}</span> : null}
-          </div>
-        </div>
       </section>
 
-      <section className="px-4 pt-4">
+      <section className="px-4 pt-5">
+        <h1 className="max-w-[92%] text-[34px] font-black leading-[0.98] tracking-[-0.045em] sm:text-[42px]">
+          {circle.name}
+        </h1>
+        <div className="mt-3 flex items-center gap-4 text-[12px] font-bold text-white/60">
+          <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {circle.member_count} members</span>
+          {circle.city ? <span>{circle.city}</span> : null}
+        </div>
+
         {circle.description ? (
-          <p className="max-w-xl text-[14px] font-medium leading-relaxed text-white/68">{circle.description}</p>
+          <p className="mt-4 max-w-xl text-[14px] font-medium leading-relaxed text-white/68">{circle.description}</p>
         ) : (
-          <p className="text-[14px] font-medium leading-relaxed text-white/52">Your people, posts, lives and experiences in one place.</p>
+          <p className="mt-4 text-[14px] font-medium leading-relaxed text-white/52">Your people, posts, lives and experiences in one place.</p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -347,16 +325,12 @@ export default function CirclePage() {
       {tab === "home" && (
         <>
           <div className="[&_*]:border-white/10 [&_*]:text-inherit">
-            <CircleTopFansWheel
-              circle={circle}
-              isOwner={isOwner}
-              onCreateAvatar={() => navigate(`/circle/c/${circle.id}/settings`)}
-            />
+            <CircleTopFansWheel circle={circle} isOwner={isOwner} onCreateAvatar={() => navigate(`/circle/c/${circle.id}/settings`)} />
           </div>
           {isApprovedMember || !circle.is_private ? (
             <section className="mt-2">
               <div className="px-4 pb-2 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/38">From your Circle</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/38">From this Circle</p>
                 <h2 className="mt-1 text-[27px] font-black tracking-[-0.04em]">Latest</h2>
               </div>
               <div className="[&_*]:border-white/10">
@@ -365,14 +339,17 @@ export default function CirclePage() {
                   userId={user?.id}
                   canInteract={isApprovedMember}
                   refreshKey={contentRefresh}
-                  emptyLabel="No posts yet. Tap Post to start the conversation."
+                  emptyLabel="No posts yet."
                 />
               </div>
             </section>
           ) : (
             <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.04] px-8 py-12 text-center">
               <Lock className="h-8 w-8 text-white/45" />
-              <p className="max-w-xs text-[13px] font-medium text-white/55">Join this Circle to see member posts.</p>
+              <h2 className="text-lg font-black">Private Circle</h2>
+              <p className="max-w-xs text-[13px] font-medium text-white/55">
+                {circle.welcome_message || "Request to join to see posts and everything inside this Circle."}
+              </p>
             </div>
           )}
         </>
@@ -426,7 +403,7 @@ export default function CirclePage() {
           circleId={circle.id}
           userId={user.id}
           onCreated={() => {
-            bumpContent();
+            setContentRefresh((n) => n + 1);
             setTab("home");
           }}
         />
@@ -436,9 +413,7 @@ export default function CirclePage() {
         <div className="fixed inset-0 z-[90] bg-black">
           <LiveCameraView
             createMode="live"
-            onModeChange={() => {
-              // Circle prep stays on Live — no switch to public Post create.
-            }}
+            onModeChange={() => {}}
             onClose={() => setShowLivePrep(false)}
             circleId={circle.id}
             hideModeTabs
