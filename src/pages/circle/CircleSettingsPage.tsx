@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, Loader2, Trash2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
-import { Circle, deleteCircle, getCircle, updateCircle, uploadCircleImage } from "@/lib/circles";
+import { Circle, deleteCircle, getCircle, updateCircle } from "@/lib/circles";
 import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 
 export default function CircleSettingsPage() {
@@ -17,7 +17,6 @@ export default function CircleSettingsPage() {
   const [savingField, setSavingField] = useState<string | null>(null);
   const [editingCover, setEditingCover] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const avatarInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -52,19 +51,6 @@ export default function CircleSettingsPage() {
       setCircle(updated);
     } catch (e: any) {
       toast({ title: "Couldn't save that change", description: e.message, variant: "destructive" });
-    } finally {
-      setSavingField(null);
-    }
-  };
-
-  const pickAvatar = async (file: File) => {
-    setSavingField("avatar");
-    try {
-      const url = await uploadCircleImage(user.id, file, "avatar");
-      const updated = await updateCircle(circle.id, { avatarUrl: url });
-      setCircle(updated);
-    } catch (e: any) {
-      toast({ title: "Couldn't save that photo", description: e.message, variant: "destructive" });
     } finally {
       setSavingField(null);
     }
@@ -107,27 +93,24 @@ export default function CircleSettingsPage() {
       </div>
 
       <div className="space-y-6 px-4 py-5">
-        <Section title="Circle photo">
-          <div className="flex items-center gap-4">
-            <div className="h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-muted">
-              {circle.avatar_url && <img src={circle.avatar_url} alt="" className="h-full w-full object-cover" />}
+        <Section title="Header cover">
+          <div className="overflow-hidden rounded-2xl border border-border bg-muted">
+            <div className="aspect-[16/7] w-full bg-muted">
+              {circle.cover_url ? (
+                <img src={circle.cover_url} alt="Circle header cover" className="h-full w-full object-cover" />
+              ) : (
+                <div className="h-full w-full bg-gradient-to-br from-violet-500 via-fuchsia-500 to-orange-400" />
+              )}
             </div>
-            <div className="flex flex-1 flex-col gap-2">
-              <input ref={avatarInput} type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && pickAvatar(e.target.files[0])} />
-              <button
-                type="button"
-                onClick={() => avatarInput.current?.click()}
-                disabled={savingField === "avatar"}
-                className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-card py-2 text-[12px] font-bold"
-              >
-                {savingField === "avatar" && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Change profile photo
-              </button>
+            <div className="p-3">
               <button
                 type="button"
                 onClick={() => setEditingCover(true)}
-                className="flex items-center justify-center gap-1.5 rounded-full border border-border bg-card py-2 text-[12px] font-bold"
+                disabled={savingField === "cover"}
+                className="flex h-11 w-full items-center justify-center gap-1.5 rounded-full border border-border bg-card text-[12.5px] font-bold disabled:opacity-60"
               >
-                Change cover
+                {savingField === "cover" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Change header cover
               </button>
             </div>
           </div>
@@ -211,7 +194,7 @@ export default function CircleSettingsPage() {
         <Section title="Privacy & discovery" hint="Fine-tune discovery and member permissions.">
           <Toggle
             label="Discoverable"
-            hint="Show this Circle in search and Discover."
+            hint="Show this Circle in My Circle discovery and search. Private Circles can still be discoverable while keeping their content locked."
             value={circle.is_discoverable}
             saving={savingField === "discoverable"}
             onChange={(v) => patch("discoverable", () => updateCircle(circle.id, { isDiscoverable: v }))}
