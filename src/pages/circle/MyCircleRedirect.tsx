@@ -12,7 +12,7 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getOrCreatePersonalCircle } from "@/lib/circles";
+import { Circle, getOrCreatePersonalCircle } from "@/lib/circles";
 import { supabase } from "@/integrations/supabase/client";
 
 const SLIDE_MS = 3600;
@@ -53,19 +53,46 @@ const slides = [
 ] as const;
 
 /**
- * Resolve the signed-in user's personal Circle. New My Circle users get one short,
- * bold intro first; completion is stored on the auth account so it follows them
- * across devices. The Circle itself is prepared in the background while they watch.
+ * My Circle landing page. First-time users get the intro once; after that this becomes
+ * the Circle discovery home so people can browse other users' discoverable Circles.
+ * Private Circles may appear here, but their content remains locked on the Circle page
+ * until the owner approves the join request.
  */
 export default function MyCircleRedirect() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState(false);
-  const [circleId, setCircleId] = useState<string | null>(null);
+  const [personalCircle, setPersonalCircle] = useState<Circle | null>(null);
+  const [circles, setCircles] = useState<Circle[]>([]);
+  const [loadingCircles, setLoadingCircles] = useState(true);
   const [slide, setSlide] = useState(0);
   const [finishing, setFinishing] = useState(false);
+  const [introDismissed, setIntroDismissed] = useState(false);
 
-  const hasCompletedIntro = Boolean(user?.user_metadata?.circle_onboarding_complete);
+  const hasCompletedIntro = Boolean(user?.user_metadata?.circle_onboarding_complete) || introDismissed;
+
+  const loadCircles = async (ownCircle: Circle) => {
+    setLoadingCircles(true);
+    try {
+      const { data, error: queryError } = await (supabase as any)
+        .from("circles")
+        .select("*")
+        .eq("is_discoverable", true)
+        .order("updated_at", { ascending: false })
+        .limit(60);
+
+      if (queryError) throw queryError;
+
+      const list = ((data as Circle[]) || []).filter((item) => Boolean(item?.id));
+      const withOwn = list.some((item) => item.id === ownCircle.id) ? list : [ownCircle, ...list];
+      setCircles(withOwn);
+    } catch {
+      // If discovery is temporarily unavailable, never block access to the user's own Circle.
+      setCircles([ownCircle]);
+    } finally {
+      setLoadingCircles(false);
+    }
+  };
 
   useEffect(() => {
     if (loading || !user?.id) return;
@@ -74,8 +101,8 @@ export default function MyCircleRedirect() {
     void getOrCreatePersonalCircle(user.id, user.user_metadata?.display_name)
       .then((circle) => {
         if (!active) return;
-        setCircleId(circle.id);
-        if (hasCompletedIntro) navigate(`/circle/c/${circle.id}`, { replace: true });
+        setPersonalCircle(circle);
+        void loadCircles(circle);
       })
       .catch(() => {
         if (active) setError(true);
@@ -84,7 +111,7 @@ export default function MyCircleRedirect() {
     return () => {
       active = false;
     };
-  }, [hasCompletedIntro, loading, navigate, user?.id, user?.user_metadata?.display_name]);
+  }, [loading, user?.id, user?.user_metadata?.display_name]);
 
   useEffect(() => {
     if (loading || hasCompletedIntro || error) return;
@@ -98,21 +125,19 @@ export default function MyCircleRedirect() {
   const Icon = current.icon;
   const progress = useMemo(() => ((slide + 1) / slides.length) * 100, [slide]);
 
-  const enterCircle = async (remember: boolean) => {
-    if (!circleId || finishing) return;
+  const enterCircleHome = async (remember: boolean) => {
+    if (!personalCircle || finishing) return;
     setFinishing(true);
 
     if (remember) {
       const { error: updateError } = await supabase.auth.updateUser({
         data: { circle_onboarding_complete: true },
       });
-      if (updateError) {
-        // Don't trap the user because metadata could not save. They can still enter.
-        console.warn("Unable to save My Circle onboarding state", updateError);
-      }
+      if (updateError) console.warn("Unable to save My Circle onboarding state", updateError);
     }
 
-    navigate(`/circle/c/${circleId}`, { replace: true });
+    setIntroDismissed(true);
+    setFinishing(false);
   };
 
   if (error) {
@@ -123,23 +148,20 @@ export default function MyCircleRedirect() {
             <Users className="h-7 w-7" />
           </div>
           <h1 className="mt-5 text-[22px] font-black tracking-tight">My Circle is taking a moment</h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-white/60">
-            We couldn't open your Circle right now. Try again and we'll reconnect you.
-          </p>
+          <p className="mt-2 text-[13px] leading-relaxed text-white/60">We couldn't open My Circle right now. Try again and we'll reconnect you.</p>
           <button
             type="button"
             onClick={() => window.location.reload()}
             className="mt-6 inline-flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[14px] font-black text-black active:scale-[0.98]"
           >
-            <RefreshCw className="h-4 w-4" />
-            Try again
+            <RefreshCw className="h-4 w-4" /> Try again
           </button>
         </div>
       </div>
     );
   }
 
-  if (loading || hasCompletedIntro) {
+  if (loading || !personalCircle) {
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-black text-white">
         <div className="flex flex-col items-center text-center">
@@ -153,13 +175,71 @@ export default function MyCircleRedirect() {
     );
   }
 
+  if (hasCompletedIntro) {
+    return (
+      <main className="min-h-[100dvh] bg-black pb-28 text-white">
+        <header className="sticky top-0 z-20 border-b border-white/10 bg-black/90 px-4 pb-3 pt-[max(env(safe-area-inset-top),0.85rem)] backdrop-blur-xl">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/40">Community</p>
+              <h1 className="text-[24px] font-black tracking-[-0.04em]">My Circle</h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`/circle/c/${personalCircle.id}`)}
+              className="rounded-full bg-white px-4 py-2.5 text-[12px] font-black text-black"
+            >
+              Open my Circle
+            </button>
+          </div>
+        </header>
+
+        <section className="px-4 pb-4 pt-5">
+          <h2 className="text-[13px] font-black uppercase tracking-[0.18em] text-white/45">Discover Circles</h2>
+          <p className="mt-1 text-[13px] font-medium text-white/55">Tap a cover to enter that community.</p>
+        </section>
+
+        <section className="space-y-5 px-4">
+          {loadingCircles ? (
+            <div className="flex justify-center py-14"><Loader2 className="h-6 w-6 animate-spin text-white/50" /></div>
+          ) : circles.length === 0 ? (
+            <div className="rounded-[28px] border border-white/10 bg-white/[0.04] px-6 py-12 text-center text-sm text-white/50">
+              No discoverable Circles yet.
+            </div>
+          ) : (
+            circles.map((circle) => (
+              <button
+                key={circle.id}
+                type="button"
+                onClick={() => navigate(`/circle/c/${circle.id}`)}
+                className="group block w-full overflow-hidden rounded-[28px] text-left active:scale-[0.995]"
+              >
+                <div className="relative aspect-[16/9] overflow-hidden bg-zinc-900">
+                  {circle.cover_url ? (
+                    <img src={circle.cover_url} alt="" className="h-full w-full object-cover transition duration-300 group-active:scale-[1.01]" />
+                  ) : (
+                    <div className="h-full w-full bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/88 via-black/8 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-5">
+                    <h3 className="max-w-[92%] text-[28px] font-black leading-[0.95] tracking-[-0.045em] text-white sm:text-[34px]">
+                      {circle.name}
+                    </h3>
+                  </div>
+                </div>
+              </button>
+            ))
+          )}
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-black text-white">
       <div className={`absolute inset-0 bg-gradient-to-br ${current.accent} opacity-90 transition-all duration-700`} />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.22),transparent_34%),linear-gradient(to_bottom,rgba(0,0,0,0.04),rgba(0,0,0,0.78))]" />
 
-      {/* Motion-story stage. These shapes intentionally move like a short visual reel
-          while keeping the component self-contained until dedicated YAJ video assets land. */}
       <div className="pointer-events-none absolute inset-x-0 top-[15dvh] flex justify-center">
         <div className="relative h-[34dvh] w-[82vw] max-w-md">
           <div className="absolute left-[4%] top-[7%] h-44 w-32 -rotate-6 animate-pulse rounded-[30px] border border-white/20 bg-black/25 shadow-2xl backdrop-blur-md" />
@@ -206,9 +286,7 @@ export default function MyCircleRedirect() {
             <Sparkles className="h-4 w-4" />
             <span className="text-[11px] font-black uppercase tracking-[0.18em]">Together we show up</span>
           </div>
-          <h1 className="whitespace-pre-line text-[clamp(44px,13vw,68px)] font-black leading-[0.88] tracking-[-0.065em]">
-            {current.title}
-          </h1>
+          <h1 className="whitespace-pre-line text-[clamp(44px,13vw,68px)] font-black leading-[0.88] tracking-[-0.065em]">{current.title}</h1>
           <p className="mt-5 max-w-md text-[15px] font-semibold leading-relaxed text-white/78">{current.body}</p>
 
           <div className="mt-7 flex items-center gap-3 rounded-[24px] border border-white/15 bg-black/25 p-3 backdrop-blur-xl">
@@ -223,16 +301,16 @@ export default function MyCircleRedirect() {
 
           <button
             type="button"
-            disabled={!circleId || finishing}
-            onClick={() => void enterCircle(true)}
+            disabled={finishing}
+            onClick={() => void enterCircleHome(true)}
             className="mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-full bg-white text-[15px] font-black text-black shadow-2xl transition active:scale-[0.985] disabled:opacity-55"
           >
             {finishing ? <Loader2 className="h-5 w-5 animate-spin" /> : <>Enter My Circle <ArrowRight className="h-4 w-4" /></>}
           </button>
           <button
             type="button"
-            disabled={!circleId || finishing}
-            onClick={() => void enterCircle(false)}
+            disabled={finishing}
+            onClick={() => void enterCircleHome(false)}
             className="mt-3 h-11 w-full text-[13px] font-bold text-white/75 disabled:opacity-50"
           >
             Maybe later
