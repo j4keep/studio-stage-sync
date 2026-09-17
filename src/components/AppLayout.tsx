@@ -112,12 +112,12 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   }
 
   if (isBookReader) {
-    return <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-[#F7F1E8] text-foreground">{children}</div>;
+    return <div className="relative min-h-[100dvh] overflow-hidden overscroll-none bg-background text-foreground transition-colors">{children}</div>;
   }
 
   if (desktopShell) {
     return (
-      <div className="min-h-screen overflow-x-hidden overscroll-x-none touch-pan-y bg-background text-foreground lg:bg-[hsl(var(--muted)/0.45)]">
+      <div className="min-h-screen overflow-x-hidden overscroll-x-none touch-pan-y bg-background text-foreground transition-colors lg:bg-[hsl(var(--muted)/0.45)]">
         <div className="hidden lg:block">
           <DesktopTopBar />
         </div>
@@ -166,7 +166,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   }
 
   return (
-    <div className="relative mx-auto min-h-screen min-w-0 max-w-lg overflow-x-hidden overscroll-x-none bg-background text-foreground lg:max-w-3xl">
+    <div className="relative mx-auto min-h-screen min-w-0 max-w-lg overflow-x-hidden overscroll-x-none bg-background text-foreground transition-colors lg:max-w-3xl">
       {showMobileTopBar && (
         <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-4 py-2.5 shadow-[0_1px_0_hsl(var(--border)/0.35)] backdrop-blur-xl">
           {backSlot}
