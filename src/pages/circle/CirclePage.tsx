@@ -92,9 +92,9 @@ export default function CirclePage() {
 
   if (circle === undefined) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-black text-white/60">
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background text-muted-foreground">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/20 border-t-white" />
+          <div className="h-9 w-9 animate-spin rounded-full border-2 border-border border-t-foreground" />
           <span className="text-xs font-bold uppercase tracking-[0.2em]">Opening Circle</span>
         </div>
       </div>
@@ -103,12 +103,12 @@ export default function CirclePage() {
 
   if (!circle) {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-black px-6 text-center text-white">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10">
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-background px-6 text-center text-foreground">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
           <Users className="h-7 w-7" />
         </div>
         <p className="text-xl font-black tracking-tight">This Circle isn't available.</p>
-        <button type="button" onClick={() => navigate("/circle")} className="rounded-full bg-white px-5 py-3 text-sm font-black text-black">
+        <button type="button" onClick={() => navigate("/circle")} className="rounded-full bg-foreground px-5 py-3 text-sm font-black text-background">
           Back to My Circle
         </button>
       </div>
@@ -165,8 +165,8 @@ export default function CirclePage() {
   ];
 
   return (
-    <div className="min-h-[100dvh] bg-black pb-28 text-white">
-      <section className="relative h-[34dvh] min-h-[260px] max-h-[420px] overflow-hidden bg-zinc-950">
+    <div className="min-h-[100dvh] bg-background pb-28 text-foreground transition-colors">
+      <section className="relative h-[34dvh] min-h-[260px] max-h-[420px] overflow-hidden bg-muted">
         {circle.cover_url ? (
           <img src={circle.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
@@ -210,15 +210,15 @@ export default function CirclePage() {
         <h1 className="max-w-[92%] text-[34px] font-black leading-[0.98] tracking-[-0.045em] sm:text-[42px]">
           {circle.name}
         </h1>
-        <div className="mt-3 flex items-center gap-4 text-[12px] font-bold text-white/60">
+        <div className="mt-3 flex items-center gap-4 text-[12px] font-bold text-muted-foreground">
           <span className="flex items-center gap-1.5"><Users className="h-4 w-4" /> {circle.member_count} members</span>
           {circle.city ? <span>{circle.city}</span> : null}
         </div>
 
         {circle.description ? (
-          <p className="mt-4 max-w-xl text-[14px] font-medium leading-relaxed text-white/68">{circle.description}</p>
+          <p className="mt-4 max-w-xl text-[14px] font-medium leading-relaxed text-muted-foreground">{circle.description}</p>
         ) : (
-          <p className="mt-4 text-[14px] font-medium leading-relaxed text-white/52">Your people, posts, lives and experiences in one place.</p>
+          <p className="mt-4 text-[14px] font-medium leading-relaxed text-muted-foreground">Your people, posts, lives and experiences in one place.</p>
         )}
 
         <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -228,7 +228,7 @@ export default function CirclePage() {
             <button
               type="button"
               onClick={() => setShowCreatePost(true)}
-              className="flex h-11 items-center gap-2 rounded-full bg-white px-5 text-[13px] font-black text-black active:scale-[0.98]"
+              className="flex h-11 items-center gap-2 rounded-full bg-foreground px-5 text-[13px] font-black text-background active:scale-[0.98]"
             >
               <Plus className="h-4 w-4" /> Post
             </button>
@@ -258,18 +258,18 @@ export default function CirclePage() {
       </section>
 
       <section className="mt-6 px-4">
-        <div className="overflow-hidden rounded-[28px] border border-white/10 bg-gradient-to-br from-violet-600/35 via-fuchsia-500/20 to-orange-400/20 p-5 shadow-2xl">
+        <div className="overflow-hidden rounded-[28px] border border-border bg-gradient-to-br from-violet-600/20 via-fuchsia-500/10 to-orange-400/10 p-5 shadow-xl dark:from-violet-600/35 dark:via-fuchsia-500/20 dark:to-orange-400/20">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-white/60">
+              <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">
                 <Sparkles className="h-3.5 w-3.5" /> Circle Events
               </div>
               <h2 className="mt-2 text-[27px] font-black leading-none tracking-[-0.04em]">Show up together.</h2>
-              <p className="mt-2 max-w-xs text-[12px] font-medium leading-relaxed text-white/58">
+              <p className="mt-2 max-w-xs text-[12px] font-medium leading-relaxed text-muted-foreground">
                 Discover podcasts, private gatherings, workshops, live experiences and more.
               </p>
             </div>
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white text-black">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-foreground text-background">
               <CalendarDays className="h-6 w-6" />
             </div>
           </div>
@@ -277,39 +277,29 @@ export default function CirclePage() {
             <button
               type="button"
               onClick={() => navigate("/events")}
-              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-white text-[12px] font-black text-black active:scale-[0.98]"
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-foreground text-[12px] font-black text-background active:scale-[0.98]"
             >
               Browse events <ChevronRight className="h-4 w-4" />
             </button>
-            {isOwner ? (
-              <button
-                type="button"
-                onClick={() => navigate("/pro/events")}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/25 text-[12px] font-black text-white active:scale-[0.98]"
-              >
-                <Ticket className="h-4 w-4" /> Host event
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => navigate("/events")}
-                className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/25 text-[12px] font-black text-white active:scale-[0.98]"
-              >
-                <Ticket className="h-4 w-4" /> RSVP & tickets
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate(isOwner ? "/pro/events" : "/events")}
+              className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card/70 text-[12px] font-black text-foreground active:scale-[0.98]"
+            >
+              <Ticket className="h-4 w-4" /> {isOwner ? "Host event" : "RSVP & tickets"}
+            </button>
           </div>
         </div>
       </section>
 
-      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-white/10 px-4 scrollbar-none">
+      <nav className="mt-6 flex gap-1 overflow-x-auto border-b border-border px-4 scrollbar-none">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => setTab(t.id)}
             className={`relative shrink-0 border-b-2 px-4 py-3 text-[12px] font-black transition ${
-              tab === t.id ? "border-white text-white" : "border-transparent text-white/42"
+              tab === t.id ? "border-foreground text-foreground" : "border-transparent text-muted-foreground"
             }`}
           >
             {t.label}
@@ -324,30 +314,26 @@ export default function CirclePage() {
 
       {tab === "home" && (
         <>
-          <div className="[&_*]:border-white/10 [&_*]:text-inherit">
-            <CircleTopFansWheel circle={circle} isOwner={isOwner} onCreateAvatar={() => navigate(`/circle/c/${circle.id}/settings`)} />
-          </div>
+          <CircleTopFansWheel circle={circle} isOwner={isOwner} onCreateAvatar={() => navigate(`/circle/c/${circle.id}/settings`)} />
           {isApprovedMember || !circle.is_private ? (
             <section className="mt-2">
               <div className="px-4 pb-2 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/38">From this Circle</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">From this Circle</p>
                 <h2 className="mt-1 text-[27px] font-black tracking-[-0.04em]">Latest</h2>
               </div>
-              <div className="[&_*]:border-white/10">
-                <CircleContentFeed
-                  circleId={circle.id}
-                  userId={user?.id}
-                  canInteract={isApprovedMember}
-                  refreshKey={contentRefresh}
-                  emptyLabel="No posts yet."
-                />
-              </div>
+              <CircleContentFeed
+                circleId={circle.id}
+                userId={user?.id}
+                canInteract={isApprovedMember}
+                refreshKey={contentRefresh}
+                emptyLabel="No posts yet."
+              />
             </section>
           ) : (
-            <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.04] px-8 py-12 text-center">
-              <Lock className="h-8 w-8 text-white/45" />
+            <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[28px] border border-border bg-card px-8 py-12 text-center">
+              <Lock className="h-8 w-8 text-muted-foreground" />
               <h2 className="text-lg font-black">Private Circle</h2>
-              <p className="max-w-xs text-[13px] font-medium text-white/55">
+              <p className="max-w-xs text-[13px] font-medium text-muted-foreground">
                 {circle.welcome_message || "Request to join to see posts and everything inside this Circle."}
               </p>
             </div>
@@ -356,26 +342,24 @@ export default function CirclePage() {
       )}
 
       {tab === "exclusive" && (
-        <div className="[&_*]:border-white/10">
-          <CircleExclusiveArea
-            circle={circle}
-            membership={membership}
-            userId={user?.id}
-            isOwner={isOwner}
-            canCreate={canCreate}
-            onCircleChanged={load}
-          />
-        </div>
+        <CircleExclusiveArea
+          circle={circle}
+          membership={membership}
+          userId={user?.id}
+          isOwner={isOwner}
+          canCreate={canCreate}
+          onCircleChanged={load}
+        />
       )}
 
       {tab === "donate" && <CircleDonationTab circle={circle} userId={user?.id} canDonate={isApprovedMember} />}
 
       {!isApprovedMember && circle.is_private ? (
         tab !== "home" && tab !== "exclusive" && tab !== "donate" && (
-          <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[28px] border border-white/10 bg-white/[0.04] px-8 py-14 text-center">
-            <Lock className="h-9 w-9 text-white/42" />
+          <div className="mx-4 mt-6 flex flex-col items-center gap-3 rounded-[28px] border border-border bg-card px-8 py-14 text-center">
+            <Lock className="h-9 w-9 text-muted-foreground" />
             <h2 className="text-lg font-black">This is a private Circle</h2>
-            <p className="max-w-xs text-[13px] text-white/52">
+            <p className="max-w-xs text-[13px] text-muted-foreground">
               {circle.welcome_message || "Request to join to see everything inside this Circle."}
             </p>
           </div>
@@ -384,7 +368,7 @@ export default function CirclePage() {
         <>
           {tab === "members" && isAdmin && <CircleMemberManagement circle={circle} onChanged={load} />}
           {tab === "about" && (
-            <div className="mx-4 mt-5 space-y-1 overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] px-4 py-2 text-[13px]">
+            <div className="mx-4 mt-5 space-y-1 overflow-hidden rounded-[24px] border border-border bg-card px-4 py-2 text-[13px]">
               <Row label="Type" value={meta.label} />
               {circle.city && <Row label="City" value={circle.city} />}
               {circle.category && <Row label="Category" value={circle.category} />}
@@ -426,9 +410,9 @@ export default function CirclePage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-white/10 py-3 last:border-b-0">
-      <span className="font-medium text-white/48">{label}</span>
-      <span className="font-black text-white">{value}</span>
+    <div className="flex items-center justify-between border-b border-border py-3 last:border-b-0">
+      <span className="font-medium text-muted-foreground">{label}</span>
+      <span className="font-black text-foreground">{value}</span>
     </div>
   );
 }
