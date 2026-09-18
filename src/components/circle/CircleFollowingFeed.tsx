@@ -46,33 +46,14 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         ]),
       );
 
-      if (!circleIds.length) {
-        setItems([]);
-        return;
-      }
-
-      const circles = (
-        await Promise.all(
-          circleIds.map(async (circleId) => {
-            try {
-              return await getCircle(circleId);
-            } catch {
-              return null;
-            }
-          }),
-        )
-      ).filter((circle): circle is NonNullable<typeof circle> => Boolean(circle)) as CircleSummary[];
-
-      const circleMap = new Map(circles.map((c) => [c.id, c]));
-
+      // Shared feed: posts from my own Circle, Circles I joined, and Circles owned by
+      // people I follow. The RPC applies visibility rules server-side.
       let contentData: CircleContent[] = [];
       const { data: rpcRows, error: rpcError } = await sb.rpc("yaj_my_circle_home_contents");
       if (!rpcError && Array.isArray(rpcRows)) {
         contentData = rpcRows as CircleContent[];
       } else {
         // Compatibility fallback for deployments where the new feed RPC is not live yet.
-        // Pull each joined Circle through the same Circle-content loader used by the
-        // individual Circle Home page.
         const perCircle = await Promise.all(
           circleIds.map(async (circleId) => {
             try {
@@ -85,6 +66,31 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         contentData = perCircle.flat();
       }
 
+      // Resolve every Circle referenced by the feed — including Circles I follow but
+      // have not joined — so followed creators' posts are not dropped.
+      const allCircleIds = Array.from(
+        new Set([...circleIds, ...contentData.map((item) => item.circle_id)]),
+      );
+
+      if (!allCircleIds.length) {
+        setItems([]);
+        return;
+      }
+
+      const circles = (
+        await Promise.all(
+          allCircleIds.map(async (circleId) => {
+            try {
+              return await getCircle(circleId);
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter((circle): circle is NonNullable<typeof circle> => Boolean(circle)) as CircleSummary[];
+
+      const circleMap = new Map(circles.map((c) => [c.id, c]));
+
       const contents = contentData.filter((item) => {
         if (item.visibility === "only_me") return item.author_id === userId;
         if (item.visibility === "paid_members") {
@@ -95,6 +101,7 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         }
         return true;
       });
+
 
       const authorIds = Array.from(new Set(contents.map((c) => c.author_id)));
       const { data: profiles } = authorIds.length

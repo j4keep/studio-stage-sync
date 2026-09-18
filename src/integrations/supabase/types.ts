@@ -350,6 +350,264 @@ export type Database = {
         }
         Relationships: []
       }
+      circle_content_comments: {
+        Row: {
+          body: string
+          content_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          content_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          content_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_content_comments_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "circle_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_content_donations: {
+        Row: {
+          amount_cents: number
+          content_id: string
+          created_at: string
+          from_user_id: string
+          id: string
+        }
+        Insert: {
+          amount_cents: number
+          content_id: string
+          created_at?: string
+          from_user_id: string
+          id?: string
+        }
+        Update: {
+          amount_cents?: number
+          content_id?: string
+          created_at?: string
+          from_user_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_content_donations_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "circle_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_content_likes: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_content_likes_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "circle_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_content_poll_votes: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          option_index: number
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          option_index: number
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          option_index?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_content_poll_votes_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "circle_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_content_rsvps: {
+        Row: {
+          content_id: string
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content_id: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content_id?: string
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_content_rsvps_content_id_fkey"
+            columns: ["content_id"]
+            isOneToOne: false
+            referencedRelation: "circle_contents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      circle_contents: {
+        Row: {
+          activity_type: string
+          author_id: string
+          body: string | null
+          circle_id: string
+          comment_count: number
+          community_subtype: string | null
+          created_at: string
+          donations_enabled: boolean
+          event_at: string | null
+          event_capacity: number | null
+          event_end_at: string | null
+          event_location: string | null
+          event_online_url: string | null
+          event_reminders: boolean
+          event_ticket_cents: number | null
+          id: string
+          is_pinned: boolean
+          kind: string
+          like_count: number
+          media_type: string
+          media_urls: Json
+          poll_options: Json
+          tags: Json
+          title: string | null
+          updated_at: string
+          view_count: number
+          visibility: string
+        }
+        Insert: {
+          activity_type?: string
+          author_id: string
+          body?: string | null
+          circle_id: string
+          comment_count?: number
+          community_subtype?: string | null
+          created_at?: string
+          donations_enabled?: boolean
+          event_at?: string | null
+          event_capacity?: number | null
+          event_end_at?: string | null
+          event_location?: string | null
+          event_online_url?: string | null
+          event_reminders?: boolean
+          event_ticket_cents?: number | null
+          id?: string
+          is_pinned?: boolean
+          kind?: string
+          like_count?: number
+          media_type?: string
+          media_urls?: Json
+          poll_options?: Json
+          tags?: Json
+          title?: string | null
+          updated_at?: string
+          view_count?: number
+          visibility?: string
+        }
+        Update: {
+          activity_type?: string
+          author_id?: string
+          body?: string | null
+          circle_id?: string
+          comment_count?: number
+          community_subtype?: string | null
+          created_at?: string
+          donations_enabled?: boolean
+          event_at?: string | null
+          event_capacity?: number | null
+          event_end_at?: string | null
+          event_location?: string | null
+          event_online_url?: string | null
+          event_reminders?: boolean
+          event_ticket_cents?: number | null
+          id?: string
+          is_pinned?: boolean
+          kind?: string
+          like_count?: number
+          media_type?: string
+          media_urls?: Json
+          poll_options?: Json
+          tags?: Json
+          title?: string | null
+          updated_at?: string
+          view_count?: number
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "circle_contents_circle_id_fkey"
+            columns: ["circle_id"]
+            isOneToOne: false
+            referencedRelation: "circles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       circle_live_comments: {
         Row: {
           circle_id: string | null
@@ -5299,6 +5557,10 @@ export type Database = {
         Args: { boost_id: string }
         Returns: undefined
       }
+      increment_circle_content_views: {
+        Args: { p_content_id: string }
+        Returns: undefined
+      }
       increment_deal_views: { Args: { p_deal_id: string }; Returns: undefined }
       increment_podcast_plays: {
         Args: { podcast_id: string }
@@ -5487,6 +5749,134 @@ export type Database = {
       suggested_moderation_action: {
         Args: { p_offense_count: number }
         Returns: string
+      }
+      toggle_circle_content_like: {
+        Args: { p_content_id: string }
+        Returns: boolean
+      }
+      yaj_can_view_circle_content: {
+        Args: { _content_id: string; _user_id: string }
+        Returns: boolean
+      }
+      yaj_circle_home_contents: {
+        Args: { p_circle_id: string }
+        Returns: {
+          activity_type: string
+          author_id: string
+          body: string | null
+          circle_id: string
+          comment_count: number
+          community_subtype: string | null
+          created_at: string
+          donations_enabled: boolean
+          event_at: string | null
+          event_capacity: number | null
+          event_end_at: string | null
+          event_location: string | null
+          event_online_url: string | null
+          event_reminders: boolean
+          event_ticket_cents: number | null
+          id: string
+          is_pinned: boolean
+          kind: string
+          like_count: number
+          media_type: string
+          media_urls: Json
+          poll_options: Json
+          tags: Json
+          title: string | null
+          updated_at: string
+          view_count: number
+          visibility: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "circle_contents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      yaj_circle_is_public: { Args: { _circle_id: string }; Returns: boolean }
+      yaj_circle_owner: { Args: { _circle_id: string }; Returns: string }
+      yaj_follows_circle_owner: {
+        Args: { _circle_id: string; _user_id: string }
+        Returns: boolean
+      }
+      yaj_my_circle_home_contents: {
+        Args: never
+        Returns: {
+          activity_type: string
+          author_id: string
+          body: string | null
+          circle_id: string
+          comment_count: number
+          community_subtype: string | null
+          created_at: string
+          donations_enabled: boolean
+          event_at: string | null
+          event_capacity: number | null
+          event_end_at: string | null
+          event_location: string | null
+          event_online_url: string | null
+          event_reminders: boolean
+          event_ticket_cents: number | null
+          id: string
+          is_pinned: boolean
+          kind: string
+          like_count: number
+          media_type: string
+          media_urls: Json
+          poll_options: Json
+          tags: Json
+          title: string | null
+          updated_at: string
+          view_count: number
+          visibility: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "circle_contents"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      yaj_upsert_circle_content: {
+        Args: { p_row: Json }
+        Returns: {
+          activity_type: string
+          author_id: string
+          body: string | null
+          circle_id: string
+          comment_count: number
+          community_subtype: string | null
+          created_at: string
+          donations_enabled: boolean
+          event_at: string | null
+          event_capacity: number | null
+          event_end_at: string | null
+          event_location: string | null
+          event_online_url: string | null
+          event_reminders: boolean
+          event_ticket_cents: number | null
+          id: string
+          is_pinned: boolean
+          kind: string
+          like_count: number
+          media_type: string
+          media_urls: Json
+          poll_options: Json
+          tags: Json
+          title: string | null
+          updated_at: string
+          view_count: number
+          visibility: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "circle_contents"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
