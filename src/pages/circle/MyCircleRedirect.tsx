@@ -10,6 +10,7 @@ import {
   LogOut,
   Mic2,
   RefreshCw,
+  Search,
   Sparkles,
   Ticket,
   Users,
@@ -34,6 +35,11 @@ type CirclePreview = {
   is_private: boolean;
   is_discoverable: boolean;
   type: string;
+  owner_id: string;
+  description?: string | null;
+  category?: string | null;
+  is_personal?: boolean;
+  owner_name?: string | null;
 };
 
 type JoinedCircle = CirclePreview & {
@@ -88,6 +94,7 @@ export default function MyCircleRedirect() {
   const [showDiscovery, setShowDiscovery] = useState(false);
   const [tab, setTab] = useState<DiscoveryTab>("home");
   const [leavingId, setLeavingId] = useState<string | null>(null);
+  const [circleSearch, setCircleSearch] = useState("");
 
   const hasCompletedIntro = Boolean(user?.user_metadata?.circle_onboarding_complete);
 
@@ -114,10 +121,10 @@ export default function MyCircleRedirect() {
     const [{ data: circleRows }, { data: membershipRows }] = await Promise.all([
       (supabase as any)
         .from("circles")
-        .select("id,name,cover_url,city,member_count,is_private,is_discoverable,type")
-        .eq("is_discoverable", true)
+        .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category")
+        .or("is_discoverable.eq.true,is_personal.eq.true")
         .order("updated_at", { ascending: false })
-        .limit(80),
+        .limit(120),
       (supabase as any)
         .from("circle_members")
         .select("id,circle_id,role,status")
@@ -125,7 +132,20 @@ export default function MyCircleRedirect() {
         .eq("status", "approved"),
     ]);
 
-    const discovery = (circleRows || []) as CirclePreview[];
+    const rawDiscovery = (circleRows || []) as CirclePreview[];
+    const ownerIds = Array.from(new Set(rawDiscovery.map((circle) => circle.owner_id).filter(Boolean)));
+    let ownerNames = new Map<string, string>();
+    if (ownerIds.length) {
+      const { data: ownerProfiles } = await (supabase as any)
+        .from("profiles")
+        .select("user_id,display_name")
+        .in("user_id", ownerIds);
+      ownerNames = new Map((ownerProfiles || []).map((profile: any) => [profile.user_id, profile.display_name || "YAJ member"]));
+    }
+    const discovery = rawDiscovery.map((circle) => ({
+      ...circle,
+      owner_name: ownerNames.get(circle.owner_id) || null,
+    }));
     setCircles(discovery);
 
     const approved = (membershipRows || []) as Array<{ id: string; circle_id: string; role: string; status: string }>;
@@ -140,7 +160,7 @@ export default function MyCircleRedirect() {
 
     const { data: joinedRows } = await (supabase as any)
       .from("circles")
-      .select("id,name,cover_url,city,member_count,is_private,is_discoverable,type")
+      .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category")
       .in("id", joinedIds);
 
     const membershipByCircle = new Map(approved.map((m) => [m.circle_id, m]));
@@ -165,6 +185,25 @@ export default function MyCircleRedirect() {
     const timer = window.setInterval(() => setSlide((current) => (current + 1) % slides.length), SLIDE_MS);
     return () => window.clearInterval(timer);
   }, [error, hasCompletedIntro, loading, showDiscovery]);
+
+  const visibleCircles = useMemo(() => {
+    const needle = circleSearch.trim().toLowerCase();
+    if (!needle) return circles;
+    return circles.filter((circle) => {
+      const haystack = [
+        circle.name,
+        circle.owner_name,
+        circle.city,
+        circle.category,
+        circle.type,
+        circle.description,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(needle);
+    });
+  }, [circleSearch, circles]);
 
   const current = slides[slide];
   const Icon = current.icon;
@@ -276,8 +315,19 @@ export default function MyCircleRedirect() {
         )}
 
         {tab === "discover" && (
-          <section className="mt-7 grid gap-5 px-4 lg:grid-cols-2 lg:px-6">
-            {circles.map((circle) => (
+          <section className="mt-7 px-4 lg:px-6">
+            <div className="relative mb-5">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={circleSearch}
+                onChange={(event) => setCircleSearch(event.target.value)}
+                placeholder="Search Circles, people, topics or places"
+                className="h-12 w-full rounded-full border border-border bg-card pl-11 pr-4 text-[13px] font-semibold text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+
+            <div className="grid gap-5 lg:grid-cols-2">
+            {visibleCircles.map((circle) => (
               <button
                 key={circle.id}
                 type="button"
@@ -294,19 +344,25 @@ export default function MyCircleRedirect() {
                   <h2 className="text-[29px] font-black leading-[0.95] tracking-[-0.045em]">{circle.name}</h2>
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-bold text-white/70">
                     <span>{circle.member_count || 0} members</span>
+                    {circle.owner_name ? <span>{circle.owner_name}</span> : null}
                     {circle.city ? <span>{circle.city}</span> : null}
                     {circle.is_private ? <span className="flex items-center gap-1"><LockKeyhole className="h-3 w-3" /> Private · Request to join</span> : <span>Open · Join anytime</span>}
                   </div>
                 </div>
               </button>
             ))}
-            {!circles.length && (
+            {!visibleCircles.length && (
               <div className="rounded-[28px] border border-border bg-card px-6 py-14 text-center lg:col-span-2">
                 <Users className="mx-auto h-8 w-8 text-muted-foreground" />
-                <h2 className="mt-4 text-xl font-black">Circles are getting started</h2>
-                <p className="mt-2 text-[13px] text-muted-foreground">Discoverable Circles will appear here as the community grows.</p>
+                <h2 className="mt-4 text-xl font-black">{circleSearch.trim() ? "No Circle matched that search" : "Circles are getting started"}</h2>
+                <p className="mt-2 text-[13px] text-muted-foreground">
+                  {circleSearch.trim()
+                    ? "Try a Circle name, member name, topic, category or city."
+                    : "Public and private personal Circles will appear here so people can join or request access."}
+                </p>
               </div>
             )}
+            </div>
           </section>
         )}
 
