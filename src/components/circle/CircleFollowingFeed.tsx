@@ -3,8 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { LockKeyhole, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import CircleContentCard from "@/components/circle/CircleContentCard";
+import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import { listCircleContents, type CircleContent } from "@/lib/circle-content";
 import { getCircle, type CircleMember } from "@/lib/circles";
+import { listBlockedPeerIds } from "@/lib/blocks";
 
 const sb = supabase as any;
 
@@ -17,24 +20,35 @@ type CircleSummary = {
   owner_id: string;
 };
 
-type FeedItem = {
+type CircleFeedItem = {
+  source: "circle";
   content: CircleContent;
   circle: CircleSummary;
   authorName: string;
   authorAvatar: string | null;
 };
 
+type SocialFeedItem = {
+  source: "social";
+  post: any;
+};
+
+type FeedItem = CircleFeedItem | SocialFeedItem;
+
 export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: string; ownCircleId?: string | null }) {
   const navigate = useNavigate();
   const [items, setItems] = useState<FeedItem[] | null>(null);
+  const [socialViewerIndex, setSocialViewerIndex] = useState<number | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const { data: membershipRows, error: membershipError } = await sb
-        .from("circle_members")
-        .select("circle_id, role, status")
-        .eq("user_id", userId)
-        .eq("status", "approved");
+      const [membershipResult, followingResult, followerResult, blockedIds] = await Promise.all([
+        sb.from("circle_members").select("circle_id, role, status").eq("user_id", userId).eq("status", "approved"),
+        sb.from("follows").select("following_id").eq("follower_id", userId),
+        sb.from("follows").select("follower_id").eq("following_id", userId),
+        listBlockedPeerIds(userId),
+      ]);
+      const { data: membershipRows, error: membershipError } = membershipResult;
       if (membershipError) throw membershipError;
 
       const memberships = ((membershipRows as Pick<CircleMember, "circle_id" | "role" | "status">[]) || []);
@@ -111,20 +125,74 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         (profiles || []).map((p: any) => [p.user_id, { name: p.display_name || "YAJ member", avatar: p.avatar_url || null }]),
       );
 
-      setItems(
-        contents
+      const circleItems = contents
           .map((content) => {
             const circle = circleMap.get(content.circle_id);
             if (!circle) return null;
             const profile = profileMap.get(content.author_id) as { name: string; avatar: string | null } | undefined;
             return {
+              source: "circle" as const,
               content,
               circle,
               authorName: profile?.name || "YAJ member",
               authorAvatar: profile?.avatar || null,
-            } satisfies FeedItem;
+            } satisfies CircleFeedItem;
           })
-          .filter((item): item is FeedItem => Boolean(item)),
+          .filter((item): item is CircleFeedItem => Boolean(item));
+
+      // Circle Home is the user's people feed: include their own regular posts, people
+      // they follow, and people following them. Blocking always wins over a connection.
+      const connectedUserIds = new Set<string>([userId]);
+      for (const row of followingResult.data || []) connectedUserIds.add(row.following_id);
+      for (const row of followerResult.data || []) connectedUserIds.add(row.follower_id);
+      for (const blockedId of blockedIds) connectedUserIds.delete(blockedId);
+
+      let socialItems: SocialFeedItem[] = [];
+      if (connectedUserIds.size) {
+        const { data: posts, error: postsError } = await sb
+          .from("posts")
+          .select("*")
+          .in("user_id", Array.from(connectedUserIds))
+          .order("created_at", { ascending: false })
+          .limit(150);
+        if (postsError) throw postsError;
+
+        const socialPosts = posts || [];
+        const socialAuthorIds = Array.from(new Set(socialPosts.map((post: any) => post.user_id)));
+        const socialPostIds = socialPosts.map((post: any) => post.id);
+        const [{ data: socialProfiles }, { data: postLikes }] = await Promise.all([
+          socialAuthorIds.length
+            ? sb.from("profiles").select("user_id,display_name,avatar_url").in("user_id", socialAuthorIds)
+            : Promise.resolve({ data: [] }),
+          socialPostIds.length
+            ? sb.from("likes").select("content_id,user_id").eq("content_type", "post").in("content_id", socialPostIds)
+            : Promise.resolve({ data: [] }),
+        ]);
+        const socialProfileMap = new Map((socialProfiles || []).map((profile: any) => [profile.user_id, profile]));
+        const likeCounts = new Map<string, number>();
+        const likedIds = new Set<string>();
+        for (const like of postLikes || []) {
+          likeCounts.set(like.content_id, (likeCounts.get(like.content_id) || 0) + 1);
+          if (like.user_id === userId) likedIds.add(like.content_id);
+        }
+        socialItems = socialPosts.map((post: any) => ({
+          source: "social" as const,
+          post: {
+            ...post,
+            itemType: "post",
+            profile: socialProfileMap.get(post.user_id) || { display_name: "YAJ member", avatar_url: null },
+            likes_count: likeCounts.get(post.id) ?? post.likes_count ?? 0,
+            isLiked: likedIds.has(post.id),
+          },
+        }));
+      }
+
+      setItems(
+        [...circleItems, ...socialItems].sort((a, b) => {
+          const aDate = a.source === "circle" ? a.content.created_at : a.post.created_at;
+          const bDate = b.source === "circle" ? b.content.created_at : b.post.created_at;
+          return String(bDate).localeCompare(String(aDate));
+        }),
       );
     } catch {
       setItems([]);
@@ -145,7 +213,7 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         <Users className="mx-auto h-8 w-8 text-muted-foreground" />
         <h2 className="mt-4 text-xl font-black">No Circle posts yet</h2>
         <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-          Posts created inside your Circle and Circles you joined will appear here. Main Feed posts stay on the main Feed.
+          Your posts and posts from people or Circles connected to you will appear here.
         </p>
       </div>
     );
@@ -153,31 +221,41 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
 
   return (
     <div className="space-y-5 px-4 py-5 lg:px-6">
-      {items.map(({ content, circle, authorName, authorAvatar }) => (
-        <section key={content.id} className="overflow-hidden rounded-[24px]">
+      {items.map((item) => item.source === "social" ? (
+        <section key={`social-${item.post.id}`} className="overflow-hidden rounded-[24px]">
+          <FeedThumbCard
+            post={item.post}
+            onOpen={() => {
+              const socialItems = items.filter((candidate): candidate is SocialFeedItem => candidate.source === "social");
+              setSocialViewerIndex(socialItems.findIndex((candidate) => candidate.post.id === item.post.id));
+            }}
+          />
+        </section>
+      ) : (
+        <section key={`circle-${item.content.id}`} className="overflow-hidden rounded-[24px]">
           <div className="mb-2 flex items-center gap-3 px-1">
             <button
               type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}`)}
+              onClick={() => navigate(`/circle/c/${item.circle.id}`)}
               className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
             >
               <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-muted">
-                {circle.cover_url ? <img src={circle.cover_url} alt="" className="h-full w-full object-cover" /> : null}
+                {item.circle.cover_url ? <img src={item.circle.cover_url} alt="" className="h-full w-full object-cover" /> : null}
               </span>
               <span className="min-w-0">
                 <span className="flex items-center gap-1.5 truncate text-[13px] font-black">
-                  {circle.name}
-                  {circle.is_private ? <LockKeyhole className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+                  {item.circle.name}
+                  {item.circle.is_private ? <LockKeyhole className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
                 </span>
                 <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                  {authorAvatar ? <img src={authorAvatar} alt="" className="h-4 w-4 rounded-full object-cover" /> : null}
-                  {authorName}
+                  {item.authorAvatar ? <img src={item.authorAvatar} alt="" className="h-4 w-4 rounded-full object-cover" /> : null}
+                  {item.authorName}
                 </span>
               </span>
             </button>
             <button
               type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}`)}
+              onClick={() => navigate(`/circle/c/${item.circle.id}`)}
               className="rounded-full bg-muted px-3 py-1.5 text-[10px] font-black text-muted-foreground"
             >
               View Circle
@@ -185,13 +263,23 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
           </div>
 
           <CircleContentCard
-            item={content}
+            item={item.content}
             userId={userId}
             canInteract
             onChanged={load}
           />
         </section>
       ))}
+      {socialViewerIndex !== null && socialViewerIndex >= 0 ? (
+        <FeedFullscreenViewer
+          items={items
+            .filter((item): item is SocialFeedItem => item.source === "social")
+            .map((item) => item.post)}
+          startIndex={socialViewerIndex}
+          currentUserId={userId}
+          onClose={() => setSocialViewerIndex(null)}
+        />
+      ) : null}
     </div>
   );
 }
