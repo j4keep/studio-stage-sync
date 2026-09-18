@@ -220,6 +220,9 @@ export default function CircleExclusiveArea({
             </div>
             <p className="mt-2 text-[10px] text-muted-foreground">
               Applies to every Exclusive post and live — you don&apos;t set this on each upload.
+              {access === "paid"
+                ? " Approved paid supporters automatically see a Watch Exclusive Live button here whenever you are live; no shared link is required."
+                : " Approved Circle members automatically see the live here whenever you are live."}
             </p>
           </div>
         )}
@@ -278,7 +281,9 @@ export default function CircleExclusiveArea({
                   ? inviteOnlyLive
                     ? "You're Live · Invite only"
                     : "You're Live · Exclusive"
-                  : "Watch Exclusive Live"}
+                  : access === "paid"
+                    ? "Watch Supporter Live"
+                    : "Watch Exclusive Live"}
               </button>
             )}
             {liveSession && isOwner && inviteOnlyLive && (
