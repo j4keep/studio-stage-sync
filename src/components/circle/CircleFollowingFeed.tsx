@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { LockKeyhole, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import CircleContentCard from "@/components/circle/CircleContentCard";
-import type { CircleContent } from "@/lib/circle-content";
-import type { CircleMember } from "@/lib/circles";
+import { listCircleContents, type CircleContent } from "@/lib/circle-content";
+import { getCircle, type CircleMember } from "@/lib/circles";
 
 const sb = supabase as any;
 
@@ -49,17 +49,41 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         return;
       }
 
-      const [{ data: circlesData, error: circlesError }, { data: contentData, error: contentError }] = await Promise.all([
-        sb.from("circles").select("id,name,cover_url,is_private,member_count,owner_id").in("id", circleIds),
-        sb.rpc("yaj_my_circle_home_contents"),
-      ]);
-      if (circlesError) throw circlesError;
-      if (contentError) throw contentError;
+      const circles = (
+        await Promise.all(
+          circleIds.map(async (circleId) => {
+            try {
+              return await getCircle(circleId);
+            } catch {
+              return null;
+            }
+          }),
+        )
+      ).filter((circle): circle is NonNullable<typeof circle> => Boolean(circle)) as CircleSummary[];
 
-      const circles = (circlesData || []) as CircleSummary[];
       const circleMap = new Map(circles.map((c) => [c.id, c]));
 
-      const contents = ((contentData as CircleContent[]) || []).filter((item) => {
+      let contentData: CircleContent[] = [];
+      const { data: rpcRows, error: rpcError } = await sb.rpc("yaj_my_circle_home_contents");
+      if (!rpcError && Array.isArray(rpcRows)) {
+        contentData = rpcRows as CircleContent[];
+      } else {
+        // Compatibility fallback for deployments where the new feed RPC is not live yet.
+        // Pull each joined Circle through the same Circle-content loader used by the
+        // individual Circle Home page.
+        const perCircle = await Promise.all(
+          circleIds.map(async (circleId) => {
+            try {
+              return await listCircleContents(circleId, { userId });
+            } catch {
+              return [] as CircleContent[];
+            }
+          }),
+        );
+        contentData = perCircle.flat();
+      }
+
+      const contents = contentData.filter((item) => {
         if (item.visibility === "only_me") return item.author_id === userId;
         if (item.visibility === "paid_members") {
           const circle = circleMap.get(item.circle_id);
