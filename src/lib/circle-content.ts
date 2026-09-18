@@ -438,145 +438,121 @@ export async function listCircleContents(
   circleId: string,
   opts: { kind?: CircleContentKind; userId?: string; exclusiveOnly?: boolean } = {},
 ): Promise<CircleContent[]> {
-  try {
-    // Older builds could save Circle posts only in localStorage when the shared table
-    // was missing. Once the server schema is available, migrate the current user's
-    // local Circle posts into Supabase so followers can see them on other devices.
-    await syncLocalCircleContentsToServer(circleId, opts.userId);
+  // Keep the two systems separate:
+  // - Home = regular posts created inside this Circle.
+  // - Exclusive = only exclusive Circle posts.
+  // Never mix main YAJ Feed posts into either one.
+  await syncLocalCircleContentsToServer(circleId, opts.userId).catch(() => {});
 
-    // Regular Circle Home content uses a dedicated RPC so approved members can see the
-    // same Circle-only posts on every device even when the Circle itself is private.
-    // Exclusive content keeps its separate access path below.
-    if (!opts.exclusiveOnly) {
-      const { data: homeRows, error: homeError } = await sb.rpc("yaj_circle_home_contents", { p_circle_id: circleId });
-      if (!homeError && Array.isArray(homeRows)) {
-        let rows = sortContents((homeRows as CircleContent[]).map(normalizeRow));
-        if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
+  const collected = new Map<string, CircleContent>();
 
-        // Some deployed DB versions return an empty result from the per-Circle RPC for
-        // approved followers even though the same post is visible through the joined-
-        // Circle aggregate feed. When that happens, use the aggregate membership-safe
-        // feed and filter it back down to this Circle instead of incorrectly showing
-        // "No posts yet" on the Circle page.
-        if (!rows.length && opts.userId) {
-          const { data: joinedRows, error: joinedError } = await sb.rpc("yaj_my_circle_home_contents");
-          if (!joinedError && Array.isArray(joinedRows)) {
-            rows = sortContents(
-              (joinedRows as CircleContent[])
-                .map(normalizeRow)
-                .filter((row) => row.circle_id === circleId),
-            );
-            if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
-          }
-        }
-
-        if (!opts.userId || !rows.length) return rows;
-
-        const ids = rows.map((r) => r.id);
-        let liked = new Set<string>();
-        let rsvpRows: { content_id: string; user_id: string; status: EventRsvpStatus }[] = [];
-        let voteRows: { content_id: string; user_id: string; option_index: number }[] = [];
-        try {
-          const [{ data: likes }, { data: rsvps }, { data: votes }] = await Promise.all([
-            sb.from("circle_content_likes").select("content_id").eq("user_id", opts.userId).in("content_id", ids),
-            sb.from("circle_content_rsvps").select("content_id, user_id, status").in("content_id", ids),
-            sb.from("circle_content_poll_votes").select("content_id, user_id, option_index").in("content_id", ids),
-          ]);
-          liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
-          rsvpRows = (rsvps as { content_id: string; user_id: string; status: EventRsvpStatus }[]) || [];
-          voteRows = (votes as { content_id: string; user_id: string; option_index: number }[]) || [];
-        } catch {
-          /* engagement is best-effort */
-        }
-
-        return rows.map((r) => {
-          const mine = rsvpRows.find((x) => x.content_id === r.id && x.user_id === opts.userId);
-          const rsvp_counts: Partial<Record<EventRsvpStatus, number>> = { going: 0, interested: 0, cant_go: 0 };
-          rsvpRows.filter((x) => x.content_id === r.id).forEach((x) => {
-            rsvp_counts[x.status] = (rsvp_counts[x.status] ?? 0) + 1;
-          });
-          const poll_counts = (r.poll_options ?? []).map((_, i) =>
-            voteRows.filter((v) => v.content_id === r.id && v.option_index === i).length,
-          );
-          const myVote = voteRows.find((v) => v.content_id === r.id && v.user_id === opts.userId);
-          return {
-            ...r,
-            liked_by_me: liked.has(r.id),
-            my_rsvp: mine?.status ?? null,
-            my_poll_vote: myVote ? myVote.option_index : null,
-            rsvp_counts,
-            poll_counts,
-          };
-        });
+  const addRows = (rawRows: unknown) => {
+    if (!Array.isArray(rawRows)) return;
+    for (const raw of rawRows as CircleContent[]) {
+      const row = normalizeRow(raw);
+      if (row.circle_id !== circleId) continue;
+      if (opts.exclusiveOnly) {
+        if (row.activity_type !== "exclusive") continue;
+      } else if (row.activity_type === "exclusive") {
+        continue;
       }
+      if (opts.kind && row.kind !== opts.kind) continue;
+      collected.set(row.id, row);
     }
+  };
 
-    let q = sb.from("circle_contents").select("*").eq("circle_id", circleId);
-    if (opts.kind) q = q.eq("kind", opts.kind);
-    if (opts.exclusiveOnly) q = q.eq("activity_type", "exclusive");
-    const { data, error } = await q;
-    if (error) throw error;
-    let rows = sortContents(((data as CircleContent[]) || []).map(normalizeRow));
-    if (!opts.exclusiveOnly) {
-      rows = rows.filter((r) => r.activity_type !== "exclusive");
-    }
-    if (!opts.userId || !rows.length) return rows;
-
-    const ids = rows.map((r) => r.id);
-    let liked = new Set<string>();
-    let rsvpRows: { content_id: string; user_id: string; status: EventRsvpStatus }[] = [];
-    let voteRows: { content_id: string; user_id: string; option_index: number }[] = [];
-
+  if (opts.exclusiveOnly) {
+    // Exclusive keeps using its own normal table/RLS path.
     try {
-      const [{ data: likes }, { data: rsvps }, { data: votes }] = await Promise.all([
-        sb.from("circle_content_likes").select("content_id").eq("user_id", opts.userId).in("content_id", ids),
-        sb.from("circle_content_rsvps").select("content_id, user_id, status").in("content_id", ids),
-        sb.from("circle_content_poll_votes").select("content_id, user_id, option_index").in("content_id", ids),
-      ]);
-      liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
-      rsvpRows = (rsvps as { content_id: string; user_id: string; status: EventRsvpStatus }[]) || [];
-      voteRows = (votes as { content_id: string; user_id: string; option_index: number }[]) || [];
+      let q = sb.from("circle_contents").select("*").eq("circle_id", circleId).eq("activity_type", "exclusive");
+      if (opts.kind) q = q.eq("kind", opts.kind);
+      const { data, error } = await q;
+      if (!error) addRows(data);
     } catch {
+      // Local fallback below preserves owner-created drafts on older deployments.
+    }
+  } else {
+    // 1) Exact Circle Home RPC.
+    try {
+      const { data, error } = await sb.rpc("yaj_circle_home_contents", { p_circle_id: circleId });
+      if (!error) addRows(data);
+    } catch {
+      // Continue to the other shared sources.
+    }
+
+    // 2) Joined-Circle aggregate feed. This is important for approved followers:
+    // some deployed DB versions expose the post here even when the per-Circle RPC
+    // incorrectly returns an empty array.
+    if (opts.userId) {
       try {
-        const { data: likes } = await sb
-          .from("circle_content_likes")
-          .select("content_id")
-          .eq("user_id", opts.userId)
-          .in("content_id", ids);
-        liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
+        const { data, error } = await sb.rpc("yaj_my_circle_home_contents");
+        if (!error) addRows(data);
       } catch {
-        /* ignore */
+        // Continue.
       }
     }
 
-    return rows.map((r) => {
-      const mine = rsvpRows.find((x) => x.content_id === r.id && x.user_id === opts.userId);
-      const rsvp_counts: Partial<Record<EventRsvpStatus, number>> = { going: 0, interested: 0, cant_go: 0 };
-      rsvpRows.filter((x) => x.content_id === r.id).forEach((x) => {
-        rsvp_counts[x.status] = (rsvp_counts[x.status] ?? 0) + 1;
-      });
-      const poll_counts = (r.poll_options ?? []).map((_, i) =>
-        voteRows.filter((v) => v.content_id === r.id && v.option_index === i).length,
-      );
-      const myVote = voteRows.find((v) => v.content_id === r.id && v.user_id === opts.userId);
-      return {
-        ...r,
-        liked_by_me: liked.has(r.id),
-        my_rsvp: mine?.status ?? null,
-        my_poll_vote: myVote ? myVote.option_index : null,
-        rsvp_counts,
-        poll_counts,
-      };
-    });
-  } catch (err) {
-    if (!isMissingTable(err)) throw err;
-    const store = readLocal();
-    let rows = store[circleId] ?? [];
-    if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
-    if (opts.exclusiveOnly) rows = rows.filter((r) => r.activity_type === "exclusive");
-    else rows = rows.filter((r) => r.activity_type !== "exclusive");
-    return attachLocalEngagement(sortContents(rows.map(normalizeRow)), opts.userId);
+    // 3) Direct shared table query. Owners/open Circles and correctly configured RLS
+    // can resolve here even if an RPC migration has not landed yet.
+    try {
+      let q = sb.from("circle_contents").select("*").eq("circle_id", circleId);
+      if (opts.kind) q = q.eq("kind", opts.kind);
+      const { data, error } = await q;
+      if (!error) addRows(data);
+    } catch {
+      // Continue to local owner fallback.
+    }
   }
+
+  // 4) Local rows are only ever added for the signed-in author. They are NOT shared
+  // with followers; their only purpose is to keep the creator from losing an older
+  // post while automatic server migration catches up.
+  if (opts.userId) {
+    const localRows = (readLocal()[circleId] ?? []).filter((row) => row.author_id === opts.userId);
+    addRows(localRows);
+  }
+
+  let rows = sortContents([...collected.values()]);
+  if (!opts.userId || !rows.length) return rows;
+
+  const ids = rows.map((r) => r.id);
+  let liked = new Set<string>();
+  let rsvpRows: { content_id: string; user_id: string; status: EventRsvpStatus }[] = [];
+  let voteRows: { content_id: string; user_id: string; option_index: number }[] = [];
+
+  try {
+    const [{ data: likes }, { data: rsvps }, { data: votes }] = await Promise.all([
+      sb.from("circle_content_likes").select("content_id").eq("user_id", opts.userId).in("content_id", ids),
+      sb.from("circle_content_rsvps").select("content_id, user_id, status").in("content_id", ids),
+      sb.from("circle_content_poll_votes").select("content_id, user_id, option_index").in("content_id", ids),
+    ]);
+    liked = new Set(((likes as { content_id: string }[]) || []).map((l) => l.content_id));
+    rsvpRows = (rsvps as { content_id: string; user_id: string; status: EventRsvpStatus }[]) || [];
+    voteRows = (votes as { content_id: string; user_id: string; option_index: number }[]) || [];
+  } catch {
+    // Engagement is best-effort. Never hide a Circle post because likes/comments
+    // support tables are unavailable.
+  }
+
+  return rows.map((r) => {
+    const mine = rsvpRows.find((x) => x.content_id === r.id && x.user_id === opts.userId);
+    const rsvp_counts: Partial<Record<EventRsvpStatus, number>> = { going: 0, interested: 0, cant_go: 0 };
+    rsvpRows.filter((x) => x.content_id === r.id).forEach((x) => {
+      rsvp_counts[x.status] = (rsvp_counts[x.status] ?? 0) + 1;
+    });
+    const poll_counts = (r.poll_options ?? []).map((_, i) =>
+      voteRows.filter((v) => v.content_id === r.id && v.option_index === i).length,
+    );
+    const myVote = voteRows.find((v) => v.content_id === r.id && v.user_id === opts.userId);
+    return {
+      ...r,
+      liked_by_me: liked.has(r.id),
+      my_rsvp: mine?.status ?? null,
+      my_poll_vote: myVote ? myVote.option_index : null,
+      rsvp_counts,
+      poll_counts,
+    };
+  });
 }
 
 export async function toggleCircleContentLike(contentId: string, userId: string, circleId: string): Promise<boolean> {
