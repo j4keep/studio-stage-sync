@@ -17,7 +17,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getOrCreatePersonalCircle, leaveCircle } from "@/lib/circles";
+import { getOrCreatePersonalCircle, leaveCircle, updateCircle } from "@/lib/circles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import CircleFollowingFeed from "@/components/circle/CircleFollowingFeed";
@@ -105,6 +105,12 @@ export default function MyCircleRedirect() {
       .then((circle) => {
         if (!active) return;
         setCircleId(circle.id);
+        // A personal Circle may be private, but it must still be discoverable so people
+        // can find it again after leaving and request to rejoin. Privacy controls access
+        // to the content; it should not erase the Circle card from discovery.
+        if (circle.is_personal && !circle.is_discoverable) {
+          void updateCircle(circle.id, { isDiscoverable: true }).catch(() => {});
+        }
         if (hasCompletedIntro) setShowDiscovery(true);
       })
       .catch(() => {
