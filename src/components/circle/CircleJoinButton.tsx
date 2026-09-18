@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Clock, Loader2, Lock } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Circle, CircleMember, leaveCircle, requestToJoin } from "@/lib/circles";
+import { Circle, CircleMember, requestToJoin } from "@/lib/circles";
 
 type Props = {
   circle: Circle;
@@ -24,25 +24,10 @@ export default function CircleJoinButton({ circle, userId, membership, isOwner, 
 
   if (membership?.status === "approved") {
     return (
-      <button
-        type="button"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            await leaveCircle(circle.id, userId);
-            onChanged();
-          } catch (e: any) {
-            toast({ title: "Could not leave", description: e.message, variant: "destructive" });
-          } finally {
-            setBusy(false);
-          }
-        }}
-        className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-[12.5px] font-bold active:scale-95"
-      >
-        {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5 text-emerald-500" />}
-        Member · Leave
-      </button>
+      <span className="flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-[12.5px] font-bold text-foreground">
+        <Check className="h-3.5 w-3.5 text-emerald-500" />
+        Member
+      </span>
     );
   }
 
