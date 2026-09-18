@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Home, User, Compass } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProGateModal from "@/components/ProGateModal";
@@ -139,46 +140,57 @@ const BottomNav = () => {
     );
   };
 
+  const mobileNav = !isBookReader ? (
+    <nav
+      aria-label="Primary"
+      className={`lg:hidden fixed inset-x-0 bottom-0 z-[70] w-full border-t border-border bg-background/95 backdrop-blur-2xl safe-area-bottom transition-transform duration-300 supports-[backdrop-filter]:bg-background/85 ${
+        hidden ? "translate-y-full" : "translate-y-0"
+      }`}
+      style={{
+        position: "fixed",
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: "100%",
+        margin: 0,
+        transform: hidden ? "translate3d(0, 100%, 0)" : "translate3d(0, 0, 0)",
+        WebkitTransform: hidden ? "translate3d(0, 100%, 0)" : "translate3d(0, 0, 0)",
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-lg items-end gap-0.5 px-2 py-1.5">
+        {left.map(renderTab)}
+
+        <div className="flex flex-1 items-center justify-center pb-0.5">
+          <button
+            onClick={() => void handleCreate()}
+            disabled={waving}
+            aria-label="Create"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-0 shadow-[0_0_8px_rgba(168,85,247,0.35)] transition-shadow hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] active:scale-95 disabled:opacity-90"
+          >
+            {waving ? (
+              <span
+                className="animate-create-wave origin-[70%_90%] select-none text-[1.65rem] leading-none"
+                role="img"
+                aria-hidden
+              >
+                👋
+              </span>
+            ) : (
+              <CreateNavIcon className="h-12 w-12" />
+            )}
+          </button>
+        </div>
+
+        {right.map(renderTab)}
+      </div>
+    </nav>
+  ) : null;
+
   return (
     <>
-      {!isBookReader && (
-      <nav
-        className={`lg:hidden ${
-          isFeed ? "absolute inset-x-0 bottom-0 w-full" : "fixed bottom-0 left-0 right-0"
-        } z-50 border-t backdrop-blur-2xl safe-area-bottom transition-transform duration-300 ${
-          isFeed
-            ? "border-border bg-background/90 supports-[backdrop-filter]:bg-background/80"
-            : "border-border bg-background/90"
-        } ${hidden ? "translate-y-full" : "translate-y-0"}`}
-      >
-        <div className="flex items-end py-1.5 px-2 max-w-lg mx-auto gap-0.5">
-          {left.map(renderTab)}
-
-          <div className="flex-1 flex items-center justify-center pb-0.5">
-            <button
-              onClick={() => void handleCreate()}
-              disabled={waving}
-              aria-label="Create"
-              className="relative flex items-center justify-center w-12 h-12 shrink-0 rounded-full bg-transparent p-0 border-0 shadow-[0_0_8px_rgba(168,85,247,0.35)] hover:shadow-[0_0_10px_rgba(168,85,247,0.5)] transition-shadow active:scale-95 disabled:opacity-90"
-            >
-              {waving ? (
-                <span
-                  className="text-[1.65rem] leading-none select-none animate-create-wave origin-[70%_90%]"
-                  role="img"
-                  aria-hidden
-                >
-                  👋
-                </span>
-              ) : (
-                <CreateNavIcon className="w-12 h-12" />
-              )}
-            </button>
-          </div>
-
-          {right.map(renderTab)}
-        </div>
-      </nav>
-      )}
+      {typeof document !== "undefined" && mobileNav ? createPortal(mobileNav, document.body) : mobileNav}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
       <CreatePostSheet open={showCreate} onClose={closeCreate} cameraStream={cameraStream} />
     </>
