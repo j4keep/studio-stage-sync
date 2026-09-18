@@ -121,13 +121,13 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
 
   if (desktopShell) {
     return (
-      <div className="min-h-screen overflow-x-hidden overscroll-x-none touch-pan-y bg-background text-foreground transition-colors lg:bg-[hsl(var(--muted)/0.45)]">
+      <div className="flex h-[100dvh] min-h-0 flex-col overflow-hidden overscroll-none bg-background text-foreground transition-colors lg:block lg:h-auto lg:min-h-screen lg:overflow-x-hidden lg:overscroll-x-none lg:bg-[hsl(var(--muted)/0.45)]">
         <div className="hidden lg:block">
           <DesktopTopBar />
         </div>
 
         {showMobileTopBar && (
-          <div className="sticky top-0 z-40 flex items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-4 py-2.5 shadow-[0_1px_0_hsl(var(--border)/0.35)] backdrop-blur-xl lg:hidden">
+          <div className="relative z-40 flex shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-background/95 px-4 py-2.5 shadow-[0_1px_0_hsl(var(--border)/0.35)] backdrop-blur-xl lg:hidden">
             {backSlot}
             {actionButtons}
           </div>
@@ -137,7 +137,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
           className={
             mobileFeed
               ? "fixed inset-0 mx-auto flex w-full max-w-[440px] flex-col overflow-hidden bg-background lg:static lg:mx-auto lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:bg-transparent lg:px-4 lg:py-3"
-              : "relative mx-auto w-full max-w-lg min-w-0 overflow-x-hidden lg:grid lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
+              : "relative mx-auto flex min-h-0 w-full max-w-lg min-w-0 flex-1 flex-col overflow-hidden lg:grid lg:h-auto lg:max-w-[1400px] lg:grid-cols-[280px_minmax(0,1fr)_56px] lg:gap-4 lg:overflow-visible lg:px-4 lg:py-3"
           }
         >
           <div className="hidden lg:block">
@@ -148,7 +148,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className={
               mobileFeed
                 ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible lg:pb-4"
-                : "min-w-0 pb-20 lg:pb-4"
+                : "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] lg:overflow-visible lg:pb-4"
             }
           >
             {children}
