@@ -17,7 +17,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getOrCreatePersonalCircle, leaveCircle, updateCircle } from "@/lib/circles";
+import { getOrCreatePersonalCircle, leaveCircle, listCircleDirectory, updateCircle } from "@/lib/circles";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import CircleFollowingFeed from "@/components/circle/CircleFollowingFeed";
@@ -124,13 +124,8 @@ export default function MyCircleRedirect() {
   const loadDiscovery = useCallback(async () => {
     if (!showDiscovery || !user?.id) return;
 
-    const [{ data: circleRows }, { data: membershipRows }] = await Promise.all([
-      (supabase as any)
-        .from("circles")
-        .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category")
-        .or("is_discoverable.eq.true,is_personal.eq.true")
-        .order("updated_at", { ascending: false })
-        .limit(120),
+    const [directory, { data: membershipRows }] = await Promise.all([
+      listCircleDirectory(),
       (supabase as any)
         .from("circle_members")
         .select("id,circle_id,role,status")
@@ -138,21 +133,7 @@ export default function MyCircleRedirect() {
         .eq("status", "approved"),
     ]);
 
-    const rawDiscovery = (circleRows || []) as CirclePreview[];
-    const ownerIds = Array.from(new Set(rawDiscovery.map((circle) => circle.owner_id).filter(Boolean)));
-    let ownerNames = new Map<string, string>();
-    if (ownerIds.length) {
-      const { data: ownerProfiles } = await (supabase as any)
-        .from("profiles")
-        .select("user_id,display_name")
-        .in("user_id", ownerIds);
-      ownerNames = new Map((ownerProfiles || []).map((profile: any) => [profile.user_id, profile.display_name || "YAJ member"]));
-    }
-    const discovery = rawDiscovery.map((circle) => ({
-      ...circle,
-      owner_name: ownerNames.get(circle.owner_id) || null,
-    }));
-    setCircles(discovery);
+    setCircles(directory as CirclePreview[]);
 
     const approved = (membershipRows || []) as Array<{ id: string; circle_id: string; role: string; status: string }>;
     const joinedIds = approved
