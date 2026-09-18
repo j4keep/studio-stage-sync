@@ -555,19 +555,25 @@ const App = () => {
     );
   }
 
-/** Safety net: only /explore locks page scroll — clear any leftover lock elsewhere. */
+/** Clear stale full-screen scroll locks whenever the route changes.
+ * Explore used to own a fixed/locked viewport, but it is now a normal scrollable page
+ * on both mobile and desktop. Leaving the old exception here trapped desktop Explore.
+ */
 const ScrollLockGuard = () => {
   const { pathname } = useLocation();
   useEffect(() => {
-    if (pathname === "/explore") return;
     const html = document.documentElement;
     const body = document.body;
     html.style.overflow = "";
+    html.style.overflowY = "";
     html.style.overscrollBehavior = "";
     body.style.overflow = "";
+    body.style.overflowY = "";
     body.style.position = "";
+    body.style.inset = "";
     body.style.width = "";
     body.style.height = "";
+    body.style.maxHeight = "";
   }, [pathname]);
   return null;
 };
