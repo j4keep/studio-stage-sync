@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { LockKeyhole, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import CircleContentCard from "@/components/circle/CircleContentCard";
+import FeedThumbCard from "@/components/feed/FeedThumbCard";
+import { fetchFeedItems } from "@/lib/feed-items";
 import type { CircleContent } from "@/lib/circle-content";
 import type { CircleMember } from "@/lib/circles";
 
@@ -14,15 +16,26 @@ type CircleSummary = {
   cover_url: string | null;
   is_private: boolean;
   member_count: number;
+  owner_id: string;
 };
 
-type FeedItem = {
+type CircleFeedItem = {
+  type: "circle";
+  createdAt: string;
   content: CircleContent;
   circle: CircleSummary;
   authorName: string;
   authorAvatar: string | null;
-  canInteract: boolean;
 };
+
+type SocialFeedItem = {
+  type: "social";
+  createdAt: string;
+  post: any;
+  circle: CircleSummary;
+};
+
+type FeedItem = CircleFeedItem | SocialFeedItem;
 
 export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: string; ownCircleId?: string | null }) {
   const navigate = useNavigate();
@@ -65,9 +78,11 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
       if (circlesError) throw circlesError;
       if (contentError) throw contentError;
 
-      const circles = (circlesData || []) as Array<CircleSummary & { owner_id: string }>;
+      const circles = (circlesData || []) as CircleSummary[];
       const circleMap = new Map(circles.map((c) => [c.id, c]));
-      let contents = ((contentData as CircleContent[]) || []).filter((item) => {
+      const circleByOwner = new Map(circles.map((c) => [c.owner_id, c]));
+
+      const contents = ((contentData as CircleContent[]) || []).filter((item) => {
         if (item.visibility === "only_me") return item.author_id === userId;
         if (item.visibility !== "paid_members") return true;
         const circle = circleMap.get(item.circle_id);
@@ -84,22 +99,49 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         (profiles || []).map((p: any) => [p.user_id, { name: p.display_name || "YAJ member", avatar: p.avatar_url || null }]),
       );
 
-      setItems(
-        contents
-          .map((content) => {
-            const circle = circleMap.get(content.circle_id);
-            if (!circle) return null;
-            const profile = profileMap.get(content.author_id) as { name: string; avatar: string | null } | undefined;
-            return {
-              content,
-              circle,
-              authorName: profile?.name || "YAJ member",
-              authorAvatar: profile?.avatar || null,
-              canInteract: true,
-            } satisfies FeedItem;
-          })
-          .filter((item): item is FeedItem => Boolean(item)),
+      const circleItems: CircleFeedItem[] = contents
+        .map((content) => {
+          const circle = circleMap.get(content.circle_id);
+          if (!circle) return null;
+          const profile = profileMap.get(content.author_id) as { name: string; avatar: string | null } | undefined;
+          return {
+            type: "circle" as const,
+            createdAt: content.created_at,
+            content,
+            circle,
+            authorName: profile?.name || "YAJ member",
+            authorAvatar: profile?.avatar || null,
+          };
+        })
+        .filter((item): item is CircleFeedItem => Boolean(item));
+
+      // A Circle Home should also surface the normal YAJ posts made by the people whose
+      // Circles the viewer joined. That is the same post stream users see on the main Feed,
+      // while Exclusive Circle posts remain gated separately.
+      const ownerIds = Array.from(new Set(circles.map((circle) => circle.owner_id)));
+      const socialGroups = await Promise.all(
+        ownerIds.map(async (ownerId) => {
+          try {
+            const feed = await fetchFeedItems({ currentUserId: userId, userId: ownerId });
+            return feed
+              .filter((item: any) => item.itemType === "post")
+              .slice(0, 20)
+              .map((post: any) => ({
+                type: "social" as const,
+                createdAt: post.created_at,
+                post,
+                circle: circleByOwner.get(ownerId)!,
+              }))
+              .filter((item) => Boolean(item.circle));
+          } catch {
+            return [] as SocialFeedItem[];
+          }
+        }),
       );
+
+      const combined: FeedItem[] = [...circleItems, ...socialGroups.flat()];
+      combined.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      setItems(combined.slice(0, 100));
     } catch {
       setItems([]);
     }
@@ -119,52 +161,87 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         <Users className="mx-auto h-8 w-8 text-muted-foreground" />
         <h2 className="mt-4 text-xl font-black">Your Circle feed is ready</h2>
         <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-          Join or follow a Circle and new Home posts from those Circles will appear here.
+          Join a Circle and new posts from those Circle owners and members will appear here.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-5 px-4 py-5">
-      {items.map(({ content, circle, authorName, authorAvatar, canInteract }) => (
-        <section key={content.id} className="overflow-hidden rounded-[24px]">
-          <div className="mb-2 flex items-center gap-3 px-1">
-            <button
-              type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}`)}
-              className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
-            >
-              <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-muted">
-                {circle.cover_url ? <img src={circle.cover_url} alt="" className="h-full w-full object-cover" /> : null}
-              </span>
-              <span className="min-w-0">
-                <span className="flex items-center gap-1.5 truncate text-[13px] font-black">
-                  {circle.name}
-                  {circle.is_private ? <LockKeyhole className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
-                </span>
-                <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                  {authorAvatar ? <img src={authorAvatar} alt="" className="h-4 w-4 rounded-full object-cover" /> : null}
-                  {authorName}
-                </span>
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}`)}
-              className="rounded-full bg-muted px-3 py-1.5 text-[10px] font-black text-muted-foreground"
-            >
-              View Circle
-            </button>
-          </div>
-          <CircleContentCard
-            item={content}
-            userId={userId}
-            canInteract={canInteract}
-            onChanged={load}
-          />
-        </section>
-      ))}
+    <div className="space-y-5 px-4 py-5 lg:px-6">
+      {items.map((item) => {
+        if (item.type === "social") {
+          return (
+            <section key={`social-${item.post.id}`} className="overflow-hidden rounded-[24px]">
+              <CircleHeader circle={item.circle} onOpen={() => navigate(`/circle/c/${item.circle.id}`)} />
+              <FeedThumbCard
+                post={item.post}
+                onOpen={() => navigate(`/feed?post=${encodeURIComponent(item.post.id)}`)}
+              />
+            </section>
+          );
+        }
+
+        return (
+          <section key={`circle-${item.content.id}`} className="overflow-hidden rounded-[24px]">
+            <CircleHeader
+              circle={item.circle}
+              authorName={item.authorName}
+              authorAvatar={item.authorAvatar}
+              onOpen={() => navigate(`/circle/c/${item.circle.id}`)}
+            />
+            <CircleContentCard
+              item={item.content}
+              userId={userId}
+              canInteract
+              onChanged={load}
+            />
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function CircleHeader({
+  circle,
+  authorName,
+  authorAvatar,
+  onOpen,
+}: {
+  circle: CircleSummary;
+  authorName?: string;
+  authorAvatar?: string | null;
+  onOpen: () => void;
+}) {
+  return (
+    <div className="mb-2 flex items-center gap-3 px-1">
+      <button type="button" onClick={onOpen} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+        <span className="h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-muted">
+          {circle.cover_url ? <img src={circle.cover_url} alt="" className="h-full w-full object-cover" /> : null}
+        </span>
+        <span className="min-w-0">
+          <span className="flex items-center gap-1.5 truncate text-[13px] font-black">
+            {circle.name}
+            {circle.is_private ? <LockKeyhole className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+          </span>
+          {authorName ? (
+            <span className="mt-0.5 flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+              {authorAvatar ? <img src={authorAvatar} alt="" className="h-4 w-4 rounded-full object-cover" /> : null}
+              {authorName}
+            </span>
+          ) : (
+            <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">Latest post</span>
+          )}
+        </span>
+      </button>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="rounded-full bg-muted px-3 py-1.5 text-[10px] font-black text-muted-foreground"
+      >
+        View Circle
+      </button>
     </div>
   );
 }
