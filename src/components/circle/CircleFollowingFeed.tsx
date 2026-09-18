@@ -40,11 +40,10 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
       const memberships = ((membershipRows as Pick<CircleMember, "circle_id" | "role" | "status">[]) || []);
       const roleByCircle = new Map(memberships.map((m) => [m.circle_id, m.role]));
       const circleIds = Array.from(
-        new Set(
-          memberships
-            .map((m) => m.circle_id)
-            .filter((circleId) => !ownCircleId || circleId !== ownCircleId),
-        ),
+        new Set([
+          ...memberships.map((m) => m.circle_id),
+          ...(ownCircleId ? [ownCircleId] : []),
+        ]),
       );
 
       if (!circleIds.length) {
@@ -139,7 +138,7 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
         <Users className="mx-auto h-8 w-8 text-muted-foreground" />
         <h2 className="mt-4 text-xl font-black">No Circle posts yet</h2>
         <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
-          Posts created inside Circles you joined will appear here. Your own Circle stays on “Open my Circle,” and main Feed posts stay on the main Feed.
+          Posts created inside your Circle and Circles you joined will appear here. Main Feed posts stay on the main Feed.
         </p>
       </div>
     );
