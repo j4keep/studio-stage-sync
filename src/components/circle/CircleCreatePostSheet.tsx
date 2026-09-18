@@ -191,14 +191,24 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
   return (
     <div className="fixed inset-0 z-[80] flex items-end justify-center bg-black/50 sm:items-center">
       <div className="flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-border bg-background text-foreground shadow-2xl sm:rounded-3xl">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div className="relative z-20 flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3">
           <h2 className="text-base font-bold">New Circle post</h2>
-          <button type="button" onClick={onClose} className="rounded-full bg-muted p-2" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void publish()}
+              className="flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[12px] font-black text-primary-foreground disabled:opacity-50"
+            >
+              {busy ? "Posting…" : "Post"}
+            </button>
+            <button type="button" onClick={onClose} className="rounded-full bg-muted p-2" aria-label="Close">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
-        <div className="space-y-4 overflow-y-auto px-4 py-4">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 pb-28">
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Post type</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -409,7 +419,7 @@ export default function CircleCreatePostSheet({ open, onClose, circleId, userId,
           </label>
         </div>
 
-        <div className="border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="sticky bottom-0 z-30 shrink-0 border-t border-border bg-background/98 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_30px_rgba(0,0,0,0.08)] backdrop-blur-xl">
           <button
             type="button"
             disabled={busy}
