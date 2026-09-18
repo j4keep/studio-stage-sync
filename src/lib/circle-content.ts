@@ -318,13 +318,30 @@ function insertPayload(input: CreateCircleContentInput) {
 }
 
 export async function createCircleContent(input: CreateCircleContentInput): Promise<CircleContent> {
+  const local = toRow(input);
+  const payload = {
+    ...insertPayload(input),
+    id: local.id,
+    created_at: local.created_at,
+    updated_at: local.updated_at,
+    like_count: 0,
+    view_count: 0,
+    comment_count: 0,
+  };
+
   try {
-    const { data, error } = await sb.from("circle_contents").insert(insertPayload(input)).select("*").single();
-    if (error) throw error;
+    // Prefer the validated SECURITY DEFINER writer so Circle posts always land in
+    // shared storage and are visible to approved followers on other devices.
+    const { data: rpcRow, error: rpcError } = await sb.rpc("yaj_upsert_circle_content", { p_row: payload });
+    if (!rpcError && rpcRow) return normalizeRow(rpcRow as CircleContent);
+
+    const { data, error } = await sb.from("circle_contents").insert(payload).select("*").single();
+    if (error) throw rpcError || error;
     return normalizeRow(data as CircleContent);
   } catch (err) {
-    if (!isMissingTable(err)) throw err;
-    const local = toRow(input);
+    // Local fallback remains only for older deployments where Circle storage has not
+    // reached the database yet. It will be migrated automatically once available.
+    if (!isMissingTable(err) && !/yaj_upsert_circle_content/i.test(String((err as any)?.message || ""))) throw err;
     const store = readLocal();
     store[input.circleId] = [local, ...(store[input.circleId] ?? [])];
     writeLocal(store);
@@ -400,8 +417,18 @@ async function syncLocalCircleContentsToServer(circleId: string, userId?: string
     updated_at: row.updated_at,
   }));
 
-  const { error } = await sb.from("circle_contents").upsert(payload, { onConflict: "id" });
-  if (error) return;
+  let synced = true;
+  for (const row of payload) {
+    const { error: rpcError } = await sb.rpc("yaj_upsert_circle_content", { p_row: row });
+    if (rpcError) {
+      const { error: directError } = await sb.from("circle_contents").upsert(row, { onConflict: "id" });
+      if (directError) {
+        synced = false;
+        break;
+      }
+    }
+  }
+  if (!synced) return;
 
   store[circleId] = (store[circleId] ?? []).filter((row) => row.author_id !== userId);
   writeLocal(store);
