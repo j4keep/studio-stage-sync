@@ -51,13 +51,7 @@ export default function CircleFollowingFeed({ userId, ownCircleId }: { userId: s
 
       const [{ data: circlesData, error: circlesError }, { data: contentData, error: contentError }] = await Promise.all([
         sb.from("circles").select("id,name,cover_url,is_private,member_count,owner_id").in("id", circleIds),
-        sb
-          .from("circle_contents")
-          .select("*")
-          .in("circle_id", circleIds)
-          .neq("activity_type", "exclusive")
-          .order("created_at", { ascending: false })
-          .limit(100),
+        sb.rpc("yaj_my_circle_home_contents"),
       ]);
       if (circlesError) throw circlesError;
       if (contentError) throw contentError;
