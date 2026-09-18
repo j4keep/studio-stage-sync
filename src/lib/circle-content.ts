@@ -452,6 +452,24 @@ export async function listCircleContents(
       if (!homeError && Array.isArray(homeRows)) {
         let rows = sortContents((homeRows as CircleContent[]).map(normalizeRow));
         if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
+
+        // Some deployed DB versions return an empty result from the per-Circle RPC for
+        // approved followers even though the same post is visible through the joined-
+        // Circle aggregate feed. When that happens, use the aggregate membership-safe
+        // feed and filter it back down to this Circle instead of incorrectly showing
+        // "No posts yet" on the Circle page.
+        if (!rows.length && opts.userId) {
+          const { data: joinedRows, error: joinedError } = await sb.rpc("yaj_my_circle_home_contents");
+          if (!joinedError && Array.isArray(joinedRows)) {
+            rows = sortContents(
+              (joinedRows as CircleContent[])
+                .map(normalizeRow)
+                .filter((row) => row.circle_id === circleId),
+            );
+            if (opts.kind) rows = rows.filter((r) => r.kind === opts.kind);
+          }
+        }
+
         if (!opts.userId || !rows.length) return rows;
 
         const ids = rows.map((r) => r.id);
