@@ -89,9 +89,49 @@ export type CreateCircleInput = {
 
 export async function getCircle(id: string): Promise<Circle | null> {
   const { data, error } = await sb.from("circles").select("*").eq("id", id).maybeSingle();
-  if (error) throw error;
-  if (!data) return null;
-  return mergeExclusiveAccess(data as Circle);
+  if (!error && data) return mergeExclusiveAccess(data as Circle);
+
+  // Private Circles must still have a visible shell so people can find them and request
+  // access. The SECURITY DEFINER RPC returns only Circle metadata, never gated content.
+  const { data: shell, error: shellError } = await sb.rpc("yaj_circle_shell", { p_circle_id: id });
+  if (shellError) {
+    if (error) throw error;
+    throw shellError;
+  }
+  if (!shell) return null;
+  return mergeExclusiveAccess(shell as Circle);
+}
+
+export type CircleDirectoryEntry = {
+  id: string;
+  name: string;
+  cover_url: string | null;
+  city: string | null;
+  member_count: number;
+  is_private: boolean;
+  is_discoverable: boolean;
+  is_personal: boolean;
+  type: CircleType;
+  owner_id: string;
+  description: string | null;
+  category: string | null;
+  owner_name: string | null;
+  updated_at?: string;
+};
+
+export async function listCircleDirectory(): Promise<CircleDirectoryEntry[]> {
+  const { data, error } = await sb.rpc("yaj_circle_directory");
+  if (!error && Array.isArray(data)) return data as CircleDirectoryEntry[];
+
+  // Backward-compatible fallback while the migration is still applying.
+  const { data: rows, error: fallbackError } = await sb
+    .from("circles")
+    .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category,updated_at")
+    .or("is_discoverable.eq.true,is_personal.eq.true")
+    .order("updated_at", { ascending: false })
+    .limit(120);
+  if (fallbackError) throw error || fallbackError;
+  return ((rows || []) as CircleDirectoryEntry[]).map((row) => ({ ...row, owner_name: null }));
 }
 
 /** Every user's own gated "My Circle" — created lazily the first time anyone (usually
