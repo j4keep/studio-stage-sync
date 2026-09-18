@@ -44,35 +44,8 @@ language sql
 security definer
 set search_path = public
 stable
-as $$
-  select jsonb_build_object(
-    'id', c.id,
-    'owner_id', c.owner_id,
-    'type', c.type,
-    'name', c.name,
-    'avatar_url', c.avatar_url,
-    'cover_url', c.cover_url,
-    'description', c.description,
-    'category', c.category,
-    'city', c.city,
-    'is_private', c.is_private,
-    'is_discoverable', c.is_discoverable,
-    'requires_approval', c.requires_approval,
-    'is_paid', c.is_paid,
-    'price_cents', c.price_cents,
-    'welcome_message', c.welcome_message,
-    'default_post_visibility', c.default_post_visibility,
-    'member_posting_allowed', c.member_posting_allowed,
-    'member_comments_allowed', c.member_comments_allowed,
-    'member_invites_allowed', c.member_invites_allowed,
-    'member_count', c.member_count,
-    'is_personal', c.is_personal,
-    'exclusive_access', c.exclusive_access,
-    'notify_new_requests', c.notify_new_requests,
-    'notify_new_members', c.notify_new_members,
-    'created_at', c.created_at,
-    'updated_at', c.updated_at
-  )
+as $
+  select to_jsonb(c)
   from public.circles c
   where c.id = p_circle_id
     and (
