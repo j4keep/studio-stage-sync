@@ -5,6 +5,7 @@ import {
   Bookmark,
   Briefcase,
   Building2,
+  ChevronDown,
   ChevronRight,
   Crown,
   Edit3,
@@ -70,6 +71,7 @@ const ProfilePage = () => {
   const [isDealBusiness, setIsDealBusiness] = useState(false);
   const [happeningBalloons, setHappeningBalloons] = useState(happeningBalloonsEnabled);
   const [happeningCategories, setHappeningCategories] = useState<HappeningKind[]>(getHappeningBalloonCategories);
+  const [happeningCategoriesOpen, setHappeningCategoriesOpen] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -294,41 +296,62 @@ const ProfilePage = () => {
                 onCheckedChange={(enabled) => {
                   setHappeningBalloons(enabled);
                   setHappeningBalloonsEnabled(enabled);
+                  if (!enabled) setHappeningCategoriesOpen(false);
                 }}
                 aria-label="Happening balloons"
               />
             </div>
 
             {happeningBalloons && (
-              <div className="border-t border-border/70 px-4 pb-4 pt-3">
-                <div className="mb-3">
-                  <p className="text-[12px] font-bold text-foreground">Choose what floats by</p>
-                  <p className="mt-0.5 text-[10.5px] font-medium text-muted-foreground">
-                    Turn categories on or off so the balloon only shows what matters to you.
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {HAPPENING_BALLOON_CATEGORIES.map(({ kind, label }) => {
-                    const checked = happeningCategories.includes(kind);
-                    return (
-                      <div key={kind} className="flex items-center justify-between rounded-xl border border-border/70 bg-background/70 px-3 py-2.5">
-                        <span className="text-[12px] font-semibold text-foreground">{label}</span>
-                        <Switch
-                          checked={checked}
-                          onCheckedChange={(enabled) => {
-                            const next = enabled
-                              ? Array.from(new Set([...happeningCategories, kind]))
-                              : happeningCategories.filter((value) => value !== kind);
-                            setHappeningCategories(next);
-                            setHappeningBalloonCategories(next);
-                          }}
-                          aria-label={`Show ${label} balloons`}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setHappeningCategoriesOpen((open) => !open)}
+                  className="flex w-full items-center justify-between gap-3 border-t border-border/70 px-4 py-3 text-left transition hover:bg-muted/35 active:bg-muted/50"
+                  aria-expanded={happeningCategoriesOpen}
+                >
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-bold text-foreground">Choose what floats by</p>
+                    <p className="mt-0.5 truncate text-[10.5px] font-medium text-muted-foreground">
+                      {happeningCategories.length === HAPPENING_BALLOON_CATEGORIES.length
+                        ? "All categories"
+                        : happeningCategories.length === 0
+                          ? "No categories selected"
+                          : `${happeningCategories.length} selected`}
+                    </p>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${happeningCategoriesOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {happeningCategoriesOpen && (
+                  <div className="border-t border-border/70 px-4 pb-4 pt-3">
+                    <p className="mb-3 text-[10.5px] font-medium text-muted-foreground">
+                      Turn on only the categories you want to see while watching posts.
+                    </p>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                      {HAPPENING_BALLOON_CATEGORIES.map(({ kind, label }) => {
+                        const checked = happeningCategories.includes(kind);
+                        return (
+                          <div key={kind} className="flex items-center justify-between rounded-xl border border-border/70 bg-background/70 px-3 py-2.5">
+                            <span className="text-[12px] font-semibold text-foreground">{label}</span>
+                            <Switch
+                              checked={checked}
+                              onCheckedChange={(enabled) => {
+                                const next = enabled
+                                  ? Array.from(new Set([...happeningCategories, kind]))
+                                  : happeningCategories.filter((value) => value !== kind);
+                                setHappeningCategories(next);
+                                setHappeningBalloonCategories(next);
+                              }}
+                              aria-label={`Show ${label} balloons`}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
