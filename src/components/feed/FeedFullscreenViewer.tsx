@@ -9,16 +9,20 @@ import {
   unlockFeedAudioSession,
 } from "@/lib/feed-video-playback";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
+import HappeningBalloon from "./HappeningBalloon";
+import type { HappeningItem } from "@/lib/happening-items";
 
 interface Props {
   items: any[];
   startIndex: number;
   currentUserId?: string;
   onClose: () => void;
+  happeningItems?: HappeningItem[];
+  onOpenHappening?: (item: HappeningItem) => void;
 }
 
 /** Fullscreen swipeable viewer scoped to a filtered rail (reels-only or posts-only). */
-export default function FeedFullscreenViewer({ items, startIndex, currentUserId, onClose }: Props) {
+export default function FeedFullscreenViewer({ items, startIndex, currentUserId, onClose, happeningItems = [], onOpenHappening }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const currentIndexRef = useRef(startIndex);
   const activeIdRef = useRef<string | null>(items[startIndex]?.id ?? null);
@@ -287,6 +291,14 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       >
         <X className="w-5 h-5" />
       </button>
+
+      {onOpenHappening && happeningItems.length > 0 ? (
+        <HappeningBalloon
+          items={happeningItems}
+          currentSourceId={items[currentIndex]?.itemType === "post" ? items[currentIndex]?.id : null}
+          onOpen={onOpenHappening}
+        />
+      ) : null}
 
       <div
         ref={scrollRef}
