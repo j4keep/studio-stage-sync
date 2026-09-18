@@ -24,7 +24,7 @@ import CircleFollowingFeed from "@/components/circle/CircleFollowingFeed";
 
 const SLIDE_MS = 3600;
 
-type DiscoveryTab = "home" | "discover" | "memberships";
+type DiscoveryTab = "home" | "discover" | "events" | "memberships";
 
 type CirclePreview = {
   id: string;
@@ -270,10 +270,11 @@ export default function MyCircleRedirect() {
             Follow what is happening across the Circles you joined, or discover new communities.
           </p>
 
-          <div className="mt-5 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card p-1.5">
+          <div className="mt-5 grid grid-cols-4 gap-1.5 rounded-[22px] border border-border bg-card p-1.5">
             {([
               ["home", "Home", Home],
               ["discover", "Discover", Compass],
+              ["events", "Events", CalendarDays],
               ["memberships", "Memberships", UsersRound],
             ] as const).map(([id, label, TabIcon]) => (
               <button
@@ -349,6 +350,39 @@ export default function MyCircleRedirect() {
                 </p>
               </div>
             )}
+            </div>
+          </section>
+        )}
+
+        {tab === "events" && (
+          <section className="mt-7 px-4 lg:px-6">
+            <div className="overflow-hidden rounded-[30px] border border-border bg-card shadow-sm">
+              <div className="bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-orange-400/20 p-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Circle events</p>
+                <h2 className="mt-1 text-[28px] font-black tracking-[-0.04em]">Show up together.</h2>
+                <p className="mt-2 max-w-md text-[13px] font-medium leading-relaxed text-muted-foreground">
+                  Find events happening across YAJ, or host your own experience for your Circle and community.
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => navigate("/events")}
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-foreground px-4 text-[12px] font-black text-background"
+                  >
+                    <CalendarDays className="h-4 w-4" />
+                    Browse events
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/pro/events")}
+                    className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-background px-4 text-[12px] font-black text-foreground"
+                  >
+                    <Ticket className="h-4 w-4" />
+                    Host event
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         )}
