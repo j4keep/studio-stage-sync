@@ -364,11 +364,59 @@ function attachLocalEngagement(rows: CircleContent[], userId?: string): CircleCo
   });
 }
 
+async function syncLocalCircleContentsToServer(circleId: string, userId?: string): Promise<void> {
+  if (!userId) return;
+  const store = readLocal();
+  const localRows = (store[circleId] ?? []).filter((row) => row.author_id === userId);
+  if (!localRows.length) return;
+
+  const payload = localRows.map((row) => ({
+    id: row.id,
+    circle_id: row.circle_id,
+    author_id: row.author_id,
+    kind: row.kind,
+    activity_type: row.activity_type || "photo",
+    title: row.title,
+    body: row.body,
+    media_urls: row.media_urls ?? [],
+    media_type: row.media_type || "none",
+    visibility: row.visibility || "circle_members",
+    donations_enabled: row.donations_enabled !== false,
+    like_count: row.like_count ?? 0,
+    view_count: row.view_count ?? 0,
+    comment_count: row.comment_count ?? 0,
+    event_at: row.event_at,
+    event_end_at: row.event_end_at,
+    event_location: row.event_location,
+    event_online_url: row.event_online_url,
+    event_capacity: row.event_capacity,
+    event_ticket_cents: row.event_ticket_cents,
+    event_reminders: Boolean(row.event_reminders),
+    community_subtype: row.community_subtype,
+    poll_options: row.poll_options ?? [],
+    tags: row.tags ?? [],
+    is_pinned: Boolean(row.is_pinned),
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }));
+
+  const { error } = await sb.from("circle_contents").upsert(payload, { onConflict: "id" });
+  if (error) return;
+
+  store[circleId] = (store[circleId] ?? []).filter((row) => row.author_id !== userId);
+  writeLocal(store);
+}
+
 export async function listCircleContents(
   circleId: string,
   opts: { kind?: CircleContentKind; userId?: string; exclusiveOnly?: boolean } = {},
 ): Promise<CircleContent[]> {
   try {
+    // Older builds could save Circle posts only in localStorage when the shared table
+    // was missing. Once the server schema is available, migrate the current user's
+    // local Circle posts into Supabase so followers can see them on other devices.
+    await syncLocalCircleContentsToServer(circleId, opts.userId);
+
     // Regular Circle Home content uses a dedicated RPC so approved members can see the
     // same Circle-only posts on every device even when the Circle itself is private.
     // Exclusive content keeps its separate access path below.
