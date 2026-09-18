@@ -367,13 +367,21 @@ const FeedPage = () => {
 
       {viewer && posts.length > 0 && (
         isDesktop ? (
-          <DesktopPostDetail items={posts} startIndex={viewer.index} onClose={closeViewer} />
+          <DesktopPostDetail
+            items={posts}
+            startIndex={viewer.index}
+            onClose={closeViewer}
+            happeningItems={happening}
+            onOpenHappening={openHappeningItem}
+          />
         ) : (
           <FeedFullscreenViewer
             items={posts}
             startIndex={viewer.index}
             currentUserId={user?.id}
             onClose={closeViewer}
+            happeningItems={happening}
+            onOpenHappening={openHappeningItem}
           />
         )
       )}
