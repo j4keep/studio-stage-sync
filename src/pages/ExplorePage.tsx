@@ -252,8 +252,8 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-background pb-20 text-foreground">
-      <header className="sticky top-0 z-30 shrink-0 border-b border-border/70 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl">
+    <div className="flex min-h-[100dvh] flex-col bg-background pb-20 text-foreground lg:min-h-0 lg:pb-8">
+      <header className="sticky top-0 z-30 shrink-0 border-b border-border/70 bg-background/95 px-4 pb-3 pt-3 backdrop-blur-xl lg:rounded-t-3xl lg:px-6 lg:pt-5">
         <h1 className="text-[26px] font-bold tracking-[-0.025em] text-foreground">Explore</h1>
         <p className="mt-0.5 text-[13px] font-medium text-muted-foreground">
           Discover everything YAJ brings together.
@@ -280,7 +280,7 @@ export default function ExplorePage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-6 pt-4">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-10 pt-4 lg:max-w-none lg:px-6 lg:pb-14 lg:pt-6">
         {!query && (
           <section className="mb-5">
             <button
@@ -319,7 +319,7 @@ export default function ExplorePage() {
           </div>
 
           {filteredItems.length ? (
-            <div ref={gridRef} className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div ref={gridRef} className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {filteredItems.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -333,7 +333,7 @@ export default function ExplorePage() {
                     onPointerCancel={endDrag}
                     onContextMenu={(e) => e.preventDefault()}
                     onClick={handleClick(item)}
-                    className={`group min-h-[154px] select-none rounded-[20px] border border-border/70 ${item.surface} p-3.5 text-left shadow-sm transition ${
+                    className={`group min-h-[154px] select-none rounded-[20px] border border-border/70 ${item.surface} p-3.5 text-left shadow-sm transition lg:min-h-[170px] lg:p-4 ${
                       dragId === item.id
                         ? "z-10 scale-[1.035] opacity-95 shadow-lg"
                         : "hover:-translate-y-0.5 hover:shadow-md active:scale-[0.985]"
