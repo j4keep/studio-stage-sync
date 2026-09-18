@@ -1,21 +1,45 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowRight,
   CalendarDays,
+  Compass,
+  Home,
   Loader2,
   LockKeyhole,
+  LogOut,
   Mic2,
   RefreshCw,
   Sparkles,
   Ticket,
   Users,
+  UsersRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { getOrCreatePersonalCircle } from "@/lib/circles";
+import { getOrCreatePersonalCircle, leaveCircle } from "@/lib/circles";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
+import CircleFollowingFeed from "@/components/circle/CircleFollowingFeed";
 
 const SLIDE_MS = 3600;
+
+type DiscoveryTab = "home" | "discover" | "memberships";
+
+type CirclePreview = {
+  id: string;
+  name: string;
+  cover_url: string | null;
+  city: string | null;
+  member_count: number;
+  is_private: boolean;
+  is_discoverable: boolean;
+  type: string;
+};
+
+type JoinedCircle = CirclePreview & {
+  membership_id: string;
+  role: string;
+};
 
 const slides = [
   {
@@ -59,8 +83,11 @@ export default function MyCircleRedirect() {
   const [circleId, setCircleId] = useState<string | null>(null);
   const [slide, setSlide] = useState(0);
   const [finishing, setFinishing] = useState(false);
-  const [circles, setCircles] = useState<any[]>([]);
+  const [circles, setCircles] = useState<CirclePreview[]>([]);
+  const [memberships, setMemberships] = useState<JoinedCircle[]>([]);
   const [showDiscovery, setShowDiscovery] = useState(false);
+  const [tab, setTab] = useState<DiscoveryTab>("home");
+  const [leavingId, setLeavingId] = useState<string | null>(null);
 
   const hasCompletedIntro = Boolean(user?.user_metadata?.circle_onboarding_complete);
 
@@ -81,16 +108,57 @@ export default function MyCircleRedirect() {
     };
   }, [hasCompletedIntro, loading, user?.id, user?.user_metadata?.display_name]);
 
-  useEffect(() => {
-    if (!showDiscovery) return;
-    void (supabase as any)
+  const loadDiscovery = useCallback(async () => {
+    if (!showDiscovery || !user?.id) return;
+
+    const [{ data: circleRows }, { data: membershipRows }] = await Promise.all([
+      (supabase as any)
+        .from("circles")
+        .select("id,name,cover_url,city,member_count,is_private,is_discoverable,type")
+        .eq("is_discoverable", true)
+        .order("updated_at", { ascending: false })
+        .limit(80),
+      (supabase as any)
+        .from("circle_members")
+        .select("id,circle_id,role,status")
+        .eq("user_id", user.id)
+        .eq("status", "approved"),
+    ]);
+
+    const discovery = (circleRows || []) as CirclePreview[];
+    setCircles(discovery);
+
+    const approved = (membershipRows || []) as Array<{ id: string; circle_id: string; role: string; status: string }>;
+    const joinedIds = approved
+      .filter((m) => m.circle_id !== circleId && m.role !== "owner")
+      .map((m) => m.circle_id);
+
+    if (!joinedIds.length) {
+      setMemberships([]);
+      return;
+    }
+
+    const { data: joinedRows } = await (supabase as any)
       .from("circles")
       .select("id,name,cover_url,city,member_count,is_private,is_discoverable,type")
-      .eq("is_discoverable", true)
-      .order("updated_at", { ascending: false })
-      .limit(60)
-      .then(({ data }: any) => setCircles(data || []));
-  }, [showDiscovery]);
+      .in("id", joinedIds);
+
+    const membershipByCircle = new Map(approved.map((m) => [m.circle_id, m]));
+    setMemberships(
+      ((joinedRows || []) as CirclePreview[]).map((circle) => {
+        const membership = membershipByCircle.get(circle.id)!;
+        return {
+          ...circle,
+          membership_id: membership.id,
+          role: membership.role,
+        };
+      }),
+    );
+  }, [circleId, showDiscovery, user?.id]);
+
+  useEffect(() => {
+    void loadDiscovery();
+  }, [loadDiscovery]);
 
   useEffect(() => {
     if (loading || hasCompletedIntro || error || showDiscovery) return;
@@ -111,6 +179,21 @@ export default function MyCircleRedirect() {
     }
     setFinishing(false);
     setShowDiscovery(true);
+  };
+
+  const handleLeave = async (circle: JoinedCircle) => {
+    if (!user?.id || leavingId) return;
+    if (!window.confirm(`Leave ${circle.name}? You will still be able to find this Circle and join or request access again later.`)) return;
+    setLeavingId(circle.id);
+    try {
+      await leaveCircle(circle.id, user.id);
+      setMemberships((prev) => prev.filter((item) => item.id !== circle.id));
+      toast({ title: "Left Circle", description: "The Circle is still available in Discover if you want to rejoin later." });
+    } catch (e: any) {
+      toast({ title: "Could not leave Circle", description: e?.message, variant: "destructive" });
+    } finally {
+      setLeavingId(null);
+    }
   };
 
   if (error) {
@@ -145,7 +228,7 @@ export default function MyCircleRedirect() {
   if (showDiscovery) {
     return (
       <main className="min-h-[100dvh] bg-background pb-28 text-foreground transition-colors">
-        <section className="px-4 pt-[max(env(safe-area-inset-top),1.25rem)]">
+        <section className="px-4 pt-[max(env(safe-area-inset-top),1.25rem)] lg:px-6">
           <div className="flex items-end justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">Community</p>
@@ -157,48 +240,126 @@ export default function MyCircleRedirect() {
               </button>
             )}
           </div>
-          <p className="mt-3 max-w-sm text-[13px] font-medium leading-relaxed text-muted-foreground">Discover people, communities and experiences across YAJ.</p>
+          <p className="mt-3 max-w-sm text-[13px] font-medium leading-relaxed text-muted-foreground">
+            Follow what is happening across the Circles you joined, or discover new communities.
+          </p>
+
+          <div className="mt-5 grid grid-cols-3 gap-2 rounded-[22px] border border-border bg-card p-1.5">
+            {([
+              ["home", "Home", Home],
+              ["discover", "Discover", Compass],
+              ["memberships", "Memberships", UsersRound],
+            ] as const).map(([id, label, TabIcon]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTab(id)}
+                className={`flex h-11 items-center justify-center gap-1.5 rounded-[17px] text-[11px] font-black transition ${
+                  tab === id ? "bg-foreground text-background shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                <TabIcon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </section>
 
-        <section className="mt-7 space-y-5 px-4">
-          {circles.map((circle) => (
-            <button
-              key={circle.id}
-              type="button"
-              onClick={() => navigate(`/circle/c/${circle.id}`)}
-              className="group relative block aspect-[16/11] w-full overflow-hidden rounded-[30px] border border-border bg-card text-left shadow-sm"
-            >
-              {circle.cover_url ? (
-                <img src={circle.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-active:scale-[1.01]" />
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/85" />
-              <div className="absolute inset-x-0 bottom-0 p-5 text-white">
-                <h2 className="text-[29px] font-black leading-[0.95] tracking-[-0.045em]">{circle.name}</h2>
-                <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-bold text-white/70">
-                  <span>{circle.member_count || 0} members</span>
-                  {circle.city ? <span>{circle.city}</span> : null}
-                  {circle.is_private ? <span className="flex items-center gap-1"><LockKeyhole className="h-3 w-3" /> Private</span> : <span>Open</span>}
-                </div>
-              </div>
-            </button>
-          ))}
-          {!circles.length && (
-            <div className="rounded-[28px] border border-border bg-card px-6 py-14 text-center">
-              <Users className="mx-auto h-8 w-8 text-muted-foreground" />
-              <h2 className="mt-4 text-xl font-black">Circles are getting started</h2>
-              <p className="mt-2 text-[13px] text-muted-foreground">Discoverable Circles will appear here as the community grows.</p>
+        {tab === "home" && user?.id && (
+          <section className="mt-4">
+            <div className="px-4 lg:px-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Latest from your Circles</p>
+              <h2 className="mt-1 text-[28px] font-black tracking-[-0.04em]">Home</h2>
             </div>
-          )}
-        </section>
+            <CircleFollowingFeed userId={user.id} ownCircleId={circleId} />
+          </section>
+        )}
+
+        {tab === "discover" && (
+          <section className="mt-7 grid gap-5 px-4 lg:grid-cols-2 lg:px-6">
+            {circles.map((circle) => (
+              <button
+                key={circle.id}
+                type="button"
+                onClick={() => navigate(`/circle/c/${circle.id}`)}
+                className="group relative block aspect-[16/11] w-full overflow-hidden rounded-[30px] border border-border bg-card text-left shadow-sm"
+              >
+                {circle.cover_url ? (
+                  <img src={circle.cover_url} alt="" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-active:scale-[1.01]" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-orange-500" />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/10 to-black/85" />
+                <div className="absolute inset-x-0 bottom-0 p-5 text-white">
+                  <h2 className="text-[29px] font-black leading-[0.95] tracking-[-0.045em]">{circle.name}</h2>
+                  <div className="mt-3 flex flex-wrap items-center gap-3 text-[11px] font-bold text-white/70">
+                    <span>{circle.member_count || 0} members</span>
+                    {circle.city ? <span>{circle.city}</span> : null}
+                    {circle.is_private ? <span className="flex items-center gap-1"><LockKeyhole className="h-3 w-3" /> Private · Request to join</span> : <span>Open · Join anytime</span>}
+                  </div>
+                </div>
+              </button>
+            ))}
+            {!circles.length && (
+              <div className="rounded-[28px] border border-border bg-card px-6 py-14 text-center lg:col-span-2">
+                <Users className="mx-auto h-8 w-8 text-muted-foreground" />
+                <h2 className="mt-4 text-xl font-black">Circles are getting started</h2>
+                <p className="mt-2 text-[13px] text-muted-foreground">Discoverable Circles will appear here as the community grows.</p>
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "memberships" && (
+          <section className="mt-7 space-y-3 px-4 lg:px-6">
+            <div className="mb-5">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">Your memberships</p>
+              <h2 className="mt-1 text-[28px] font-black tracking-[-0.04em]">Circles you joined</h2>
+              <p className="mt-2 text-[12px] text-muted-foreground">Manage membership here. Leaving never hides a discoverable Circle from you.</p>
+            </div>
+
+            {memberships.map((circle) => (
+              <div key={circle.id} className="flex items-center gap-3 rounded-[24px] border border-border bg-card p-3 shadow-sm">
+                <button type="button" onClick={() => navigate(`/circle/c/${circle.id}`)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                  <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[18px] bg-muted">
+                    {circle.cover_url ? <img src={circle.cover_url} alt="" className="h-full w-full object-cover" /> : null}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-[14px] font-black">{circle.name}</p>
+                    <p className="mt-1 text-[11px] font-medium text-muted-foreground">
+                      {circle.is_private ? "Private Circle" : "Open Circle"} · {circle.member_count || 0} members
+                    </p>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  disabled={leavingId === circle.id}
+                  onClick={() => void handleLeave(circle)}
+                  className="flex h-10 shrink-0 items-center gap-1.5 rounded-full border border-border px-3 text-[11px] font-black text-muted-foreground active:scale-95 disabled:opacity-50"
+                >
+                  {leavingId === circle.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+                  Leave
+                </button>
+              </div>
+            ))}
+
+            {!memberships.length && (
+              <div className="rounded-[28px] border border-border bg-card px-6 py-14 text-center">
+                <UsersRound className="mx-auto h-8 w-8 text-muted-foreground" />
+                <h2 className="mt-4 text-xl font-black">No joined Circles yet</h2>
+                <p className="mt-2 text-[13px] text-muted-foreground">Open Discover to find communities. Public Circles join immediately; private Circles let you request access.</p>
+                <button type="button" onClick={() => setTab("discover")} className="mt-5 rounded-full bg-foreground px-5 py-2.5 text-[12px] font-black text-background">Discover Circles</button>
+              </div>
+            )}
+          </section>
+        )}
       </main>
     );
   }
 
   return (
     <main className="relative min-h-[100dvh] overflow-hidden bg-background text-foreground">
-      <div className={`absolute inset-0 bg-gradient-to-br ${current.accent} opacity-35 dark:opacity-90 transition-all duration-700`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${current.accent} opacity-35 transition-all duration-700 dark:opacity-90`} />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(255,255,255,0.20),transparent_34%),linear-gradient(to_bottom,transparent,hsl(var(--background)/0.92))]" />
 
       <div className="pointer-events-none absolute inset-x-0 top-[15dvh] flex justify-center">
