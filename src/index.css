@@ -787,3 +787,29 @@
   .ttt-stroke, .ttt-shake, .c4-drop, .game-piece-pop, .win-glow { animation: none !important; }
   .ttt-stroke { stroke-dashoffset: 0 !important; }
 }
+
+
+/* YAJ Happening balloon — subtle floating discovery nudge while viewing a Feed post. */
+@keyframes yaj-happening-balloon-enter {
+  0% { opacity: 0; transform: translate3d(72px, 18px, 0) scale(0.72); }
+  70% { opacity: 1; transform: translate3d(-4px, -3px, 0) scale(1.03); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes yaj-happening-balloon-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(-1.5deg); }
+  45% { transform: translate3d(-9px, -16px, 0) rotate(1.5deg); }
+  70% { transform: translate3d(-4px, -8px, 0) rotate(0deg); }
+}
+.yaj-happening-balloon-enter {
+  animation: yaj-happening-balloon-enter 0.62s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+}
+.yaj-happening-balloon-drift {
+  animation: yaj-happening-balloon-drift 5.8s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .yaj-happening-balloon-enter,
+  .yaj-happening-balloon-drift {
+    animation: none !important;
+  }
+}
