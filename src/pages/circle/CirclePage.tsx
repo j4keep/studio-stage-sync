@@ -32,7 +32,6 @@ import CircleMemberManagement from "@/components/circle/CircleMemberManagement";
 import CircleCoverCreator from "@/components/circle/CircleCoverCreator";
 import CircleCreatePostSheet from "@/components/circle/CircleCreatePostSheet";
 import CircleContentFeed from "@/components/circle/CircleContentFeed";
-import CircleOwnerPostFeed from "@/components/circle/CircleOwnerPostFeed";
 import CircleExclusiveArea from "@/components/circle/CircleExclusiveArea";
 import CircleDonationTab from "@/components/circle/CircleDonationTab";
 import LiveCameraView from "@/components/feed/create/LiveCameraView";
@@ -322,19 +321,12 @@ export default function CirclePage() {
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground">From this Circle</p>
                 <h2 className="mt-1 text-[27px] font-black tracking-[-0.04em]">Latest</h2>
               </div>
-              <CircleOwnerPostFeed
-                ownerUserId={circle.owner_id}
-                currentUserId={user?.id}
-              />
-              <div className="px-4 pb-1 pt-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground">Posted inside this Circle</p>
-              </div>
               <CircleContentFeed
                 circleId={circle.id}
                 userId={user?.id}
                 canInteract={isApprovedMember}
                 refreshKey={contentRefresh}
-                emptyLabel="No Circle-only posts yet."
+                emptyLabel="No posts yet."
               />
             </section>
           ) : (
