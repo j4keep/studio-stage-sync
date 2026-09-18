@@ -31,7 +31,7 @@ export type HappeningItem = {
 const KIND_LABEL: Record<HappeningKind, string> = {
   post: "Post",
   marketplace: "Marketplace",
-  job: "Career",
+  job: "Job",
   gig: "Gig",
   tv: "YAJ TV",
   service: "Service",
@@ -68,7 +68,7 @@ export async function fetchHappeningItems(opts: {
       .select("id, caption, media_url, media_type, created_at, user_id")
       .order("created_at", { ascending: false })
       .limit(limit),
-    listMarketplaceListings({ limit, sort: "newest" }).catch(() => []),
+    listMarketplaceListings({ limit, sort: "newest", status: "active" }).catch(() => []),
     (supabase as any)
       .from("job_listings")
       .select("id, title, description, media, created_at, status")
@@ -89,6 +89,7 @@ export async function fetchHappeningItems(opts: {
     (supabase as any)
       .from("event_listings")
       .select("id, title, description, media_url, media_type, address, price_cents, created_at")
+      .eq("status", "active")
       .order("created_at", { ascending: false })
       .limit(limit),
   ]);
