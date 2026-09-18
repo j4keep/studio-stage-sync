@@ -268,8 +268,10 @@ export default function CircleLiveRoomPage() {
   const layoutMode: CircleLiveLayoutMode =
     session?.layout_mode || prepLayoutMode || "live";
   const isMultiMotor = layoutMode === "multi";
-  // Guests may request a stage seat on Multi lives (and once anyone is on stage, grid shows).
-  const stageJoinEnabled = isMultiMotor;
+  // Every YAJ live uses the same stage-door system. A host may start Solo, Multi,
+  // Virtual, Circle, or Exclusive; viewers can still request a seat. The room only
+  // turns into the 3×3 stage when more than one person is actually on camera/mic.
+  const stageJoinEnabled = true;
 
   const room = usePodcastLiveRoom({
     roomName: session?.room ?? "",
@@ -516,14 +518,14 @@ export default function CircleLiveRoomPage() {
 
   // —— Motor / stage derived state MUST stay above early returns (Rules of Hooks). ——
   const host = room.participants.find((p) => p.isHost);
-  const stagePeople = useMemo(() => {
-    if (isMultiMotor) return stageParticipantsFromRoom(room.participants);
-    const h = room.participants.find((p) => p.isHost);
-    return h ? [h] : [];
-  }, [isMultiMotor, room.participants]);
+  const stagePeople = useMemo(
+    () => stageParticipantsFromRoom(room.participants),
+    [room.participants],
+  );
   const onStage =
     !!room.local && (room.local.isHost || room.local.camOn || room.local.micOn || !!room.local.videoTrack);
   const seatsLeft = Math.max(0, LIVE_MOTOR_MAX_ON_STAGE - stagePeople.length);
+  const useStageGrid = isMultiMotor || stagePeople.length > 1;
   const viewerCount = Math.max(room.participants.length - 1, 0);
   const canvasIsLive = !!faceFilters.outputTrack && host?.videoTrack === faceFilters.outputTrack;
   const stageIdsKey = stagePeople.map((p) => p.id).join(",");
@@ -830,7 +832,7 @@ export default function CircleLiveRoomPage() {
           content size, and the whole fixed page would grow and start scrolling instead
           of the video area just clipping its own overflow. */}
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {isMultiMotor ? (
+        {useStageGrid ? (
           stagePeople.length > 0 || seatsLeft > 0 ? (
             <LiveMotorGrid
               participants={stagePeople}
@@ -889,9 +891,9 @@ export default function CircleLiveRoomPage() {
           <span className="flex items-center gap-1 rounded-full bg-red-600 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Live
           </span>
-          {isMultiMotor && (
+          {useStageGrid && (
             <span className="rounded-full bg-fuchsia-600/90 px-2.5 py-1 text-[11px] font-black uppercase tracking-wide">
-              Multi · {stagePeople.length}/{LIVE_MOTOR_MAX_ON_STAGE}
+              Stage · {stagePeople.length}/{LIVE_MOTOR_MAX_ON_STAGE}
             </span>
           )}
           <span className="flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm">
@@ -985,8 +987,8 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
-        {/* Guest on motor stage — mic / cam only */}
-        {isMultiMotor && onStage && !isHost && (
+        {/* Guest on stage — mic / cam only */}
+        {stageJoinEnabled && onStage && !isHost && (
           <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
             <button
               type="button"
@@ -1128,7 +1130,7 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
-        {/* Multi join banner — request to join (host must accept) */}
+        {/* Request to join — available on every live mode; host must accept. */}
         {stageJoinEnabled && !isHost && !onStage && (
           <div className="absolute bottom-[13.5rem] left-3 right-3 z-20 flex items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/65 px-3 py-2.5 backdrop-blur-md">
             <p className="min-w-0 text-[12px] font-semibold leading-snug text-white/90">
