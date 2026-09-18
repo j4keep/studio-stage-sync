@@ -112,7 +112,10 @@ export default function HappeningBalloon({ items, currentSourceId, onOpen }: Pro
       <div className="yaj-happening-balloon-enter">
         <button
           type="button"
-          onClick={() => onOpen(item)}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(item);
+          }}
           className="yaj-happening-balloon-drift pointer-events-auto group relative flex min-w-[210px] max-w-[310px] items-center gap-2.5 rounded-[28px] border border-white/25 bg-black/78 p-2.5 pr-4 text-left text-white shadow-[0_18px_45px_rgba(0,0,0,0.38)] backdrop-blur-xl active:scale-[0.97]"
           aria-label={`Open ${happeningKindLabel(item.kind)}: ${item.title}`}
         >
