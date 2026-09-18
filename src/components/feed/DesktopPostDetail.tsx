@@ -22,15 +22,19 @@ import PostCommentsPanel from "@/components/feed/PostCommentsPanel";
 import BattleFeedSlide from "@/components/feed/BattleFeedSlide";
 import useFloatingEmojis, { FloatingEmojiLayer } from "@/components/feed/FloatingEmojis";
 import { forceIosAudioSessionToPlayback, unlockFeedAudioSession } from "@/lib/feed-video-playback";
+import HappeningBalloon from "@/components/feed/HappeningBalloon";
+import type { HappeningItem } from "@/lib/happening-items";
 
 type Props = {
   items: any[];
   startIndex: number;
   onClose: () => void;
+  happeningItems?: HappeningItem[];
+  onOpenHappening?: (item: HappeningItem) => void;
 };
 
 /** Desktop post theater: video-first like phone/FB — profile on media, comments on demand. */
-export default function DesktopPostDetail({ items, startIndex, onClose }: Props) {
+export default function DesktopPostDetail({ items, startIndex, onClose, happeningItems = [], onOpenHappening }: Props) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { emojis, spawnEmoji } = useFloatingEmojis();
@@ -90,6 +94,9 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
   if (post.itemType === "battle") {
     return (
       <div className="fixed inset-0 z-[80] bg-black/95" onClick={onClose}>
+        {onOpenHappening && happeningItems.length > 0 ? (
+          <HappeningBalloon items={happeningItems} currentSourceId={post?.id} onOpen={onOpenHappening} />
+        ) : null}
         <div
           className="absolute left-4 top-4 z-[90] flex items-center gap-3"
           onClick={(e) => e.stopPropagation()}
@@ -180,6 +187,9 @@ export default function DesktopPostDetail({ items, startIndex, onClose }: Props)
 
   return (
     <div className="fixed inset-0 z-[80] bg-black/90" onClick={onClose}>
+      {onOpenHappening && happeningItems.length > 0 ? (
+        <HappeningBalloon items={happeningItems} currentSourceId={post?.id} onOpen={onOpenHappening} />
+      ) : null}
       {/* Facebook-style top-left: close + brand logo */}
       <div
         className="absolute left-4 top-4 z-[90] flex items-center gap-3"
