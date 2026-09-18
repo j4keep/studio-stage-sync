@@ -12,7 +12,20 @@ import type { HappeningItem, HappeningKind } from "@/lib/happening-items";
 import { happeningKindLabel } from "@/lib/happening-items";
 
 const SETTING_KEY = "yaj_happening_balloons";
+const CATEGORY_KEY = "yaj_happening_balloon_categories";
 const SETTING_EVENT = "yaj-happening-balloon-setting";
+
+export const HAPPENING_BALLOON_CATEGORIES: Array<{ kind: HappeningKind; label: string }> = [
+  { kind: "job", label: "Jobs" },
+  { kind: "marketplace", label: "Marketplace" },
+  { kind: "gig", label: "Gigs" },
+  { kind: "service", label: "Services" },
+  { kind: "event", label: "Events" },
+  { kind: "tv", label: "YAJ TV" },
+  { kind: "post", label: "Posts" },
+];
+
+const DEFAULT_CATEGORIES = HAPPENING_BALLOON_CATEGORIES.map((item) => item.kind);
 
 const ICONS: Record<HappeningKind, typeof Sparkles> = {
   post: Sparkles,
@@ -45,6 +58,28 @@ export function setHappeningBalloonsEnabled(enabled: boolean) {
   window.dispatchEvent(new CustomEvent(SETTING_EVENT, { detail: { enabled } }));
 }
 
+export function getHappeningBalloonCategories(): HappeningKind[] {
+  if (typeof window === "undefined") return DEFAULT_CATEGORIES;
+  try {
+    const raw = window.localStorage.getItem(CATEGORY_KEY);
+    if (!raw) return DEFAULT_CATEGORIES;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return DEFAULT_CATEGORIES;
+    const valid = new Set(DEFAULT_CATEGORIES);
+    return parsed.filter((kind): kind is HappeningKind => valid.has(kind));
+  } catch {
+    return DEFAULT_CATEGORIES;
+  }
+}
+
+export function setHappeningBalloonCategories(categories: HappeningKind[]) {
+  if (typeof window === "undefined") return;
+  const valid = new Set(DEFAULT_CATEGORIES);
+  const next = Array.from(new Set(categories.filter((kind) => valid.has(kind))));
+  window.localStorage.setItem(CATEGORY_KEY, JSON.stringify(next));
+  window.dispatchEvent(new CustomEvent(SETTING_EVENT, { detail: { categories: next } }));
+}
+
 type Props = {
   items: HappeningItem[];
   currentSourceId?: string | null;
@@ -58,21 +93,24 @@ type Props = {
  */
 export default function HappeningBalloon({ items, currentSourceId, onOpen }: Props) {
   const [enabled, setEnabled] = useState(happeningBalloonsEnabled);
+  const [categories, setCategories] = useState<HappeningKind[]>(getHappeningBalloonCategories);
   const [visible, setVisible] = useState(false);
   const [cursor, setCursor] = useState(0);
 
   const candidates = useMemo(
     () =>
       items
+        .filter((item) => categories.includes(item.kind))
         .filter((item) => !(item.kind === "post" && item.sourceId === currentSourceId))
         .slice(0, 12),
-    [currentSourceId, items],
+    [categories, currentSourceId, items],
   );
 
   useEffect(() => {
     const sync = (event?: Event) => {
-      const detail = (event as CustomEvent<{ enabled?: boolean }> | undefined)?.detail;
+      const detail = (event as CustomEvent<{ enabled?: boolean; categories?: HappeningKind[] }> | undefined)?.detail;
       setEnabled(typeof detail?.enabled === "boolean" ? detail.enabled : happeningBalloonsEnabled());
+      setCategories(Array.isArray(detail?.categories) ? detail.categories : getHappeningBalloonCategories());
     };
     window.addEventListener(SETTING_EVENT, sync);
     window.addEventListener("storage", sync);
@@ -108,7 +146,7 @@ export default function HappeningBalloon({ items, currentSourceId, onOpen }: Pro
   const Icon = ICONS[item.kind];
 
   return (
-    <div className="pointer-events-none absolute right-3 top-[28%] z-[78] max-w-[min(82vw,310px)] sm:right-5 sm:top-[24%]">
+    <div className="pointer-events-none absolute left-1/2 top-[calc(env(safe-area-inset-top)+4rem)] z-[78] max-w-[min(84vw,320px)] -translate-x-1/2 sm:top-5">
       <div className="yaj-happening-balloon-enter">
         <button
           type="button"
