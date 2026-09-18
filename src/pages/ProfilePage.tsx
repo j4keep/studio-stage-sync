@@ -37,7 +37,14 @@ import ProfileFeedSection from "@/components/ProfileFeedSection";
 import { useSectionNotifications, type NotifSection } from "@/hooks/use-section-notifications";
 import { getYajAiVoiceLabel } from "@/lib/yaj-ai-prefs";
 import { Switch } from "@/components/ui/switch";
-import { happeningBalloonsEnabled, setHappeningBalloonsEnabled } from "@/components/feed/HappeningBalloon";
+import {
+  HAPPENING_BALLOON_CATEGORIES,
+  getHappeningBalloonCategories,
+  happeningBalloonsEnabled,
+  setHappeningBalloonCategories,
+  setHappeningBalloonsEnabled,
+} from "@/components/feed/HappeningBalloon";
+import type { HappeningKind } from "@/lib/happening-items";
 
 const compactNumber = (value: number) =>
   value >= 1000 ? `${(value / 1000).toFixed(value >= 10000 ? 0 : 1)}K` : String(value);
@@ -62,6 +69,7 @@ const ProfilePage = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isDealBusiness, setIsDealBusiness] = useState(false);
   const [happeningBalloons, setHappeningBalloons] = useState(happeningBalloonsEnabled);
+  const [happeningCategories, setHappeningCategories] = useState<HappeningKind[]>(getHappeningBalloonCategories);
 
   useEffect(() => {
     if (!user) {
@@ -270,24 +278,58 @@ const ProfilePage = () => {
         </section>
 
         <div className="px-4 pt-5">
-          <div className="mb-3 flex w-full items-center gap-3 rounded-2xl border border-border/80 bg-card p-4 shadow-sm">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-              <Sparkles className="h-5 w-5 text-primary" />
+          <div className="mb-3 overflow-hidden rounded-2xl border border-border/80 bg-card shadow-sm">
+            <div className="flex w-full items-center gap-3 p-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                <Sparkles className="h-5 w-5 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-bold">Happening balloons</p>
+                <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
+                  Show useful activity while you watch an opened Feed post.
+                </p>
+              </div>
+              <Switch
+                checked={happeningBalloons}
+                onCheckedChange={(enabled) => {
+                  setHappeningBalloons(enabled);
+                  setHappeningBalloonsEnabled(enabled);
+                }}
+                aria-label="Happening balloons"
+              />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-bold">Happening balloons</p>
-              <p className="mt-0.5 text-[11px] font-medium text-muted-foreground">
-                Float new jobs, events, listings and updates over opened Feed posts.
-              </p>
-            </div>
-            <Switch
-              checked={happeningBalloons}
-              onCheckedChange={(enabled) => {
-                setHappeningBalloons(enabled);
-                setHappeningBalloonsEnabled(enabled);
-              }}
-              aria-label="Happening balloons"
-            />
+
+            {happeningBalloons && (
+              <div className="border-t border-border/70 px-4 pb-4 pt-3">
+                <div className="mb-3">
+                  <p className="text-[12px] font-bold text-foreground">Choose what floats by</p>
+                  <p className="mt-0.5 text-[10.5px] font-medium text-muted-foreground">
+                    Turn categories on or off so the balloon only shows what matters to you.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {HAPPENING_BALLOON_CATEGORIES.map(({ kind, label }) => {
+                    const checked = happeningCategories.includes(kind);
+                    return (
+                      <div key={kind} className="flex items-center justify-between rounded-xl border border-border/70 bg-background/70 px-3 py-2.5">
+                        <span className="text-[12px] font-semibold text-foreground">{label}</span>
+                        <Switch
+                          checked={checked}
+                          onCheckedChange={(enabled) => {
+                            const next = enabled
+                              ? Array.from(new Set([...happeningCategories, kind]))
+                              : happeningCategories.filter((value) => value !== kind);
+                            setHappeningCategories(next);
+                            setHappeningBalloonCategories(next);
+                          }}
+                          aria-label={`Show ${label} balloons`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
 
           <button
