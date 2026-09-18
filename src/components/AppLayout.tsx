@@ -158,14 +158,20 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             <DesktopHomeIconRail />
           </div>
 
-          <BottomNav />
+          {/* The feed shell is a fixed full-screen container, so the nav is anchored
+              inside it. Everywhere else the nav must live outside this wrapper so it
+              stays pinned to the viewport and can never scroll up with the page. */}
+          {mobileFeed && <BottomNav />}
         </div>
+
+        {!mobileFeed && <BottomNav />}
 
         <GlobalRadioPlayer />
         <GlobalPlaylistPlayer />
         <PlaylistPlayerSheet />
         {location.pathname !== "/auth" && <IncognitoFeedWindow />}
       </div>
+
     );
   }
 
