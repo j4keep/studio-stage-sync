@@ -110,6 +110,12 @@ export function usePodcastLiveRoom(opts: {
   const canPublish = opts.canPublish ?? publish;
   const maxParticipants = opts.maxParticipants ?? DEFAULT_MAX_PARTICIPANTS;
   const roomRef = useRef<Room | null>(null);
+  // Guests prepare camera + microphone from their own Ask/Request tap. This matters on
+  // iPhone/Safari: waiting until the host accepts can make the later media request occur
+  // outside the guest's user gesture and Safari may reject it with NotAllowedError.
+  // Keep the prepared tracks private/local until the host accepts, then publish those
+  // exact tracks to LiveKit without asking the browser for permission a second time.
+  const preparedPublishStreamRef = useRef<MediaStream | null>(null);
   const [connState, setConnState] = useState<
     "idle" | "connecting" | "connected" | "error" | "disconnected"
   >("idle");
@@ -227,6 +233,15 @@ export function usePodcastLiveRoom(opts: {
     return () => {
       cancelled = true;
       if (levelInterval) window.clearInterval(levelInterval);
+      const prepared = preparedPublishStreamRef.current;
+      preparedPublishStreamRef.current = null;
+      prepared?.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {
+          /* ignore */
+        }
+      });
       const r = roomRef.current;
       roomRef.current = null;
       r?.disconnect().catch(() => {});
@@ -256,10 +271,93 @@ export function usePodcastLiveRoom(opts: {
     [refresh],
   );
 
-  /** Guest joins the motor stage — turns on cam + mic (token must allow publish). */
+  /**
+   * Prepare a guest's camera + microphone from the guest's own Request tap.
+   * Nothing is published yet; the tracks stay local until the host accepts.
+   */
+  const preparePublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) throw new Error("Not connected to the live room yet");
+
+    const existing = preparedPublishStreamRef.current;
+    if (existing && existing.getAudioTracks().some((t) => t.readyState === "live") && existing.getVideoTracks().some((t) => t.readyState === "live")) {
+      return;
+    }
+
+    existing?.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        /* ignore */
+      }
+    });
+    preparedPublishStreamRef.current = null;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Camera and microphone are not available in this browser.");
+    }
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: { facingMode: "user" },
+    });
+    const audio = stream.getAudioTracks()[0];
+    const video = stream.getVideoTracks()[0];
+    if (!audio || !video) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error("Camera and microphone permission is required to join the stage.");
+    }
+    preparedPublishStreamRef.current = stream;
+  }, []);
+
+  /** Stop a not-yet-published guest preview after cancel/decline/full. */
+  const cancelPreparedPublishing = useCallback(() => {
+    const prepared = preparedPublishStreamRef.current;
+    preparedPublishStreamRef.current = null;
+    prepared?.getTracks().forEach((track) => {
+      try {
+        track.stop();
+      } catch {
+        /* ignore */
+      }
+    });
+  }, []);
+
+  /** Guest joins the motor stage after host acceptance. */
   const startPublishing = useCallback(async () => {
     const lp = roomRef.current?.localParticipant;
     if (!lp) throw new Error("Not connected to the live room yet");
+
+    const prepared = preparedPublishStreamRef.current;
+    const audio = prepared?.getAudioTracks().find((t) => t.readyState === "live");
+    const video = prepared?.getVideoTracks().find((t) => t.readyState === "live");
+
+    if (prepared && audio && video) {
+      // Detach the ref before publishing so normal cleanup won't stop tracks now owned by LiveKit.
+      preparedPublishStreamRef.current = null;
+      try {
+        await Promise.all([
+          lp.publishTrack(audio, { source: Track.Source.Microphone }),
+          lp.publishTrack(video, { source: Track.Source.Camera }),
+        ]);
+        refresh();
+        return;
+      } catch (error) {
+        // If publishing itself failed, release any track that LiveKit did not take over.
+        [audio, video].forEach((track) => {
+          if (track.readyState === "live") {
+            try {
+              track.stop();
+            } catch {
+              /* ignore */
+            }
+          }
+        });
+        throw error;
+      }
+    }
+
+    // Fallback for desktop/browsers where permission is already granted.
     await lp.enableCameraAndMicrophone();
     await Promise.all([lp.setMicrophoneEnabled(true), lp.setCameraEnabled(true)]);
     refresh();
@@ -300,6 +398,8 @@ export function usePodcastLiveRoom(opts: {
     setMic,
     setCam,
     setScreen,
+    preparePublishing,
+    cancelPreparedPublishing,
     startPublishing,
     stopPublishing,
     replaceVideoTrack,
