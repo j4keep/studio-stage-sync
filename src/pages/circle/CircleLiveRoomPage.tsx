@@ -842,13 +842,13 @@ export default function CircleLiveRoomPage() {
               onFocusChange={setFocusedStageId}
               emptySeatCount={seatsLeft > 0 ? 1 : 0}
               emptySeatLabel={
-                isHost ? "Invite" : seatsLeft <= 0 ? "Full" : "Ask to join"
+                isHost ? "Open seat" : seatsLeft <= 0 ? "Full" : "Ask to join"
               }
               showHostKick={isHost}
               onKick={handleKickGuest}
               onEmptySeatTap={
                 isHost
-                  ? () => void handleShareLive()
+                  ? undefined
                   : onStage
                     ? undefined
                     : seatsLeft <= 0
