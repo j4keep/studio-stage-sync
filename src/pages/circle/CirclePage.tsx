@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -393,17 +394,23 @@ export default function CirclePage() {
         />
       )}
 
-      {showLivePrep && (
-        <div className="fixed inset-0 z-[90] bg-black">
-          <LiveCameraView
-            createMode="live"
-            onModeChange={() => {}}
-            onClose={() => setShowLivePrep(false)}
-            circleId={circle.id}
-            hideModeTabs
-          />
-        </div>
-      )}
+      {showLivePrep &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] bg-black">
+            <LiveCameraView
+              createMode="live"
+              onModeChange={(mode) => {
+                if (mode === "post") {
+                  setShowLivePrep(false);
+                  setShowCreatePost(true);
+                }
+              }}
+              onClose={() => setShowLivePrep(false)}
+              circleId={circle.id}
+            />
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
