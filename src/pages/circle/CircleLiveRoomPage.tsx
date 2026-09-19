@@ -603,7 +603,15 @@ export default function CircleLiveRoomPage() {
       await room.startPublishing();
       toast({ title: "You're on stage", description: "Tap any person to see them full screen." });
     } catch (e: any) {
-      toast({ title: "Couldn't join stage", description: e?.message, variant: "destructive" });
+      room.cancelPreparedPublishing();
+      toast({
+        title: "Couldn't join stage",
+        description:
+          e?.name === "NotAllowedError" || /permission|not allowed|denied/i.test(e?.message || "")
+            ? "Camera or microphone access was blocked. Tap Ask again and allow access when prompted."
+            : e?.message,
+        variant: "destructive",
+      });
       stageDoor.resetToIdle();
     } finally {
       setJoiningStage(false);
@@ -621,9 +629,11 @@ export default function CircleLiveRoomPage() {
 
   useEffect(() => {
     if (stageDoor.status === "declined" && stageDoor.declineReason) {
+      room.cancelPreparedPublishing();
       toast({ title: "Request declined", description: stageDoor.declineReason, variant: "destructive" });
     }
     if (stageDoor.status === "full") {
+      room.cancelPreparedPublishing();
       toast({
         title: "Stage is full",
         description: stageDoor.declineReason || "No space available to join right now.",
@@ -656,8 +666,8 @@ export default function CircleLiveRoomPage() {
     toast({ title: "Removed from stage", description: "That seat is open again." });
   };
 
-  const handleRequestJoin = () => {
-    if (!stageJoinEnabled || isHost || onStage) return;
+  const handleRequestJoin = async () => {
+    if (!stageJoinEnabled || isHost || onStage || joiningStage) return;
     if (seatsLeft <= 0) {
       toast({
         title: "Stage is full",
@@ -667,10 +677,32 @@ export default function CircleLiveRoomPage() {
     }
     if (stageDoor.status === "requesting") {
       stageDoor.cancelRequest();
+      room.cancelPreparedPublishing();
+      toast({ title: "Request canceled" });
       return;
     }
-    stageDoor.requestJoin();
-    toast({ title: "Request sent", description: "Waiting for the host to accept…" });
+
+    // iPhone/Safari can reject camera/mic if we first ask for them later, after the host
+    // accepts. Ask for permission now, directly from the viewer's Request tap, but keep
+    // those tracks private until the host says yes.
+    setJoiningStage(true);
+    try {
+      await room.preparePublishing();
+      stageDoor.requestJoin();
+      toast({ title: "Request sent", description: "Waiting for the host to accept…" });
+    } catch (e: any) {
+      room.cancelPreparedPublishing();
+      const denied = e?.name === "NotAllowedError" || /permission|not allowed|denied/i.test(e?.message || "");
+      toast({
+        title: denied ? "Camera & microphone needed" : "Couldn't request the stage",
+        description: denied
+          ? "Allow camera and microphone access, then tap Request again."
+          : e?.message || "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setJoiningStage(false);
+    }
   };
 
   const handleAcceptRequest = (reqId: string) => {
@@ -699,6 +731,7 @@ export default function CircleLiveRoomPage() {
   };
 
   const handleLeave = () => {
+    room.cancelPreparedPublishing();
     // Viewers just leave; hosts ending via X must kill the session.
     if (isHost) {
       setEnding(true);
