@@ -931,7 +931,7 @@ export default function CircleLiveRoomPage() {
               cssFilter={!canvasIsLive ? colorFilter : undefined}
             />
           )
-        ) : host?.videoTrack && host.camOn ? (
+        ) : host?.videoTrack ? (
           <ParticipantVideo participant={host} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-white/60">
@@ -1232,7 +1232,7 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
-        {isHost && (
+        {isLocalBroadcaster && (
           <>
             <FaceFilterPanel
               open={faceFilterSheetOpen}
