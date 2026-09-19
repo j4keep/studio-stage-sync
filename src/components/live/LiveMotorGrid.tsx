@@ -184,7 +184,7 @@ function MotorTile({
     >
       <button type="button" onClick={onTap} className="absolute inset-0 z-0" aria-label={`Focus ${participant.name}`} />
 
-      {participant.videoTrack && participant.camOn ? (
+      {participant.videoTrack ? (
         <video
           ref={videoRef}
           autoPlay
