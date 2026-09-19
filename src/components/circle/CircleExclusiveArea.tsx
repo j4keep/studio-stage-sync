@@ -328,18 +328,24 @@ export default function CircleExclusiveArea({
         />
       )}
 
-      {showLivePrep && (
-        <div className="fixed inset-0 z-[90] bg-black">
-          <LiveCameraView
-            createMode="live"
-            onModeChange={() => {}}
-            onClose={() => setShowLivePrep(false)}
-            circleId={circle.id}
-            hideModeTabs
-            exclusiveLive
-          />
-        </div>
-      )}
+      {showLivePrep &&
+        createPortal(
+          <div className="fixed inset-0 z-[10000] bg-black">
+            <LiveCameraView
+              createMode="live"
+              onModeChange={(mode) => {
+                if (mode === "post") {
+                  setShowLivePrep(false);
+                  setShowPost(true);
+                }
+              }}
+              onClose={() => setShowLivePrep(false)}
+              circleId={circle.id}
+              exclusiveLive
+            />
+          </div>,
+          document.body,
+        )}
 
       {userId && liveSession && inviteOnlyLive && (
         <ExclusiveLiveInviteSheet
