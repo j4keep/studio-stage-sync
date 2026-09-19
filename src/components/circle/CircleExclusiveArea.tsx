@@ -9,7 +9,6 @@ import {
   confirmExclusiveAge,
   getCircleExclusiveAccess,
   hasConfirmedExclusiveAge,
-  setMemberRole,
   updateCircle,
 } from "@/lib/circles";
 import {
@@ -100,17 +99,6 @@ export default function CircleExclusiveArea({
       toast({ title: "Couldn't update access", description: e.message, variant: "destructive" });
     } finally {
       setSavingAccess(false);
-    }
-  };
-
-  const previewSubscribe = async () => {
-    if (!membership || !userId) return;
-    try {
-      await setMemberRole(membership.id, "paid_member");
-      onCircleChanged();
-      toast({ title: "Supporter access unlocked (preview)", description: "Billing coming soon — preview mode for testing." });
-    } catch (e: any) {
-      toast({ title: "Couldn't unlock", description: e.message, variant: "destructive" });
     }
   };
 
@@ -239,13 +227,9 @@ export default function CircleExclusiveArea({
                 : "Join this Circle to view Exclusive content."}
             </p>
             {access === "paid" && membership?.status === "approved" && (
-              <button
-                type="button"
-                onClick={() => void previewSubscribe()}
-                className="rounded-full bg-primary px-4 py-2 text-[12px] font-bold text-primary-foreground"
-              >
-                Unlock supporter access (preview)
-              </button>
+              <p className="max-w-xs text-[11px] font-semibold text-muted-foreground">
+                Supporter access will unlock automatically after an active paid membership is confirmed.
+              </p>
             )}
           </div>
         ) : (
