@@ -903,9 +903,11 @@ export default function CircleLiveRoomPage() {
             <button
               type="button"
               onClick={() => setControlsOpen((v) => !v)}
-              aria-label="Mic and camera controls"
-              className="flex items-center gap-1 rounded-full bg-black/50 px-2 py-1 backdrop-blur-sm"
+              aria-label="Live controls"
+              className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1.5 text-[11px] font-black backdrop-blur-sm"
             >
+              <Settings className="h-3.5 w-3.5" />
+              <span>Controls</span>
               <ChevronDown className={`h-3.5 w-3.5 transition-transform ${controlsOpen ? "rotate-180" : ""}`} />
             </button>
           )}
