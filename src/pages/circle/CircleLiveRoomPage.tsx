@@ -168,11 +168,9 @@ export default function CircleLiveRoomPage() {
     }
   }, [isPublicRoute, id]);
 
-  // Captured once — the host's ORIGINAL camera track, before any face-filter swap. Needed
-  // to revert cleanly back to "none": once a filtered canvas track is published, the
-  // room's own "current local video track" IS that canvas, so it can no longer serve as
-  // the filter engine's input (that would feed the canvas its own output).
-  const rawHostTrackRef = useRef<MediaStreamTrack | null>(null);
+  // Captured once — this device's ORIGINAL camera track, before any face-filter swap.
+  // Hosts and accepted stage guests both use the same local camera-effects pipeline.
+  const rawLocalTrackRef = useRef<MediaStreamTrack | null>(null);
   const [floatingGifts, setFloatingGifts] = useState<{ id: string; emoji: string }[]>([]);
   const [giftTicker, setGiftTicker] = useState<{ id: string; text: string }[]>([]);
   const [comments, setComments] = useState<CircleLiveComment[]>([]);
@@ -292,41 +290,47 @@ export default function CircleLiveRoomPage() {
     displayName,
   });
 
+  // A local broadcaster is the host OR a viewer who has been accepted onto the stage.
+  // Personal camera tools are identical for both; room moderation remains host-only.
+  const isLocalBroadcaster =
+    isHost ||
+    (!!room.local &&
+      (room.local.camOn || room.local.micOn || !!room.local.videoTrack));
+
   // Capture the raw camera track exactly once, before any filter is ever applied —
-  // afterwards room.local?.videoTrack reflects whatever is CURRENTLY published (the
-  // filtered canvas, once one's active), so it can't be relied on as a stable source.
+  // afterwards room.local?.videoTrack reflects whatever is CURRENTLY published.
   useEffect(() => {
-    if (isHost && room.local?.videoTrack && !rawHostTrackRef.current) {
-      rawHostTrackRef.current = room.local.videoTrack;
+    if (isLocalBroadcaster && room.local?.videoTrack && !rawLocalTrackRef.current) {
+      rawLocalTrackRef.current = room.local.videoTrack;
     }
-  }, [isHost, room.local?.videoTrack]);
+  }, [isLocalBroadcaster, room.local?.videoTrack]);
 
   const colorFilter = composeDisplayFilters(getEffectFilter(selectedEffect), getEnhanceDisplayFilter(enhance));
   const hasAnyVideoEffect =
     faceFilter !== "none" || colorFilter !== "none" || enhanceNeedsCanvas(enhance);
   const faceFilters = useFaceFilters(
-    rawHostTrackRef.current,
+    rawLocalTrackRef.current,
     faceFilter,
-    isHost && hasAnyVideoEffect,
+    isLocalBroadcaster && hasAnyVideoEffect,
     colorFilter !== "none" ? colorFilter : undefined,
     enhance,
   );
 
   useEffect(() => {
-    if (!isHost) return;
+    if (!isLocalBroadcaster) return;
     // Dual composite takes over the published track when enabled.
     if (dualLayout !== "none") return;
-    const target = !hasAnyVideoEffect ? rawHostTrackRef.current : faceFilters.outputTrack;
+    const target = !hasAnyVideoEffect ? rawLocalTrackRef.current : faceFilters.outputTrack;
     if (!target) return;
     room.replaceVideoTrack(target).catch((e: any) => {
       toast({ title: "Couldn't update your live video", description: e?.message, variant: "destructive" });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, hasAnyVideoEffect, faceFilters.outputTrack, dualLayout]);
+  }, [isLocalBroadcaster, hasAnyVideoEffect, faceFilters.outputTrack, dualLayout]);
 
-  // Host dual camera: open secondary facing stream + composite for viewers.
+  // Host and accepted stage guests can use the same dual-camera setting on their own tile.
   useEffect(() => {
-    if (!isHost || dualLayout === "none") {
+    if (!isLocalBroadcaster || dualLayout === "none") {
       dualCompositeStopRef.current?.();
       dualCompositeStopRef.current = null;
       releaseSecondaryCamera(pipStreamRef.current);
@@ -365,8 +369,8 @@ export default function CircleLiveRoomPage() {
       }
       setPipReady(true);
 
-      // Wait for raw host track + attach to hidden main video for compositing
-      const raw = rawHostTrackRef.current;
+      // Wait for raw local track + attach to hidden main video for compositing
+      const raw = rawLocalTrackRef.current;
       if (!raw || !dualMainVideoRef.current || !pipVideoRef.current) return;
       dualMainVideoRef.current.srcObject = new MediaStream([raw]);
       await dualMainVideoRef.current.play().catch(() => {});
@@ -391,7 +395,7 @@ export default function CircleLiveRoomPage() {
       pipStreamRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isHost, dualLayout, mainFacing, room.local?.videoTrack]);
+  }, [isLocalBroadcaster, dualLayout, mainFacing, room.local?.videoTrack]);
 
   const handleShareLive = async () => {
     if (!session) return;
@@ -648,7 +652,16 @@ export default function CircleLiveRoomPage() {
       });
       void (async () => {
         try {
+          setControlsOpen(false);
+          setFaceFilterSheetOpen(false);
+          setShowEnhance(false);
+          setShowEffects(false);
+          setFaceFilter("none");
+          setSelectedEffect("none");
+          setEnhance(DEFAULT_ENHANCE);
+          setDualLayout("none");
           await room.stopPublishing();
+          rawLocalTrackRef.current = null;
         } catch {
           /* ignore */
         }
@@ -721,7 +734,16 @@ export default function CircleLiveRoomPage() {
   const handleLeaveStage = async () => {
     if (isHost) return;
     try {
+      setControlsOpen(false);
+      setFaceFilterSheetOpen(false);
+      setShowEnhance(false);
+      setShowEffects(false);
+      setFaceFilter("none");
+      setSelectedEffect("none");
+      setEnhance(DEFAULT_ENHANCE);
+      setDualLayout("none");
       await room.stopPublishing();
+      rawLocalTrackRef.current = null;
       setFocusedStageId(null);
       stageDoor.resetToIdle();
       toast({ title: "Left the stage" });
@@ -932,11 +954,11 @@ export default function CircleLiveRoomPage() {
           <span className="flex items-center gap-1 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm">
             <Users className="h-3 w-3" /> {viewerCount}
           </span>
-          {isHost && (
+          {(isHost || onStage) && (
             <button
               type="button"
               onClick={() => setControlsOpen((v) => !v)}
-              aria-label="Live controls"
+              aria-label={isHost ? "Live controls" : "Stage controls"}
               className="flex items-center gap-1.5 rounded-full bg-black/55 px-2.5 py-1.5 text-[11px] font-black backdrop-blur-sm"
             >
               <Settings className="h-3.5 w-3.5" />
@@ -963,8 +985,8 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
-        {isHost && controlsOpen && (
-          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
+        {(isHost || onStage) && controlsOpen && (
+          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] z-30 flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
             <button
               type="button"
               onClick={() => room.setMic(!room.local?.micOn)}
@@ -1022,28 +1044,6 @@ export default function CircleLiveRoomPage() {
           </div>
         )}
 
-        {/* Guest on stage — mic / cam only */}
-        {stageJoinEnabled && onStage && !isHost && (
-          <div className="absolute left-3 top-[calc(max(env(safe-area-inset-top),0.75rem)+2.25rem)] flex gap-2 rounded-2xl bg-black/70 p-2 backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={() => room.setMic(!room.local?.micOn)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.micOn ? "bg-white/15" : "bg-white text-black"}`}
-              aria-label="Toggle microphone"
-            >
-              {room.local?.micOn ? <Mic className="h-4.5 w-4.5" /> : <MicOff className="h-4.5 w-4.5" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => room.setCam(!room.local?.camOn)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full ${room.local?.camOn ? "bg-white/15" : "bg-white text-black"}`}
-              aria-label="Toggle camera"
-            >
-              {room.local?.camOn ? <Video className="h-4.5 w-4.5" /> : <VideoOff className="h-4.5 w-4.5" />}
-            </button>
-          </div>
-        )}
-
         <div className="absolute right-3 top-[max(env(safe-area-inset-top),0.75rem)] flex items-center gap-2">
           {isHost && isExclusiveLive && exclusiveAudience === "invite" && circle && (
             <button
@@ -1074,7 +1074,7 @@ export default function CircleLiveRoomPage() {
           </button>
         </div>
 
-        {isHost && (
+        {isLocalBroadcaster && (
           <button
             type="button"
             onClick={swapDualCameras}
@@ -1104,7 +1104,7 @@ export default function CircleLiveRoomPage() {
         )}
 
         {/* Hidden main source for dual composite publish */}
-        {isHost && (
+        {isLocalBroadcaster && (
           <video ref={dualMainVideoRef} playsInline muted autoPlay className="pointer-events-none invisible absolute h-px w-px" />
         )}
 
