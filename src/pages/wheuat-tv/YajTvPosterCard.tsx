@@ -34,8 +34,9 @@ export function YajTvPosterCard({
     setInList(next);
     try {
       await WheuatTv.toggleWatchlist(item.id, inList);
-    } catch {
+    } catch (err: any) {
       setInList(!next);
+      toast({ title: "Couldn't update My List", description: err?.message || String(err), variant: "destructive" });
     }
   };
 
