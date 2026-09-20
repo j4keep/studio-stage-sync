@@ -44,7 +44,7 @@ language sql
 security definer
 set search_path = public
 stable
-as $
+as $$
   select to_jsonb(c)
   from public.circles c
   where c.id = p_circle_id
