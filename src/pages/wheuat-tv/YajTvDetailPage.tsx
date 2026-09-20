@@ -13,6 +13,7 @@ import {
   Send,
   MessageSquareText,
   Clock,
+  HeartHandshake,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +21,7 @@ import { WheuatTv, effectiveCategory, type WheuatTvItem, type WheuatTvComment } 
 import { YajTvShell } from "./YajTvShell";
 import { YajTvRow } from "./YajTvRow";
 import { YajTvPosterPlaceholder } from "./YajTvPosterPlaceholder";
+import { YajTvDonatePanel } from "./YajTvDonatePanel";
 import { CATEGORY_LABELS, KIND_META, formatRuntime, formatViews, type CategorySelection } from "./yajTvMeta";
 
 function fmtAgo(ts: number) {
@@ -41,6 +43,7 @@ const YajTvDetailPage = () => {
   const [playing, setPlaying] = useState(false);
   const [showComments, setShowComments] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [showDonate, setShowDonate] = useState(false);
   const [comments, setComments] = useState<WheuatTvComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
 
@@ -264,7 +267,16 @@ const YajTvDetailPage = () => {
             <Share2 className="h-3.5 w-3.5" />
             Share
           </button>
+          <button
+            onClick={() => setShowDonate((v) => !v)}
+            className="inline-flex h-9 flex-1 items-center justify-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-xs font-semibold text-primary"
+          >
+            <HeartHandshake className="h-3.5 w-3.5" />
+            Support
+          </button>
         </div>
+
+        {showDonate && <YajTvDonatePanel item={item} userId={user?.id} />}
 
         {showShare && (
           <div className="mt-2 flex flex-wrap gap-2">

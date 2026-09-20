@@ -224,6 +224,8 @@ export const WheuatTv = {
     ext?: string;
     durationMs?: number;
     thumbDataUrl?: string;
+    /** User-picked cover image. Takes priority over any auto-captured video frame. */
+    coverFile?: File | null;
   }): Promise<WheuatTvItem | null> {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
@@ -239,14 +241,27 @@ export const WheuatTv = {
       ? input.blob
       : new File([input.blob], fileName, { type: mime });
 
-    const thumbDataUrl = input.thumbDataUrl || await captureVideoPosterFromBlob(input.blob).catch(() => null);
     const upload = await uploadToR2(file, { folder: undefined, fileName: key, mimeType: mime });
     if (!upload.success || !upload.data) {
       throw new Error(upload.error || "Upload to storage failed");
     }
-    const thumbUrl = thumbDataUrl
-      ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null)
-      : null;
+
+    let thumbUrl: string | null = null;
+    if (input.coverFile) {
+      const coverKey = generateR2Key(user.id, "tv-thumb", input.coverFile.name);
+      const coverUpload = await uploadToR2(input.coverFile, {
+        folder: undefined,
+        fileName: coverKey,
+        mimeType: input.coverFile.type || "image/jpeg",
+      }).catch(() => null);
+      thumbUrl = coverUpload?.success && coverUpload.data ? getR2DownloadUrl(coverUpload.data.key) : null;
+    }
+    if (!thumbUrl) {
+      const thumbDataUrl = input.thumbDataUrl || await captureVideoPosterFromBlob(input.blob).catch(() => null);
+      thumbUrl = thumbDataUrl
+        ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null)
+        : null;
+    }
 
     const { data, error } = await supabase
       .from("tv_posts")
@@ -414,7 +429,12 @@ export const WheuatTv = {
 
   /** Fire-and-forget view counter bump. Safe for anon viewers too. */
   async recordView(id: string): Promise<void> {
-    await supabase.rpc("increment_tv_post_views", { p_post_id: id }).catch(() => {});
+    // supabase.rpc() returns a builder/thenable without Promise.catch — use try/catch instead.
+    try {
+      await supabase.rpc("increment_tv_post_views", { p_post_id: id });
+    } catch {
+      /* best-effort; safe to ignore pre-migration or offline */
+    }
   },
 
   async isInWatchlist(id: string): Promise<boolean> {
@@ -482,5 +502,22 @@ export const WheuatTv = {
         (i.genre || "").toLowerCase().includes(q)
       );
     });
+  },
+
+  /**
+   * Support tab for uploaded/original content only — never available on Live TV.
+   * Preview/ledger only (no real payment processor wired in yet), same "preview
+   * until billing" pattern as the existing Circle donation tab.
+   */
+  async donate(postId: string, toUserId: string, amountCents: number): Promise<void> {
+    if (amountCents <= 0) throw new Error("Invalid amount");
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) throw new Error("Sign in to support this creator");
+    if (me === toUserId) throw new Error("This is your own upload");
+    const { error } = await supabase
+      .from("tv_post_donations")
+      .insert({ post_id: postId, from_user_id: me, to_user_id: toUserId, amount_cents: amountCents });
+    if (error) throw error;
   },
 };

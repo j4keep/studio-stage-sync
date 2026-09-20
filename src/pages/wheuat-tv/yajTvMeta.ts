@@ -14,6 +14,7 @@ export const KIND_META: Record<WheuatTvKind, { label: string; Icon: LucideIcon }
 /** Every value a viewer can pick from the category selector. */
 export type CategorySelection =
   | "all"
+  | "live-tv"
   | "featured"
   | "trending"
   | "new"
@@ -32,6 +33,7 @@ export type CategorySelection =
 
 export const CATEGORY_LABELS: Record<CategorySelection, string> = {
   all: "All",
+  "live-tv": "Live TV",
   featured: "Featured",
   trending: "Trending",
   new: "New",
@@ -51,6 +53,7 @@ export const CATEGORY_LABELS: Record<CategorySelection, string> = {
 
 export const CATEGORY_MENU: CategorySelection[] = [
   "all",
+  "live-tv",
   "featured",
   "trending",
   "new",
@@ -90,6 +93,10 @@ export function selectByCategory(items: WheuatTvItem[], key: CategorySelection):
   switch (key) {
     case "all":
       return items;
+    case "live-tv":
+      // Live sessions aren't tv_posts rows — the Home page renders this selection
+      // from a separate live-sessions fetch instead of calling this function.
+      return [];
     case "featured":
       return items.filter((i) => i.isFeatured);
     case "trending":

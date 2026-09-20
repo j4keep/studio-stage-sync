@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Upload, Trash2, Film, Mic2, Music, Play, Loader2, Pencil, ImagePlus, Save, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Upload, Trash2, Film, Mic2, Music, Play, Loader2, Pencil, ImagePlus, Save, X, Radio } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { VideoPoster } from "@/components/VideoPoster";
 import { YajTvShell } from "./YajTvShell";
 import { WheuatTv, type WheuatTvItem, type WheuatTvKind } from "./wheuatTvStore";
+import { getActiveYajTvLiveForHost, startYajTvLive } from "./yajTvLiveStore";
 
 const KIND_META: Record<WheuatTvKind, { label: string; Icon: typeof Film }> = {
   podcast: { label: "Podcast", Icon: Mic2 },
@@ -28,6 +30,7 @@ function fmtAgo(ts: number) {
 }
 
 const WheuatTvPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const userId = user?.id ?? null;
@@ -35,8 +38,11 @@ const WheuatTvPage = () => {
   const [items, setItems] = useState<WheuatTvItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [goingLive, setGoingLive] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [uploadKind, setUploadKind] = useState<WheuatTvKind>("short-film");
+  const [newCover, setNewCover] = useState<File | null>(null);
+  const [newCoverPreview, setNewCoverPreview] = useState<string | null>(null);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -46,6 +52,7 @@ const WheuatTvPage = () => {
   const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const coverRef = useRef<HTMLInputElement>(null);
+  const newCoverRef = useRef<HTMLInputElement>(null);
 
   const beginEdit = (item: WheuatTvItem) => {
     setEditingId(item.id);
@@ -104,13 +111,30 @@ const WheuatTvPage = () => {
         blob: file,
         mime: file.type || "video/mp4",
         ext,
+        coverFile: newCover,
       });
       toast({ title: "Published to YAJ.TV", description: title });
+      setNewCover(null);
+      setNewCoverPreview(null);
       await refresh();
     } catch (e: any) {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleGoLive = async () => {
+    if (!userId) { toast({ title: "Sign in to go live" }); return; }
+    setGoingLive(true);
+    try {
+      const existing = await getActiveYajTvLiveForHost(userId);
+      const session = existing || (await startYajTvLive(userId));
+      navigate(`/tv/live/${session.id}`);
+    } catch (e: any) {
+      toast({ title: "Couldn't go live", description: e?.message || String(e), variant: "destructive" });
+    } finally {
+      setGoingLive(false);
     }
   };
 
@@ -130,6 +154,49 @@ const WheuatTvPage = () => {
               <option key={k} value={k} className="bg-black">{KIND_META[k].label}</option>
             ))}
           </select>
+
+          <label className="block text-[11px] font-semibold text-white/50 mb-1.5">
+            Cover picture <span className="font-normal text-white/30">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              type="button"
+              onClick={() => newCoverRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-black/40 border border-white/15 text-xs font-medium text-white disabled:opacity-60"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+              {newCoverPreview ? "Change cover" : "Add cover"}
+            </button>
+            {newCoverPreview && (
+              <>
+                <img src={newCoverPreview} alt="" className="h-10 w-16 rounded-lg object-cover border border-white/15" />
+                <button
+                  type="button"
+                  onClick={() => { setNewCover(null); setNewCoverPreview(null); }}
+                  aria-label="Remove cover"
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 border border-white/15 text-white/60"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
+          <input
+            ref={newCoverRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) {
+                setNewCover(f);
+                setNewCoverPreview(URL.createObjectURL(f));
+              }
+              e.currentTarget.value = "";
+            }}
+          />
+
           <button
             onClick={() => fileRef.current?.click()}
             disabled={uploading}
@@ -138,6 +205,11 @@ const WheuatTvPage = () => {
             {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {uploading ? "Uploading…" : "Upload Project"}
           </button>
+          {!newCoverPreview && (
+            <p className="mt-1.5 text-[10px] text-white/30">
+              No cover? We'll automatically grab a frame from your video instead.
+            </p>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -149,6 +221,24 @@ const WheuatTvPage = () => {
               e.currentTarget.value = "";
             }}
           />
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 mb-5">
+          <div className="flex items-start gap-2 mb-2">
+            <Radio className="w-4 h-4 mt-0.5 text-red-400 shrink-0" />
+            <div>
+              <p className="text-[13px] font-semibold text-white">Live TV</p>
+              <p className="text-[11px] text-white/50">Go live on YAJ.TV — viewers can chat and send hearts in real time.</p>
+            </div>
+          </div>
+          <button
+            onClick={handleGoLive}
+            disabled={goingLive}
+            className="w-full h-11 rounded-xl bg-red-600 text-white flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+          >
+            {goingLive ? <Loader2 className="w-4 h-4 animate-spin" /> : <Radio className="w-4 h-4" />}
+            {goingLive ? "Starting…" : "Go Live"}
+          </button>
         </div>
 
         <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">

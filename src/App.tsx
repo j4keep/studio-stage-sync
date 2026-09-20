@@ -138,6 +138,7 @@ import IncomingCallListener from "./components/call/IncomingCallListener";
 
 import YajTvHomePage from "./pages/wheuat-tv/YajTvHomePage";
 import YajTvDetailPage from "./pages/wheuat-tv/YajTvDetailPage";
+import YajTvLiveRoomPage from "./pages/wheuat-tv/YajTvLiveRoomPage";
 import YajTvSearchPage from "./pages/wheuat-tv/YajTvSearchPage";
 import YajTvMyListPage from "./pages/wheuat-tv/YajTvMyListPage";
 import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
@@ -427,6 +428,7 @@ const ProtectedRoutes = () => {
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
         <Route path="/tv" element={<YajTvHomePage />} />
         <Route path="/tv/title/:id" element={<YajTvDetailPage />} />
+        <Route path="/tv/live/:sessionId" element={<YajTvLiveRoomPage />} />
         <Route path="/tv/search" element={<YajTvSearchPage />} />
         <Route path="/tv/list" element={<YajTvMyListPage />} />
         <Route path="/tv/manage" element={<WheuatTvPage />} />

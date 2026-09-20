@@ -5113,6 +5113,41 @@ export type Database = {
           },
         ]
       }
+      tv_post_donations: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          from_user_id: string
+          id: string
+          post_id: string
+          to_user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          from_user_id: string
+          id?: string
+          post_id: string
+          to_user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          from_user_id?: string
+          id?: string
+          post_id?: string
+          to_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_post_donations_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "tv_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tv_post_likes: {
         Row: {
           created_at: string
@@ -5477,6 +5512,68 @@ export type Database = {
           user_id?: string
           video_url?: string | null
           views?: string | null
+        }
+        Relationships: []
+      }
+      yajtv_live_comments: {
+        Row: {
+          created_at: string
+          id: string
+          sender_id: string
+          session_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sender_id: string
+          session_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sender_id?: string
+          session_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "yajtv_live_comments_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "yajtv_live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      yajtv_live_sessions: {
+        Row: {
+          ended_at: string | null
+          host_user_id: string
+          id: string
+          room: string
+          started_at: string
+          status: string
+          title: string | null
+        }
+        Insert: {
+          ended_at?: string | null
+          host_user_id: string
+          id?: string
+          room: string
+          started_at?: string
+          status?: string
+          title?: string | null
+        }
+        Update: {
+          ended_at?: string | null
+          host_user_id?: string
+          id?: string
+          room?: string
+          started_at?: string
+          status?: string
+          title?: string | null
         }
         Relationships: []
       }
