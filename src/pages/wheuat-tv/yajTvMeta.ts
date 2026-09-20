@@ -24,6 +24,8 @@ export type CategorySelection =
   | "documentaries"
   | "comedy"
   | "drama"
+  | "action"
+  | "kids"
   | "lifestyle"
   | "interviews"
   | "creator-originals"
@@ -43,6 +45,8 @@ export const CATEGORY_LABELS: Record<CategorySelection, string> = {
   documentaries: "Documentaries",
   comedy: "Comedy",
   drama: "Drama",
+  action: "Action",
+  kids: "Kids",
   lifestyle: "Lifestyle",
   interviews: "Interviews",
   "creator-originals": "Creator Originals",
@@ -63,6 +67,8 @@ export const CATEGORY_MENU: CategorySelection[] = [
   "documentaries",
   "comedy",
   "drama",
+  "action",
+  "kids",
   "lifestyle",
   "interviews",
   "creator-originals",
@@ -82,11 +88,42 @@ export const HOME_SECTIONS: { key: CategorySelection; title: string }[] = [
   { key: "documentaries", title: "Documentaries" },
   { key: "comedy", title: "Comedy" },
   { key: "drama", title: "Drama" },
+  { key: "action", title: "Action" },
+  { key: "kids", title: "Kids" },
   { key: "creator-originals", title: "Creator Originals" },
   { key: "recently-added", title: "Recently Added" },
   { key: "most-watched", title: "Most Watched" },
   { key: "highest-rated", title: "Highest Rated" },
 ];
+
+/**
+ * Real, self-taggable content categories a creator picks from when
+ * publishing — same taxonomy as the browse menu, minus the meta-filters
+ * (All/Featured/Trending/...) and Creator Originals, which is reserved for
+ * the official YAJ Originals catalog rather than something any uploader
+ * can tag themselves with.
+ */
+export const UPLOAD_CATEGORIES: { value: CategorySelection; label: string }[] = [
+  "short-films",
+  "podcasts",
+  "music-videos",
+  "documentaries",
+  "comedy",
+  "drama",
+  "action",
+  "kids",
+  "lifestyle",
+  "interviews",
+].map((value) => ({ value: value as CategorySelection, label: CATEGORY_LABELS[value as CategorySelection] }));
+
+/** The `kind` column only allows podcast/short-film/music-video — every other
+ *  content category still needs a valid value there for the NOT NULL CHECK
+ *  constraint, so it defaults to short-film. */
+export function kindForCategory(category: CategorySelection): WheuatTvKind {
+  if (category === "podcasts") return "podcast";
+  if (category === "music-videos") return "music-video";
+  return "short-film";
+}
 
 /** Filter + sort the full catalog for one category selection. */
 export function selectByCategory(items: WheuatTvItem[], key: CategorySelection): WheuatTvItem[] {

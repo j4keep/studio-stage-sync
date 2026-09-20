@@ -8,6 +8,7 @@ import AICoverImageGenerator from "@/components/ai-studio/AICoverImageGenerator"
 import { YajTvShell } from "./YajTvShell";
 import { WheuatTv, type WheuatTvItem, type WheuatTvKind } from "./wheuatTvStore";
 import { getActiveYajTvLiveForHost, startYajTvLive } from "./yajTvLiveStore";
+import { UPLOAD_CATEGORIES, kindForCategory, type CategorySelection } from "./yajTvMeta";
 
 async function urlToFile(url: string, fileName: string): Promise<File> {
   const res = await fetch(url);
@@ -47,12 +48,16 @@ const WheuatTvPage = () => {
   const [uploading, setUploading] = useState(false);
   const [goingLive, setGoingLive] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
-  const [uploadKind, setUploadKind] = useState<WheuatTvKind>("short-film");
+  const [uploadCategory, setUploadCategory] = useState<CategorySelection>("short-films");
   const [newTitle, setNewTitle] = useState("");
   const [newCover, setNewCover] = useState<File | null>(null);
   const [newCoverPreview, setNewCoverPreview] = useState<string | null>(null);
   const [aiCoverOpen, setAiCoverOpen] = useState(false);
   const [generatingCover, setGeneratingCover] = useState(false);
+  const [subscribersOnly, setSubscribersOnly] = useState(false);
+  const [isSeries, setIsSeries] = useState(false);
+  const [seriesTitle, setSeriesTitle] = useState("");
+  const [episodeNumber, setEpisodeNumber] = useState("");
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -118,23 +123,33 @@ const WheuatTvPage = () => {
       toast({ title: "Add a title", description: "Give this project a title before using a cover picture.", variant: "destructive" });
       return;
     }
+    if (isSeries && !seriesTitle.trim()) {
+      toast({ title: "Add a series title", description: "Name the show these episodes belong to.", variant: "destructive" });
+      return;
+    }
     const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
     const derivedTitle = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Untitled";
     const title = newTitle.trim().slice(0, 80) || derivedTitle;
     setUploading(true);
     try {
       await WheuatTv.publish({
-        kind: uploadKind,
+        kind: kindForCategory(uploadCategory),
+        category: uploadCategory,
         title,
         blob: file,
         mime: file.type || "video/mp4",
         ext,
         coverFile: newCover,
+        accessTier: subscribersOnly ? "subscribers" : "free",
+        seriesTitle: isSeries ? seriesTitle.trim() : null,
+        episodeNumber: isSeries && episodeNumber.trim() ? Number(episodeNumber) : null,
       });
       toast({ title: "Published to YAJ.TV", description: title });
       setNewTitle("");
       setNewCover(null);
       setNewCoverPreview(null);
+      // Keep the series fields filled in — creators usually upload episodes back to back.
+      if (isSeries && episodeNumber.trim()) setEpisodeNumber(String(Number(episodeNumber) + 1));
       await refresh();
     } catch (e: any) {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
@@ -179,12 +194,12 @@ const WheuatTvPage = () => {
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3 mb-5">
           <label className="block text-[11px] font-semibold text-white/50 mb-1.5">Category</label>
           <select
-            value={uploadKind}
-            onChange={(e) => setUploadKind(e.target.value as WheuatTvKind)}
+            value={uploadCategory}
+            onChange={(e) => setUploadCategory(e.target.value as CategorySelection)}
             className="w-full h-10 px-3 mb-2 rounded-xl bg-black/40 border border-white/15 text-sm text-white"
           >
-            {(Object.keys(KIND_META) as WheuatTvKind[]).map((k) => (
-              <option key={k} value={k} className="bg-black">{KIND_META[k].label}</option>
+            {UPLOAD_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value} className="bg-black">{c.label}</option>
             ))}
           </select>
 
@@ -261,6 +276,51 @@ const WheuatTvPage = () => {
               e.currentTarget.value = "";
             }}
           />
+
+          <label className="flex items-center justify-between gap-2 mb-2 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+            <span className="text-[12px] font-medium text-white">
+              This is part of a series
+              <span className="block text-[10px] font-normal text-white/40">Group multiple uploads as episodes of one show.</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={isSeries}
+              onChange={(e) => setIsSeries(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-primary"
+            />
+          </label>
+          {isSeries && (
+            <div className="mb-2 flex gap-2">
+              <input
+                value={seriesTitle}
+                onChange={(e) => setSeriesTitle(e.target.value)}
+                placeholder="Series title"
+                className="h-10 flex-1 rounded-xl border border-white/15 bg-black/40 px-3 text-sm text-white placeholder:text-white/40"
+              />
+              <input
+                value={episodeNumber}
+                onChange={(e) => setEpisodeNumber(e.target.value.replace(/[^0-9]/g, ""))}
+                inputMode="numeric"
+                placeholder="Ep. #"
+                className="h-10 w-20 rounded-xl border border-white/15 bg-black/40 px-3 text-sm text-white placeholder:text-white/40"
+              />
+            </div>
+          )}
+
+          <label className="flex items-center justify-between gap-2 mb-3 rounded-xl border border-white/10 bg-black/30 px-3 py-2.5">
+            <span className="text-[12px] font-medium text-white">
+              Subscribers Only
+              <span className="block text-[10px] font-normal text-white/40">
+                Only your subscribers can watch — free to subscribe for now, no charge yet.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={subscribersOnly}
+              onChange={(e) => setSubscribersOnly(e.target.checked)}
+              className="h-5 w-5 shrink-0 accent-primary"
+            />
+          </label>
 
           <button
             onClick={() => fileRef.current?.click()}

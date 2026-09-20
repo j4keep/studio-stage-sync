@@ -82,6 +82,11 @@ export interface WheuatTvItem {
   posterUrl: string | null;
   backdropUrl: string | null;
   inMyList: boolean;
+  /** "subscribers" titles require WheuatTv.isSubscribedToCreator(creator.id) (or being the
+   *  creator) before playback — checked on the detail page, not baked into every list row. */
+  accessTier: "free" | "subscribers";
+  seriesTitle: string | null;
+  episodeNumber: number | null;
 }
 
 /** Category the item should appear under in a "by category" browse row. */
@@ -208,6 +213,9 @@ export const WheuatTv = {
       posterUrl: p.poster_url ?? null,
       backdropUrl: p.backdrop_url ?? null,
       inMyList: myListIds.has(p.id),
+      accessTier: p.access_tier === "subscribers" ? "subscribers" : "free",
+      seriesTitle: p.series_title ?? null,
+      episodeNumber: p.episode_number ?? null,
     }));
   },
 
@@ -226,6 +234,12 @@ export const WheuatTv = {
     thumbDataUrl?: string;
     /** User-picked cover image. Takes priority over any auto-captured video frame. */
     coverFile?: File | null;
+    /** Streaming-catalog category (Drama, Comedy, Kids, Action, …). */
+    category?: string;
+    accessTier?: "free" | "subscribers";
+    /** Group this upload as an episode of a series sharing the same title. */
+    seriesTitle?: string | null;
+    episodeNumber?: number | null;
   }): Promise<WheuatTvItem | null> {
     const { data: auth } = await supabase.auth.getUser();
     const user = auth.user;
@@ -277,6 +291,10 @@ export const WheuatTv = {
         mime,
         ext,
         duration_ms: input.durationMs ?? null,
+        category: input.category ?? null,
+        access_tier: input.accessTier ?? "free",
+        series_title: input.seriesTitle?.trim() || null,
+        episode_number: input.episodeNumber ?? null,
       })
       .select("*")
       .single();
@@ -313,6 +331,9 @@ export const WheuatTv = {
       posterUrl: data.poster_url ?? null,
       backdropUrl: data.backdrop_url ?? null,
       inMyList: false,
+      accessTier: data.access_tier === "subscribers" ? "subscribers" : "free",
+      seriesTitle: data.series_title ?? null,
+      episodeNumber: data.episode_number ?? null,
     };
   },
 
@@ -351,11 +372,17 @@ export const WheuatTv = {
   /** Update title/subtitle (description) and optionally upload a new cover image. */
   async updateMeta(
     id: string,
-    input: { title?: string; description?: string | null; coverFile?: File | null },
+    input: {
+      title?: string;
+      description?: string | null;
+      coverFile?: File | null;
+      accessTier?: "free" | "subscribers";
+    },
   ): Promise<void> {
     const patch: Record<string, any> = {};
     if (typeof input.title === "string") patch.title = input.title;
     if (input.description !== undefined) patch.description = input.description;
+    if (input.accessTier) patch.access_tier = input.accessTier;
 
     if (input.coverFile) {
       const { data: auth } = await supabase.auth.getUser();
@@ -520,5 +547,46 @@ export const WheuatTv = {
       .from("tv_post_donations")
       .insert({ post_id: postId, from_user_id: me, to_user_id: toUserId, amount_cents: amountCents });
     if (error) throw error;
+  },
+
+  /** Does the current viewer already have access to this creator's "Subscribers Only" titles? */
+  async isSubscribedToCreator(creatorId: string): Promise<boolean> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) return false;
+    if (me === creatorId) return true;
+    const { data } = await supabase
+      .from("tv_creator_subscriptions")
+      .select("creator_id")
+      .eq("subscriber_id", me)
+      .eq("creator_id", creatorId)
+      .maybeSingle();
+    return !!data;
+  },
+
+  /** Free to subscribe for now — preview/ledger access relationship, no payment processor yet. */
+  async subscribeToCreator(creatorId: string): Promise<void> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) throw new Error("Sign in to subscribe");
+    if (me === creatorId) return;
+    const { error } = await supabase.from("tv_creator_subscriptions").insert({ subscriber_id: me, creator_id: creatorId });
+    if (error) throw error;
+  },
+
+  async unsubscribeFromCreator(creatorId: string): Promise<void> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) return;
+    await supabase.from("tv_creator_subscriptions").delete().eq("subscriber_id", me).eq("creator_id", creatorId);
+  },
+
+  /** Other episodes in the same series (same creator, same series title), episode order. */
+  listEpisodes(allItems: WheuatTvItem[], item: WheuatTvItem): WheuatTvItem[] {
+    if (!item.seriesTitle) return [];
+    const series = item.seriesTitle.trim().toLowerCase();
+    return allItems
+      .filter((i) => i.creator.id === item.creator.id && i.seriesTitle?.trim().toLowerCase() === series)
+      .sort((a, b) => (a.episodeNumber ?? 0) - (b.episodeNumber ?? 0) || a.createdAt - b.createdAt);
   },
 };

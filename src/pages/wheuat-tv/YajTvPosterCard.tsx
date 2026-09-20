@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Star } from "lucide-react";
-import type { WheuatTvItem } from "./wheuatTvStore";
+import { Star, Bookmark, BookmarkCheck, Lock } from "lucide-react";
+import { WheuatTv, type WheuatTvItem } from "./wheuatTvStore";
 import { KIND_META, formatViews } from "./yajTvMeta";
 import { YajTvPosterPlaceholder } from "./YajTvPosterPlaceholder";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function YajTvPosterCard({
   item,
@@ -15,14 +18,34 @@ export function YajTvPosterCard({
   fluid?: boolean;
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [inList, setInList] = useState(item.inMyList);
   const poster = item.posterUrl || item.thumbUrl;
   const Icon = KIND_META[item.kind].Icon;
 
+  const toggleMyList = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      toast({ title: "Sign in to use My List" });
+      return;
+    }
+    const next = !inList;
+    setInList(next);
+    try {
+      await WheuatTv.toggleWatchlist(item.id, inList);
+    } catch {
+      setInList(!next);
+    }
+  };
+
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => navigate(`/tv/title/${item.id}`)}
-      className={`group text-left ${
+      onKeyDown={(e) => e.key === "Enter" && navigate(`/tv/title/${item.id}`)}
+      className={`group cursor-pointer text-left ${
         fluid ? "w-full" : `shrink-0 snap-start ${size === "sm" ? "w-[104px]" : "w-[132px] sm:w-[150px]"}`
       }`}
     >
@@ -38,9 +61,24 @@ export function YajTvPosterCard({
             YAJ Original
           </span>
         )}
-        <span className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
-          <Icon className="h-3 w-3" />
-        </span>
+        {item.accessTier === "subscribers" && (
+          <span className="absolute left-1.5 top-1.5 inline-flex items-center gap-0.5 rounded-full bg-black/70 px-1.5 py-0.5 text-[8px] font-bold text-amber-300">
+            <Lock className="h-2 w-2" /> Subscribers
+          </span>
+        )}
+        <div className="absolute right-1.5 top-1.5 flex items-center gap-1">
+          <button
+            type="button"
+            onClick={toggleMyList}
+            aria-label={inList ? "Remove from My List" : "Add to My List"}
+            className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white"
+          >
+            {inList ? <BookmarkCheck className="h-3 w-3 text-primary" /> : <Bookmark className="h-3 w-3" />}
+          </button>
+          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white">
+            <Icon className="h-3 w-3" />
+          </span>
+        </div>
         <div className="absolute inset-x-0 bottom-0 p-1.5">
           <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white">{item.title}</p>
           <div className="mt-0.5 flex items-center gap-1 text-[9px] text-white/70">
@@ -56,6 +94,6 @@ export function YajTvPosterCard({
         </div>
       </div>
       <p className="mt-1 truncate text-[10px] text-white/50">{item.creator.displayName}</p>
-    </button>
+    </div>
   );
 }

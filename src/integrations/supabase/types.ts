@@ -5081,6 +5081,24 @@ export type Database = {
           },
         ]
       }
+      tv_creator_subscriptions: {
+        Row: {
+          created_at: string
+          creator_id: string
+          subscriber_id: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          subscriber_id: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          subscriber_id?: string
+        }
+        Relationships: []
+      }
       tv_post_comments: {
         Row: {
           created_at: string
@@ -5176,11 +5194,13 @@ export type Database = {
       }
       tv_posts: {
         Row: {
+          access_tier: string
           backdrop_url: string | null
           category: string | null
           created_at: string
           description: string | null
           duration_ms: number | null
+          episode_number: number | null
           ext: string | null
           genre: string | null
           has_media: boolean
@@ -5194,6 +5214,7 @@ export type Database = {
           poster_url: string | null
           rating: number | null
           release_date: string | null
+          series_title: string | null
           thumb_url: string | null
           title: string
           updated_at: string
@@ -5203,11 +5224,13 @@ export type Database = {
           views: number
         }
         Insert: {
+          access_tier?: string
           backdrop_url?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
           duration_ms?: number | null
+          episode_number?: number | null
           ext?: string | null
           genre?: string | null
           has_media?: boolean
@@ -5221,6 +5244,7 @@ export type Database = {
           poster_url?: string | null
           rating?: number | null
           release_date?: string | null
+          series_title?: string | null
           thumb_url?: string | null
           title: string
           updated_at?: string
@@ -5230,11 +5254,13 @@ export type Database = {
           views?: number
         }
         Update: {
+          access_tier?: string
           backdrop_url?: string | null
           category?: string | null
           created_at?: string
           description?: string | null
           duration_ms?: number | null
+          episode_number?: number | null
           ext?: string | null
           genre?: string | null
           has_media?: boolean
@@ -5248,6 +5274,7 @@ export type Database = {
           poster_url?: string | null
           rating?: number | null
           release_date?: string | null
+          series_title?: string | null
           thumb_url?: string | null
           title?: string
           updated_at?: string
