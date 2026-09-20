@@ -91,18 +91,16 @@ export default function LiveMotorGrid({
   );
 }
 
-/** Prefer host-emphasized layouts when a few guests are on (Bigo motor style). */
+/** Balanced mobile stage layouts.
+ * 2 people stack top/bottom so neither person is squeezed into a tall narrow strip.
+ * As more people join, transition into regular box grids instead of stretching one
+ * participant across the full height of the screen. */
 function motorGridClass(tileCount: number, peopleCount: number): string {
   if (peopleCount <= 1 && tileCount <= 1) return "grid-cols-1 grid-rows-1";
-  if (tileCount === 2) return "grid-cols-2 grid-rows-1";
-  if (tileCount === 3) return "grid-cols-2 grid-rows-2 [&>*:first-child]:row-span-2";
+  if (tileCount === 2) return "grid-cols-1 grid-rows-2";
+  if (tileCount === 3) return "grid-cols-2 grid-rows-2 [&>*:first-child]:col-span-2";
   if (tileCount === 4) return "grid-cols-2 grid-rows-2";
-  if (tileCount === 5) {
-    return "grid-cols-3 grid-rows-3 [&>*:first-child]:col-span-2 [&>*:first-child]:row-span-2";
-  }
-  if (tileCount === 6) {
-    return "grid-cols-3 grid-rows-3 [&>*:first-child]:col-span-2 [&>*:first-child]:row-span-2";
-  }
+  if (tileCount <= 6) return "grid-cols-3 grid-rows-2";
   if (tileCount <= 9) return "grid-cols-3 grid-rows-3";
   return "grid-cols-3 grid-rows-3";
 }
