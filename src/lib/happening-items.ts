@@ -177,7 +177,7 @@ export async function fetchHappeningItems(opts: {
         coverUrl: tv.thumbUrl || null,
         mediaType: "video",
         createdAt: new Date(tv.createdAt).toISOString(),
-        route: `/tv/watch?v=${tv.id}`,
+        route: `/tv/title/${tv.id}`,
         sourceId: tv.id,
       });
     }

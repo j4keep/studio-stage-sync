@@ -91,7 +91,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     id: "tv",
     label: "YAJ TV",
     subtitle: "Watch creators & original content",
-    route: "/tv/watch",
+    route: "/tv",
     icon: Tv,
     surface: "bg-indigo-50 dark:bg-indigo-950/30",
     iconSurface: "bg-indigo-100 dark:bg-indigo-900/60",

@@ -5141,51 +5141,113 @@ export type Database = {
       }
       tv_posts: {
         Row: {
+          backdrop_url: string | null
+          category: string | null
           created_at: string
           description: string | null
           duration_ms: number | null
           ext: string | null
+          genre: string | null
+          has_media: boolean
           id: string
+          is_featured: boolean
+          is_original: boolean
+          is_trending: boolean
           kind: string
+          maturity_rating: string | null
           mime: string | null
+          poster_url: string | null
+          rating: number | null
+          release_date: string | null
           thumb_url: string | null
           title: string
           updated_at: string
           user_id: string
           video_key: string | null
           video_url: string
+          views: number
         }
         Insert: {
+          backdrop_url?: string | null
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_ms?: number | null
           ext?: string | null
+          genre?: string | null
+          has_media?: boolean
           id?: string
+          is_featured?: boolean
+          is_original?: boolean
+          is_trending?: boolean
           kind: string
+          maturity_rating?: string | null
           mime?: string | null
+          poster_url?: string | null
+          rating?: number | null
+          release_date?: string | null
           thumb_url?: string | null
           title: string
           updated_at?: string
           user_id: string
           video_key?: string | null
           video_url: string
+          views?: number
         }
         Update: {
+          backdrop_url?: string | null
+          category?: string | null
           created_at?: string
           description?: string | null
           duration_ms?: number | null
           ext?: string | null
+          genre?: string | null
+          has_media?: boolean
           id?: string
+          is_featured?: boolean
+          is_original?: boolean
+          is_trending?: boolean
           kind?: string
+          maturity_rating?: string | null
           mime?: string | null
+          poster_url?: string | null
+          rating?: number | null
+          release_date?: string | null
           thumb_url?: string | null
           title?: string
           updated_at?: string
           user_id?: string
           video_key?: string | null
           video_url?: string
+          views?: number
         }
         Relationships: []
+      }
+      tv_watchlist: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_watchlist_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "tv_posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_ratings: {
         Row: {
@@ -5568,6 +5630,7 @@ export type Database = {
       }
       increment_post_views: { Args: { post_id: string }; Returns: undefined }
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
+      increment_tv_post_views: { Args: { p_post_id: string }; Returns: undefined }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_circle_member: {

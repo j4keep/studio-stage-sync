@@ -136,7 +136,12 @@ import JobInterviewPage from "./pages/JobInterviewPage";
 import ChatCallPage from "./pages/ChatCallPage";
 import IncomingCallListener from "./components/call/IncomingCallListener";
 
-import WheuatTvWatchPage from "./pages/wheuat-tv/WheuatTvWatchPage";
+import YajTvHomePage from "./pages/wheuat-tv/YajTvHomePage";
+import YajTvDetailPage from "./pages/wheuat-tv/YajTvDetailPage";
+import YajTvSearchPage from "./pages/wheuat-tv/YajTvSearchPage";
+import YajTvMyListPage from "./pages/wheuat-tv/YajTvMyListPage";
+import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
+import TvWatchRedirect from "./pages/wheuat-tv/TvWatchRedirect";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
 import EventsPage from "./pages/EventsPage";
@@ -420,8 +425,13 @@ const ProtectedRoutes = () => {
         <Route path="/pro/opportunities" element={<ProOpportunitiesDashboardPage />} />
         <Route path="/pro/events" element={<ProEventsDashboardPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
-        <Route path="/tv/watch" element={<WheuatTvWatchPage />} />
-        <Route path="/tv/*" element={<Navigate to="/" replace />} />
+        <Route path="/tv" element={<YajTvHomePage />} />
+        <Route path="/tv/title/:id" element={<YajTvDetailPage />} />
+        <Route path="/tv/search" element={<YajTvSearchPage />} />
+        <Route path="/tv/list" element={<YajTvMyListPage />} />
+        <Route path="/tv/manage" element={<WheuatTvPage />} />
+        <Route path="/tv/watch" element={<TvWatchRedirect />} />
+        <Route path="/tv/*" element={<Navigate to="/tv" replace />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/:id" element={<ServiceDetailPage />} />
         <Route path="/events" element={<EventsPage />} />

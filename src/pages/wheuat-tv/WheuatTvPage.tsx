@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, Upload, Trash2, Film, Mic2, Music, Eye, Play, Loader2, Pencil, ImagePlus, Save, X } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Upload, Trash2, Film, Mic2, Music, Play, Loader2, Pencil, ImagePlus, Save, X } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { VideoPoster } from "@/components/VideoPoster";
+import { YajTvShell } from "./YajTvShell";
 import { WheuatTv, type WheuatTvItem, type WheuatTvKind } from "./wheuatTvStore";
 
 const KIND_META: Record<WheuatTvKind, { label: string; Icon: typeof Film }> = {
@@ -28,7 +28,6 @@ function fmtAgo(ts: number) {
 }
 
 const WheuatTvPage = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
   const userId = user?.id ?? null;
@@ -78,14 +77,15 @@ const WheuatTvPage = () => {
     }
   };
 
-  const refresh = async () => setItems(await WheuatTv.list());
+  const refresh = async () => { const mine = (await WheuatTv.list()).filter((i) => i.creator.id === userId); setItems(mine); };
   useEffect(() => {
     let active = true;
     (async () => { await refresh(); if (active) setLoading(false); })();
     const h = () => { refresh(); };
     window.addEventListener("wheuat-tv-updated", h);
     return () => { active = false; window.removeEventListener("wheuat-tv-updated", h); };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   const filtered = useMemo(
     () => (filter === "all" ? items : items.filter((i) => i.kind === filter)),
@@ -115,222 +115,202 @@ const WheuatTvPage = () => {
   };
 
   return (
-    <div className="px-4 pt-4 pb-28 max-w-lg mx-auto">
-      <div className="flex items-center gap-2 mb-4">
-        <button onClick={() => navigate("/tv")} className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4 text-foreground" />
-        </button>
-        <div className="flex-1">
-          <h1 className="text-xl font-display font-bold text-foreground leading-none">YAJ.TV</h1>
-          <p className="text-[11px] text-muted-foreground">Publish to the public TV feed</p>
+    <YajTvShell headerTitle="Creator Studio" showBack>
+      <div className="px-4 pt-2 pb-8">
+        <p className="mb-4 text-[12px] text-white/50">Publish podcasts, short films and music videos to YAJ.TV.</p>
+
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-3 mb-5">
+          <label className="block text-[11px] font-semibold text-white/50 mb-1.5">Category</label>
+          <select
+            value={uploadKind}
+            onChange={(e) => setUploadKind(e.target.value as WheuatTvKind)}
+            className="w-full h-10 px-3 mb-2 rounded-xl bg-black/40 border border-white/15 text-sm text-white"
+          >
+            {(Object.keys(KIND_META) as WheuatTvKind[]).map((k) => (
+              <option key={k} value={k} className="bg-black">{KIND_META[k].label}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
+          >
+            {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            {uploading ? "Uploading…" : "Upload Project"}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="video/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleUpload(f);
+              e.currentTarget.value = "";
+            }}
+          />
         </div>
-        <button
-          onClick={() => navigate("/tv/watch")}
-          title="Browse public feed"
-          className="w-9 h-9 rounded-full bg-card border border-border flex items-center justify-center hover:border-primary/50"
-        >
-          <Eye className="w-4 h-4 text-foreground" />
-        </button>
-      </div>
 
-      <div className="rounded-2xl border border-border bg-card p-3 mb-4">
-        <label className="block text-[11px] font-semibold text-muted-foreground mb-1.5">Category</label>
-        <select
-          value={uploadKind}
-          onChange={(e) => setUploadKind(e.target.value as WheuatTvKind)}
-          className="w-full h-10 px-3 mb-2 rounded-xl bg-background border border-border text-sm text-foreground"
-        >
-          {(Object.keys(KIND_META) as WheuatTvKind[]).map((k) => (
-            <option key={k} value={k}>{KIND_META[k].label}</option>
-          ))}
-        </select>
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="w-full h-11 rounded-xl bg-primary text-primary-foreground flex items-center justify-center gap-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
-        >
-          {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-          {uploading ? "Uploading…" : "Upload Project"}
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) handleUpload(f);
-            e.currentTarget.value = "";
-          }}
-        />
-      </div>
-
-      <div className="flex gap-2 mb-3 overflow-x-auto scrollbar-hide">
-        {FILTERS.map((f) => {
-          const active = filter === f.id;
-          return (
-            <button
-              key={f.id}
-              onClick={() => setFilter(f.id)}
-              className={`shrink-0 px-3 h-7 rounded-full text-[11px] border ${
-                active ? "bg-foreground text-background border-foreground" : "bg-card text-foreground border-border"
-              }`}
-            >
-              {f.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {loading ? (
-        <div className="text-center py-10 text-sm text-muted-foreground">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-10 text-sm text-muted-foreground">
-          Nothing here yet. Upload a video or publish an edited podcast.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {filtered.map((item) => {
-            const M = KIND_META[item.kind];
-            const isOwner = userId && item.creator.id === userId;
-            const isEditing = editingId === item.id;
+        <div className="flex gap-2 mb-4 overflow-x-auto scrollbar-hide">
+          {FILTERS.map((f) => {
+            const active = filter === f.id;
             return (
-              <article key={item.id} className="rounded-2xl border border-border bg-card overflow-hidden">
-                <button
-                  onClick={() => setPlayUrl(item.videoUrl)}
-                  className="relative w-full aspect-video bg-muted flex items-center justify-center group overflow-hidden"
-                >
-                  <VideoPoster
-                    src={item.videoUrl}
-                    poster={item.thumbUrl}
-                    alt={item.title}
-                    className="absolute inset-0 w-full h-full object-cover pointer-events-none"
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                    <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                      <Play className="w-5 h-5 ml-0.5" />
-                    </div>
-                  </div>
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] px-2 h-5 rounded-full bg-black/60 text-white">
-                    <M.Icon className="w-3 h-3" />
-                    {M.label}
-                  </span>
-                </button>
-                <div className="p-3">
-                  <div className="flex items-start gap-2">
-                    <div className="w-9 h-9 rounded-full bg-primary/15 overflow-hidden flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                      {item.creator.avatarUrl ? (
-                        <img src={item.creator.avatarUrl} alt={item.creator.displayName} className="w-full h-full object-cover" />
-                      ) : (
-                        item.creator.displayName[0]?.toUpperCase() || "A"
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-semibold text-foreground truncate">{item.title}</h3>
-                      {item.description && (
-                        <p className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</p>
-                      )}
-                      <p className="text-[11px] text-muted-foreground">{item.creator.displayName} · {fmtAgo(item.createdAt)}</p>
-                    </div>
-                  </div>
-
-                  {isEditing && (
-                    <div className="mt-3 space-y-2 rounded-xl border border-border bg-background p-3">
-                      <input
-                        value={editTitle}
-                        onChange={(e) => setEditTitle(e.target.value)}
-                        placeholder="Project title"
-                        className="w-full h-9 px-3 rounded-lg bg-card border border-border text-sm"
-                      />
-                      <input
-                        value={editSubtitle}
-                        onChange={(e) => setEditSubtitle(e.target.value)}
-                        placeholder="Subtitle (optional)"
-                        className="w-full h-9 px-3 rounded-lg bg-card border border-border text-sm"
-                      />
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => coverRef.current?.click()}
-                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium"
-                        >
-                          <ImagePlus className="w-3.5 h-3.5" />
-                          {editCover ? "Change cover" : editCoverPreview ? "Replace cover" : "Add cover"}
-                        </button>
-                        {editCoverPreview && (
-                          <img src={editCoverPreview} alt="" className="h-9 w-14 rounded-md object-cover border border-border" />
-                        )}
-                        <input
-                          ref={coverRef}
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => {
-                            const f = e.target.files?.[0];
-                            if (f) {
-                              setEditCover(f);
-                              setEditCoverPreview(URL.createObjectURL(f));
-                            }
-                            e.currentTarget.value = "";
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 pt-1">
-                        <button
-                          onClick={() => saveEdit(item.id)}
-                          disabled={savingEdit}
-                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-60"
-                        >
-                          {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                          Save
-                        </button>
-                        <button
-                          onClick={cancelEdit}
-                          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium"
-                        >
-                          <X className="w-3.5 h-3.5" /> Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-2 mt-3">
-                    {isOwner ? (
-                      <>
-                        {!isEditing && (
-                          <button
-                            onClick={() => beginEdit(item)}
-                            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-background border border-border text-xs font-medium hover:border-primary/50"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          onClick={async () => {
-                            if (!confirm(`Delete "${item.title}"?`)) return;
-                            await WheuatTv.remove(item.id, item.videoKey);
-                            await refresh();
-                          }}
-                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          Delete
-                        </button>
-                      </>
-                    ) : (
-                      <span className="text-[11px] text-muted-foreground">Posted by another creator</span>
-                    )}
-                  </div>
-                </div>
-              </article>
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`shrink-0 px-3 h-7 rounded-full text-[11px] font-semibold border ${
+                  active ? "bg-white text-black border-white" : "bg-white/5 text-white border-white/15"
+                }`}
+              >
+                {f.label}
+              </button>
             );
           })}
         </div>
-      )}
+
+        {loading ? (
+          <div className="text-center py-10 text-sm text-white/40">Loading…</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-10 text-sm text-white/40">
+            Nothing here yet. Upload a video or publish an edited podcast.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {filtered.map((item) => {
+              const M = KIND_META[item.kind];
+              const isEditing = editingId === item.id;
+              return (
+                <article key={item.id} className="rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+                  <button
+                    onClick={() => setPlayUrl(item.videoUrl)}
+                    className="relative w-full aspect-video bg-black flex items-center justify-center group overflow-hidden"
+                  >
+                    <VideoPoster
+                      src={item.videoUrl}
+                      poster={item.thumbUrl}
+                      alt={item.title}
+                      className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                    />
+                    <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center">
+                        <Play className="w-5 h-5 ml-0.5" />
+                      </div>
+                    </div>
+                    <span className="absolute top-2 left-2 inline-flex items-center gap-1 text-[10px] px-2 h-5 rounded-full bg-black/60 text-white">
+                      <M.Icon className="w-3 h-3" />
+                      {M.label}
+                    </span>
+                  </button>
+                  <div className="p-3">
+                    <div className="flex items-start gap-2">
+                      <div className="w-9 h-9 rounded-full bg-primary/15 overflow-hidden flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                        {item.creator.avatarUrl ? (
+                          <img src={item.creator.avatarUrl} alt={item.creator.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          item.creator.displayName[0]?.toUpperCase() || "A"
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="text-sm font-semibold text-white truncate">{item.title}</h3>
+                        {item.description && (
+                          <p className="text-[11px] text-white/50 line-clamp-2">{item.description}</p>
+                        )}
+                        <p className="text-[11px] text-white/40">{item.creator.displayName} · {fmtAgo(item.createdAt)}</p>
+                      </div>
+                    </div>
+
+                    {isEditing && (
+                      <div className="mt-3 space-y-2 rounded-xl border border-white/10 bg-black/30 p-3">
+                        <input
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          placeholder="Project title"
+                          className="w-full h-9 px-3 rounded-lg bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/40"
+                        />
+                        <input
+                          value={editSubtitle}
+                          onChange={(e) => setEditSubtitle(e.target.value)}
+                          placeholder="Subtitle (optional)"
+                          className="w-full h-9 px-3 rounded-lg bg-white/5 border border-white/15 text-sm text-white placeholder:text-white/40"
+                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => coverRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white/5 border border-white/15 text-xs font-medium text-white"
+                          >
+                            <ImagePlus className="w-3.5 h-3.5" />
+                            {editCover ? "Change cover" : editCoverPreview ? "Replace cover" : "Add cover"}
+                          </button>
+                          {editCoverPreview && (
+                            <img src={editCoverPreview} alt="" className="h-9 w-14 rounded-md object-cover border border-white/15" />
+                          )}
+                          <input
+                            ref={coverRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) {
+                                setEditCover(f);
+                                setEditCoverPreview(URL.createObjectURL(f));
+                              }
+                              e.currentTarget.value = "";
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2 pt-1">
+                          <button
+                            onClick={() => saveEdit(item.id)}
+                            disabled={savingEdit}
+                            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-60"
+                          >
+                            {savingEdit ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                            Save
+                          </button>
+                          <button
+                            onClick={cancelEdit}
+                            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white/5 border border-white/15 text-xs font-medium text-white"
+                          >
+                            <X className="w-3.5 h-3.5" /> Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 mt-3">
+                      {!isEditing && (
+                        <button
+                          onClick={() => beginEdit(item)}
+                          className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white/5 border border-white/15 text-xs font-medium text-white hover:border-primary/50"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                      )}
+                      <button
+                        onClick={async () => {
+                          if (!confirm(`Delete "${item.title}"?`)) return;
+                          await WheuatTv.remove(item.id, item.videoKey);
+                          await refresh();
+                        }}
+                        className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-destructive/10 text-destructive text-xs font-medium hover:bg-destructive/20"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {playUrl && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4" onClick={() => setPlayUrl(null)}>
+        <div className="fixed inset-0 z-[130] bg-black/90 flex items-center justify-center p-4" onClick={() => setPlayUrl(null)}>
           <video
             src={playUrl}
             controls
@@ -348,7 +328,7 @@ const WheuatTvPage = () => {
           </button>
         </div>
       )}
-    </div>
+    </YajTvShell>
   );
 };
 
