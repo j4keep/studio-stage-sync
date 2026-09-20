@@ -1,6 +1,6 @@
 import { ReactNode, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ChevronDown, Search, Bookmark, Home, User, Upload, ArrowLeft } from "lucide-react";
+import { ChevronDown, Search, Bookmark, Home, User, Upload, ArrowLeft, X } from "lucide-react";
 import { YajTvCategoryModal } from "./YajTvCategoryModal";
 import { CATEGORY_LABELS, type CategorySelection } from "./yajTvMeta";
 
@@ -44,13 +44,20 @@ export function YajTvShell({ children, category, onCategoryChange, headerTitle, 
           </div>
         ) : (
           <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate("/")}
+              aria-label="Exit YAJ.TV"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white active:scale-95"
+            >
+              <X className="h-4 w-4" />
+            </button>
             <h1 className="font-display text-3xl font-black tracking-tight text-white">
               YAJ<span className="text-primary">.TV</span>
             </h1>
             <button
               onClick={() => navigate("/tv/manage")}
               aria-label="Creator studio"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white active:scale-95"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white active:scale-95"
             >
               <Upload className="h-4 w-4" />
             </button>
