@@ -482,7 +482,8 @@ export const WheuatTv = {
     const { data: auth } = await supabase.auth.getUser();
     const me = auth.user?.id;
     if (!me) throw new Error("Sign in to save to My List");
-    await supabase.from("tv_watchlist").insert({ user_id: me, post_id: id });
+    const { error } = await supabase.from("tv_watchlist").insert({ user_id: me, post_id: id });
+    if (error) throw error;
     emitUpdate();
   },
 
@@ -490,7 +491,8 @@ export const WheuatTv = {
     const { data: auth } = await supabase.auth.getUser();
     const me = auth.user?.id;
     if (!me) return;
-    await supabase.from("tv_watchlist").delete().eq("user_id", me).eq("post_id", id);
+    const { error } = await supabase.from("tv_watchlist").delete().eq("user_id", me).eq("post_id", id);
+    if (error) throw error;
     emitUpdate();
   },
 

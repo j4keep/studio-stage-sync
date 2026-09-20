@@ -133,9 +133,15 @@ const YajTvDetailPage = () => {
       toast({ title: "Sign in to use My List" });
       return;
     }
-    setAll((rs) => rs.map((r) => (r.id === target.id ? { ...r, inMyList: !r.inMyList } : r)));
-    await WheuatTv.toggleWatchlist(target.id, target.inMyList);
-    toast({ title: target.inMyList ? "Removed from My List" : "Added to My List" });
+    const wasInList = target.inMyList;
+    setAll((rs) => rs.map((r) => (r.id === target.id ? { ...r, inMyList: !wasInList } : r)));
+    try {
+      await WheuatTv.toggleWatchlist(target.id, wasInList);
+      toast({ title: wasInList ? "Removed from My List" : "Added to My List" });
+    } catch (e: any) {
+      setAll((rs) => rs.map((r) => (r.id === target.id ? { ...r, inMyList: wasInList } : r)));
+      toast({ title: "Couldn't update My List", description: e?.message || String(e), variant: "destructive" });
+    }
   };
 
   const openComments = async () => {
