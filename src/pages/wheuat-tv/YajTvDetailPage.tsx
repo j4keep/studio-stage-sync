@@ -14,6 +14,7 @@ import {
   MessageSquareText,
   Clock,
   HeartHandshake,
+  Lock,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -46,6 +47,9 @@ const YajTvDetailPage = () => {
   const [showDonate, setShowDonate] = useState(false);
   const [comments, setComments] = useState<WheuatTvComment[]>([]);
   const [commentDraft, setCommentDraft] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
+  const [showSubscribeGate, setShowSubscribeGate] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   const refresh = async () => setAll(await WheuatTv.list());
 
@@ -70,6 +74,20 @@ const YajTvDetailPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [item?.id]);
 
+  useEffect(() => {
+    if (!item || item.accessTier !== "subscribers") {
+      setSubscribed(false);
+      return;
+    }
+    let active = true;
+    void WheuatTv.isSubscribedToCreator(item.creator.id).then((v) => active && setSubscribed(v));
+    return () => {
+      active = false;
+    };
+  }, [item?.id, item?.accessTier, item?.creator.id]);
+
+  const gated = !!item && item.accessTier === "subscribers" && user?.id !== item.creator.id && !subscribed;
+
   const related = useMemo(() => {
     if (!item) return [];
     const cat = effectiveCategory(item);
@@ -77,6 +95,27 @@ const YajTvDetailPage = () => {
       .filter((i) => i.id !== item.id && (effectiveCategory(i) === cat || i.kind === item.kind))
       .slice(0, 15);
   }, [all, item]);
+
+  const episodes = useMemo(() => (item ? WheuatTv.listEpisodes(all, item) : []), [all, item]);
+
+  const handleSubscribe = async () => {
+    if (!item) return;
+    if (!user) {
+      toast({ title: "Sign in to subscribe" });
+      return;
+    }
+    setSubscribing(true);
+    try {
+      await WheuatTv.subscribeToCreator(item.creator.id);
+      setSubscribed(true);
+      setShowSubscribeGate(false);
+      toast({ title: `Subscribed to ${item.creator.displayName}` });
+    } catch (e: any) {
+      toast({ title: "Couldn't subscribe", description: e?.message || String(e), variant: "destructive" });
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   const toggleLike = async (target: WheuatTvItem) => {
     if (!user) {
@@ -144,6 +183,10 @@ const YajTvDetailPage = () => {
 
   const handlePlay = () => {
     if (!item) return;
+    if (gated) {
+      setShowSubscribeGate(true);
+      return;
+    }
     if (!item.hasMedia) {
       toast({ title: "Coming soon", description: "This YAJ Original hasn't been uploaded yet." });
       return;
@@ -201,6 +244,17 @@ const YajTvDetailPage = () => {
             {CATEGORY_LABELS[category] || KIND_META[item.kind].label}
           </span>
           {item.isOriginal && <span className="rounded-full bg-primary/20 px-2 py-0.5 text-primary">YAJ Original</span>}
+          {item.accessTier === "subscribers" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-300">
+              <Lock className="h-3 w-3" /> Subscribers Only
+            </span>
+          )}
+          {item.seriesTitle && (
+            <span className="rounded-full bg-white/10 px-2 py-0.5">
+              {item.seriesTitle}
+              {item.episodeNumber != null ? ` · Ep. ${item.episodeNumber}` : ""}
+            </span>
+          )}
           {item.maturityRating && <span className="rounded-full bg-white/10 px-2 py-0.5">{item.maturityRating}</span>}
           {runtime && (
             <span className="inline-flex items-center gap-1">
@@ -231,8 +285,8 @@ const YajTvDetailPage = () => {
             onClick={handlePlay}
             className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-full bg-white text-sm font-bold text-black active:scale-95"
           >
-            <Play className="h-4 w-4" />
-            Play
+            {gated ? <Lock className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            {gated ? "Subscribe to Watch" : "Play"}
           </button>
           <button
             onClick={() => toggleLike(item)}
@@ -276,6 +330,23 @@ const YajTvDetailPage = () => {
           </button>
         </div>
 
+        {showSubscribeGate && (
+          <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3">
+            <p className="text-[13px] font-semibold text-white">Subscribers Only</p>
+            <p className="mt-1 text-[12px] text-white/70">
+              Subscribe to {item.creator.displayName} to watch this title. Free to subscribe for now.
+            </p>
+            <button
+              onClick={handleSubscribe}
+              disabled={subscribing}
+              className="mt-2 inline-flex h-9 items-center gap-1.5 rounded-full bg-white px-4 text-xs font-bold text-black disabled:opacity-60"
+            >
+              {subscribing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Subscribe
+            </button>
+          </div>
+        )}
+
         {showDonate && <YajTvDonatePanel item={item} userId={user?.id} />}
 
         {showShare && (
@@ -317,6 +388,12 @@ const YajTvDetailPage = () => {
         )}
       </div>
 
+      {episodes.length > 0 && (
+        <div className="mt-6">
+          <YajTvRow title={item.seriesTitle ? `Episodes · ${item.seriesTitle}` : "Episodes"} items={episodes} />
+        </div>
+      )}
+
       <div className="mt-6">
         <YajTvRow title="More like this" items={related} />
       </div>
@@ -334,6 +411,13 @@ const YajTvDetailPage = () => {
             className="max-h-full max-w-full rounded-xl"
             onClick={(e) => e.stopPropagation()}
           />
+          <button
+            onClick={() => toggleMyList(item)}
+            aria-label="My List"
+            className="absolute left-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white"
+          >
+            {item.inMyList ? <BookmarkCheck className="h-4 w-4 text-primary" /> : <Bookmark className="h-4 w-4" />}
+          </button>
           <button
             onClick={() => setPlaying(false)}
             className="absolute right-4 top-[calc(1rem+env(safe-area-inset-top))] flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-xl text-white"

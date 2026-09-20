@@ -7,6 +7,7 @@ import { YajTvShell } from "./YajTvShell";
 import { YajTvRow } from "./YajTvRow";
 import { YajTvPosterCard } from "./YajTvPosterCard";
 import { YajTvLiveNowRow } from "./YajTvLiveNowRow";
+import { YajTvWelcomeSheet, hasSeenYajTvWelcome } from "./YajTvWelcomeSheet";
 import { HOME_SECTIONS, selectByCategory, type CategorySelection } from "./yajTvMeta";
 
 const YajTvHomePage = () => {
@@ -15,6 +16,7 @@ const YajTvHomePage = () => {
   const [liveSessions, setLiveSessions] = useState<YajTvLiveWithHost[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState<CategorySelection>("all");
+  const [showWelcome, setShowWelcome] = useState(() => !hasSeenYajTvWelcome());
 
   const refresh = async () => {
     const [tv, live] = await Promise.all([
@@ -40,6 +42,10 @@ const YajTvHomePage = () => {
       window.clearInterval(poll);
     };
   }, []);
+
+  if (showWelcome) {
+    return <YajTvWelcomeSheet onEnter={() => setShowWelcome(false)} />;
+  }
 
   if (loading) {
     return (
