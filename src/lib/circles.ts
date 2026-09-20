@@ -91,23 +91,15 @@ export async function getCircle(id: string): Promise<Circle | null> {
   const { data, error } = await sb.from("circles").select("*").eq("id", id).maybeSingle();
   if (!error && data) return mergeExclusiveAccess(data as Circle);
 
-  // Newer databases expose a private-safe shell RPC.
+  // Private/discoverable Circle shell. Do not auto-create other users' personal Circles
+  // as a read fallback — browsing should never mutate somebody else's Circle state.
   const { data: shell, error: shellError } = await sb.rpc("yaj_circle_shell", { p_circle_id: id });
   if (!shellError && shell) return mergeExclusiveAccess(shell as Circle);
 
-  // Compatibility path for deployments where that migration has not been applied yet.
-  // Resolve personal Circles through the older SECURITY DEFINER personal-circle RPC.
-  const { data: profiles } = await sb.from("profiles").select("user_id,display_name").limit(100);
-  for (const profile of (profiles || []) as Array<{ user_id: string; display_name: string | null }>) {
-    try {
-      const personal = await getOrCreatePersonalCircle(profile.user_id, profile.display_name || undefined);
-      if (personal.id === id) return mergeExclusiveAccess(personal);
-    } catch {
-      // Keep looking; one inaccessible profile must not block the Circle shell.
-    }
-  }
-
   if (error && !/0 rows|PGRST116/i.test(error.message || "")) throw error;
+  if (shellError && !/function .* does not exist|PGRST202|schema cache/i.test(shellError.message || "")) {
+    throw shellError;
+  }
   return null;
 }
 
@@ -130,60 +122,38 @@ export type CircleDirectoryEntry = {
 
 export async function listCircleDirectory(): Promise<CircleDirectoryEntry[]> {
   const { data, error } = await sb.rpc("yaj_circle_directory");
-  if (!error && Array.isArray(data) && data.length > 0) return data as CircleDirectoryEntry[];
+  if (!error && Array.isArray(data)) return data as CircleDirectoryEntry[];
 
-  // Client-side compatibility path: older deployed databases may not have the newer
-  // directory RPC yet. The existing get_or_create_personal_circle RPC is SECURITY
-  // DEFINER and can safely return a user's personal Circle shell even when it is private.
-  // Merge those personal Circles with any ordinary discoverable Circles the viewer can
-  // already read. This keeps private personal Circles searchable on every device.
-  const [{ data: profiles }, { data: visibleRows }] = await Promise.all([
-    sb.from("profiles").select("user_id,display_name").order("created_at", { ascending: false }).limit(100),
-    sb
-      .from("circles")
-      .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category,updated_at")
-      .eq("is_discoverable", true)
-      .order("updated_at", { ascending: false })
-      .limit(120),
-  ]);
+  // Compatibility path for an older deployment: return only rows the current RLS
+  // already allows. Never call get_or_create_personal_circle while browsing the
+  // directory; a read screen must not create Circles for arbitrary profiles.
+  const { data: visibleRows, error: rowsError } = await sb
+    .from("circles")
+    .select("id,name,cover_url,city,member_count,is_private,is_discoverable,is_personal,type,owner_id,description,category,updated_at")
+    .or("is_discoverable.eq.true,is_personal.eq.true")
+    .order("updated_at", { ascending: false })
+    .limit(120);
 
-  const byId = new Map<string, CircleDirectoryEntry>();
-  for (const row of (visibleRows || []) as CircleDirectoryEntry[]) {
-    byId.set(row.id, { ...row, owner_name: null });
+  if (rowsError) {
+    if (error) throw error;
+    throw rowsError;
   }
 
-  const profileRows = (profiles || []) as Array<{ user_id: string; display_name: string | null }>;
-  const personalResults = await Promise.allSettled(
-    profileRows.map(async (profile) => {
-      const circle = await getOrCreatePersonalCircle(profile.user_id, profile.display_name || undefined);
-      return { circle, ownerName: profile.display_name || "YAJ member" };
-    }),
+  const rows = (visibleRows || []) as CircleDirectoryEntry[];
+  if (!rows.length) return [];
+
+  const ownerIds = Array.from(new Set(rows.map((row) => row.owner_id).filter(Boolean)));
+  const { data: profiles } = ownerIds.length
+    ? await sb.from("profiles").select("user_id,display_name").in("user_id", ownerIds)
+    : { data: [] };
+  const names = new Map<string, string | null>(
+    ((profiles || []) as Array<{ user_id: string; display_name: string | null }>).map((p) => [p.user_id, p.display_name]),
   );
 
-  for (const result of personalResults) {
-    if (result.status !== "fulfilled") continue;
-    const { circle, ownerName } = result.value;
-    byId.set(circle.id, {
-      id: circle.id,
-      name: circle.name,
-      cover_url: circle.cover_url,
-      city: circle.city,
-      member_count: circle.member_count,
-      is_private: circle.is_private,
-      is_discoverable: circle.is_discoverable,
-      is_personal: circle.is_personal,
-      type: circle.type,
-      owner_id: circle.owner_id,
-      description: circle.description,
-      category: circle.category,
-      owner_name: ownerName,
-      updated_at: circle.updated_at,
-    });
-  }
-
-  return [...byId.values()].sort(
-    (a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime(),
-  );
+  return rows.map((row) => ({
+    ...row,
+    owner_name: names.get(row.owner_id) ?? null,
+  }));
 }
 
 /** Every user's own gated "My Circle" — created lazily the first time anyone (usually
@@ -384,11 +354,16 @@ export async function uploadCircleImageFromDataUrl(userId: string, dataUrl: stri
 }
 
 export function getCircleExclusiveAccess(circle: { id?: string; exclusive_access?: string | null }): "members" | "paid" {
+  // The database is authoritative whenever the migrated column exists. The local value
+  // is only a compatibility fallback for older deployments that truly lack the column.
+  if (circle.exclusive_access === "members" || circle.exclusive_access === "paid") {
+    return circle.exclusive_access;
+  }
   if (circle.id) {
     const local = getLocalExclusiveAccess(circle.id);
     if (local) return local;
   }
-  return circle.exclusive_access === "members" ? "members" : "paid";
+  return "paid";
 }
 
 /** Who can enter the Exclusive area (separate from joining the Circle itself). */
@@ -434,6 +409,7 @@ function clearLocalExclusiveAccess(circleId: string) {
 }
 
 function mergeExclusiveAccess(circle: Circle): Circle {
+  if (circle.exclusive_access === "members" || circle.exclusive_access === "paid") return circle;
   const local = getLocalExclusiveAccess(circle.id);
   if (!local) return circle;
   return { ...circle, exclusive_access: local };
