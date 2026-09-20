@@ -241,26 +241,27 @@ export const WheuatTv = {
       ? input.blob
       : new File([input.blob], fileName, { type: mime });
 
-    const upload = await uploadToR2(file, { folder: undefined, fileName: key, mimeType: mime });
+    // Video + cover upload run concurrently — sequential round trips here nearly
+    // doubled perceived "Uploading…" time once cover pictures were added.
+    const coverFile = input.coverFile;
+    const [upload, thumbUrl] = await Promise.all([
+      uploadToR2(file, { folder: undefined, fileName: key, mimeType: mime }),
+      (async (): Promise<string | null> => {
+        if (coverFile) {
+          const coverKey = generateR2Key(user.id, "tv-thumb", coverFile.name);
+          const coverUpload = await uploadToR2(coverFile, {
+            folder: undefined,
+            fileName: coverKey,
+            mimeType: coverFile.type || "image/jpeg",
+          }).catch(() => null);
+          if (coverUpload?.success && coverUpload.data) return getR2DownloadUrl(coverUpload.data.key);
+        }
+        const thumbDataUrl = input.thumbDataUrl || (await captureVideoPosterFromBlob(input.blob).catch(() => null));
+        return thumbDataUrl ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null) : null;
+      })(),
+    ]);
     if (!upload.success || !upload.data) {
       throw new Error(upload.error || "Upload to storage failed");
-    }
-
-    let thumbUrl: string | null = null;
-    if (input.coverFile) {
-      const coverKey = generateR2Key(user.id, "tv-thumb", input.coverFile.name);
-      const coverUpload = await uploadToR2(input.coverFile, {
-        folder: undefined,
-        fileName: coverKey,
-        mimeType: input.coverFile.type || "image/jpeg",
-      }).catch(() => null);
-      thumbUrl = coverUpload?.success && coverUpload.data ? getR2DownloadUrl(coverUpload.data.key) : null;
-    }
-    if (!thumbUrl) {
-      const thumbDataUrl = input.thumbDataUrl || await captureVideoPosterFromBlob(input.blob).catch(() => null);
-      thumbUrl = thumbDataUrl
-        ? await uploadThumbDataUrl(user.id, thumbDataUrl, input.title).catch(() => null)
-        : null;
     }
 
     const { data, error } = await supabase
