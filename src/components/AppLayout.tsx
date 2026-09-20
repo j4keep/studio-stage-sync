@@ -63,6 +63,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const isCircleLive = /^\/circle\/c\/[^/]+\/live$/.test(location.pathname) || /^\/live\/[^/]+$/.test(location.pathname);
+  const isYajTv = location.pathname === "/tv" || location.pathname.startsWith("/tv/");
   const desktopShell = isDesktopShellPath(location.pathname);
   const mobileFeed = isMobileFeedPath(location.pathname);
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
@@ -111,7 +112,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
     </div>
   );
 
-  if (isCircleLive) {
+  if (isCircleLive || isYajTv) {
     return <>{children}</>;
   }
 

@@ -22,6 +22,29 @@ function playbackUrl(videoKey: string | null, fallback: string): string {
 
 export type WheuatTvKind = "podcast" | "short-film" | "music-video";
 
+/**
+ * Browse categories for the streaming-style home screen. Distinct from
+ * `kind`, which stays the original upload classification. Legacy rows
+ * without a stored category fall back to KIND_TO_CATEGORY below so old
+ * content still shows up in the right rows.
+ */
+export type WheuatTvCategory =
+  | "short-films"
+  | "podcasts"
+  | "music-videos"
+  | "documentaries"
+  | "comedy"
+  | "drama"
+  | "lifestyle"
+  | "interviews"
+  | "creator-originals";
+
+export const KIND_TO_CATEGORY: Record<WheuatTvKind, WheuatTvCategory> = {
+  "short-film": "short-films",
+  podcast: "podcasts",
+  "music-video": "music-videos",
+};
+
 export interface WheuatTvCreator {
   id: string;
   displayName: string;
@@ -44,6 +67,26 @@ export interface WheuatTvItem {
   likes: number;
   likedByMe: boolean;
   commentCount: number;
+  /** Streaming-catalog metadata. All optional/backward-compatible. */
+  category: WheuatTvCategory | string | null;
+  genre: string | null;
+  isFeatured: boolean;
+  isTrending: boolean;
+  isOriginal: boolean;
+  /** false for seeded/demo catalog entries that have no real video file yet. */
+  hasMedia: boolean;
+  releaseDate: number | null;
+  views: number;
+  rating: number | null;
+  maturityRating: string | null;
+  posterUrl: string | null;
+  backdropUrl: string | null;
+  inMyList: boolean;
+}
+
+/** Category the item should appear under in a "by category" browse row. */
+export function effectiveCategory(item: Pick<WheuatTvItem, "category" | "kind">): WheuatTvCategory | string {
+  return item.category || KIND_TO_CATEGORY[item.kind];
 }
 
 export interface WheuatTvComment {
@@ -108,18 +151,22 @@ export const WheuatTv = {
 
     // Likes + comment counts in two cheap queries.
     const ids = posts.map((p: any) => p.id);
-    const [likesRes, commentsRes] = await Promise.all([
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id || null;
+    const [likesRes, commentsRes, myListRes] = await Promise.all([
       ids.length
         ? supabase.from("tv_post_likes").select("post_id, user_id").in("post_id", ids)
         : Promise.resolve({ data: [] as any[] }),
       ids.length
         ? supabase.from("tv_post_comments").select("post_id").in("post_id", ids)
         : Promise.resolve({ data: [] as any[] }),
+      ids.length && me
+        ? supabase.from("tv_watchlist").select("post_id").eq("user_id", me).in("post_id", ids)
+        : Promise.resolve({ data: [] as any[] }),
     ]);
     const likes = (likesRes.data as any[]) || [];
     const comments = (commentsRes.data as any[]) || [];
-    const { data: auth } = await supabase.auth.getUser();
-    const me = auth.user?.id || null;
+    const myListIds = new Set(((myListRes.data as any[]) || []).map((r) => r.post_id));
 
     const likesByPost: Record<string, { count: number; mine: boolean }> = {};
     likes.forEach((l) => {
@@ -148,6 +195,19 @@ export const WheuatTv = {
       likes: likesByPost[p.id]?.count || 0,
       likedByMe: !!likesByPost[p.id]?.mine,
       commentCount: commentsByPost[p.id] || 0,
+      category: p.category ?? null,
+      genre: p.genre ?? null,
+      isFeatured: !!p.is_featured,
+      isTrending: !!p.is_trending,
+      isOriginal: !!p.is_original,
+      hasMedia: p.has_media ?? true,
+      releaseDate: p.release_date ? new Date(p.release_date).getTime() : null,
+      views: p.views ?? 0,
+      rating: p.rating ?? null,
+      maturityRating: p.maturity_rating ?? null,
+      posterUrl: p.poster_url ?? null,
+      backdropUrl: p.backdrop_url ?? null,
+      inMyList: myListIds.has(p.id),
     }));
   },
 
@@ -224,6 +284,19 @@ export const WheuatTv = {
       likes: 0,
       likedByMe: false,
       commentCount: 0,
+      category: data.category ?? null,
+      genre: data.genre ?? null,
+      isFeatured: !!data.is_featured,
+      isTrending: !!data.is_trending,
+      isOriginal: !!data.is_original,
+      hasMedia: data.has_media ?? true,
+      releaseDate: data.release_date ? new Date(data.release_date).getTime() : null,
+      views: data.views ?? 0,
+      rating: data.rating ?? null,
+      maturityRating: data.maturity_rating ?? null,
+      posterUrl: data.poster_url ?? null,
+      backdropUrl: data.backdrop_url ?? null,
+      inMyList: false,
     };
   },
 
@@ -337,5 +410,77 @@ export const WheuatTv = {
   /** URL to play. Already public on R2. */
   async getUrl(_id: string): Promise<string | null> {
     return null; // unused now; the item already exposes videoUrl directly
+  },
+
+  /** Fire-and-forget view counter bump. Safe for anon viewers too. */
+  async recordView(id: string): Promise<void> {
+    await supabase.rpc("increment_tv_post_views", { p_post_id: id }).catch(() => {});
+  },
+
+  async isInWatchlist(id: string): Promise<boolean> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) return false;
+    const { data } = await supabase
+      .from("tv_watchlist")
+      .select("post_id")
+      .eq("user_id", me)
+      .eq("post_id", id)
+      .maybeSingle();
+    return !!data;
+  },
+
+  async addToWatchlist(id: string): Promise<void> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) throw new Error("Sign in to save to My List");
+    await supabase.from("tv_watchlist").insert({ user_id: me, post_id: id });
+    emitUpdate();
+  },
+
+  async removeFromWatchlist(id: string): Promise<void> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) return;
+    await supabase.from("tv_watchlist").delete().eq("user_id", me).eq("post_id", id);
+    emitUpdate();
+  },
+
+  async toggleWatchlist(id: string, currentlyInList: boolean): Promise<void> {
+    if (currentlyInList) await this.removeFromWatchlist(id);
+    else await this.addToWatchlist(id);
+  },
+
+  /** Full My List, newest-saved first. Empty (not an error) when signed out. */
+  async listWatchlist(): Promise<WheuatTvItem[]> {
+    const { data: auth } = await supabase.auth.getUser();
+    const me = auth.user?.id;
+    if (!me) return [];
+    const { data: rows } = await supabase
+      .from("tv_watchlist")
+      .select("post_id, created_at")
+      .eq("user_id", me)
+      .order("created_at", { ascending: false });
+    const order = (rows || []).map((r: any) => r.post_id as string);
+    if (!order.length) return [];
+    const all = await this.list();
+    const byId = new Map(all.map((i) => [i.id, i]));
+    return order.map((id) => byId.get(id)).filter((i): i is WheuatTvItem => !!i);
+  },
+
+  /** Client-side search across title, description, creator and category. */
+  search(items: WheuatTvItem[], query: string): WheuatTvItem[] {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((i) => {
+      const category = String(effectiveCategory(i)).toLowerCase();
+      return (
+        i.title.toLowerCase().includes(q) ||
+        (i.description || "").toLowerCase().includes(q) ||
+        i.creator.displayName.toLowerCase().includes(q) ||
+        category.includes(q) ||
+        (i.genre || "").toLowerCase().includes(q)
+      );
+    });
   },
 };
