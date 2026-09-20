@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Upload, Trash2, Film, Mic2, Music, Play, Loader2, Pencil, ImagePlus, Save, X, Radio } from "lucide-react";
+import { Upload, Trash2, Film, Mic2, Music, Play, Loader2, Pencil, ImagePlus, Save, X, Radio, Sparkles } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { VideoPoster } from "@/components/VideoPoster";
+import AICoverImageGenerator from "@/components/ai-studio/AICoverImageGenerator";
 import { YajTvShell } from "./YajTvShell";
 import { WheuatTv, type WheuatTvItem, type WheuatTvKind } from "./wheuatTvStore";
 import { getActiveYajTvLiveForHost, startYajTvLive } from "./yajTvLiveStore";
+
+async function urlToFile(url: string, fileName: string): Promise<File> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new File([blob], fileName, { type: blob.type || "image/png" });
+}
 
 const KIND_META: Record<WheuatTvKind, { label: string; Icon: typeof Film }> = {
   podcast: { label: "Podcast", Icon: Mic2 },
@@ -41,8 +48,11 @@ const WheuatTvPage = () => {
   const [goingLive, setGoingLive] = useState(false);
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [uploadKind, setUploadKind] = useState<WheuatTvKind>("short-film");
+  const [newTitle, setNewTitle] = useState("");
   const [newCover, setNewCover] = useState<File | null>(null);
   const [newCoverPreview, setNewCoverPreview] = useState<string | null>(null);
+  const [aiCoverOpen, setAiCoverOpen] = useState(false);
+  const [generatingCover, setGeneratingCover] = useState(false);
   const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
@@ -101,8 +111,16 @@ const WheuatTvPage = () => {
 
   const handleUpload = async (file: File) => {
     if (!userId) { toast({ title: "Sign in to publish" }); return; }
+    // A cover picture without a real title just looks unfinished — require one.
+    // Without a cover, the auto-captured video frame is a fine stand-in and the
+    // filename-derived title keeps quick uploads friction-free.
+    if (newCover && !newTitle.trim()) {
+      toast({ title: "Add a title", description: "Give this project a title before using a cover picture.", variant: "destructive" });
+      return;
+    }
     const ext = (file.name.split(".").pop() || "mp4").toLowerCase();
-    const title = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Untitled";
+    const derivedTitle = file.name.replace(/\.[^.]+$/, "").slice(0, 80) || "Untitled";
+    const title = newTitle.trim().slice(0, 80) || derivedTitle;
     setUploading(true);
     try {
       await WheuatTv.publish({
@@ -114,6 +132,7 @@ const WheuatTvPage = () => {
         coverFile: newCover,
       });
       toast({ title: "Published to YAJ.TV", description: title });
+      setNewTitle("");
       setNewCover(null);
       setNewCoverPreview(null);
       await refresh();
@@ -121,6 +140,20 @@ const WheuatTvPage = () => {
       toast({ title: "Upload failed", description: e?.message || String(e), variant: "destructive" });
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleAiCoverGenerated = async (url: string) => {
+    setGeneratingCover(true);
+    try {
+      const file = await urlToFile(url, `${Date.now()}-ai-cover.png`);
+      setNewCover(file);
+      setNewCoverPreview(url);
+      setAiCoverOpen(false);
+    } catch (e: any) {
+      toast({ title: "Couldn't use that image", description: e?.message || String(e), variant: "destructive" });
+    } finally {
+      setGeneratingCover(false);
     }
   };
 
@@ -156,9 +189,19 @@ const WheuatTvPage = () => {
           </select>
 
           <label className="block text-[11px] font-semibold text-white/50 mb-1.5">
+            Title {newCover && <span className="font-normal text-primary">(required with a cover)</span>}
+          </label>
+          <input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Project title"
+            className="w-full h-10 px-3 mb-2 rounded-xl bg-black/40 border border-white/15 text-sm text-white placeholder:text-white/40"
+          />
+
+          <label className="block text-[11px] font-semibold text-white/50 mb-1.5">
             Cover picture <span className="font-normal text-white/30">(optional)</span>
           </label>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
             <button
               type="button"
               onClick={() => newCoverRef.current?.click()}
@@ -166,7 +209,16 @@ const WheuatTvPage = () => {
               className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-black/40 border border-white/15 text-xs font-medium text-white disabled:opacity-60"
             >
               <ImagePlus className="w-3.5 h-3.5" />
-              {newCoverPreview ? "Change cover" : "Add cover"}
+              {newCoverPreview ? "Change cover" : "Upload from device"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiCoverOpen((v) => !v)}
+              disabled={uploading}
+              className="inline-flex items-center gap-1.5 h-10 px-3 rounded-xl bg-black/40 border border-white/15 text-xs font-medium text-white disabled:opacity-60"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              YAJ Buddy AI
             </button>
             {newCoverPreview && (
               <>
@@ -182,6 +234,19 @@ const WheuatTvPage = () => {
               </>
             )}
           </div>
+          <p className="mb-2 text-[10px] text-white/30">
+            Photos come from your device's file or photo library — no in-app camera capture.
+          </p>
+          {aiCoverOpen && (
+            <div className="mb-2 rounded-xl border border-white/10 bg-black/30 p-3">
+              <AICoverImageGenerator
+                onImageGenerated={handleAiCoverGenerated}
+                label="Describe your cover art"
+                placeholder="A neon-lit late-night diner, cinematic…"
+              />
+              {generatingCover && <p className="mt-2 text-[10px] text-white/40">Saving cover…</p>}
+            </div>
+          )}
           <input
             ref={newCoverRef}
             type="file"
