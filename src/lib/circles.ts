@@ -354,11 +354,16 @@ export async function uploadCircleImageFromDataUrl(userId: string, dataUrl: stri
 }
 
 export function getCircleExclusiveAccess(circle: { id?: string; exclusive_access?: string | null }): "members" | "paid" {
+  // The database is authoritative whenever the migrated column exists. The local value
+  // is only a compatibility fallback for older deployments that truly lack the column.
+  if (circle.exclusive_access === "members" || circle.exclusive_access === "paid") {
+    return circle.exclusive_access;
+  }
   if (circle.id) {
     const local = getLocalExclusiveAccess(circle.id);
     if (local) return local;
   }
-  return circle.exclusive_access === "members" ? "members" : "paid";
+  return "paid";
 }
 
 /** Who can enter the Exclusive area (separate from joining the Circle itself). */
@@ -404,6 +409,7 @@ function clearLocalExclusiveAccess(circleId: string) {
 }
 
 function mergeExclusiveAccess(circle: Circle): Circle {
+  if (circle.exclusive_access === "members" || circle.exclusive_access === "paid") return circle;
   const local = getLocalExclusiveAccess(circle.id);
   if (!local) return circle;
   return { ...circle, exclusive_access: local };
