@@ -41,6 +41,8 @@ const FeedPage = () => {
   const openPostId = searchParams.get("post");
   const openedBattleDeepLinkRef = useRef<string | null>(null);
   const openedPostDeepLinkRef = useRef<string | null>(null);
+  const mobileFeedScrollRef = useRef<HTMLDivElement>(null);
+  const desktopFeedScrollRef = useRef<HTMLElement>(null);
 
   const { data: items = [], isLoading, refetch } = useQuery({
     queryKey: ["feed-posts"],
@@ -90,6 +92,15 @@ const FeedPage = () => {
 
   useEffect(() => {
     initFeedAudioUnlockOnGesture();
+  }, []);
+
+  useEffect(() => {
+    const scrollTop = () => {
+      mobileFeedScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+      desktopFeedScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    window.addEventListener("feed-scroll-top", scrollTop);
+    return () => window.removeEventListener("feed-scroll-top", scrollTop);
   }, []);
 
   useEffect(() => {
@@ -307,7 +318,7 @@ const FeedPage = () => {
         </div>
       ) : (
         <>
-          <div className="relative z-10 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.4rem)] scrollbar-hide lg:hidden">
+          <div ref={mobileFeedScrollRef} className="relative z-10 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.4rem)] scrollbar-hide lg:hidden">
             {(trending.length > 0 || liveNow.length > 0) && (
               <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-sm backdrop-blur-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
@@ -353,7 +364,7 @@ const FeedPage = () => {
                 {happeningRail(false)}
               </aside>
 
-              <main className="min-w-0 overflow-y-auto rounded-2xl border border-border/70 bg-background/55 p-4 scrollbar-hide">
+              <main ref={desktopFeedScrollRef} className="min-w-0 overflow-y-auto rounded-2xl border border-border/70 bg-background/55 p-4 scrollbar-hide">
                 <div className="mb-4">
                   <h2 className="text-base font-bold tracking-tight text-foreground">Latest posts</h2>
                   <p className="mt-0.5 text-xs font-medium text-muted-foreground">Updates from the YAJ community</p>
