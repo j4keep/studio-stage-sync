@@ -743,15 +743,26 @@ const FeedPostCard = ({
       if (!isScrubbingRef.current && video.duration && isFinite(video.duration)) {
         setVideoProgress((video.currentTime / video.duration) * 100);
       }
-      // Trim end → advance (don't loop the clip forever on the post page).
-      if (
-        trim &&
+      // Trim end OR natural end → advance. Mobile Safari occasionally pauses on
+      // the final frame without dispatching a reliable `ended` event, so duration is
+      // also treated as authoritative once playback reaches the last fraction of a second.
+      const reachedTrimEnd =
+        !!trim &&
         !video.paused &&
-        video.currentTime >= trim.end - 0.05 &&
-        !endedAdvanceSentRef.current
-      ) {
+        video.currentTime >= trim.end - 0.05;
+      const reachedNaturalEnd =
+        !trim &&
+        Number.isFinite(video.duration) &&
+        video.duration > 0 &&
+        video.currentTime >= Math.max(0, video.duration - 0.12);
+
+      if ((reachedTrimEnd || reachedNaturalEnd) && !endedAdvanceSentRef.current) {
         endedAdvanceSentRef.current = true;
-        video.pause();
+        try {
+          video.pause();
+        } catch {
+          /* ignore */
+        }
         setIsPlaying(false);
         musicAudioRef.current?.pause();
         const advanced = onVideoEndedRef.current?.();
