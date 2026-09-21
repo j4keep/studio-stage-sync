@@ -52,6 +52,10 @@
     --sidebar-ring: 204 100% 45%;
 
     /* Custom YAJ tokens */
+    --yaj-purple: #7c3aed;
+    --yaj-pink: #ec4899;
+    --yaj-cyan: #22d3ee;
+    --yaj-brand-border: linear-gradient(135deg, var(--yaj-purple) 0%, var(--yaj-pink) 50%, var(--yaj-cyan) 100%);
     --glow-primary: 0 0 20px hsl(204 100% 45% / 0.2);
     --glow-primary-strong: 0 0 30px hsl(204 100% 45% / 0.3);
     --gradient-primary: linear-gradient(135deg, hsl(204 100% 45%), hsl(220 100% 55%));
@@ -152,6 +156,51 @@
 @layer base {
   * {
     @apply border-border;
+  }
+
+  /*
+   * YAJ brand outlines
+   * ------------------
+   * Card/panel/profile borders use the YAJ logo palette across the product.
+   * This is drawn as a masked overlay so existing card backgrounds, shadows,
+   * rounded corners, and dark/light themes remain untouched.
+   */
+  #root :where([class*="rounded"][class*="border"]):not([data-yaj-brand-border="off"]):not(.wstudio-shell):not(.wstudio-panel):not(.wstudio-inset):not(.wstudio-screen):not(.wstudio-button):not(.wstudio-icon-button),
+  #root :where([class*="rounded"][class*="ring-"]):not([data-yaj-brand-border="off"]):not(.wstudio-shell):not(.wstudio-panel):not(.wstudio-inset):not(.wstudio-screen):not(.wstudio-button):not(.wstudio-icon-button) {
+    position: relative;
+    isolation: isolate;
+  }
+
+  #root :where([class*="rounded"][class*="border"]):not(input):not(textarea):not(select):not([data-yaj-brand-border="off"]):not(.wstudio-shell):not(.wstudio-panel):not(.wstudio-inset):not(.wstudio-screen):not(.wstudio-button):not(.wstudio-icon-button)::after,
+  #root :where([class*="rounded"][class*="ring-"]):not(input):not(textarea):not(select):not([data-yaj-brand-border="off"]):not(.wstudio-shell):not(.wstudio-panel):not(.wstudio-inset):not(.wstudio-screen):not(.wstudio-button):not(.wstudio-icon-button)::after {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: 20;
+    pointer-events: none;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: var(--yaj-brand-border);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.9;
+  }
+
+  /* Native form controls cannot reliably render ::after on mobile Safari.
+     Give them the same palette with a gradient border-image fallback. */
+  #root :where(input, textarea, select)[class*="border"]:not([data-yaj-brand-border="off"]) {
+    border-color: transparent;
+    border-image: var(--yaj-brand-border) 1;
+  }
+
+  #root :where(input, textarea, select)[class*="border"]:focus {
+    outline: none;
+    box-shadow:
+      0 0 0 1px rgba(236, 72, 153, 0.2),
+      0 0 0 3px rgba(34, 211, 238, 0.14);
   }
 
   html {
