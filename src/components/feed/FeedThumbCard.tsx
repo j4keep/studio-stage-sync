@@ -22,6 +22,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   const holdReady = useRef(false);
   const holdOpened = useRef(false);
   const [videoReady, setVideoReady] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const { caption, meta } = useMemo(() => parsePostCaption(post.caption), [post.caption]);
   const profile = post.profile || { display_name: "Artist", avatar_url: null };
   const isVideo = post.media_type === "video";
@@ -29,6 +30,10 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   const coverUrl = meta?.coverUrl;
   const thumbSrc = isVideo ? coverUrl || post.media_url : post.media_url;
   const shouldAutoPlay = autoPlayMuted && isVideo && Boolean(post.media_url);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [post.id, profile.avatar_url]);
 
   const openWithAudio = () => {
     forceIosAudioSessionToPlayback();
@@ -112,8 +117,13 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
     >
       <div className="flex items-center gap-2.5 px-3 py-2.5">
         <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border">
-          {profile.avatar_url ? (
-            <img src={profile.avatar_url} alt="" className="h-full w-full object-cover" />
+          {profile.avatar_url && !avatarFailed ? (
+            <img
+              src={profile.avatar_url}
+              alt=""
+              className="h-full w-full object-cover"
+              onError={() => setAvatarFailed(true)}
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-xs font-bold text-foreground">
               {(profile.display_name || "?")[0]?.toUpperCase()}
