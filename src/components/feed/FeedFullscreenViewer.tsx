@@ -39,6 +39,15 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   // Desktop still gets a neighbor on either side for smoother wheel navigation.
   const mountRadius = getFeedMountRadius();
 
+  // Full-screen posts own the whole app viewport. Hide the app tab bar so the
+  // action rail, Support/My Circle buttons, author and caption never sit behind it.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: true } }));
+    return () => {
+      window.dispatchEvent(new CustomEvent("feed-nav-toggle", { detail: { hidden: false } }));
+    };
+  }, []);
+
   const getSlideTop = useCallback((index: number) => {
     const el = scrollRef.current;
     if (!el) return null;
@@ -291,7 +300,7 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   }, [onClose, lockScroll]);
 
   return (
-    <div className="feed-viewer-root fixed inset-0 z-[70] bg-black">
+    <div className="feed-viewer-root fixed inset-0 z-[90] bg-black">
       <button
         onClick={handleClose}
         aria-label="Close"
