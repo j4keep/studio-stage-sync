@@ -197,7 +197,10 @@ export default function CreateCameraView({
 
     (async () => {
       if (initialStream && streamHasLiveVideo(initialStream) && !cancelled) {
-        ownsStreamRef.current = false;
+        // The warmed stream is handed off to this camera view. Treat it as owned here so
+        // leaving the camera for Edit/Preview immediately releases camera + microphone
+        // hardware instead of keeping the green privacy indicator on until the sheet closes.
+        ownsStreamRef.current = true;
         await attachStream(initialStream);
         return;
       }
