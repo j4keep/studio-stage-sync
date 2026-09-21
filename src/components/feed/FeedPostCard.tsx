@@ -79,6 +79,7 @@ const FeedPostCard = ({
   const [showComments, setShowComments] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   // Lock the fullscreen snap scroller while comments are open so the video stay shrunk on top.
   useEffect(() => {
@@ -469,6 +470,7 @@ const FeedPostCard = ({
 
   useEffect(() => {
     setLiked(!!post.isLiked);
+    setAvatarFailed(false);
     setLikesCount(post.likes_count || 0);
     setMediaReady(false);
     setVideoFrameReady(false);
@@ -1186,6 +1188,19 @@ const FeedPostCard = ({
               }}
               onPlaying={(e) => markVideoFrameReady(e.currentTarget)}
               onPause={() => setIsPlaying(false)}
+              onEnded={(event) => {
+                const video = event.currentTarget;
+                // React-level fallback for mobile WebKit: some builds have proven
+                // unreliable about dispatching the separately attached ended listener.
+                if (endedAdvanceSentRef.current) return;
+                endedAdvanceSentRef.current = true;
+                video.loop = false;
+                video.pause();
+                setIsPlaying(false);
+                musicAudioRef.current?.pause();
+                const advanced = onVideoEndedRef.current?.();
+                if (!advanced) setShowReplay(true);
+              }}
             />
           ) : (
             <img
@@ -1291,7 +1306,7 @@ const FeedPostCard = ({
 
         {!showComments && (
         <>
-        <div className="absolute right-3 feed-bottom-offset z-40 flex flex-col items-center gap-4 pb-1 pointer-events-auto">
+        <div className="feed-action-stack absolute right-2.5 feed-bottom-offset z-40 flex flex-col items-center gap-3 pb-1 pointer-events-auto">
           { (post.media_type === "video" || hasAddedSound) && (
             <button
               onPointerDown={(e) => {
@@ -1367,11 +1382,16 @@ const FeedPostCard = ({
 
         </div>
 
-        <div className="absolute left-3 right-[4.5rem] feed-bottom-offset z-40 pb-1 max-w-[calc(100%-5.5rem)] pointer-events-auto">
+        <div className="feed-caption-stack absolute left-3 right-[4.25rem] feed-bottom-offset z-40 max-w-[calc(100%-5rem)] overflow-y-auto pb-1 pr-1 pointer-events-auto scrollbar-hide">
           <div className="relative z-50 mb-1.5">
             <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
-              {profile.avatar_url ? (
-                <img src={profile.avatar_url} alt="" className="w-full h-full object-cover" />
+              {profile.avatar_url && !avatarFailed ? (
+                <img
+                  src={profile.avatar_url}
+                  alt=""
+                  className="w-full h-full object-cover"
+                  onError={() => setAvatarFailed(true)}
+                />
               ) : (
                 <div className="w-full h-full bg-primary/30 flex items-center justify-center text-sm font-bold text-white">
                   {(profile.display_name || "A")[0].toUpperCase()}

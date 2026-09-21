@@ -27,6 +27,9 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
   const currentIndexRef = useRef(startIndex);
   const activeIdRef = useRef<string | null>(items[startIndex]?.id ?? null);
   const autoAdvanceIdRef = useRef<string | null>(null);
+  // A video auto-advances only the first time it finishes during this viewer session.
+  // If the user swipes back to replay it, let it finish in place instead of pushing them forward again.
+  const autoAdvancedIdsRef = useRef<Set<string>>(new Set());
   /** Ignore scroll-sync while we programmatically move — mid-smooth-scroll was snapping back. */
   const ignoreScrollSyncUntilRef = useRef(0);
   const [currentIndex, setCurrentIndex] = useState(startIndex);
@@ -140,8 +143,13 @@ export default function FeedFullscreenViewer({ items, startIndex, currentUserId,
       return false;
     }
 
+    if (autoAdvancedIdsRef.current.has(sourceId)) {
+      silenceSlide(cur);
+      return false;
+    }
     if (autoAdvanceIdRef.current === sourceId) return true;
     autoAdvanceIdRef.current = sourceId;
+    autoAdvancedIdsRef.current.add(sourceId);
 
     // Kill the finished card's media before changing slides. This prevents the
     // iOS case where the audio element keeps running while the finished video

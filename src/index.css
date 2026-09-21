@@ -377,7 +377,24 @@
 
   /* Fullscreen feed viewer has no bottom tab bar — park chrome at the real bottom. */
   .feed-viewer-root .feed-bottom-offset {
-    bottom: calc(0.85rem + env(safe-area-inset-bottom, 0px));
+    bottom: calc(1.1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Keep the full action rail inside short phone viewports so My Circle and
+     Support never fall below the screen. */
+  .feed-viewer-root .feed-action-stack {
+    top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+    max-height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 5.75rem);
+    justify-content: flex-end;
+    gap: clamp(0.5rem, 1.55dvh, 0.75rem);
+  }
+
+  /* Captions/text posts get their own bounded, scrollable lane rather than
+     being clipped behind the bottom safe area on smaller iPhones. */
+  .feed-viewer-root .feed-caption-stack {
+    max-height: min(42dvh, 22rem);
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .feed-pb-nav {
