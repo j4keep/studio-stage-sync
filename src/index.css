@@ -179,28 +179,58 @@
     z-index: 20;
     pointer-events: none;
     border-radius: inherit;
-    padding: 1.5px;
+    padding: 1px;
     background: var(--yaj-brand-border);
     -webkit-mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
-    opacity: 0.9;
+    opacity: 0.42;
   }
 
-  /* Native form controls cannot reliably render ::after on mobile Safari.
-     Give them the same palette with a gradient border-image fallback. */
+  /* Main cards/panels carry more YAJ identity than small controls. */
+  #root :where(
+    [class*="rounded"][class*="border"][class*="bg-card"],
+    [class*="rounded"][class*="border"][class*="shadow-sm"],
+    [class*="rounded"][class*="border"][class*="shadow-md"],
+    [class*="rounded"][class*="border"][class*="shadow-lg"]
+  ):not([data-yaj-brand-border="off"])::after {
+    padding: 1.25px;
+    opacity: 0.72;
+  }
+
+  /* Avatars/profile circles should read clearly as YAJ without becoming neon. */
+  #root :where(
+    [class*="rounded-full"][class*="border"],
+    [class*="rounded-full"][class*="ring-"]
+  ):not([data-yaj-brand-border="off"])::after {
+    padding: 1.5px;
+    opacity: 0.84;
+  }
+
+  /* Selected/current UI gets the strongest brand treatment. */
+  #root :where(
+    [aria-current="page"],
+    [aria-selected="true"],
+    [data-state="active"]
+  )[class*="rounded"]:not([data-yaj-brand-border="off"])::after {
+    padding: 1.75px;
+    opacity: 0.96;
+  }
+
+  /* Keep everyday fields quiet; reveal YAJ color mostly on focus. */
   #root :where(input, textarea, select)[class*="border"]:not([data-yaj-brand-border="off"]) {
-    border-color: transparent;
-    border-image: var(--yaj-brand-border) 1;
+    border-color: hsl(var(--border));
+    border-image: none;
   }
 
   #root :where(input, textarea, select)[class*="border"]:focus {
     outline: none;
+    border-color: rgba(124, 58, 237, 0.45);
     box-shadow:
-      0 0 0 1px rgba(236, 72, 153, 0.2),
-      0 0 0 3px rgba(34, 211, 238, 0.14);
+      0 0 0 1px rgba(236, 72, 153, 0.16),
+      0 0 0 3px rgba(34, 211, 238, 0.12);
   }
 
   html {
