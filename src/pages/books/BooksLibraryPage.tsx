@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Upload } from "lucide-react";
+import { ArrowLeft, Search, Upload, X } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
 import { REGULAR_CATEGORIES, regularBooks } from "@/lib/books-catalog";
@@ -8,7 +8,21 @@ import { REGULAR_CATEGORIES, regularBooks } from "@/lib/books-catalog";
 /** Professional regular library — categories + recently added grid. */
 export default function BooksLibraryPage() {
   const nav = useNavigate();
-  const recent = useMemo(() => regularBooks().slice(0, 9), []);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const allRegularBooks = useMemo(() => regularBooks(), []);
+  const recent = useMemo(() => allRegularBooks.slice(0, 9), [allRegularBooks]);
+  const searchResults = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return allRegularBooks;
+    return allRegularBooks.filter((book) =>
+      [book.title, book.author, book.category, book.blurb]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(needle),
+    );
+  }, [allRegularBooks, query]);
 
   return (
     <BooksShell>
@@ -30,13 +44,73 @@ export default function BooksLibraryPage() {
           <button type="button" onClick={() => nav("/books/upload")} className="rounded-full p-2" aria-label="Upload">
             <Upload className="h-4 w-4" style={{ color: "var(--books-accent)" }} />
           </button>
-          <button type="button" className="rounded-full p-2" aria-label="Search categories" onClick={() => nav("/books/library")}>
-            <Search className="h-4 w-4" style={{ color: "var(--books-muted)" }} />
+          <button
+            type="button"
+            className="rounded-full p-2"
+            aria-label={searchOpen ? "Close search" : "Search books"}
+            onClick={() => {
+              setSearchOpen((open) => !open);
+              if (searchOpen) setQuery("");
+            }}
+          >
+            {searchOpen ? (
+              <X className="h-4 w-4" style={{ color: "var(--books-muted)" }} />
+            ) : (
+              <Search className="h-4 w-4" style={{ color: "var(--books-muted)" }} />
+            )}
           </button>
         </div>
+        {searchOpen && (
+          <div className="mt-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--books-muted)" }} />
+              <input
+                autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search title, author, or category"
+                className="h-10 w-full rounded-xl border pl-9 pr-3 text-sm outline-none"
+                style={{
+                  borderColor: "var(--books-line)",
+                  background: "var(--books-surface)",
+                  color: "var(--books-ink)",
+                }}
+              />
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="mx-auto max-w-lg px-4 pt-4">
+        {searchOpen ? (
+          <section>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-bold" style={{ color: "var(--books-ink)" }}>
+                  Search results
+                </h2>
+                <p className="mt-0.5 text-[11px]" style={{ color: "var(--books-muted)" }}>
+                  {searchResults.length} {searchResults.length === 1 ? "book" : "books"}
+                </p>
+              </div>
+            </div>
+            {searchResults.length ? (
+              <div className="grid grid-cols-3 gap-3">
+                {searchResults.map((b) => (
+                  <BookCoverCard key={b.id} book={b} tone="regular" onClick={() => nav(`/books/read/${b.id}`)} />
+                ))}
+              </div>
+            ) : (
+              <div
+                className="rounded-2xl border px-4 py-8 text-center text-sm"
+                style={{ borderColor: "var(--books-line)", color: "var(--books-muted)" }}
+              >
+                No books matched your search.
+              </div>
+            )}
+          </section>
+        ) : (
+        <>
         <section className="mb-6">
           <h2 className="text-sm font-bold" style={{ color: "var(--books-ink)" }}>
             Categories
@@ -89,6 +163,8 @@ export default function BooksLibraryPage() {
         >
           Switch to Kids books →
         </button>
+        </>
+        )}
       </div>
     </BooksShell>
   );
