@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Flag,
   Scale,
+  LibraryBig,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -324,12 +325,20 @@ export default function AdminTrustSafetyPage() {
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="font-display text-xl font-bold text-foreground">Trust & Safety</h1>
           <p className="text-[10px] text-muted-foreground">
             Enforce rules · Customer Relations handles tickets/appeals replies
           </p>
         </div>
+        <button
+          type="button"
+          onClick={() => navigate("/admin/content")}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-card px-3 text-[11px] font-bold"
+        >
+          <LibraryBig className="h-3.5 w-3.5" />
+          Content
+        </button>
       </div>
 
       {schemaReady === false ? (
