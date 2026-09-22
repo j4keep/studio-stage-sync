@@ -1,16 +1,27 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Search, Upload, X } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
 import { REGULAR_CATEGORIES, regularBooks } from "@/lib/books-catalog";
+import { listPublishedCreatorBooks } from "@/lib/creator-books";
 
 /** Professional regular library — categories + recently added grid. */
 export default function BooksLibraryPage() {
   const nav = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const allRegularBooks = useMemo(() => regularBooks(), []);
+  const seedRegularBooks = useMemo(() => regularBooks(), []);
+  const { data: creatorBooks = [] } = useQuery({
+    queryKey: ["creator-books"],
+    queryFn: listPublishedCreatorBooks,
+    staleTime: 30_000,
+  });
+  const allRegularBooks = useMemo(
+    () => [...creatorBooks.filter((book) => book.audience === "regular"), ...seedRegularBooks],
+    [creatorBooks, seedRegularBooks],
+  );
   const recent = useMemo(() => allRegularBooks.slice(0, 9), [allRegularBooks]);
   const searchResults = useMemo(() => {
     const needle = query.trim().toLowerCase();
