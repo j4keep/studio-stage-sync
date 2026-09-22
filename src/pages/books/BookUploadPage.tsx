@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BookOpen, ImagePlus, Loader2, Sparkles, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
 import type { ReactNode } from "react";
@@ -17,7 +17,9 @@ import { paginateBookManuscript } from "@/lib/book-pagination";
 import {
   generateCreatorBookCover,
   generateCreatorKidsPageIllustration,
+  getCreatorBookById,
   publishCreatorBook,
+  updateCreatorBook,
 } from "@/lib/creator-books";
 
 const COVER_PAIRS: [string, string][] = [
@@ -31,6 +33,7 @@ const COVER_PAIRS: [string, string][] = [
 
 export default function BookUploadPage() {
   const nav = useNavigate();
+  const { id: editId } = useParams();
   const { user } = useAuth();
   const [params] = useSearchParams();
   const initialAudience = (params.get("audience") === "kids" ? "kids" : "regular") as BookAudience;
@@ -48,6 +51,7 @@ export default function BookUploadPage() {
   const [coverKey, setCoverKey] = useState<string | null>(null);
   const [generatingCover, setGeneratingCover] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(Boolean(editId));
   const [artDirection, setArtDirection] = useState("");
   const [illustratedPages, setIllustratedPages] = useState<BookPage[]>([]);
   const [generatingIllustrations, setGeneratingIllustrations] = useState(false);
@@ -63,6 +67,38 @@ export default function BookUploadPage() {
     () => COVER_PAIRS[Math.abs(title.length + body.length) % COVER_PAIRS.length],
     [title.length, body.length],
   );
+
+  useEffect(() => {
+    if (!editId || !user) {
+      setLoadingEdit(false);
+      return;
+    }
+    let active = true;
+    void getCreatorBookById(editId)
+      .then((book) => {
+        if (!active) return;
+        if (!book || book.creatorUserId !== user.id) {
+          toast.error("You can only edit books you created");
+          nav("/books/my-books", { replace: true });
+          return;
+        }
+        setTitle(book.title);
+        setAuthor(book.author);
+        setAudience(book.audience);
+        if (book.audience === "regular" && book.category !== "kids") setCategory(book.category as RegularCategoryId);
+        setListingType(book.listingType);
+        if (book.price != null) setPrice(String(book.price));
+        setBlurb(book.blurb);
+        setBody(book.pages.map((page) => page.text).join("\n\n"));
+        setCoverUrl(book.coverImage || null);
+        setIllustratedPages(book.pages);
+      })
+      .catch((error: any) => toast.error(error?.message || "Could not load this book"))
+      .finally(() => active && setLoadingEdit(false));
+    return () => {
+      active = false;
+    };
+  }, [editId, user, nav]);
 
   useEffect(() => {
     if (!user || author.trim()) return;
@@ -282,19 +318,22 @@ export default function BookUploadPage() {
 
     setPublishing(true);
     try {
-      const book = await publishCreatorBook(user.id, {
+      const saveDraft = {
         title: title.trim(),
         author: author.trim(),
         audience,
-        category: audience === "kids" ? "kids" : category,
+        category: audience === "kids" ? "kids" as const : category,
         listingType,
         price: listingType === "sale" ? Number(price) : null,
         blurb: blurb.trim() || "A creator-published book on YAJ.",
         pages,
         coverUrl,
         coverKey,
-      });
-      toast.success("Your book is live in YAJ Books");
+      };
+      const book = editId
+        ? await updateCreatorBook(user.id, editId, saveDraft)
+        : await publishCreatorBook(user.id, saveDraft);
+      toast.success(editId ? "Book updated" : "Your book is live in YAJ Books");
       nav(`/books/read/${book.id}`);
     } catch (error: any) {
       toast.error(error?.message || "Could not publish your book");
@@ -302,6 +341,16 @@ export default function BookUploadPage() {
       setPublishing(false);
     }
   };
+
+  if (loadingEdit) {
+    return (
+      <BooksShell variant={kids ? "kids" : "regular"}>
+        <div className="flex min-h-[70dvh] items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      </BooksShell>
+    );
+  }
 
   return (
     <BooksShell variant={kids ? "kids" : "regular"}>
@@ -322,9 +371,9 @@ export default function BookUploadPage() {
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-bold">Create a Book</h1>
+          <h1 className="text-lg font-bold">{editId ? "Edit Book" : "Create a Book"}</h1>
           <p className="text-[11px]" style={{ color: "var(--books-muted)" }}>
-            Write it here, paste a manuscript, create a cover, then publish.
+            {editId ? "Update your story, cover, illustrations or publishing details." : "Write it here, paste a manuscript, create a cover, then publish."}
           </p>
         </div>
       </header>
@@ -678,10 +727,10 @@ export default function BookUploadPage() {
         >
           {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
           {publishing
-            ? "Publishing…"
+            ? (editId ? "Saving…" : "Publishing…")
             : kids && pages.length > 0 && !allKidsPagesIllustrated
               ? "Create all page illustrations first"
-              : "Publish to YAJ Books"}
+              : editId ? "Save Book Changes" : "Publish to YAJ Books"}
         </button>
 
         <p className="px-3 text-center text-[10px] leading-relaxed" style={{ color: "var(--books-muted)" }}>
