@@ -24,6 +24,8 @@ import BooksKidsIntroPage from "./pages/books/BooksKidsIntroPage";
 import BooksKidsLibraryPage from "./pages/books/BooksKidsLibraryPage";
 import BookReaderPage from "./pages/books/BookReaderPage";
 import BookUploadPage from "./pages/books/BookUploadPage";
+import MyBooksPage from "./pages/books/MyBooksPage";
+import BooksMyListPage from "./pages/books/BooksMyListPage";
 import BattlesPage from "./pages/BattlesPage";
 import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
@@ -66,6 +68,7 @@ import MyBoostsPage from "./pages/MyBoostsPage";
 import HelpDeskPage from "./pages/HelpDeskPage";
 import AdminCustomerRelationsPage from "./pages/AdminCustomerRelationsPage";
 import AdminTrustSafetyPage from "./pages/AdminTrustSafetyPage";
+import AdminContentPage from "./pages/AdminContentPage";
 import AdminDealsVerificationPage from "./pages/AdminDealsVerificationPage";
 import AdminSoundLibraryPage from "./pages/AdminSoundLibraryPage";
 import CommunityTimeoutPage from "./pages/CommunityTimeoutPage";
@@ -372,6 +375,9 @@ const ProtectedRoutes = () => {
         <Route path="/books/kids/library" element={<BooksKidsLibraryPage />} />
         <Route path="/books/read/:id" element={<BookReaderPage />} />
         <Route path="/books/create" element={<BookUploadPage />} />
+        <Route path="/books/edit/:id" element={<BookUploadPage />} />
+        <Route path="/books/my-books" element={<MyBooksPage />} />
+        <Route path="/books/my-list" element={<BooksMyListPage />} />
         <Route path="/meet" element={<MeetHomePage />} />
         <Route path="/meet/setup" element={<MeetSetupPage />} />
         <Route path="/meet/inbox" element={<MeetInboxPage />} />
@@ -491,6 +497,7 @@ const ProtectedRoutes = () => {
         <Route path="/admin/tickets" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/customer-relations" element={<AdminCustomerRelationsPage />} />
         <Route path="/admin/trust-safety" element={<AdminTrustSafetyPage />} />
+        <Route path="/admin/content" element={<AdminContentPage />} />
         <Route path="/admin/deals-verification" element={<AdminDealsVerificationPage />} />
         <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
