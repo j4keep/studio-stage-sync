@@ -1,13 +1,24 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Upload } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
 import { kidsBooks } from "@/lib/books-catalog";
+import { listPublishedCreatorBooks } from "@/lib/creator-books";
 
 export default function BooksKidsLibraryPage() {
   const nav = useNavigate();
-  const books = useMemo(() => kidsBooks(), []);
+  const seedKidsBooks = useMemo(() => kidsBooks(), []);
+  const { data: creatorBooks = [] } = useQuery({
+    queryKey: ["creator-books"],
+    queryFn: listPublishedCreatorBooks,
+    staleTime: 30_000,
+  });
+  const books = useMemo(
+    () => [...creatorBooks.filter((book) => book.audience === "kids"), ...seedKidsBooks],
+    [creatorBooks, seedKidsBooks],
+  );
 
   return (
     <BooksShell variant="kids">
