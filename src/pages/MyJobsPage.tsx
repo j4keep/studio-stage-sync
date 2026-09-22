@@ -97,24 +97,58 @@ export default function MyJobsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border flex items-center gap-2 px-3 py-2">
-        <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
-          <ArrowLeft className="w-4 h-4" />
-        </button>
-        <h1 className="text-base font-bold flex-1">My Jobs</h1>
-        <button
-          onClick={() => nav("/employer-dashboard")}
-          className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold flex items-center gap-1"
-        >
-          <Building2 className="w-3 h-3" /> Employer
-        </button>
-        <button onClick={() => nav("/resume-builder")} className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1">
-          <Sparkles className="w-3 h-3" /> Resume
-        </button>
+    <div className="min-h-screen bg-[#f6f8fc] text-slate-950 dark:bg-background dark:text-foreground">
+      <header className="sticky top-0 z-10 border-b border-slate-200/80 bg-white/95 px-4 py-3 backdrop-blur dark:border-border dark:bg-background/95">
+        <div className="mx-auto flex max-w-3xl items-center gap-2">
+          <button onClick={() => nav(-1)} className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 dark:bg-muted">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-blue-600 dark:text-blue-400">Opportunities</p>
+            <h1 className="text-[19px] font-black tracking-tight">My Jobs</h1>
+          </div>
+          <button
+            onClick={() => nav("/employer-dashboard")}
+            className="flex h-9 items-center gap-1 rounded-full border border-slate-200 bg-white px-3 text-[11px] font-bold dark:border-border dark:bg-card"
+          >
+            <Building2 className="h-3.5 w-3.5" /> Employer
+          </button>
+          <button onClick={() => nav("/resume-builder")} className="flex h-9 items-center gap-1 rounded-full bg-blue-600 px-3 text-[11px] font-bold text-white">
+            <Sparkles className="h-3.5 w-3.5" /> Resume
+          </button>
+        </div>
       </header>
 
-      <div className="h-scroll-isolate flex gap-2 overflow-x-auto border-b border-border px-4 py-3">
+      <div className="mx-auto max-w-3xl px-4 pt-4">
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("applied")}
+            className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm dark:border-border dark:bg-card"
+          >
+            <p className="text-[22px] font-black text-blue-600">{applied.length}</p>
+            <p className="mt-0.5 text-[10px] font-bold text-slate-500 dark:text-muted-foreground">Applications</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("interviews")}
+            className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm dark:border-border dark:bg-card"
+          >
+            <p className="text-[22px] font-black text-amber-600">{interviews.length}</p>
+            <p className="mt-0.5 text-[10px] font-bold text-slate-500 dark:text-muted-foreground">Interviews</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("saved")}
+            className="rounded-2xl border border-slate-200 bg-white p-3 text-left shadow-sm dark:border-border dark:bg-card"
+          >
+            <p className="text-[22px] font-black text-slate-900 dark:text-foreground">{saved.length}</p>
+            <p className="mt-0.5 text-[10px] font-bold text-slate-500 dark:text-muted-foreground">Saved</p>
+          </button>
+        </div>
+      </div>
+
+      <div className="mx-auto mt-4 flex max-w-3xl gap-2 overflow-x-auto px-4 pb-2 scrollbar-hide">
         {([
           ["applied", "Applied"],
           ["interviews", `Interviews${interviews.length ? ` (${interviews.length})` : ""}`],
@@ -122,13 +156,17 @@ export default function MyJobsPage() {
           ["posted", "Posted"],
         ] as [Tab, string][]).map(([t, label]) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`shrink-0 px-3 h-8 rounded-full text-xs font-bold ${tab === t ? "bg-foreground text-background" : "bg-muted text-foreground"}`}>
+            className={`shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition ${
+              tab === t
+                ? "border-slate-950 bg-slate-950 text-white dark:border-white dark:bg-white dark:text-slate-950"
+                : "border-slate-200 bg-white text-slate-700 dark:border-border dark:bg-card dark:text-foreground"
+            }`}>
             {label}
           </button>
         ))}
       </div>
 
-      <div className="p-4 space-y-3 pb-24">
+      <div className="mx-auto max-w-3xl space-y-3 px-4 pb-24 pt-2">
         {loading ? (
           <p className="text-sm text-muted-foreground text-center py-8">Loading…</p>
         ) : tab === "interviews" ? (
@@ -140,7 +178,7 @@ export default function MyJobsPage() {
                 applicantAccepted: !!a.applicant_accepted,
               });
               return (
-                <div key={a.id} className="p-4 rounded-2xl bg-card border border-border space-y-3">
+                <div key={a.id} className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card space-y-3">
                   <div>
                     <p className="text-sm font-bold">{a.job.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{a.job.location ?? "—"}</p>
@@ -158,7 +196,7 @@ export default function MyJobsPage() {
                   {!a.applicant_accepted && state !== "expired" && (
                     <button
                       onClick={() => acceptInterview(a.id)}
-                      className="w-full h-11 rounded-full bg-primary text-primary-foreground font-bold text-sm inline-flex items-center justify-center gap-1.5"
+                      className="inline-flex h-11 w-full items-center justify-center gap-1.5 rounded-full bg-blue-600 text-sm font-bold text-white"
                     >
                       <Check className="w-4 h-4" /> Accept interview
                     </button>
@@ -196,7 +234,7 @@ export default function MyJobsPage() {
         ) : tab === "applied" ? (
           applied.length === 0 ? <Empty text="No applications yet." /> : (
             applied.map((a) => (
-              <div key={a.id} className="p-4 rounded-2xl bg-card border border-border">
+              <div key={a.id} className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm dark:border-border dark:bg-card">
                 <button onClick={() => nav(`/jobs/${a.job.id}`)} className="w-full text-left">
                   <p className="text-sm font-bold">{a.job.title}</p>
                   <p className="text-xs text-muted-foreground">
@@ -265,7 +303,7 @@ export default function MyJobsPage() {
         ) : tab === "saved" ? (
           saved.length === 0 ? <Empty text="Nothing saved yet." /> :
           saved.map((s) => (
-            <button key={s.id} onClick={() => nav(`/jobs/${s.job.id}`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
+            <button key={s.id} onClick={() => nav(`/jobs/${s.job.id}`)} className="w-full rounded-[22px] border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-border dark:bg-card">
               <p className="text-sm font-bold">{s.job.title}</p>
               <p className="text-xs text-muted-foreground">{s.job.location ?? "—"} · {formatSalary(s.job.salary_min, s.job.salary_max)}</p>
             </button>
@@ -285,7 +323,7 @@ export default function MyJobsPage() {
             </div>
           ) :
           posted.map((p) => (
-            <button key={p.id} onClick={() => nav(`/employer-dashboard`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
+            <button key={p.id} onClick={() => nav(`/employer-dashboard`)} className="w-full rounded-[22px] border border-slate-200 bg-white p-4 text-left shadow-sm dark:border-border dark:bg-card">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm font-bold">{p.title}</p>
