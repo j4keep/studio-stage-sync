@@ -165,35 +165,48 @@ class BattleshipSfx {
     src.start(t);
   }
 
-  /** Shell lands in open water — a soft filtered splash, no impact. */
+  /** Shell lands in open water — larger splash with a short low-water boom. */
   miss() {
     if (this.muted) return;
     const ctx = this.ensure();
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
     const src = ctx.createBufferSource();
-    src.buffer = this.noiseBuffer(ctx, 0.4);
+    src.buffer = this.noiseBuffer(ctx, 0.55);
     const bp = ctx.createBiquadFilter();
     bp.type = "bandpass";
-    bp.Q.value = 0.7;
-    bp.frequency.setValueAtTime(1200, t);
-    bp.frequency.exponentialRampToValueAtTime(300, t + 0.35);
+    bp.Q.value = 0.6;
+    bp.frequency.setValueAtTime(1550, t);
+    bp.frequency.exponentialRampToValueAtTime(240, t + 0.48);
     const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.22, t + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.32, t + 0.035);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.52);
     src.connect(bp).connect(gain).connect(ctx.destination);
     src.start(t);
+    this.thud(t + 0.04, 0.18, 110, 0.32, 0.28);
   }
 
-  /** A shell connects with a hull — a sharp crack over a heavy thud. */
+  /** A shell connects with a hull — metal strike, blast and low body impact. */
   hit() {
     if (this.muted) return;
     const ctx = this.ensure();
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
-    this.crack(t, 0.03, 1600, 1.4, 0.6, 0.09);
-    this.thud(t, 0.16, 160, 0.85, 0.22);
+    this.crack(t, 0.035, 1850, 1.15, 0.82, 0.11);
+    this.crack(t + 0.025, 0.07, 760, 0.8, 0.34, 0.16);
+    this.thud(t, 0.22, 135, 1.0, 0.32);
+
+    const metallic = ctx.createOscillator();
+    metallic.type = "square";
+    metallic.frequency.setValueAtTime(260, t);
+    metallic.frequency.exponentialRampToValueAtTime(125, t + 0.16);
+    const mg = ctx.createGain();
+    mg.gain.setValueAtTime(0.085, t);
+    mg.gain.exponentialRampToValueAtTime(0.0001, t + 0.19);
+    metallic.connect(mg).connect(ctx.destination);
+    metallic.start(t);
+    metallic.stop(t + 0.2);
   }
 
   /** A ship goes down — a bigger blast plus a descending groan as it sinks. */
@@ -230,24 +243,39 @@ class BattleshipSfx {
     this.thud(t, 0.04, 300, 0.3, 0.06);
   }
 
-  /** A cannon/launcher firing — a low thump with a quick rising whoosh as the shot leaves. */
+  /** A cannon/launcher firing — punchy naval thump, metallic crack and a short projectile rush. */
   launch() {
     if (this.muted) return;
     const ctx = this.ensure();
     void ctx.resume().catch(() => undefined);
     const t = ctx.currentTime;
-    this.thud(t, 0.1, 220, 0.6, 0.14);
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(340, t);
-    osc.frequency.exponentialRampToValueAtTime(900, t + 0.12);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + 0.16);
+
+    this.crack(t, 0.025, 2100, 1.25, 0.7, 0.075);
+    this.thud(t, 0.14, 175, 0.95, 0.22);
+
+    const whoosh = ctx.createBufferSource();
+    whoosh.buffer = this.noiseBuffer(ctx, 0.2);
+    const hp = ctx.createBiquadFilter();
+    hp.type = "highpass";
+    hp.frequency.setValueAtTime(900, t);
+    hp.frequency.exponentialRampToValueAtTime(2600, t + 0.18);
+    const whooshGain = ctx.createGain();
+    whooshGain.gain.setValueAtTime(0.0001, t);
+    whooshGain.gain.linearRampToValueAtTime(0.18, t + 0.025);
+    whooshGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    whoosh.connect(hp).connect(whooshGain).connect(ctx.destination);
+    whoosh.start(t);
+
+    const ring = ctx.createOscillator();
+    ring.type = "triangle";
+    ring.frequency.setValueAtTime(185, t);
+    ring.frequency.exponentialRampToValueAtTime(115, t + 0.16);
+    const ringGain = ctx.createGain();
+    ringGain.gain.setValueAtTime(0.13, t);
+    ringGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.2);
+    ring.connect(ringGain).connect(ctx.destination);
+    ring.start(t);
+    ring.stop(t + 0.21);
   }
 
   /** Sonar Pulse — a clean sweeping tone, distinct from the splash/impact cues. */
