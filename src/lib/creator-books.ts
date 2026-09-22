@@ -202,7 +202,7 @@ export async function generateCreatorKidsPageIllustration(args: {
     url = getR2DownloadUrl(uploaded.data.key);
   }
 
-  if (args.previousImageKey && args.previousImageKey !== key) {
+  if (key && args.previousImageKey && args.previousImageKey !== key) {
     void deleteFromR2(args.previousImageKey).catch(() => {});
   }
 
