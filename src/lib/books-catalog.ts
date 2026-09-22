@@ -42,6 +42,8 @@ export type BookItem = {
   coverAccent?: string;
   /** Optional real cover image (SVG/PNG URL). */
   coverImage?: string;
+  /** R2 storage key for creator-generated covers. */
+  coverStorageKey?: string;
   blurb: string;
   pages: BookPage[];
   /** true when created by a YAJ user */
