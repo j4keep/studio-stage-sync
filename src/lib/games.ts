@@ -118,6 +118,23 @@ export async function createMultiplayerGame(
   return game as GameRow;
 }
 
+/** Fleet Clash crew mode: captain + up to 3 invited YAJ users (4 human players total). */
+export async function createFleetClashCrewGame(
+  userId: string,
+  inviteeIds: string[],
+  initialState: any,
+) {
+  const unique = Array.from(new Set(inviteeIds.filter((id) => id && id !== userId))).slice(0, 3);
+  if (!unique.length) throw new Error("Choose at least one crew member.");
+  const { data: game, error } = await db.rpc("create_fleet_clash_game", {
+    p_initial_state: initialState,
+    p_invitee_ids: unique,
+  });
+  if (error) throw error;
+  if (!game || game.host_user_id !== userId) throw new Error("The Fleet Clash crew could not be created securely.");
+  return game as GameRow;
+}
+
 export async function loadGame(gameId: string) {
   const [{ data: game }, { data: players }] = await Promise.all([
     db.from("games").select("*").eq("id", gameId).maybeSingle(),
@@ -155,6 +172,22 @@ export async function endGame(gameId: string) {
 }
 
 export async function respondToInvite(inviteId: string, accept: boolean) {
+  const { data: existing, error: readError } = await db
+    .from("game_invites")
+    .select("*")
+    .eq("id", inviteId)
+    .single();
+  if (readError) throw readError;
+
+  if (existing?.game_type === "battleship") {
+    const { data, error } = await db.rpc("respond_fleet_clash_invite", {
+      p_invite_id: inviteId,
+      p_accept: accept,
+    });
+    if (error) throw error;
+    return data as GameInviteRow;
+  }
+
   const { data: invite, error } = await db
     .from("game_invites")
     .update({ status: accept ? "accepted" : "declined", responded_at: new Date().toISOString() })
