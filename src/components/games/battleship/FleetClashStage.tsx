@@ -336,7 +336,26 @@ function CourseDecoration({ level }: { level: number }) {
 
   return (
     <group>
-      <CourseDecoration level={level} />
+      {Array.from({ length: 48 }).map((_, i) => {
+        const z = 18 + i * 31;
+        const z2 = z + 11;
+        return (
+          <group key={i}>
+            <Palm
+              x={riverCenterX(z) - 13.3 - (i % 2) * 1.8}
+              z={z}
+              y={riverY(z)}
+              s={0.72 + (i % 3) * 0.08}
+            />
+            <Palm
+              x={riverCenterX(z2) + 13.2 + (i % 2) * 1.7}
+              z={z2}
+              y={riverY(z2)}
+              s={0.72 + ((i + 1) % 3) * 0.08}
+            />
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -422,16 +441,7 @@ function RiverWorld({ level }: { level: number }) {
         );
       })}
 
-      {Array.from({ length: 48 }).map((_, i) => {
-        const z = 18 + i * 31;
-        const z2 = z + 11;
-        return (
-          <group key={i}>
-            <Palm x={riverCenterX(z) - 13.3 - (i % 2) * 1.8} z={z} y={riverY(z)} s={0.72 + (i % 3) * 0.08} />
-            <Palm x={riverCenterX(z2) + 13.2 + (i % 2) * 1.7} z={z2} y={riverY(z2)} s={0.72 + ((i + 1) % 3) * 0.08} />
-          </group>
-        );
-      })}
+      <CourseDecoration level={level} />
 
       <TunnelSection />
       <Rapids />
@@ -1184,7 +1194,7 @@ function BattleScene({
   });
 
   const t = animT;
-  const inStorm = runtime.current.z >= STORM_START && runtime.current.z < STORM_END;
+  const inStorm = fleetCourse(level).stormAlways || (runtime.current.z >= STORM_START && runtime.current.z < STORM_END);
   return (
     <>
       <color attach="background" args={[fleetCourse(level).sky]} />
