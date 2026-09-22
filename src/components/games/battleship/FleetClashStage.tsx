@@ -503,6 +503,7 @@ const RIVER_SEG = 20;
 
 function RiverWorld({ level }: { level: number }) {
   const course = fleetCourse(level);
+  const courseHazards = useMemo(() => courseObstacles(level), [level]);
   return (
     <group>
       {zones.map((zone) => {
@@ -555,8 +556,59 @@ function RiverWorld({ level }: { level: number }) {
         ))}
       </group>
 
-      {obstacles.map((o) => {
+      {courseHazards.map((o) => {
         const y = riverY(o.z);
+        if (o.kind === "plane") {
+          return <PlaneHazard key={o.id} obstacle={o} y={y} />;
+        }
+        if (o.kind === "iceberg") {
+          return (
+            <group key={o.id} position={[o.x, y + 0.4, o.z]}>
+              <mesh castShadow receiveShadow>
+                <coneGeometry args={[o.r * 1.25, o.r * 2.5, 5]} />
+                <meshStandardMaterial color="#e7fbff" roughness={0.62} />
+              </mesh>
+              <mesh position={[0, -0.55, 0]}>
+                <cylinderGeometry args={[o.r * 1.35, o.r * 1.55, 0.5, 8]} />
+                <meshStandardMaterial color="#bfe4ef" roughness={0.72} />
+              </mesh>
+            </group>
+          );
+        }
+        if (o.kind === "ice_chunk") {
+          return <DriftingIce key={o.id} obstacle={o} y={y} />;
+        }
+        if (o.kind === "mine") {
+          return (
+            <group key={o.id} position={[o.x, y + 0.38, o.z]}>
+              <mesh castShadow>
+                <sphereGeometry args={[0.72, 12, 12]} />
+                <meshStandardMaterial color="#303841" metalness={0.55} roughness={0.42} />
+              </mesh>
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <mesh key={i} position={[Math.cos((Math.PI * 2 * i) / 6) * 0.88, 0, Math.sin((Math.PI * 2 * i) / 6) * 0.88]}>
+                  <coneGeometry args={[0.11, 0.42, 6]} />
+                  <meshStandardMaterial color="#59636d" metalness={0.45} roughness={0.42} />
+                </mesh>
+              ))}
+              <pointLight color="#ff514b" intensity={0.9} distance={3.2} />
+            </group>
+          );
+        }
+        if (o.kind === "cargo") {
+          return (
+            <group key={o.id} position={[o.x, y + 0.5, o.z]} rotation={[0, (o.id % 5) * 0.2, 0]}>
+              <mesh castShadow receiveShadow>
+                <boxGeometry args={[o.r * 1.55, 1.0, o.r * 1.25]} />
+                <meshStandardMaterial color={o.id % 2 ? "#b8622e" : "#2d7e8c"} roughness={0.7} />
+              </mesh>
+              <mesh position={[0, 0.08, 0]}>
+                <boxGeometry args={[o.r * 1.58, 0.12, o.r * 1.28]} />
+                <meshStandardMaterial color="#d3c08a" roughness={0.82} />
+              </mesh>
+            </group>
+          );
+        }
         if (o.kind === "island") {
           return (
             <group key={o.id} position={[o.x, y, o.z]}>
@@ -609,6 +661,62 @@ function RiverWorld({ level }: { level: number }) {
         <boxGeometry args={[22, 0.12, 1.5]} />
         <meshStandardMaterial color="#ffd84a" emissive="#ffb300" emissiveIntensity={0.7} />
       </mesh>
+    </group>
+  );
+}
+
+function DriftingIce({ obstacle, y }: { obstacle: Obstacle; y: number }) {
+  const group = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    const t = clock.elapsedTime;
+    group.current.position.x = hazardX(obstacle, t);
+    group.current.rotation.y = Math.sin(t * 0.45 + obstacle.id) * 0.3;
+  });
+  return (
+    <group ref={group} position={[obstacle.x, y + 0.28, obstacle.z]}>
+      <mesh castShadow receiveShadow rotation={[0.2, 0.1, 0.05]}>
+        <dodecahedronGeometry args={[obstacle.r, 0]} />
+        <meshStandardMaterial color="#d9f5ff" roughness={0.52} />
+      </mesh>
+      <mesh position={[0, -0.35, 0]} scale={[1.35, 0.4, 1.2]}>
+        <sphereGeometry args={[obstacle.r * 0.85, 10, 10]} />
+        <meshStandardMaterial color="#9fd8e8" transparent opacity={0.78} roughness={0.5} />
+      </mesh>
+    </group>
+  );
+}
+
+function PlaneHazard({ obstacle, y }: { obstacle: Obstacle; y: number }) {
+  const group = useRef<any>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    const t = clock.elapsedTime;
+    const x = hazardX(obstacle, t);
+    group.current.position.set(x, y + 2.0 + Math.sin(t * 2.8 + obstacle.id) * 0.18, obstacle.z);
+    group.current.rotation.z = -Math.cos(t * 1.35 + obstacle.id * 0.013) * 0.22;
+  });
+  return (
+    <group ref={group} position={[obstacle.x, y + 2.0, obstacle.z]} rotation={[0, Math.PI / 2, 0]}>
+      <mesh castShadow>
+        <boxGeometry args={[3.8, 0.32, 0.7]} />
+        <meshStandardMaterial color="#d8dde5" metalness={0.25} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, 0, 0]} castShadow>
+        <boxGeometry args={[0.62, 0.42, 4.1]} />
+        <meshStandardMaterial color="#8d9aaa" metalness={0.22} roughness={0.44} />
+      </mesh>
+      <mesh position={[0, 0.28, -1.35]} castShadow>
+        <boxGeometry args={[2.0, 0.16, 0.4]} />
+        <meshStandardMaterial color="#d8dde5" roughness={0.42} />
+      </mesh>
+      {[-1.25, 1.25].map((x) => (
+        <mesh key={x} position={[x, -0.12, 0.15]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.16, 0.16, 0.42, 10]} />
+          <meshStandardMaterial color="#252b33" metalness={0.5} roughness={0.35} />
+        </mesh>
+      ))}
+      <pointLight position={[0, -0.2, 1.8]} color="#ffcf73" intensity={1.2} distance={5} />
     </group>
   );
 }
