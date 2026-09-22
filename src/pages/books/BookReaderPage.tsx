@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookPageFlipper, { type BookPageFlipperHandle } from "@/components/books/BookPageFlipper";
@@ -7,11 +8,19 @@ import BookNarratorBar from "@/components/books/BookNarratorBar";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
 import { useBookNarration } from "@/hooks/useBookNarration";
 import { formatBookPrice, getBookById } from "@/lib/books-catalog";
+import { getCreatorBookById } from "@/lib/creator-books";
 
 export default function BookReaderPage() {
   const { id = "" } = useParams();
   const nav = useNavigate();
-  const book = useMemo(() => getBookById(id), [id]);
+  const localBook = useMemo(() => getBookById(id), [id]);
+  const { data: cloudBook = null, isLoading: cloudBookLoading } = useQuery({
+    queryKey: ["creator-book", id],
+    queryFn: () => getCreatorBookById(id),
+    enabled: Boolean(id) && !localBook,
+    staleTime: 30_000,
+  });
+  const book = localBook || cloudBook || undefined;
   const kids = book?.audience === "kids";
   const [showCover, setShowCover] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
@@ -79,10 +88,19 @@ export default function BookReaderPage() {
     return (
       <BooksShell>
         <div className="px-6 pt-20 text-center">
-          <p className="font-bold">Book not found</p>
-          <button type="button" className="mt-4 text-sm font-semibold text-blue-600" onClick={() => nav("/books")}>
-            Back to Books
-          </button>
+          {cloudBookLoading ? (
+            <>
+              <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-stone-300 border-t-stone-700" />
+              <p className="mt-3 text-sm font-semibold">Opening book…</p>
+            </>
+          ) : (
+            <>
+              <p className="font-bold">Book not found</p>
+              <button type="button" className="mt-4 text-sm font-semibold text-blue-600" onClick={() => nav("/books")}>
+                Back to Books
+              </button>
+            </>
+          )}
         </div>
       </BooksShell>
     );
