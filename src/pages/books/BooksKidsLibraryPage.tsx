@@ -29,9 +29,9 @@ export default function BooksKidsLibraryPage() {
           </div>
           <button
             type="button"
-            onClick={() => nav("/books/upload?audience=kids")}
+            onClick={() => nav("/books/create?audience=kids")}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white"
-            aria-label="Upload"
+            aria-label="Create a Book"
           >
             <Upload className="h-4 w-4" />
           </button>
