@@ -8,7 +8,7 @@ import { usePlaylists } from "@/contexts/PlaylistContext";
 interface RadioMoreSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  track: { id: string; title: string; artist_name: string; cover_url: string; user_id?: string; audio_url?: string } | null;
+  track: { id: string; title: string; artist_name: string; cover_url: string; user_id?: string; audio_url?: string; source?: "song" | "podcast" } | null;
   isLiked: boolean;
   onToggleLike: () => void;
   onViewComments: () => void;
@@ -39,7 +39,7 @@ const RadioMoreSheet = ({ open, onOpenChange, track, isLiked, onToggleLike, onVi
       id: track.id,
       title: track.title,
       artist: track.artist_name,
-      type: "song",
+      type: track.source === "podcast" ? "podcast" : "song",
       image: track.cover_url,
       duration: "",
       audioUrl: track.audio_url || undefined,
