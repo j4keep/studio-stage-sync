@@ -102,11 +102,9 @@ export default function EmployerDashboardPage() {
 
   const loadApps = async (jobId: string) => {
     setExpandedApp(null);
-    const { data } = await supabase.from("job_applications")
-      .select("*")
-      .eq("job_id", jobId).order("created_at", { ascending: false });
-    const rows = data ?? [];
-    const ids = Array.from(new Set(rows.map((a: any) => a.applicant_id)));
+    const { data } = await (supabase as any).rpc("yaj_employer_applications", { p_job_id: jobId });
+    const rows = ((data ?? []) as any[]).filter(Boolean);
+    const ids = Array.from(new Set(rows.filter((a) => !a.anonymous_mode).map((a: any) => a.applicant_id)));
     let profileMap: Record<string, any> = {};
     if (ids.length) {
       const { data: profs } = await supabase.from("profiles").select("user_id,display_name,avatar_url").in("user_id", ids);
@@ -115,9 +113,10 @@ export default function EmployerDashboardPage() {
     setApps(rows.map((a: any) => ({
       ...a,
       status: normalizeAppStatus(a.status),
-      applicant: profileMap[a.applicant_id],
+      applicant: a.anonymous_mode ? { display_name: "Anonymous applicant", avatar_url: null } : profileMap[a.applicant_id],
     })));
   };
+
 
   const openJob = async (jobId: string) => {
     if (selectedJob === jobId) {
