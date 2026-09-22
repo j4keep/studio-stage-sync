@@ -39,7 +39,7 @@ export default function BooksKidsIntroPage() {
 
           <button
             type="button"
-            onClick={() => nav("/books/upload?audience=kids")}
+            onClick={() => nav("/books/create?audience=kids")}
             className="mt-3 text-sm font-bold text-orange-600 underline-offset-2 hover:underline"
           >
             Upload a kids book
