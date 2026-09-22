@@ -31,7 +31,19 @@ type Shot = {
   vx: number;
   vz: number;
 };
-type Obstacle = { id: number; x: number; z: number; r: number; kind: "rock" | "island" | "buoy" | "log" | "shark" };
+type ObstacleKind =
+  | "rock"
+  | "island"
+  | "buoy"
+  | "log"
+  | "shark"
+  | "iceberg"
+  | "ice_chunk"
+  | "mine"
+  | "cargo"
+  | "plane";
+
+type Obstacle = { id: number; x: number; z: number; r: number; kind: ObstacleKind };
 type CrewState = { knockedUntil: number; side: -1 | 1 };
 
 type Runtime = {
@@ -51,6 +63,10 @@ type Runtime = {
   fireCooldown: number;
   rivalFireCooldown: number;
   bumpCooldown: number;
+  lastPlayerObstacleId: number | null;
+  playerObstacleBumps: number;
+  lastRivalObstacleId: number | null;
+  rivalObstacleBumps: number;
   finished: boolean;
   nextShotId: number;
   zoneIndex: number;
@@ -225,25 +241,77 @@ function riverCenterX(z: number) {
   return curveEnvelope(z) * (Math.sin(z * 0.0065) * 5.5 + Math.sin(z * 0.0021 + 1.4) * 3.0);
 }
 
-const obstacles: Obstacle[] = (() => {
+function courseObstacles(level: number): Obstacle[] {
   const out: Obstacle[] = [];
-  let id = 1;
-  for (let z = 55; z < COURSE_LENGTH - 40; z += 20) {
-    const difficulty = z / COURSE_LENGTH;
-    const count = z < 170 ? 1 : difficulty < 0.55 ? 2 : 2 + (id % 3 === 0 ? 1 : 0);
-    for (let j = 0; j < count; j++) {
-      const n = seededNoise(id * 7.13 + j * 3.7);
-      const zPos = z + j * 5.2;
-      const x = riverCenterX(zPos) + (-8.5 + n * 17);
-      const inSharks = zPos >= SHARK_START + 15 && zPos < SHARK_END - 15;
-      const kinds: Obstacle["kind"][] = z > 500 ? ["rock", "rock", "log", "buoy", "island"] : ["rock", "buoy", "island"];
-      const kind: Obstacle["kind"] = inSharks && (id + j) % 4 === 0 ? "shark" : kinds[(id + j) % kinds.length];
-      const r = kind === "island" ? 2.25 + difficulty * 0.9 : kind === "log" ? 1.55 : kind === "buoy" ? 0.8 : kind === "shark" ? 1.4 : 1.3 + difficulty * 0.9;
-      out.push({ id: id++, x: kind === "shark" ? riverCenterX(zPos) + (n - 0.5) * 6 : x, z: zPos, r, kind });
+  let id = level * 1000 + 1;
+  const add = (z: number, lane: number, r: number, kind: ObstacleKind) => {
+    const x = riverCenterX(z) + lane;
+    out.push({ id: id++, x, z, r, kind });
+  };
+
+  if (level === 1) {
+    // Tropical Run: islands, floating logs, buoys and occasional sharks.
+    for (let z = 70, i = 0; z < COURSE_LENGTH - 60; z += 58, i++) {
+      const n = seededNoise(11 + i * 3.7);
+      const lane = -8 + n * 16;
+      const kinds: ObstacleKind[] = ["island", "buoy", "log", "buoy", "shark"];
+      const kind = kinds[i % kinds.length];
+      const r = kind === "island" ? 2.5 : kind === "log" ? 1.5 : kind === "shark" ? 1.4 : 0.82;
+      add(z + (i % 2) * 7, lane, r, kind);
+      if (i % 4 === 2) add(z + 19, -lane * 0.65, 0.78, "buoy");
+    }
+  } else if (level === 2) {
+    // Arctic Passage: wide iceberg fields and drifting ice chunks — no tropical rocks.
+    for (let z = 62, i = 0; z < COURSE_LENGTH - 55; z += 49, i++) {
+      const n = seededNoise(202 + i * 4.9);
+      const lane = -8.7 + n * 17.4;
+      add(z, lane, 1.8 + (i % 3) * 0.45, i % 3 === 0 ? "iceberg" : "ice_chunk");
+      if (i % 5 === 1) add(z + 18, -lane * 0.72, 1.15, "ice_chunk");
+    }
+  } else if (level === 3) {
+    // Red Canyon Rush: boulders pinch the channel while logs sweep across openings.
+    for (let z = 68, i = 0; z < COURSE_LENGTH - 55; z += 44, i++) {
+      const side = i % 2 ? -1 : 1;
+      const lane = side * (5.7 + (i % 3) * 1.15);
+      add(z, lane, 1.8 + (i % 4) * 0.25, "rock");
+      if (i % 3 === 0) add(z + 15, -lane * 0.55, 1.6, "log");
+      if (i % 7 === 4) add(z + 27, 0, 2.3, "rock");
+    }
+  } else if (level === 4) {
+    // Storm Coast: sea mines, storm debris and low aircraft crossing the race line.
+    for (let z = 80, i = 0; z < COURSE_LENGTH - 70; z += 72, i++) {
+      const n = seededNoise(404 + i * 6.1);
+      const lane = -8 + n * 16;
+      add(z, lane, 1.0, "mine");
+      if (i % 2 === 0) add(z + 26, -lane * 0.65, 1.55, "log");
+      if (i % 3 === 1) add(z + 44, 0, 1.9, "plane");
+    }
+  } else {
+    // Midnight Harbor: cargo crates, marker buoys and crossing aircraft near the docks.
+    for (let z = 64, i = 0; z < COURSE_LENGTH - 60; z += 52, i++) {
+      const n = seededNoise(505 + i * 5.3);
+      const lane = -8.4 + n * 16.8;
+      add(z, lane, 1.35 + (i % 2) * 0.25, "cargo");
+      if (i % 3 === 0) add(z + 18, -lane * 0.6, 0.82, "buoy");
+      if (i % 5 === 2) add(z + 31, 0, 1.8, "plane");
     }
   }
+
   return out;
-})();
+}
+
+function hazardX(o: Obstacle, t: number) {
+  if (o.kind === "plane") {
+    return riverCenterX(o.z) + Math.sin(t * 1.35 + o.id * 0.013) * 9.2;
+  }
+  if (o.kind === "ice_chunk") {
+    return o.x + Math.sin(t * 0.6 + o.id * 0.02) * 1.4;
+  }
+  if (o.kind === "log") {
+    return o.x + Math.sin(t * 0.48 + o.id * 0.03) * 0.9;
+  }
+  return o.x;
+}
 
 function Palm({ x, z, y = 0, s = 1 }: { x: number; z: number; y?: number; s?: number }) {
   return (
@@ -842,6 +910,10 @@ function resetRuntime(crewSize = DEFAULT_CREW): Runtime {
     fireCooldown: 0,
     rivalFireCooldown: 1.3,
     bumpCooldown: 0,
+    lastPlayerObstacleId: null,
+    playerObstacleBumps: 0,
+    lastRivalObstacleId: null,
+    rivalObstacleBumps: 0,
     finished: false,
     nextShotId: 1,
     zoneIndex: 0,
@@ -880,6 +952,7 @@ function BattleScene({
   const lightningBoost = useRef(0);
 
   useEffect(() => () => battleshipSfx.rainStop(), []);
+  const courseHazards = useMemo(() => courseObstacles(level), [level]);
   const [shots, setShots] = useState<Shot[]>([]);
   const [playerPose, setPlayerPose] = useState<AvatarPose | null>(null);
   const [rivalPose, setRivalPose] = useState<AvatarPose | null>(null);
@@ -948,11 +1021,12 @@ function BattleScene({
     const currentZone = Math.max(0, zoneAt(s.rivalZ));
     const difficulty = 1 + currentZone * 0.055;
     const rivalChannel = riverCenterX(s.rivalZ);
-    const avoid = obstacles
-      .filter((o) => o.z > s.rivalZ && o.z < s.rivalZ + 18)
+    const avoid = courseHazards
+      .filter((o) => o.z > s.rivalZ && o.z < s.rivalZ + 20)
       .sort((a, b) => a.z - b.z)[0];
-    const desiredX = avoid && Math.abs(avoid.x - s.rivalX) < avoid.r + 2.3
-      ? (avoid.x > 0 ? avoid.x - 5.3 : avoid.x + 5.3)
+    const avoidX = avoid ? hazardX(avoid, t) : 0;
+    const desiredX = avoid && Math.abs(avoidX - s.rivalX) < avoid.r + 2.5
+      ? (avoidX > rivalChannel ? avoidX - 5.8 : avoidX + 5.8)
       : rivalChannel + Math.sin(t * 0.45 + s.rivalZ * 0.015) * 5.0;
     s.rivalX += Math.max(-1, Math.min(1, desiredX - s.rivalX)) * 4.5 * dt;
     s.rivalX = Math.max(rivalChannel - RIVER_HALF + 2.0, Math.min(rivalChannel + RIVER_HALF - 2.0, s.rivalX));
@@ -1013,10 +1087,10 @@ function BattleScene({
 
     // Collision hazards become denser as the race progresses.
     const playerDucking = t < s.duckUntil;
-    for (const o of obstacles) {
+    for (const o of courseHazards) {
       if (o.kind === "shark") {
         if (Math.abs(o.z - s.z) < 3.2) {
-          const d = Math.hypot(o.x - s.x, o.z - s.z);
+          const d = Math.hypot(hazardX(o, t) - s.x, o.z - s.z);
           if (d < o.r + 1.6 && s.hitCooldown <= 0) {
             if (playerDucking) {
               s.score += 60;
@@ -1038,12 +1112,12 @@ function BattleScene({
         continue;
       }
       if (Math.abs(o.z - s.z) < 3.8) {
-        const d = Math.hypot(o.x - s.x, o.z - s.z);
+        const d = Math.hypot(hazardX(o, t) - s.x, o.z - s.z);
         if (d < o.r + 1.25 && s.hitCooldown <= 0) {
           s.hitCooldown = 1.05;
           s.health -= 1;
           s.score = Math.max(0, s.score - 80);
-          s.x += s.x <= o.x ? -2.0 : 2.0;
+          s.x += s.x <= hazardX(o, t) ? -2.0 : 2.0;
           setPlayerPose("stumble");
           window.setTimeout(() => setPlayerPose(null), 520);
           onStatus("Obstacle hit — recover and keep racing");
@@ -1051,11 +1125,11 @@ function BattleScene({
         }
       }
       if (Math.abs(o.z - s.rivalZ) < 3.8) {
-        const d = Math.hypot(o.x - s.rivalX, o.z - s.rivalZ);
+        const d = Math.hypot(hazardX(o, t) - s.rivalX, o.z - s.rivalZ);
         if (d < o.r + 1.25 && s.rivalHitCooldown <= 0) {
           s.rivalHitCooldown = 1.0;
           s.rivalHealth -= 1;
-          s.rivalX += s.rivalX <= o.x ? -2.0 : 2.0;
+          s.rivalX += s.rivalX <= hazardX(o, t) ? -2.0 : 2.0;
           setRivalPose("stumble");
           window.setTimeout(() => setRivalPose(null), 500);
           battleshipSfx.hit();
