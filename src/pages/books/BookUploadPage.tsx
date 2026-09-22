@@ -57,6 +57,8 @@ export default function BookUploadPage() {
   const kids = audience === "kids";
   const basePages = useMemo(() => paginateBookManuscript(body, audience), [body, audience]);
   const pages = kids ? illustratedPages : basePages;
+  const illustratedCount = kids ? illustratedPages.filter((page) => Boolean(page.image)).length : 0;
+  const allKidsPagesIllustrated = !kids || (illustratedPages.length > 0 && illustratedCount === illustratedPages.length);
   const [fallbackFrom, fallbackTo] = useMemo(
     () => COVER_PAIRS[Math.abs(title.length + body.length) % COVER_PAIRS.length],
     [title.length, body.length],
@@ -201,13 +203,23 @@ export default function BookUploadPage() {
       return;
     }
 
+    const missingIndexes = illustratedPages
+      .map((page, index) => (page.image ? -1 : index))
+      .filter((index) => index >= 0);
+
+    if (!missingIndexes.length) {
+      toast.success("Every page already has an illustration");
+      return;
+    }
+
     setGeneratingIllustrations(true);
-    setIllustrationProgress({ done: 0, total: illustratedPages.length });
+    setIllustrationProgress({ done: 0, total: missingIndexes.length });
     const direction = artDirection.trim() || defaultArtDirection();
 
     try {
       let working = [...illustratedPages];
-      for (let index = 0; index < working.length; index += 1) {
+      for (let step = 0; step < missingIndexes.length; step += 1) {
+        const index = missingIndexes[step];
         setGeneratingPageIndex(index);
         const page = working[index];
         try {
@@ -231,7 +243,7 @@ export default function BookUploadPage() {
         } catch (error: any) {
           toast.error(error?.message || `Page ${index + 1} could not be illustrated`);
         }
-        setIllustrationProgress({ done: index + 1, total: working.length });
+        setIllustrationProgress({ done: step + 1, total: missingIndexes.length });
       }
       toast.success("Kids book illustrations are ready");
     } finally {
@@ -251,6 +263,10 @@ export default function BookUploadPage() {
     }
     if (!pages.length) {
       toast.error("Write or paste your manuscript first");
+      return;
+    }
+    if (kids && !allKidsPagesIllustrated) {
+      toast.error("Create an illustration for every Kids page before publishing");
       return;
     }
     if (listingType === "sale" && !(Number(price) > 0)) {
@@ -486,6 +502,113 @@ export default function BookUploadPage() {
           </div>
         </section>
 
+        {kids && (
+          <section
+            className="rounded-2xl border p-4"
+            style={{ borderColor: "var(--books-line)", background: "var(--books-surface)" }}
+          >
+            <div className="flex items-start gap-2">
+              <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-bold">Kids page illustrations</h2>
+                <p className="mt-0.5 text-[11px]" style={{ color: "var(--books-muted)" }}>
+                  YAJ creates one picture for every page and keeps the same characters and art style throughout the book.
+                </p>
+              </div>
+              <span
+                className="shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold"
+                style={{ background: "var(--books-soft)", color: "var(--books-accent)" }}
+              >
+                {illustratedCount}/{illustratedPages.length || 0}
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <Field label="Character & art guide (optional)">
+                <textarea
+                  value={artDirection}
+                  onChange={(event) => setArtDirection(event.target.value)}
+                  rows={4}
+                  className="w-full resize-none rounded-xl border px-3 py-2 text-xs leading-relaxed outline-none"
+                  style={{ borderColor: "var(--books-line)", background: "var(--books-soft)", color: "var(--books-ink)" }}
+                  placeholder="Example: Maya is a 7-year-old Black girl with two puff ponytails, yellow overalls and red sneakers. Warm watercolor-cartoon style, sunny colors. Keep Maya looking the same on every page."
+                />
+              </Field>
+              <p className="mt-1.5 text-[10px] leading-relaxed" style={{ color: "var(--books-muted)" }}>
+                If you leave this blank, YAJ builds a shared style guide from your book title, description and story.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              disabled={generatingIllustrations || !illustratedPages.length || !title.trim() || !author.trim()}
+              onClick={generateAllIllustrations}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-orange-500 px-4 text-xs font-extrabold text-white shadow-sm disabled:opacity-50"
+            >
+              {generatingIllustrations ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <WandSparkles className="h-4 w-4" />
+              )}
+              {generatingIllustrations
+                ? `Creating ${illustrationProgress.done}/${illustrationProgress.total}…`
+                : illustratedCount === illustratedPages.length && illustratedPages.length > 0
+                  ? "All page illustrations ready"
+                  : `Create ${Math.max(0, illustratedPages.length - illustratedCount)} page illustration${illustratedPages.length - illustratedCount === 1 ? "" : "s"}`}
+            </button>
+
+            {illustratedPages.length > 0 && (
+              <div className="mt-4 space-y-3">
+                {illustratedPages.map((page, index) => {
+                  const generatingThisPage = generatingPageIndex === index;
+                  return (
+                    <div
+                      key={`kids-page-preview-${index}`}
+                      className="overflow-hidden rounded-2xl border"
+                      style={{ borderColor: "var(--books-line)", background: "var(--books-soft)" }}
+                    >
+                      <div className="flex gap-3 p-3">
+                        <div className="relative aspect-[4/3] w-[7.5rem] shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-orange-200 to-pink-200">
+                          {page.image ? (
+                            <img src={page.image} alt={`Page ${index + 1} illustration`} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center px-2 text-center text-[10px] font-bold text-orange-700/70">
+                              {generatingThisPage ? "Creating…" : "Illustration not created yet"}
+                            </div>
+                          )}
+                          {generatingThisPage && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/25">
+                              <Loader2 className="h-6 w-6 animate-spin text-white" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-extrabold uppercase tracking-wide text-orange-600">
+                            Page {index + 1}
+                          </p>
+                          <p className="mt-1 line-clamp-4 text-[11px] font-medium leading-relaxed" style={{ color: "var(--books-ink)" }}>
+                            {page.text}
+                          </p>
+                          <button
+                            type="button"
+                            disabled={generatingIllustrations || generatingThisPage}
+                            onClick={() => void generatePageIllustration(index)}
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1.5 text-[10px] font-bold text-orange-600 shadow-sm disabled:opacity-50"
+                          >
+                            {generatingThisPage ? <Loader2 className="h-3 w-3 animate-spin" /> : <WandSparkles className="h-3 w-3" />}
+                            {page.image ? "Regenerate" : "Create image"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         <section
           className="rounded-2xl border p-4"
           style={{ borderColor: "var(--books-line)", background: "var(--books-surface)" }}
@@ -535,13 +658,24 @@ export default function BookUploadPage() {
 
         <button
           type="button"
-          disabled={publishing || !title.trim() || !author.trim() || !pages.length}
+          disabled={
+            publishing ||
+            generatingIllustrations ||
+            !title.trim() ||
+            !author.trim() ||
+            !pages.length ||
+            (kids && !allKidsPagesIllustrated)
+          }
           onClick={publish}
           className="inline-flex h-13 w-full items-center justify-center gap-2 rounded-full px-5 py-3.5 text-sm font-bold shadow-sm disabled:opacity-50"
           style={{ background: "var(--books-accent)", color: "var(--books-accent-ink)" }}
         >
           {publishing ? <Loader2 className="h-4 w-4 animate-spin" /> : <BookOpen className="h-4 w-4" />}
-          {publishing ? "Publishing…" : "Publish to YAJ Books"}
+          {publishing
+            ? "Publishing…"
+            : kids && pages.length > 0 && !allKidsPagesIllustrated
+              ? "Create all page illustrations first"
+              : "Publish to YAJ Books"}
         </button>
 
         <p className="px-3 text-center text-[10px] leading-relaxed" style={{ color: "var(--books-muted)" }}>
