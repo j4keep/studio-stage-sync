@@ -278,6 +278,26 @@ class BattleshipSfx {
     ring.stop(t + 0.21);
   }
 
+  /** Boat-to-boat hull collision — short wood/metal crunch plus a low shove thump. */
+  collision() {
+    if (this.muted) return;
+    const ctx = this.ensure();
+    void ctx.resume().catch(() => undefined);
+    const t = ctx.currentTime;
+    this.crack(t, 0.045, 720, 0.9, 0.5, 0.12);
+    this.thud(t, 0.2, 95, 0.85, 0.3);
+    const osc = ctx.createOscillator();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(145, t);
+    osc.frequency.exponentialRampToValueAtTime(78, t + 0.22);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.11, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.24);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
   /** Sonar Pulse — a clean sweeping tone, distinct from the splash/impact cues. */
   sonarPulse() {
     if (this.muted) return;
