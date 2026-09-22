@@ -202,7 +202,7 @@ const MyPodcastsPage = () => {
         </button>
         <div className="flex-1">
           <h1 className="text-lg font-display font-bold text-foreground">My Podcasts</h1>
-          <p className="text-[10px] text-muted-foreground">{podcasts.length} episodes uploaded</p>
+          <p className="text-[10px] text-muted-foreground">{podcasts.length} episodes · you choose which audio episodes play on YAJ Radio</p>
         </div>
         <button onClick={() => { setShowUpload(!showUpload); setPendingFile(null); setPendingCover(null); }} className="px-3 py-2 rounded-xl gradient-primary text-primary-foreground text-xs font-semibold glow-primary flex items-center gap-1.5">
           <Plus className="w-3.5 h-3.5" /> Upload
