@@ -27,7 +27,7 @@ import triviaArt from "@/assets/games/trivia.jpg";
 import dashArt from "@/assets/games/yaj-dash.jpg";
 import poolArtAsset from "@/assets/games/yaj-billiards-intro.png.asset.json";
 const poolArt = poolArtAsset.url;
-import boxingArt from "@/assets/games/boxing.svg";
+import boxingArt from "@/assets/games/yaj-boxing-cover.webp";
 import battleshipArtAsset from "@/assets/games/adventures/fleet-clash.png.asset.json";
 const battleshipArt = battleshipArtAsset.url;
 import drivingArt from "@/assets/games/driving.svg";
