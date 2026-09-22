@@ -10,6 +10,8 @@ import {
   Settings2,
   Building2,
   BadgeCheck,
+  Plus,
+  FileText,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,6 +25,7 @@ import {
   type Prefs,
 } from "@/lib/jobs";
 import { listBlockedPeerIds } from "@/lib/blocks";
+import PostJobSheet from "@/components/jobs/PostJobSheet";
 
 type JobRow = {
   id: string;
@@ -62,6 +65,7 @@ export default function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [forYou, setForYou] = useState(false);
   const [prefs, setPrefs] = useState<Prefs | null>(null);
+  const [showPostJob, setShowPostJob] = useState(false);
   const [recents, setRecents] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
@@ -249,6 +253,36 @@ export default function JobsPage() {
             <span className="text-[10px] text-muted-foreground">Set preferences for personalized matches</span>
           )}
         </div>
+
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <button
+            type="button"
+            onClick={() => nav("/resume-builder")}
+            className="rounded-2xl border border-border bg-card p-3 text-left active:scale-[0.99]"
+          >
+            <FileText className="h-4 w-4 text-primary" />
+            <p className="mt-2 text-[12px] font-bold">Resume</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">Build or update yours</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPostJob(true)}
+            className="rounded-2xl border border-primary/25 bg-primary/5 p-3 text-left active:scale-[0.99]"
+          >
+            <Plus className="h-4 w-4 text-primary" />
+            <p className="mt-2 text-[12px] font-bold">Post a Job</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">Hire on YAJ</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => nav("/employer-dashboard")}
+            className="rounded-2xl border border-border bg-card p-3 text-left active:scale-[0.99]"
+          >
+            <Building2 className="h-4 w-4 text-primary" />
+            <p className="mt-2 text-[12px] font-bold">Employer</p>
+            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">Manage applicants</p>
+          </button>
+        </div>
       </header>
 
 
@@ -365,6 +399,15 @@ export default function JobsPage() {
           })
         )}
       </section>
+
+      <PostJobSheet
+        open={showPostJob}
+        onClose={() => setShowPostJob(false)}
+        onCreated={() => {
+          setShowPostJob(false);
+          void load();
+        }}
+      />
     </div>
   );
 }
