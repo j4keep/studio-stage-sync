@@ -409,7 +409,12 @@ export default function BoxingRing({
       {/* Punches — left rail, fire freely on their own cooldowns */}
       <div
         className="pointer-events-none absolute inset-y-0 z-30 flex flex-col items-center justify-center gap-3"
-        style={{ left: "max(0.75rem, calc(env(safe-area-inset-left) + 0.75rem))" }}
+        style={{
+          // iPhone landscape camera / Dynamic Island can consume a large part of the
+          // physical left edge even when Safari reports a smaller CSS safe-area inset.
+          // Keep the full 64px punch controls comfortably inside the usable screen.
+          left: "max(5.25rem, calc(env(safe-area-inset-left) + 1.25rem))",
+        }}
       >
         {(["jab", "hook", "uppercut"] as Punch[]).map((p) => (
           <div key={p} className="pointer-events-auto">
