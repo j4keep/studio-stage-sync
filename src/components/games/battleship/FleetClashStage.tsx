@@ -1275,7 +1275,20 @@ function ScreenSteering({ inputRef }: { inputRef: MutableRefObject<Input> }) {
   );
 }
 
-export default function FleetClashStage({ playerColor = "#7f4be8", opponentName = "Computer", muted, onToggleMute, onStatus, onFinish, onBack, onQuit, liveDock }: Props) {
+export default function FleetClashStage({
+  playerColor = "#7f4be8",
+  opponentName = "Computer",
+  muted,
+  onToggleMute,
+  onStatus,
+  onFinish,
+  onBack,
+  onQuit,
+  liveDock,
+  level = 1,
+  crewSize = DEFAULT_CREW,
+  onSnapshot,
+}: Props) {
   const inputRef = useRef<Input>({ x: 0, z: 0 });
   const fireRef = useRef(false);
   const duckRef = useRef(false);
@@ -1314,8 +1327,27 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
           inputRef={inputRef}
           fireRef={fireRef}
           duckRef={duckRef}
-          onHud={(h, rh, _s, p, rp, c, rc, zn) => {
-            setHealth(h); setRivalHealth(rh); setProgress(p); setRivalProgress(rp); setCrew(c); setRivalCrew(rc); setZone(zn);
+          level={level}
+          crewSize={crewSize}
+          onHud={(h, rh, s, p, rp, c, rc, zn) => {
+            setHealth(h);
+            setRivalHealth(rh);
+            setProgress(p);
+            setRivalProgress(rp);
+            setCrew(c);
+            setRivalCrew(rc);
+            setZone(zn);
+            onSnapshot?.({
+              level,
+              health: h,
+              rivalHealth: rh,
+              progress: p,
+              rivalProgress: rp,
+              crew: c,
+              rivalCrew: rc,
+              score: s,
+              zone: zn,
+            });
           }}
           onStatus={onStatus}
           onFinish={onFinish}
@@ -1330,7 +1362,10 @@ export default function FleetClashStage({ playerColor = "#7f4be8", opponentName 
               <div className="mt-1 flex items-center gap-2 text-xs font-black text-white"><span>{crew}/{MAX_CREW} crew</span><span className="text-white/35">•</span><span>{"❤️".repeat(Math.max(0, health))}</span></div>
             </div>
             <div className="px-2 text-center">
-              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">{zone}</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">
+                Level {level}/5 · {fleetCourse(level).name}
+              </div>
+              <div className="mt-0.5 text-[9px] font-bold text-white/55">{fleetCourse(level).condition}</div>
               <div className="mt-1 text-xs font-black text-white">{Math.round(progress * 100)}% <span className="text-white/40">vs</span> {Math.round(rivalProgress * 100)}%</div>
             </div>
             <div className="min-w-0 text-right">
