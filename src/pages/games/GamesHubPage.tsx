@@ -221,7 +221,10 @@ export default function GamesHubPage() {
     }
   };
 
-  const visibleCards = filter === "All" ? CARDS : CARDS.filter((c) => c.category === filter);
+  const visibleCards =
+    filter === "All"
+      ? CARDS.filter((card) => !ADVENTURE_TYPES.includes(card.type))
+      : CARDS.filter((card) => card.category === filter);
 
   const renderCard = (card: CardDef) => {
     const inProgress = activeGames.find((g) => g.game_type === card.type);
@@ -247,8 +250,12 @@ export default function GamesHubPage() {
           </span>
         )}
 
-        <span className="absolute right-2 top-2 flex items-center gap-1 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> Live
+        <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
+          {card.players.toLowerCase().includes("solo")
+            ? "Solo"
+            : card.players.includes("1–2")
+              ? "1–2P"
+              : "2P"}
         </span>
 
         {inProgress && (
@@ -294,7 +301,7 @@ export default function GamesHubPage() {
           >
             YAJ Games
           </h2>
-          <p className="mt-1 text-xs font-bold text-white/80">Every board, arcade, and adventure title in one place</p>
+          <p className="mt-1 text-xs font-bold text-white/80">Solo adventures, head-to-head challenges, stats and leaderboards</p>
         </div>
       </div>
 
