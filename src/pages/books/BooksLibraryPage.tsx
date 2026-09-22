@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Search, Upload, X } from "lucide-react";
+import { ArrowLeft, Search, PenLine, X } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
 import { REGULAR_CATEGORIES, regularBooks } from "@/lib/books-catalog";
@@ -53,7 +53,7 @@ export default function BooksLibraryPage() {
           </button>
           <h1 className="flex-1 text-lg font-bold tracking-tight">Books</h1>
           <button type="button" onClick={() => nav("/books/create")} className="rounded-full p-2" aria-label="Create a Book">
-            <Upload className="h-4 w-4" style={{ color: "var(--books-accent)" }} />
+            <PenLine className="h-4 w-4" style={{ color: "var(--books-accent)" }} />
           </button>
           <button
             type="button"
