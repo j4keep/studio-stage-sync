@@ -264,15 +264,19 @@ const RadioPage = () => {
   if (!currentTrack) {
     return (
       <div className="flex min-h-screen flex-col bg-background px-4 pt-4 lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6">
-        <div className="mb-4 flex w-full items-center gap-2">
+        <div className="mb-5 grid min-h-11 w-full grid-cols-[44px_1fr_44px] items-center">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-border bg-card lg:hidden"
+            aria-label="Back"
           >
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            <ChevronDown className="h-5 w-5 text-muted-foreground" />
           </button>
-          <YajRadioWordmark size="sm" />
+          <div className="flex items-center justify-center">
+            <YajRadioWordmark size="sm" className="leading-none" />
+          </div>
+          <div className="h-11 w-11" aria-hidden="true" />
         </div>
         <div className="mb-4 grid grid-cols-2 gap-2">
           <button
@@ -558,30 +562,31 @@ const RadioPage = () => {
     <div className="relative bg-background lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
       {/* Header */}
       <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur lg:static lg:bg-card lg:px-3 lg:pt-4">
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 grid min-h-11 grid-cols-[44px_1fr_auto] items-center gap-2">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted lg:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-muted lg:hidden"
             aria-label="Back"
           >
             <ChevronDown className="h-5 w-5 text-foreground" />
           </button>
-          <div className="min-w-0 shrink-0">
-            <YajRadioWordmark size="md" />
+          <div className="flex min-w-0 items-center justify-center lg:justify-start">
+            <YajRadioWordmark size="md" className="leading-none" />
           </div>
-          <div className="flex-1" />
-          <button
-            type="button"
-            onClick={() => setShowRadioSearch(!showRadioSearch)}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
-            aria-label="Search radio"
-          >
-            <Search className="h-4 w-4 text-foreground" />
-          </button>
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> LIVE
-          </span>
+          <div className="flex items-center justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowRadioSearch(!showRadioSearch)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"
+              aria-label="Search radio"
+            >
+              <Search className="h-4 w-4 text-foreground" />
+            </button>
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> LIVE
+            </span>
+          </div>
         </div>
 
         <div className="mb-3 grid grid-cols-2 gap-2">
