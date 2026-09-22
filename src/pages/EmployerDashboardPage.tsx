@@ -409,12 +409,22 @@ export default function EmployerDashboardPage() {
       </div>
 
       {showCompany && (
-        <div className="fixed inset-0 z-50 bg-black/60 flex items-end" onClick={() => setShowCompany(false)}>
-          <div className="w-full bg-background rounded-t-3xl p-5 pb-8 max-w-lg mx-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold mb-1">Company profile</h3>
-            <p className="text-[11px] text-muted-foreground mb-3">
-              Applicants see your business name and/or logo on the job and application.
-            </p>
+        <div
+          className="fixed inset-0 z-[100] flex items-end bg-black/60"
+          onClick={() => setShowCompany(false)}
+        >
+          <div
+            className="mx-auto max-h-[calc(100dvh-4.5rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-3xl bg-background px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-5 shadow-2xl"
+            style={{ WebkitOverflowScrolling: "touch" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 z-10 -mx-5 -mt-5 mb-3 border-b border-border bg-background/95 px-5 pb-3 pt-5 backdrop-blur">
+              <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-muted-foreground/30" />
+              <h3 className="font-bold mb-1">Company profile</h3>
+              <p className="text-[11px] text-muted-foreground">
+                Applicants see your business name and/or logo on the job and application.
+              </p>
+            </div>
             <div className="space-y-3">
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-xl bg-muted border border-border overflow-hidden flex items-center justify-center shrink-0">
