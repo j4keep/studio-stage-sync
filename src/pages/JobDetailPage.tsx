@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles, Loader2, X, Upload, Plus, Trash2, ExternalLink, CheckCircle2, FileText } from "lucide-react";
+import { ArrowLeft, MapPin, Clock, Bookmark, BookmarkCheck, Building2, Sparkles, Loader2, X, Upload, Plus, Trash2, ExternalLink, CheckCircle2, FileText, Flag } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import MessageUserButton from "@/components/MessageUserButton";
 
 import { generateCoverLetter } from "@/lib/yaj-jobs-ai";
 import ResumePreview from "@/components/jobs/ResumePreview";
+import { submitContentReport } from "@/lib/trust-safety";
 
 type Job = {
   id: string;
@@ -176,6 +177,30 @@ export default function JobDetailPage() {
     }
   };
 
+  const reportJob = async () => {
+    if (!user || !job) {
+      toast.error("Please sign in to report a job");
+      return;
+    }
+    if (job.employer_id === user.id) return;
+    const reason = window.prompt(
+      "Why are you reporting this job? Examples: scam, misleading offer, prohibited work, discrimination, wrong category, or unsafe content.",
+      "Scam/Fraud",
+    );
+    if (!reason?.trim()) return;
+    try {
+      await submitContentReport({
+        targetType: "job",
+        targetId: job.id,
+        reason: reason.trim(),
+        details: `Job: ${job.title} · Category: ${job.category} · Employer: ${job.employer_id}`,
+      });
+      toast.success("Report sent to Trust & Safety");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not submit report");
+    }
+  };
+
   const uploadResume = async (file: File) => {
     if (!user) return;
     setUploadingResume(true);
@@ -277,11 +302,22 @@ export default function JobDetailPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border flex items-center justify-between px-3 py-2">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border flex items-center gap-2 px-3 py-2">
         <button onClick={() => nav(-1)} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <ArrowLeft className="w-4 h-4" />
         </button>
-        <button onClick={toggleSave} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+        <div className="flex-1" />
+        {!isOwner && (
+          <button
+            type="button"
+            onClick={() => void reportJob()}
+            className="w-9 h-9 rounded-full bg-muted flex items-center justify-center"
+            aria-label="Report job"
+          >
+            <Flag className="w-4 h-4" />
+          </button>
+        )}
+        <button onClick={toggleSave} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center" aria-label={saved ? "Remove saved job" : "Save job"}>
           {saved ? <BookmarkCheck className="w-4 h-4 text-primary" /> : <Bookmark className="w-4 h-4" />}
         </button>
       </header>
