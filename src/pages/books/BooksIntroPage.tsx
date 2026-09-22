@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Baby, PenLine } from "lucide-react";
+import { BookOpen, Baby, PenLine, Bookmark, LibraryBig } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import { markBooksIntroSeen } from "@/lib/books-catalog";
 
@@ -76,6 +76,25 @@ export default function BooksIntroPage() {
                 </span>
               </span>
             </button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => enter("/books/my-list")}
+                className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-bold"
+                style={{ background: "var(--books-surface)", borderColor: "var(--books-line)" }}
+              >
+                <Bookmark className="h-4 w-4" /> My List
+              </button>
+              <button
+                type="button"
+                onClick={() => enter("/books/my-books")}
+                className="flex items-center justify-center gap-2 rounded-2xl border px-3 py-3 text-sm font-bold"
+                style={{ background: "var(--books-surface)", borderColor: "var(--books-line)" }}
+              >
+                <LibraryBig className="h-4 w-4" /> My Books
+              </button>
+            </div>
 
             <button
               type="button"
