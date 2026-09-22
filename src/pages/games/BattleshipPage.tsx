@@ -265,29 +265,27 @@ export default function BattleshipPage() {
     }
   };
 
-  // Crew members share the match but the captain owns the real-time boat controls.
-  // They see the captain's synced race state and stay connected through voice/live chat,
-  // rather than accidentally running a separate local copy of the race.
-  if (crewMode && !isCaptain && game.status === "active") {
-    return (
-      <FleetCrewView
-        gameId={game.id}
-        userId={user?.id}
-        isLive={Boolean((game as any).is_live)}
-        crewCount={crewSize}
-        captainName={opponentName || "Captain"}
-        snapshot={snapshot}
-        onBack={() => navigate("/games")}
-        onRefresh={refresh}
-      />
-    );
-  }
-
   const rivalLabel = "Rival Fleet";
+
+
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
+        {crewMode && !isCaptain && (
+          <FleetCrewView
+            gameId={game.id}
+            userId={user?.id}
+            isLive={Boolean((game as any).is_live)}
+            crewCount={crewSize}
+            captainName={opponentName || "Captain"}
+            snapshot={snapshot}
+            waiting={game.status === "waiting"}
+            onBack={() => navigate("/games")}
+            onRefresh={refresh}
+          />
+        )}
+
         {seated && isCaptain && (
           <FleetClashStage
             key={`${game.id}-level-${level}-crew-${crewSize}`}
@@ -318,7 +316,7 @@ export default function BattleshipPage() {
         <PendingChallengeGate
           gameId={game.id}
           userId={user?.id}
-          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
+          waiting={game.host_user_id !== user?.id && game.status !== "cancelled" && game.status !== "completed"}
           challengerName={opponentName}
           onAccepted={refresh}
         />
@@ -418,6 +416,7 @@ function FleetCrewView({
   crewCount,
   captainName,
   snapshot,
+  waiting,
   onBack,
   onRefresh,
 }: {
@@ -427,6 +426,7 @@ function FleetCrewView({
   crewCount: number;
   captainName: string;
   snapshot: FleetSnapshot;
+  waiting: boolean;
   onBack: () => void;
   onRefresh: () => void;
 }) {
@@ -470,6 +470,9 @@ function FleetCrewView({
               <div className="min-w-0">
                 <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">YAJ Fleet Clash</p>
                 <h1 className="mt-1 text-xl font-black">You're on {captainName}'s crew</h1>
+                {waiting ? (
+                  <p className="mt-1 text-[10px] font-bold text-amber-200">Waiting for the remaining crew invites to be answered…</p>
+                ) : null}
               </div>
             </div>
 
@@ -505,8 +508,8 @@ function FleetCrewView({
                 <div className="absolute inset-y-0 w-1 bg-orange-300" style={{ left: `${rivalProgress}%` }} />
               </div>
               <div className="mt-2 flex justify-between text-[11px] font-black">
-                <span>{progress}%</span>
-                <span>{rivalProgress}% rival</span>
+                <span>{waiting ? "Ready" : `${progress}%`}</span>
+                <span>{waiting ? "Crew lobby" : `${rivalProgress}% rival`}</span>
               </div>
             </div>
 
