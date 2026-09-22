@@ -21,6 +21,7 @@ import {
   computerShot,
   initialPool,
   placeCueBall,
+  canPlaceCueBall,
   resolveShot,
   simulateShot,
 } from "@/lib/pool";
@@ -196,6 +197,10 @@ export default function PoolPage() {
 
   const handlePlaceCue = (x: number, y: number) => {
     if (!game || !myTurn || !pool.ballInHand) return;
+    if (!canPlaceCueBall(pool.balls, x, y)) {
+      toast({ title: "Place the cue ball in a clear spot on the table" });
+      return;
+    }
     const next = placeCueBall(pool, x, y);
     setGame({ ...game, game_state: { ...game.game_state, pool: next } });
   };
@@ -268,6 +273,13 @@ export default function PoolPage() {
   const challenge = async (opponentId: string, name: string) => {
     if (!user) return;
     try {
+      // Entering Pool from the hub opens a solo table so the game can launch immediately.
+      // If the player chooses Quick Match instead, clean up that placeholder table first
+      // so it never lingers as a stale "Continue" game in the hub.
+      if (game?.mode === "solo" && game.status !== "completed" && game.status !== "cancelled") {
+        await endGame(game.id);
+      }
+
       const g = await createMultiplayerGame("pool", user.id, opponentId, {
         pool: initialPool(),
         moveNumber: 0,
