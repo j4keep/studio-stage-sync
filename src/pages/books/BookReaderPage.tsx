@@ -1,18 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookPageFlipper, { type BookPageFlipperHandle } from "@/components/books/BookPageFlipper";
 import BookNarratorBar from "@/components/books/BookNarratorBar";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 import { useBookNarration } from "@/hooks/useBookNarration";
 import { formatBookPrice, getBookById } from "@/lib/books-catalog";
-import { getCreatorBookById } from "@/lib/creator-books";
+import {
+  getCreatorBookById,
+  listBookLibraryEntries,
+  removeSavedBookFromLibrary,
+  saveBookToLibrary,
+} from "@/lib/creator-books";
 
 export default function BookReaderPage() {
   const { id = "" } = useParams();
   const nav = useNavigate();
+  const { user } = useAuth();
+  const [inMyList, setInMyList] = useState(false);
+  const [libraryAcquisition, setLibraryAcquisition] = useState<"saved" | "purchased" | null>(null);
+  const [savingList, setSavingList] = useState(false);
   const localBook = useMemo(() => getBookById(id), [id]);
   const { data: cloudBook = null, isLoading: cloudBookLoading } = useQuery({
     queryKey: ["creator-book", id],
@@ -22,6 +33,51 @@ export default function BookReaderPage() {
   });
   const book = localBook || cloudBook || undefined;
   const kids = book?.audience === "kids";
+
+  useEffect(() => {
+    if (!user || !id) {
+      setInMyList(false);
+      setLibraryAcquisition(null);
+      return;
+    }
+    let active = true;
+    void listBookLibraryEntries(user.id)
+      .then((entries) => {
+        if (!active) return;
+        const entry = entries.find((item) => item.bookId === id);
+        setInMyList(Boolean(entry));
+        setLibraryAcquisition(entry?.acquisition || null);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id, id]);
+
+  const toggleMyList = async () => {
+    if (!user) {
+      toast.error("Sign in to use My List");
+      return;
+    }
+    setSavingList(true);
+    try {
+      if (inMyList && libraryAcquisition === "saved") {
+        await removeSavedBookFromLibrary(user.id, id);
+        setInMyList(false);
+        setLibraryAcquisition(null);
+        toast.success("Removed from My List");
+      } else if (!inMyList) {
+        await saveBookToLibrary(user.id, id);
+        setInMyList(true);
+        setLibraryAcquisition("saved");
+        toast.success("Saved to My List");
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Could not update My List");
+    } finally {
+      setSavingList(false);
+    }
+  };
   const [showCover, setShowCover] = useState(true);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [pageIndex, setPageIndex] = useState(0);
@@ -122,7 +178,16 @@ export default function BookReaderPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </button>
-            <p className="truncate text-sm font-semibold text-white/80">{book.title}</p>
+            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-white/80">{book.title}</p>
+            <button
+              type="button"
+              disabled={savingList || libraryAcquisition === "purchased"}
+              onClick={() => void toggleMyList()}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-60"
+              aria-label={inMyList ? "Remove from My List" : "Save to My List"}
+            >
+              {inMyList ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+            </button>
           </div>
 
           <div className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
