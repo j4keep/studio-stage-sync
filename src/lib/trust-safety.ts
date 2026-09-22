@@ -194,3 +194,26 @@ export async function submitModerationAppeal(message: string) {
     status: "open",
   });
 }
+
+
+export type ReportableContentType = "battle" | "post" | "book" | "tv" | "other";
+
+export async function submitContentReport(opts: {
+  targetType: ReportableContentType;
+  targetId: string;
+  reason: string;
+  details?: string | null;
+}) {
+  const { data: auth } = await supabase.auth.getUser();
+  const reporterId = auth.user?.id;
+  if (!reporterId) throw new Error("Sign in required");
+  const { error } = await (supabase as any).from("content_reports").insert({
+    reporter_id: reporterId,
+    target_type: opts.targetType,
+    target_id: opts.targetId,
+    reason: opts.reason.trim().slice(0, 180),
+    details: opts.details?.trim().slice(0, 2000) || null,
+    status: "open",
+  });
+  if (error) throw error;
+}
