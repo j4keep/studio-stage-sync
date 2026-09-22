@@ -5,51 +5,82 @@ export type FighterAnim = "idle" | "jab" | "hook" | "uppercut" | "guard-block" |
 
 export const SKIN_TONES = ["#f3d3b3", "#e8c39e", "#c58c58", "#8a5a3a", "#5a3826", "#3a2418"];
 
-export type CharacterId = "man" | "woman" | "heavy" | "lean" | "robot" | "bear";
+export type CharacterId = "man" | "woman" | "heavy" | "lean";
 
 type CharacterDef = {
   id: CharacterId;
   label: string;
   emoji: string;
-  /** Body width multiplier. */
   scale: number;
-  head: "human" | "robot" | "animal";
-  hair: "short" | "ponytail" | "bald" | "none";
-  /** Overrides the chosen skin tone (robots/animals aren't skin-toned). */
-  bodyColor?: string;
   fem?: boolean;
+  hair: "short" | "ponytail" | "bald";
 };
 
 export const CHARACTERS: CharacterDef[] = [
-  { id: "man", label: "Man", emoji: "🥊", scale: 1, head: "human", hair: "short" },
-  { id: "woman", label: "Woman", emoji: "🥊", scale: 0.94, head: "human", hair: "ponytail", fem: true },
-  { id: "heavy", label: "Heavy", emoji: "🐻", scale: 1.3, head: "human", hair: "bald" },
-  { id: "lean", label: "Lean", emoji: "⚡", scale: 0.82, head: "human", hair: "short" },
-  { id: "robot", label: "Robot", emoji: "🤖", scale: 1.08, head: "robot", hair: "none", bodyColor: "#b8c4d4" },
-  { id: "bear", label: "Bear", emoji: "🐻", scale: 1.22, head: "animal", hair: "none", bodyColor: "#8b5a2b" },
+  { id: "man", label: "Man", emoji: "🥊", scale: 1, hair: "short" },
+  { id: "woman", label: "Woman", emoji: "🥊", scale: 0.94, fem: true, hair: "ponytail" },
+  { id: "heavy", label: "Heavy", emoji: "🥊", scale: 1.12, hair: "bald" },
+  { id: "lean", label: "Lean", emoji: "🥊", scale: 0.9, hair: "short" },
 ];
 
 export function characterFor(appearance: Appearance): CharacterDef {
-  const byId = CHARACTERS.find((c) => c.id === (appearance as any).character);
+  const requested = String((appearance as any).character || "");
+  const byId = CHARACTERS.find((c) => c.id === requested);
   if (byId) return byId;
-  // Legacy appearances only carried build + fem.
   if (appearance.build === "heavy") return CHARACTERS[2];
   if (appearance.build === "lean") return CHARACTERS[3];
   return appearance.fem ? CHARACTERS[1] : CHARACTERS[0];
 }
 
-/** How far a fighter travels toward the middle of the ring to land a punch. */
-const APPROACH: Record<string, number> = { jab: 64, hook: 72, uppercut: 58 };
-/** Both fighters are always drawn this much closer than their corners. */
-const BASE_CLOSE = 34;
-/** Never cross past this so the two boxers touch gloves without overlapping. */
-const MAX_CLOSE = 168;
+const APPROACH: Record<"jab" | "hook" | "uppercut", number> = {
+  jab: 88,
+  hook: 82,
+  uppercut: 76,
+};
+const BASE_CLOSE = 42;
+const MAX_CLOSE = 172;
 
+type Pt = { x: number; y: number };
 
-/**
- * A fully illustrated boxer — head, torso, trunks, two-segment arms, gloves, boots —
- * that steps in toward the opponent to punch and steps back out to guard.
- */
+function Arm({
+  shoulder,
+  elbow,
+  glove,
+  skin,
+  accent,
+  width,
+}: {
+  shoulder: Pt;
+  elbow: Pt;
+  glove: Pt;
+  skin: string;
+  accent: string;
+  width: number;
+}) {
+  return (
+    <g>
+      <path
+        d={`M ${shoulder.x} ${shoulder.y} Q ${elbow.x} ${elbow.y} ${glove.x} ${glove.y}`}
+        fill="none"
+        stroke="#241711"
+        strokeWidth={width + 5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d={`M ${shoulder.x} ${shoulder.y} Q ${elbow.x} ${elbow.y} ${glove.x} ${glove.y}`}
+        fill="none"
+        stroke={skin}
+        strokeWidth={width}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <ellipse cx={glove.x} cy={glove.y} rx={13} ry={11.5} fill={accent} stroke="#241711" strokeWidth="3" />
+      <ellipse cx={glove.x - 3} cy={glove.y - 3} rx="5.5" ry="4" fill="rgba(255,255,255,0.28)" />
+    </g>
+  );
+}
+
 export default function FighterArt({
   side,
   appearance,
@@ -61,226 +92,154 @@ export default function FighterArt({
   appearance: Appearance;
   accent: string;
   anim: FighterAnim;
-  /** How far this fighter has walked toward the middle of the ring (ring units). */
   advance?: number;
 }) {
   const def = characterFor(appearance);
   const facing = side === "left" ? 1 : -1;
   const cx = side === "left" ? 250 : 650;
   const s = def.scale;
-  const skin = def.bodyColor ?? appearance.skin;
+  const skin = appearance.skin;
   const fem = def.fem ?? appearance.fem;
 
   const hit = anim === "hit";
   const ko = anim === "ko";
-  const guarding = anim === "guard-block" || anim === "guard-dodge";
-  const ducking = anim === "guard-dodge";
+  const block = anim === "guard-block";
+  const dodge = anim === "guard-dodge";
   const punching = anim === "jab" || anim === "hook" || anim === "uppercut";
 
-  const lunge = punching ? APPROACH[anim] : guarding ? -10 : 0;
+  const lunge = punching ? APPROACH[anim] : block ? -2 : dodge ? -18 : 0;
   const step = Math.min(MAX_CLOSE, BASE_CLOSE + advance + lunge);
-
-  const twist = anim === "hook" ? 12 : anim === "uppercut" ? 4 : 0;
-  const bob = anim === "uppercut" ? -8 : ducking ? 16 : 0;
-  const knockback = hit ? 26 : 0;
-
+  const shift = (step - (hit ? 22 : 0)) * facing;
+  const bodyRotate = (anim === "hook" ? 8 : anim === "uppercut" ? -3 : hit ? -7 : 0) * facing;
+  const bob = anim === "uppercut" ? 8 : dodge ? 16 : 0;
 
   const bodyStyle: CSSProperties = {
     transform: ko
-      ? `translate(${facing * 40}px, 52px) rotate(${facing * 92}deg)`
-      : `translate(${(step - knockback) * facing}px, ${bob}px) rotate(${(twist - (hit ? 9 : 0)) * facing}deg)`,
-    transformOrigin: `${cx}px 320px`,
-    transition: ko
-      ? "transform 420ms cubic-bezier(.4,0,.2,1)"
-      : punching
-        ? "transform 190ms cubic-bezier(.3,.9,.35,1.05)"
-        : "transform 300ms cubic-bezier(.25,.9,.4,1)",
+      ? `translate(${52 * facing}px, 62px) rotate(${92 * facing}deg)`
+      : `translate(${shift}px, ${bob}px) rotate(${bodyRotate}deg)`,
+    transformOrigin: `${cx}px 322px`,
+    transition: punching
+      ? "transform 145ms cubic-bezier(.2,.9,.25,1)"
+      : ko
+        ? "transform 420ms cubic-bezier(.4,0,.2,1)"
+        : "transform 220ms cubic-bezier(.25,.9,.4,1)",
   };
 
-  const leadArmStyle: CSSProperties = {
-    transform:
-      anim === "jab"
-        ? `translate(${44 * facing}px, -8px) rotate(${-8 * facing}deg)`
-        : guarding
-          ? `translate(${8 * facing}px, -6px) rotate(${-18 * facing}deg)`
-          : `rotate(${-10 * facing}deg)`,
-    transformOrigin: `${cx + 14 * facing}px 218px`,
-    transition: "transform 150ms cubic-bezier(.25,.9,.4,1.1)",
-  };
-  const rearArmStyle: CSSProperties = {
-    transform:
-      anim === "hook"
-        ? `translate(${20 * facing}px, -2px) rotate(${62 * facing}deg)`
-        : anim === "uppercut"
-          ? `translate(${14 * facing}px, -30px) rotate(${22 * facing}deg)`
-          : guarding
-            ? `translate(${3 * facing}px, -3px) rotate(${-9 * facing}deg)`
-            : `rotate(${7 * facing}deg)`,
-    transformOrigin: `${cx - 12 * facing}px 222px`,
-    transition: "transform 150ms cubic-bezier(.25,.9,.4,1.1)",
-  };
+  // Draw both fighters from one natural human pose, mirrored around their body.
+  const shoulderLead: Pt = { x: 30, y: 226 };
+  const shoulderRear: Pt = { x: -26, y: 228 };
 
-  const torsoTopW = 30 * s;
-  const torsoBotW = 20 * s;
-  const gloveR = 13 * s;
-  const ink = "#12070a";
-  const inkW = 2.2 * s;
-  const metal = def.head === "robot";
+  let leadElbow: Pt = { x: 48, y: 244 };
+  let leadGlove: Pt = { x: 56, y: 224 };
+  let rearElbow: Pt = { x: -42, y: 246 };
+  let rearGlove: Pt = { x: -34, y: 222 };
+
+  if (anim === "jab") {
+    leadElbow = { x: 76, y: 218 };
+    leadGlove = { x: 126, y: 204 };
+    rearElbow = { x: -20, y: 220 };
+    rearGlove = { x: -4, y: 201 };
+  } else if (anim === "hook") {
+    leadElbow = { x: 38, y: 232 };
+    leadGlove = { x: 46, y: 208 };
+    rearElbow = { x: 62, y: 206 };
+    rearGlove = { x: 112, y: 213 };
+  } else if (anim === "uppercut") {
+    leadElbow = { x: 38, y: 238 };
+    leadGlove = { x: 48, y: 214 };
+    rearElbow = { x: 44, y: 232 };
+    rearGlove = { x: 82, y: 177 };
+  } else if (block) {
+    leadElbow = { x: 26, y: 214 };
+    leadGlove = { x: 18, y: 190 };
+    rearElbow = { x: -12, y: 210 };
+    rearGlove = { x: -1, y: 188 };
+  } else if (dodge) {
+    leadElbow = { x: 26, y: 232 };
+    leadGlove = { x: 34, y: 212 };
+    rearElbow = { x: -20, y: 232 };
+    rearGlove = { x: -12, y: 210 };
+  }
+
+  const torsoFill = hit ? "#e68c7e" : skin;
+  const outline = "#241711";
 
   return (
     <g style={bodyStyle}>
-      <g className={ko ? undefined : "bx-footwork"} style={{ transformBox: "fill-box" } as CSSProperties}>
-        <ellipse cx={cx} cy="382" rx={36 * s} ry="8" fill="rgba(0,0,0,0.4)" />
+      <g transform={`translate(${cx} 0) scale(${facing} 1)`}>
+        <ellipse cx="0" cy="382" rx={42 * s} ry="9" fill="rgba(0,0,0,0.42)" />
 
-        {/* Legs + boots */}
+        {/* Back leg first for depth. */}
         <path
-          d={`M ${cx - 9} 278 L ${cx - 32 * s} 294 L ${cx - 26 * s} 376 L ${cx - 10} 376 L ${cx - 11} 296 Z`}
-          fill={metal ? "#5c6a7c" : "#161b26"}
-          stroke={ink}
-          strokeWidth={inkW}
+          d={`M -18 288 Q -30 322 -28 370 L -6 370 Q -8 326 -3 296 Z`}
+          fill="#202735"
+          stroke={outline}
+          strokeWidth="3"
           strokeLinejoin="round"
         />
         <path
-          d={`M ${cx + 7} 278 L ${cx + 32 * s} 296 L ${cx + 25 * s} 376 L ${cx + 9} 376 L ${cx + 5} 296 Z`}
-          fill={metal ? "#6d7b8e" : "#1c2431"}
-          stroke={ink}
-          strokeWidth={inkW}
+          d={`M 13 289 Q 31 322 28 370 L 6 370 Q 9 326 4 296 Z`}
+          fill="#252f40"
+          stroke={outline}
+          strokeWidth="3"
           strokeLinejoin="round"
         />
-        <ellipse cx={cx - 24 * s} cy="377" rx={11 * s} ry="5.5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
-        <ellipse cx={cx + 22 * s} cy="377" rx={11 * s} ry="5.5" fill="#0b0e14" stroke={ink} strokeWidth={inkW * 0.8} />
+        <ellipse cx="-20" cy="374" rx="17" ry="6.5" fill="#0b0e14" />
+        <ellipse cx="20" cy="374" rx="17" ry="6.5" fill="#0b0e14" />
 
-        {/* Rear arm behind the torso */}
-        <g style={rearArmStyle}>
-          <path
-            d={`M ${cx - 12 * facing} 222 L ${cx - 28 * facing} 246 L ${cx - 22 * facing} 250 L ${cx - 7 * facing} 226 Z`}
-            fill={skin}
-            stroke={ink}
-            strokeWidth={inkW}
-            strokeLinejoin="round"
-          />
-          <ellipse cx={cx - 28 * facing} cy="250" rx={gloveR} ry={gloveR * 0.9} fill={accent} stroke={ink} strokeWidth={inkW} />
-          <ellipse cx={cx - 28 * facing} cy="250" rx={gloveR} ry={gloveR * 0.9} fill="url(#bx-glove-sheen)" />
+        {/* Rear arm is hidden slightly behind the torso. */}
+        <g transform={`scale(${s} ${s})`}>
+          <Arm shoulder={shoulderRear} elbow={rearElbow} glove={rearGlove} skin={skin} accent={accent} width={13} />
         </g>
 
-        {/* Torso */}
+        {/* Athletic human torso — shoulders, ribcage and waist instead of a box shape. */}
         <path
-          d={`M ${cx - torsoTopW} 222 Q ${cx} 208 ${cx + torsoTopW} 222 L ${cx + torsoBotW} 278 Q ${cx} 288 ${cx - torsoBotW} 278 Z`}
-          fill={hit ? "#ff6b6b" : skin}
-          stroke={ink}
-          strokeWidth={inkW}
-          strokeLinejoin="round"
-          style={{ transition: "fill 100ms" }}
-        />
-        {fem && (
-          <path
-            d={`M ${cx - 15 * s} 240 q ${7 * s} ${9 * s} ${14 * s} 0 q ${7 * s} ${9 * s} ${14 * s} 0`}
-            fill="none"
-            stroke="rgba(0,0,0,0.22)"
-            strokeWidth={1.8 * s}
-          />
-        )}
-        <path d={`M ${cx - 3} 236 L ${cx - 3} 270 M ${cx + 3} 236 L ${cx + 3} 270`} stroke="rgba(0,0,0,0.22)" strokeWidth="1.6" />
-        <path d={`M ${cx - torsoTopW + 4} 226 Q ${cx} 216 ${cx + torsoTopW - 4} 226`} stroke="rgba(255,255,255,0.18)" strokeWidth="2" fill="none" />
-        {metal && (
-          <>
-            <circle cx={cx} cy={252} r={5} fill={accent} stroke={ink} strokeWidth="1.4" />
-            <path d={`M ${cx - 16 * s} 262 h ${32 * s}`} stroke="rgba(0,0,0,0.3)" strokeWidth="1.6" />
-          </>
-        )}
-        {def.head === "animal" && (
-          <path d={`M ${cx - 12 * s} 248 q ${12 * s} ${16 * s} ${24 * s} 0 q ${-12 * s} ${8 * s} ${-24 * s} 0`} fill="rgba(255,255,255,0.14)" />
-        )}
-
-        {/* Trunks */}
-        <path
-          d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 4} 294 L ${cx - torsoBotW + 4} 294 Z`}
-          fill={accent}
-          stroke={ink}
-          strokeWidth={inkW}
+          d={
+            fem
+              ? "M -34 218 Q -22 209 0 208 Q 22 209 34 218 Q 30 246 23 274 Q 14 287 0 288 Q -14 287 -23 274 Q -30 246 -34 218 Z"
+              : "M -39 218 Q -24 207 0 206 Q 24 207 39 218 Q 34 245 25 274 Q 14 289 0 290 Q -14 289 -25 274 Q -34 245 -39 218 Z"
+          }
+          fill={torsoFill}
+          stroke={outline}
+          strokeWidth="3"
           strokeLinejoin="round"
         />
-        <path
-          d={`M ${cx - torsoBotW - 2} 270 L ${cx + torsoBotW + 2} 270 L ${cx + torsoBotW - 1} 277 L ${cx - torsoBotW + 1} 277 Z`}
-          fill="#0b0e14"
-          opacity="0.32"
-        />
+        <path d="M -23 231 Q 0 221 23 231" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="2" />
+        <path d="M 0 232 L 0 271" fill="none" stroke="rgba(70,35,25,.28)" strokeWidth="2" />
+        <path d="M -12 246 Q -3 252 0 252 Q 3 252 12 246" fill="none" stroke="rgba(70,35,25,.18)" strokeWidth="2" />
 
-        {/* Neck + head */}
-        <rect x={cx - 6} y="203" width="12" height="15" rx="3" fill={skin} stroke={ink} strokeWidth={inkW * 0.8} />
-        {def.head === "robot" ? (
+        {/* Boxing trunks. */}
+        <path d="M -28 270 L 28 270 L 24 303 L 5 303 L 0 286 L -5 303 L -24 303 Z" fill={accent} stroke={outline} strokeWidth="3" />
+        <rect x="-29" y="269" width="58" height="9" rx="4" fill="#111827" opacity=".42" />
+
+        {/* Neck and more human face. */}
+        <path d="M -8 208 L -7 197 L 8 197 L 9 208 Z" fill={skin} stroke={outline} strokeWidth="2.4" />
+        <ellipse cx="3" cy="177" rx="22" ry="27" fill={skin} stroke={outline} strokeWidth="3" />
+        <path d="M 16 181 Q 20 184 15 187" fill="none" stroke="rgba(75,38,25,.48)" strokeWidth="2" />
+        <path d="M 4 191 Q 10 194 15 190" fill="none" stroke="rgba(75,38,25,.55)" strokeWidth="2" strokeLinecap="round" />
+        <ellipse cx="11" cy="173" rx="2.2" ry="2.8" fill="#1a1513" />
+        <path d="M 5 166 Q 12 162 18 166" fill="none" stroke="rgba(40,25,20,.65)" strokeWidth="2" strokeLinecap="round" />
+
+        {def.hair === "short" && (
+          <path d="M -15 172 Q -8 145 16 150 Q 25 153 24 165 Q 14 156 2 157 Q -8 158 -15 172 Z" fill="#1f1713" />
+        )}
+        {def.hair === "ponytail" && (
           <>
-            <rect x={cx - 16} y="174" width="32" height="30" rx="7" fill="#c9d4e2" stroke={ink} strokeWidth={inkW} />
-            <rect x={cx - 11 + 2 * facing} y="184" width="20" height="8" rx="4" fill={accent} />
-            <line x1={cx} y1="174" x2={cx} y2="162" stroke="#8b98a8" strokeWidth="3" />
-            <circle cx={cx} cy="159" r="4" fill={accent} />
-          </>
-        ) : def.head === "animal" ? (
-          <>
-            <circle cx={cx - 12} cy="176" r="7" fill={skin} stroke={ink} strokeWidth={inkW * 0.8} />
-            <circle cx={cx + 12} cy="176" r="7" fill={skin} stroke={ink} strokeWidth={inkW * 0.8} />
-            <ellipse cx={cx + 2 * facing} cy="192" rx="18" ry="18" fill={skin} stroke={ink} strokeWidth={inkW} />
-            <ellipse cx={cx + 13 * facing} cy="196" rx="9" ry="7" fill="#e5cdb3" stroke={ink} strokeWidth={inkW * 0.7} />
-            <circle cx={cx + 17 * facing} cy="195" r="2.6" fill="#160d0a" />
-            <circle cx={cx + 8 * facing} cy="187" r="2" fill="#160d0a" />
-          </>
-        ) : (
-          <>
-            <ellipse cx={cx + 3 * facing} cy="191" rx="17" ry="19" fill={skin} stroke={ink} strokeWidth={inkW} />
-            {def.hair === "ponytail" && (
-              <>
-                <path
-                  d={`M ${cx - 14} 185 Q ${cx + 2 * facing} 167 ${cx + 18} 183 Q ${cx + 10} 177 ${cx} 177 Q ${cx - 12} 177 ${cx - 14} 185 Z`}
-                  fill="#241408"
-                  stroke={ink}
-                  strokeWidth={inkW * 0.7}
-                />
-                <path
-                  d={`M ${cx - 15 * facing} 195 Q ${cx - 24 * facing} 214 ${cx - 18 * facing} 234 L ${cx - 12 * facing} 232 Q ${cx - 17 * facing} 214 ${cx - 12 * facing} 197 Z`}
-                  fill="#241408"
-                  stroke={ink}
-                  strokeWidth={inkW * 0.7}
-                />
-              </>
-            )}
-            {def.hair === "short" && (
-              <path
-                d={`M ${cx - 14} 186 Q ${cx + 2 * facing} 171 ${cx + 17} 184 Q ${cx + 9} 179 ${cx} 179 Q ${cx - 11} 179 ${cx - 14} 186 Z`}
-                fill="#1c130c"
-                stroke={ink}
-                strokeWidth={inkW * 0.7}
-              />
-            )}
-            {def.hair === "bald" && <path d={`M ${cx - 12} 182 Q ${cx + 2 * facing} 174 ${cx + 14} 182`} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="2" />}
-            <circle cx={cx + 9 * facing} cy="190" r="2" fill="#161616" />
-            <path d={`M ${cx + 5 * facing} 200 q ${5 * facing} 3 ${9 * facing} 0`} fill="none" stroke="rgba(0,0,0,0.35)" strokeWidth="1.4" />
+            <path d="M -16 172 Q -9 145 16 149 Q 27 152 25 165 Q 14 155 1 157 Q -10 158 -16 172 Z" fill="#251810" />
+            <path d="M -15 160 Q -34 169 -29 191 Q -18 180 -10 166 Z" fill="#251810" />
           </>
         )}
+        {def.hair === "bald" && (
+          <path d="M -10 155 Q 3 149 15 154" fill="none" stroke="rgba(255,255,255,.22)" strokeWidth="2" />
+        )}
 
-        {/* Lead arm in front */}
-        <g style={leadArmStyle}>
-          <path
-            d={`M ${cx + 14 * facing} 222 L ${cx + 28 * facing} 242 L ${cx + 22 * facing} 246 L ${cx + 9 * facing} 226 Z`}
-            fill={skin}
-            stroke={ink}
-            strokeWidth={inkW}
-            strokeLinejoin="round"
-          />
-          <ellipse cx={cx + 28 * facing} cy="244" rx={gloveR + 1} ry={gloveR} fill={accent} stroke={ink} strokeWidth={inkW} />
-          <ellipse cx={cx + 28 * facing} cy="244" rx={gloveR + 1} ry={gloveR} fill="url(#bx-glove-sheen)" />
+        {/* Lead arm in front so the punch clearly reaches the opponent. */}
+        <g transform={`scale(${s} ${s})`}>
+          <Arm shoulder={shoulderLead} elbow={leadElbow} glove={leadGlove} skin={skin} accent={accent} width={14} />
         </g>
 
-        {guarding && (
-          <circle
-            cx={cx + 16 * facing}
-            cy="216"
-            r="46"
-            fill="none"
-            stroke={accent}
-            strokeWidth="2.5"
-            opacity="0.55"
-            style={{ filter: `drop-shadow(0 0 8px ${accent})` }}
-          />
+        {block && (
+          <ellipse cx="10" cy="192" rx="48" ry="54" fill="none" stroke={accent} strokeWidth="3" opacity=".38" />
         )}
       </g>
     </g>
