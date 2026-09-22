@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Baby, Upload } from "lucide-react";
+import { BookOpen, Baby, PenLine } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import { markBooksIntroSeen } from "@/lib/books-catalog";
 
@@ -35,7 +35,7 @@ export default function BooksIntroPage() {
             Your library for quiet pages
           </h1>
           <p className="mt-3 text-sm leading-relaxed" style={{ color: "var(--books-muted)" }}>
-            Browse original stories, flip pages sideways like a real book, and upload your own digital titles for sale,
+            Browse original stories, flip pages sideways like a real book, or write and publish your own title for sale,
             donation, or free.
           </p>
 
@@ -83,7 +83,7 @@ export default function BooksIntroPage() {
               className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-left transition active:scale-[0.99]"
               style={{ background: "var(--books-accent)", color: "var(--books-accent-ink)" }}
             >
-              <Upload className="h-5 w-5" />
+              <PenLine className="h-5 w-5" />
               <span className="text-sm font-bold">Create a Book</span>
             </button>
           </div>
