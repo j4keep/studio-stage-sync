@@ -309,6 +309,33 @@ function CourseDecoration({ level }: { level: number }) {
     );
   }
 
+  if (course.decor === "storm") {
+    return (
+      <group>
+        {Array.from({ length: 30 }, (_, i) => {
+          const z = 28 + i * 48;
+          const side = i % 2 ? -1 : 1;
+          const x = riverCenterX(z) + side * (14.8 + (i % 3) * 0.8);
+          return (
+            <group key={i} position={[x, riverY(z), z]}>
+              <mesh position={[0, 1.4, 0]} rotation={[0, 0, side * 0.12]} castShadow>
+                <cylinderGeometry args={[0.28, 0.42, 2.8, 7]} />
+                <meshStandardMaterial color="#3c4548" roughness={0.95} />
+              </mesh>
+              <mesh position={[side * 0.35, 2.9, 0]} rotation={[0, 0, side * 0.45]} castShadow>
+                <boxGeometry args={[0.18, 2.2, 0.24]} />
+                <meshStandardMaterial color="#566166" roughness={0.9} />
+              </mesh>
+              {i % 5 === 0 ? (
+                <pointLight position={[0, 3.8, 0]} color="#b9dcff" intensity={1.4} distance={8} />
+              ) : null}
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+
   if (course.decor === "harbor") {
     return (
       <group>
