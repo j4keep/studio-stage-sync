@@ -91,6 +91,7 @@ export default function BookUploadPage() {
         setBlurb(book.blurb);
         setBody(book.pages.map((page) => page.text).join("\n\n"));
         setCoverUrl(book.coverImage || null);
+        setCoverKey(book.coverStorageKey || null);
         setIllustratedPages(book.pages);
       })
       .catch((error: any) => toast.error(error?.message || "Could not load this book"))
