@@ -283,7 +283,13 @@ const FeedPage = () => {
           item.itemType === "battle" ? (
             <BattleCard key={`battle-${item.id}`} battle={item} onOpen={() => openPostItem(i)} />
           ) : (
-            <FeedThumbCard key={item.id} post={item} onOpen={() => openPostItem(i)} pressHoldMs={isDesktop ? 350 : undefined} />
+            <FeedThumbCard
+              key={item.id}
+              post={item}
+              onOpen={() => openPostItem(i)}
+              autoPlayMuted
+              pressHoldMs={isDesktop ? 350 : undefined}
+            />
           ),
         )
       )}
