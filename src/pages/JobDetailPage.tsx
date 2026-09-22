@@ -127,13 +127,13 @@ export default function JobDetailPage() {
       setJob(data as Job | null);
       setLoading(false);
       if (data?.employer_id) {
-        const { data: emp } = await supabase
-          .from("employer_profiles")
-          .select("company_name")
-          .eq("user_id", data.employer_id)
-          .maybeSingle();
+        const { data: emps } = await (supabase as any).rpc("yaj_employer_public_profiles", {
+          p_user_ids: [data.employer_id],
+        });
+        const emp = ((emps ?? []) as any[])[0];
         if (emp) setEmployerBrand({ company_name: emp.company_name });
       }
+
       if (user && data) {
         const [{ data: s }, { data: a }, { data: p }] = await Promise.all([
           supabase.from("saved_jobs").select("id").eq("user_id", user.id).eq("job_id", id).maybeSingle(),
