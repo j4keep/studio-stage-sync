@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, PenLine } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
 import { kidsBooks } from "@/lib/books-catalog";
@@ -44,7 +44,7 @@ export default function BooksKidsLibraryPage() {
             className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white"
             aria-label="Create a Book"
           >
-            <Upload className="h-4 w-4" />
+            <PenLine className="h-4 w-4" />
           </button>
         </div>
       </header>
