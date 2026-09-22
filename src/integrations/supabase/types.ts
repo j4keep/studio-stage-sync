@@ -6042,9 +6042,34 @@ export type Database = {
       }
       yaj_circle_is_public: { Args: { _circle_id: string }; Returns: boolean }
       yaj_circle_owner: { Args: { _circle_id: string }; Returns: string }
+      yaj_employer_application_counts: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_id: string
+          new_count: number
+          total: number
+        }[]
+      }
+      yaj_employer_applications: { Args: { p_job_id: string }; Returns: Json[] }
+      yaj_employer_public_profiles: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          company_name: string
+          description: string
+          logo_url: string
+          user_id: string
+          verified: boolean
+          website: string
+        }[]
+      }
       yaj_follows_circle_owner: {
         Args: { _circle_id: string; _user_id: string }
         Returns: boolean
+      }
+      yaj_job_application_detail: { Args: { p_id: string }; Returns: Json }
+      yaj_mask_application: {
+        Args: { _row: Database["public"]["Tables"]["job_applications"]["Row"] }
+        Returns: Json
       }
       yaj_my_circle_home_contents: {
         Args: never

@@ -33,7 +33,7 @@ export default function JobInterviewPage() {
     if (!user || !applicationId) return;
     (async () => {
       setLoading(true);
-      const { data, error: err } = await supabase.from("job_applications").select("*").eq("id", applicationId).maybeSingle();
+      const { data, error: err } = await (supabase as any).rpc("yaj_job_application_detail", { p_id: applicationId });
       if (err || !data) {
         setError("Interview not found");
         setLoading(false);

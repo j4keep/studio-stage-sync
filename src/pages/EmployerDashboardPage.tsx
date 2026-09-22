@@ -48,21 +48,20 @@ export default function EmployerDashboardPage() {
       .select("id,title,status,created_at,location")
       .eq("employer_id", user.id).order("created_at", { ascending: false });
 
-    const stats: JobStat[] = [];
-    for (const j of myJobs ?? []) {
-      const { count: apps_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id);
-      const { count: reviewing_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id).eq("status", "reviewing");
-      const { count: applied_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id).eq("status", "applied");
-      stats.push({
-        ...j,
-        apps_count: apps_count ?? 0,
-        new_count: (reviewing_count ?? 0) + (applied_count ?? 0),
-      });
-    }
+    const jobIds = (myJobs ?? []).map((j) => j.id);
+    const { data: countRows } = jobIds.length
+      ? await (supabase as any).rpc("yaj_employer_application_counts", { p_job_ids: jobIds })
+      : { data: [] as any[] };
+    const countMap = Object.fromEntries(
+      ((countRows ?? []) as any[]).map((r) => [r.job_id, { total: r.total ?? 0, new_count: r.new_count ?? 0 }]),
+    );
+    const stats: JobStat[] = (myJobs ?? []).map((j) => ({
+      ...j,
+      apps_count: countMap[j.id]?.total ?? 0,
+      new_count: countMap[j.id]?.new_count ?? 0,
+    }));
     setJobs(stats);
+
 
     const { data: emp } = await supabase.from("employer_profiles").select("*").eq("user_id", user.id).maybeSingle();
     if (emp) {
@@ -103,11 +102,9 @@ export default function EmployerDashboardPage() {
 
   const loadApps = async (jobId: string) => {
     setExpandedApp(null);
-    const { data } = await supabase.from("job_applications")
-      .select("*")
-      .eq("job_id", jobId).order("created_at", { ascending: false });
-    const rows = data ?? [];
-    const ids = Array.from(new Set(rows.map((a: any) => a.applicant_id)));
+    const { data } = await (supabase as any).rpc("yaj_employer_applications", { p_job_id: jobId });
+    const rows = ((data ?? []) as any[]).filter(Boolean);
+    const ids = Array.from(new Set(rows.filter((a) => !a.anonymous_mode).map((a: any) => a.applicant_id)));
     let profileMap: Record<string, any> = {};
     if (ids.length) {
       const { data: profs } = await supabase.from("profiles").select("user_id,display_name,avatar_url").in("user_id", ids);
@@ -116,9 +113,10 @@ export default function EmployerDashboardPage() {
     setApps(rows.map((a: any) => ({
       ...a,
       status: normalizeAppStatus(a.status),
-      applicant: profileMap[a.applicant_id],
+      applicant: a.anonymous_mode ? { display_name: "Anonymous applicant", avatar_url: null } : profileMap[a.applicant_id],
     })));
   };
+
 
   const openJob = async (jobId: string) => {
     if (selectedJob === jobId) {

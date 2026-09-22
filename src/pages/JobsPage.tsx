@@ -105,10 +105,10 @@ export default function JobsPage() {
 
     const employerIds = Array.from(new Set(openJobs.map((j) => j.employer_id).filter(Boolean)));
     if (employerIds.length) {
-      const { data: emps } = await supabase
-        .from("employer_profiles")
-        .select("user_id,company_name,verified")
-        .in("user_id", employerIds);
+      const { data: emps } = await (supabase as any).rpc("yaj_employer_public_profiles", {
+        p_user_ids: employerIds,
+      });
+
       setVerifiedEmployers(new Set((emps ?? []).filter((e: any) => e.verified).map((e: any) => e.user_id)));
       setEmployerBrands(
         Object.fromEntries(
