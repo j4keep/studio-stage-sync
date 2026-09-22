@@ -19,6 +19,8 @@ export type HappeningItem = {
   title: string;
   subtitle?: string;
   coverUrl: string | null;
+  /** Optional playable preview used by the Home Happening rail. */
+  previewVideoUrl?: string | null;
   mediaType?: "image" | "video" | null;
   createdAt: string;
   /** Destination page for explore-style items. */
@@ -104,6 +106,7 @@ export async function fetchHappeningItems(opts: {
       title,
       subtitle: "Post",
       coverUrl: meta?.coverUrl || post.media_url || null,
+      previewVideoUrl: post.media_type === "video" ? post.media_url || null : null,
       mediaType: post.media_type === "video" ? "video" : "image",
       createdAt: post.created_at,
       route: null,
@@ -174,7 +177,8 @@ export async function fetchHappeningItems(opts: {
         kind: "tv",
         title: safeTitle(tv.title, "YAJ TV"),
         subtitle: "YAJ TV",
-        coverUrl: tv.thumbUrl || null,
+        coverUrl: tv.thumbUrl || tv.posterUrl || null,
+        previewVideoUrl: tv.hasMedia ? tv.videoUrl : null,
         mediaType: "video",
         createdAt: new Date(tv.createdAt).toISOString(),
         route: `/tv/title/${tv.id}`,
@@ -210,6 +214,7 @@ export async function fetchHappeningItems(opts: {
         title: safeTitle(row.title, "Event"),
         subtitle: "Event",
         coverUrl: row.media_url || null,
+        previewVideoUrl: row.media_type === "video" ? row.media_url || null : null,
         mediaType: row.media_type === "video" ? "video" : "image",
         createdAt: row.created_at,
         route: `/events/${row.id}`,
