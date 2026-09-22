@@ -199,8 +199,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
         .order("created_at", { ascending: false }),
       (supabase as any)
         .from("podcasts")
-        .select("id, title, cover_url, media_url, plays, user_id, likes_count, episode, duration, is_video")
+        .select("id, title, cover_url, media_url, plays, user_id, likes_count, episode, duration, is_video, on_radio")
         .eq("is_video", false)
+        .eq("on_radio", true)
         .order("created_at", { ascending: false }),
     ]);
 
