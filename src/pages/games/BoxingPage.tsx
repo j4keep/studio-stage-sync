@@ -410,7 +410,7 @@ export default function BoxingPage() {
                   />
                 ))}
               </div>
-              <p className="text-[9px] text-white/35">Robot and bear fighters use their own colors.</p>
+              <p className="text-[9px] text-white/35">All fighter choices use human boxing proportions and your selected skin tone.</p>
 
               <button
                 type="button"
