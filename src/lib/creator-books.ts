@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { dataUrlToFile } from "@/lib/video-preview";
-import { generateR2Key, getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
+import { deleteFromR2, generateR2Key, getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import type { BookAudience, BookCategoryId, BookItem, BookListingType, BookPage } from "@/lib/books-catalog";
 import { normalizeCreatorBookPages } from "@/lib/book-pagination";
 
@@ -148,4 +148,63 @@ export async function generateCreatorBookCover(args: {
     throw new Error(uploaded.error || "Generated cover could not be saved");
   }
   return { url: getR2DownloadUrl(uploaded.data.key), key: uploaded.data.key };
+}
+
+
+export async function generateCreatorKidsPageIllustration(args: {
+  userId: string;
+  title: string;
+  author: string;
+  pageText: string;
+  pageNumber: number;
+  totalPages: number;
+  artDirection: string;
+  previousImageKey?: string | null;
+}): Promise<{ url: string; key: string | null; prompt: string }> {
+  const prompt = `Page ${args.pageNumber}: ${args.pageText.slice(0, 1200)}`;
+  const { data, error } = await supabase.functions.invoke("generate-cover-image", {
+    body: {
+      mode: "kids-book-page",
+      title: args.title,
+      author: args.author,
+      prompt,
+      pageText: args.pageText.slice(0, 1800),
+      pageNumber: args.pageNumber,
+      totalPages: args.totalPages,
+      artDirection: args.artDirection,
+    },
+  });
+  if (error) throw error;
+
+  const imageUrl = data?.imageUrl;
+  if (!imageUrl || typeof imageUrl !== "string") {
+    throw new Error(data?.error || "No page illustration was generated");
+  }
+
+  let url = imageUrl;
+  let key: string | null = null;
+  const file = generatedImageToFile(imageUrl, `page-${args.pageNumber}.png`);
+
+  if (file) {
+    const requestedKey = generateR2Key(
+      args.userId,
+      "book-pages",
+      `${args.title || "book"}-page-${args.pageNumber}.png`,
+    );
+    const uploaded = await uploadToR2(file, {
+      fileName: requestedKey,
+      mimeType: file.type || "image/png",
+    });
+    if (!uploaded.success || !uploaded.data) {
+      throw new Error(uploaded.error || "Page illustration could not be saved");
+    }
+    key = uploaded.data.key;
+    url = getR2DownloadUrl(uploaded.data.key);
+  }
+
+  if (args.previousImageKey && args.previousImageKey !== key) {
+    void deleteFromR2(args.previousImageKey).catch(() => {});
+  }
+
+  return { url, key, prompt };
 }
