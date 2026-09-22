@@ -52,18 +52,18 @@ export default function ProOpportunitiesDashboardPage() {
     setJobs(rows);
 
     if (rows.length) {
-      const { data: apps } = await supabase
-        .from("job_applications")
-        .select("job_id")
-        .in("job_id", rows.map((r) => r.id));
+      const { data: countRows } = await (supabase as any).rpc("yaj_employer_application_counts", {
+        p_job_ids: rows.map((r) => r.id),
+      });
       const counts: Record<string, number> = {};
-      (apps ?? []).forEach((a: any) => {
-        counts[a.job_id] = (counts[a.job_id] || 0) + 1;
+      ((countRows ?? []) as any[]).forEach((r) => {
+        counts[r.job_id] = r.total ?? 0;
       });
       setApplicantCounts(counts);
     } else {
       setApplicantCounts({});
     }
+
     setLoading(false);
   }, [user]);
 
