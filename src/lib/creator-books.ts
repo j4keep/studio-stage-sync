@@ -47,6 +47,7 @@ function rowToBook(row: CreatorBookRow): BookItem {
     coverFrom: "#111827",
     coverTo: "#6d28d9",
     coverImage: row.cover_url || undefined,
+    coverStorageKey: row.cover_key || undefined,
     blurb: row.blurb || "A creator-published book on YAJ.",
     pages: normalizeCreatorBookPages(Array.isArray(row.pages) ? row.pages : [], row.audience),
     userUploaded: true,
@@ -184,9 +185,18 @@ export async function listBookLibraryEntries(userId: string): Promise<{ bookId: 
 }
 
 export async function saveBookToLibrary(userId: string, bookId: string): Promise<void> {
+  const { data: existing, error: readError } = await (supabase as any)
+    .from("book_library")
+    .select("acquisition")
+    .eq("user_id", userId)
+    .eq("book_id", bookId)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (existing) return;
+
   const { error } = await (supabase as any)
     .from("book_library")
-    .upsert({ user_id: userId, book_id: bookId, acquisition: "saved" }, { onConflict: "user_id,book_id" });
+    .insert({ user_id: userId, book_id: bookId, acquisition: "saved" });
   if (error) throw error;
 }
 
