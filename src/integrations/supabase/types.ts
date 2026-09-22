@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_content_removals: {
+        Row: {
+          admin_user_id: string
+          content_id: string
+          content_type: string
+          created_at: string
+          creator_user_id: string | null
+          id: string
+          reason: string
+          title: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          content_id: string
+          content_type: string
+          created_at?: string
+          creator_user_id?: string | null
+          id?: string
+          reason: string
+          title?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          creator_user_id?: string | null
+          id?: string
+          reason?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       ai_generations: {
         Row: {
           audio_url: string | null
@@ -215,6 +248,9 @@ export type Database = {
       battles: {
         Row: {
           battle_background: string | null
+          cancel_requested_at: string | null
+          cancel_requested_by: string | null
+          challenger_archived_at: string | null
           challenger_cover_url: string | null
           challenger_id: string
           challenger_media_url: string | null
@@ -225,6 +261,7 @@ export type Database = {
           likes_count: number
           max_duration_minutes: number | null
           media_type: string
+          opponent_archived_at: string | null
           opponent_cover_url: string | null
           opponent_id: string | null
           opponent_media_url: string | null
@@ -237,6 +274,9 @@ export type Database = {
         }
         Insert: {
           battle_background?: string | null
+          cancel_requested_at?: string | null
+          cancel_requested_by?: string | null
+          challenger_archived_at?: string | null
           challenger_cover_url?: string | null
           challenger_id: string
           challenger_media_url?: string | null
@@ -247,6 +287,7 @@ export type Database = {
           likes_count?: number
           max_duration_minutes?: number | null
           media_type?: string
+          opponent_archived_at?: string | null
           opponent_cover_url?: string | null
           opponent_id?: string | null
           opponent_media_url?: string | null
@@ -259,6 +300,9 @@ export type Database = {
         }
         Update: {
           battle_background?: string | null
+          cancel_requested_at?: string | null
+          cancel_requested_by?: string | null
+          challenger_archived_at?: string | null
           challenger_cover_url?: string | null
           challenger_id?: string
           challenger_media_url?: string | null
@@ -269,6 +313,7 @@ export type Database = {
           likes_count?: number
           max_duration_minutes?: number | null
           media_type?: string
+          opponent_archived_at?: string | null
           opponent_cover_url?: string | null
           opponent_id?: string | null
           opponent_media_url?: string | null
@@ -299,6 +344,27 @@ export type Database = {
           blocker_id?: string
           created_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      book_library: {
+        Row: {
+          acquisition: string
+          book_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          acquisition?: string
+          book_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          acquisition?: string
+          book_id?: string
+          created_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -852,6 +918,48 @@ export type Database = {
           type?: string
           updated_at?: string
           welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      content_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          details: string | null
+          id: string
+          reason: string
+          reporter_id: string
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          target_id: string
+          target_type: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason: string
+          reporter_id: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          target_id: string
+          target_type: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          details?: string | null
+          id?: string
+          reason?: string
+          reporter_id?: string
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          target_id?: string
+          target_type?: string
         }
         Relationships: []
       }
@@ -5933,6 +6041,10 @@ export type Database = {
           moderation_status: string
           moderation_until: string
         }[]
+      }
+      request_or_confirm_battle_cancel: {
+        Args: { p_battle_id: string }
+        Returns: string
       }
       submit_deal_for_review: {
         Args: { p_deal_id: string }
