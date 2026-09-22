@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Sparkles, Video, Phone, Check } from "lucide-react";
+import { ArrowLeft, Briefcase, Sparkles, Video, Phone, Check, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatSalary, timeAgo, applicationStatusLabel, normalizeAppStatus, notifyJobEmployer } from "@/lib/jobs";
@@ -103,6 +103,12 @@ export default function MyJobsPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <h1 className="text-base font-bold flex-1">My Jobs</h1>
+        <button
+          onClick={() => nav("/employer-dashboard")}
+          className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold flex items-center gap-1"
+        >
+          <Building2 className="w-3 h-3" /> Employer
+        </button>
         <button onClick={() => nav("/resume-builder")} className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1">
           <Sparkles className="w-3 h-3" /> Resume
         </button>
@@ -265,7 +271,19 @@ export default function MyJobsPage() {
             </button>
           ))
         ) : (
-          posted.length === 0 ? <Empty text="You haven't posted any jobs yet." /> :
+          posted.length === 0 ? (
+            <div className="text-center py-12">
+              <Briefcase className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">You haven't posted any jobs yet.</p>
+              <button
+                type="button"
+                onClick={() => nav("/employer-dashboard")}
+                className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold"
+              >
+                Open Employer Dashboard
+              </button>
+            </div>
+          ) :
           posted.map((p) => (
             <button key={p.id} onClick={() => nav(`/employer-dashboard`)} className="w-full text-left p-4 rounded-2xl bg-card border border-border">
               <div className="flex items-start justify-between">
