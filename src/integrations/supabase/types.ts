@@ -905,6 +905,60 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_books: {
+        Row: {
+          audience: string
+          author: string
+          blurb: string
+          category: string
+          cover_key: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          listing_type: string
+          pages: Json
+          price: number | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audience: string
+          author: string
+          blurb?: string
+          category: string
+          cover_key?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          listing_type: string
+          pages?: Json
+          price?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audience?: string
+          author?: string
+          blurb?: string
+          category?: string
+          cover_key?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          listing_type?: string
+          pages?: Json
+          price?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deal_audit_log: {
         Row: {
           action: string
