@@ -15,6 +15,7 @@ import {
   Clock,
   HeartHandshake,
   Lock,
+  Flag,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +25,7 @@ import { YajTvRow } from "./YajTvRow";
 import { YajTvPosterPlaceholder } from "./YajTvPosterPlaceholder";
 import { YajTvDonatePanel } from "./YajTvDonatePanel";
 import { CATEGORY_LABELS, KIND_META, formatRuntime, formatViews, type CategorySelection } from "./yajTvMeta";
+import { submitContentReport } from "@/lib/trust-safety";
 
 function fmtAgo(ts: number) {
   const s = Math.floor((Date.now() - ts) / 1000);
@@ -141,6 +143,31 @@ const YajTvDetailPage = () => {
     } catch (e: any) {
       setAll((rs) => rs.map((r) => (r.id === target.id ? { ...r, inMyList: wasInList } : r)));
       toast({ title: "Couldn't update My List", description: e?.message || String(e), variant: "destructive" });
+    }
+  };
+
+  const reportTitle = async () => {
+    if (!item) return;
+    if (!user) {
+      toast({ title: "Sign in to report" });
+      return;
+    }
+    if (item.isOriginal || item.creator.id === user.id) return;
+    const reason = window.prompt(
+      "Why are you reporting this title? Examples: pornography, graphic content, copyright, wrong category, spam.",
+      "Policy violation",
+    );
+    if (!reason?.trim()) return;
+    try {
+      await submitContentReport({
+        targetType: "tv",
+        targetId: item.id,
+        reason: reason.trim(),
+        details: `YAJ.TV title: ${item.title} · Category: ${item.category || item.kind}`,
+      });
+      toast({ title: "Report sent to Trust & Safety" });
+    } catch (e: any) {
+      toast({ title: "Couldn't submit report", description: e?.message || String(e), variant: "destructive" });
     }
   };
 
@@ -334,6 +361,15 @@ const YajTvDetailPage = () => {
             <HeartHandshake className="h-3.5 w-3.5" />
             Support
           </button>
+          {!item.isOriginal && item.creator.id !== user?.id && (
+            <button
+              onClick={() => void reportTitle()}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-full border border-white/15 bg-white/5 px-3 text-xs font-semibold text-white/70"
+            >
+              <Flag className="h-3.5 w-3.5" />
+              Report
+            </button>
+          )}
         </div>
 
         {showSubscribeGate && (
