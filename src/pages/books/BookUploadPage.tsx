@@ -218,6 +218,7 @@ export default function BookUploadPage() {
 
     try {
       let working = [...illustratedPages];
+      let failed = 0;
       for (let step = 0; step < missingIndexes.length; step += 1) {
         const index = missingIndexes[step];
         setGeneratingPageIndex(index);
@@ -241,11 +242,16 @@ export default function BookUploadPage() {
           };
           setIllustratedPages([...working]);
         } catch (error: any) {
+          failed += 1;
           toast.error(error?.message || `Page ${index + 1} could not be illustrated`);
         }
         setIllustrationProgress({ done: step + 1, total: missingIndexes.length });
       }
-      toast.success("Kids book illustrations are ready");
+      if (failed > 0) {
+        toast.warning(`${failed} page${failed === 1 ? "" : "s"} still need an illustration. You can retry them individually.`);
+      } else {
+        toast.success("Kids book illustrations are ready");
+      }
     } finally {
       setGeneratingPageIndex(null);
       setGeneratingIllustrations(false);
