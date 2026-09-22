@@ -68,6 +68,50 @@ export async function listPublishedCreatorBooks(): Promise<BookItem[]> {
   return ((data || []) as CreatorBookRow[]).map(rowToBook);
 }
 
+export async function listAllCreatorBooksForAdmin(): Promise<BookItem[]> {
+  const { data, error } = await (supabase as any)
+    .from("creator_books")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data || []) as CreatorBookRow[]).map(rowToBook);
+}
+
+export async function adminDeleteCreatorBook(
+  adminUserId: string,
+  book: BookItem,
+  reason: string,
+): Promise<void> {
+  const { data: row, error: readError } = await (supabase as any)
+    .from("creator_books")
+    .select("id,user_id,title,cover_key,pages")
+    .eq("id", book.id)
+    .maybeSingle();
+  if (readError) throw readError;
+  if (!row) return;
+
+  const { error: logError } = await (supabase as any)
+    .from("admin_content_removals")
+    .insert({
+      admin_user_id: adminUserId,
+      content_type: "book",
+      content_id: String(book.id),
+      creator_user_id: row.user_id,
+      title: row.title,
+      reason: reason.trim() || "Policy violation",
+    });
+  if (logError) throw logError;
+
+  const { error } = await (supabase as any).from("creator_books").delete().eq("id", book.id);
+  if (error) throw error;
+
+  const keys = [
+    row.cover_key,
+    ...((Array.isArray(row.pages) ? row.pages : []).map((p: any) => p?.imageKey)),
+  ].filter((key): key is string => typeof key === "string" && key.length > 0);
+  await Promise.all(keys.map((key) => deleteFromR2(key).catch(() => {})));
+}
+
 export async function listMyCreatorBooks(userId: string): Promise<BookItem[]> {
   const { data, error } = await (supabase as any)
     .from("creator_books")
