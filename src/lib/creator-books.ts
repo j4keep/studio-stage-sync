@@ -4,7 +4,7 @@ import { deleteFromR2, generateR2Key, getR2DownloadUrl, uploadToR2 } from "@/lib
 import type { BookAudience, BookCategoryId, BookItem, BookListingType, BookPage } from "@/lib/books-catalog";
 import { normalizeCreatorBookPages } from "@/lib/book-pagination";
 
-type CreatorBookRow = {
+export type CreatorBookRow = {
   id: string;
   user_id: string;
   title: string;
@@ -66,6 +66,94 @@ export async function listPublishedCreatorBooks(): Promise<BookItem[]> {
     throw error;
   }
   return ((data || []) as CreatorBookRow[]).map(rowToBook);
+}
+
+export async function listMyCreatorBooks(userId: string): Promise<BookItem[]> {
+  const { data, error } = await (supabase as any)
+    .from("creator_books")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return ((data || []) as CreatorBookRow[]).map(rowToBook);
+}
+
+export async function updateCreatorBook(userId: string, id: string, draft: CreatorBookDraft): Promise<BookItem> {
+  const payload = {
+    title: draft.title.trim(),
+    author: draft.author.trim(),
+    audience: draft.audience,
+    category: draft.category,
+    listing_type: draft.listingType,
+    price: draft.listingType === "sale" ? draft.price ?? null : null,
+    blurb: draft.blurb.trim(),
+    cover_url: draft.coverUrl || null,
+    cover_key: draft.coverKey || null,
+    pages: draft.pages,
+    status: "published",
+  };
+  const { data, error } = await (supabase as any)
+    .from("creator_books")
+    .update(payload)
+    .eq("id", id)
+    .eq("user_id", userId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  return rowToBook(data as CreatorBookRow);
+}
+
+export async function deleteCreatorBook(userId: string, id: string): Promise<void> {
+  const { data: row, error: readError } = await (supabase as any)
+    .from("creator_books")
+    .select("cover_key,pages")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (readError) throw readError;
+
+  const { error } = await (supabase as any)
+    .from("creator_books")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
+  if (error) throw error;
+
+  const keys = [
+    row?.cover_key,
+    ...((Array.isArray(row?.pages) ? row.pages : []).map((p: any) => p?.imageKey)),
+  ].filter((key): key is string => typeof key === "string" && key.length > 0);
+  await Promise.all(keys.map((key) => deleteFromR2(key).catch(() => {})));
+}
+
+export async function listBookLibraryEntries(userId: string): Promise<{ bookId: string; acquisition: "saved" | "purchased" }[]> {
+  const { data, error } = await (supabase as any)
+    .from("book_library")
+    .select("book_id,acquisition,created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data || []).map((row: any) => ({
+    bookId: String(row.book_id),
+    acquisition: row.acquisition === "purchased" ? "purchased" : "saved",
+  }));
+}
+
+export async function saveBookToLibrary(userId: string, bookId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("book_library")
+    .upsert({ user_id: userId, book_id: bookId, acquisition: "saved" }, { onConflict: "user_id,book_id" });
+  if (error) throw error;
+}
+
+export async function removeSavedBookFromLibrary(userId: string, bookId: string): Promise<void> {
+  const { error } = await (supabase as any)
+    .from("book_library")
+    .delete()
+    .eq("user_id", userId)
+    .eq("book_id", bookId)
+    .eq("acquisition", "saved");
+  if (error) throw error;
 }
 
 export async function getCreatorBookById(id: string): Promise<BookItem | null> {
