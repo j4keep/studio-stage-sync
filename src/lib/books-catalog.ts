@@ -1,4 +1,4 @@
-/** YAJ Books — catalog types, seed books, and local user uploads. */
+/** YAJ Books — catalog types, seed books, plus legacy local drafts. */
 
 export type BookListingType = "sale" | "donation" | "free";
 export type BookAudience = "regular" | "kids";
@@ -40,8 +40,10 @@ export type BookItem = {
   coverImage?: string;
   blurb: string;
   pages: BookPage[];
-  /** true when created by a user upload */
+  /** true when created by a YAJ user */
   userUploaded?: boolean;
+  /** Owner for cloud-published creator books. */
+  creatorUserId?: string;
 };
 
 export const REGULAR_CATEGORIES: {
