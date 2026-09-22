@@ -37,6 +37,7 @@ import { blockUser } from "@/lib/blocks";
 import ShareListingSheet from "@/components/marketplace/ShareListingSheet";
 import MarketplaceLocationGate from "@/components/marketplace/MarketplaceLocationGate";
 import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
+import { submitContentReport } from "@/lib/trust-safety";
 import { useSellerDistance } from "@/hooks/use-seller-distance";
 
 export default function MarketplaceListingPage() {
@@ -665,9 +666,23 @@ export default function MarketplaceListingPage() {
             peerName={sellerName}
             onViewProfile={() => nav(`/marketplace/profile/${listing.seller_id}`)}
             onReport={() => {
-              if (window.confirm("Report this listing? We'll review it.")) {
-                toast.message("Report submitted — we'll review this listing");
+              if (!user) {
+                toast.error("Sign in to report a listing");
+                return;
               }
+              const reason = window.prompt(
+                "Why are you reporting this listing? Examples: scam/fraud, prohibited item, misleading description, counterfeit, unsafe transaction, or other.",
+                "Scam/Fraud",
+              );
+              if (!reason?.trim()) return;
+              void submitContentReport({
+                targetType: "marketplace",
+                targetId: listing.id,
+                reason: reason.trim(),
+                details: `Marketplace listing: ${listing.title} · Seller: ${listing.seller_id} · Category: ${listing.category}`,
+              })
+                .then(() => toast.success("Report sent to Trust & Safety"))
+                .catch((e: any) => toast.error(e?.message || "Could not submit report"));
             }}
             onBlock={() => setBlockOpen(true)}
           />
