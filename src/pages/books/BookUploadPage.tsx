@@ -10,10 +10,15 @@ import {
   REGULAR_CATEGORIES,
   type BookAudience,
   type BookListingType,
+  type BookPage,
   type RegularCategoryId,
 } from "@/lib/books-catalog";
 import { paginateBookManuscript } from "@/lib/book-pagination";
-import { generateCreatorBookCover, publishCreatorBook } from "@/lib/creator-books";
+import {
+  generateCreatorBookCover,
+  generateCreatorKidsPageIllustration,
+  publishCreatorBook,
+} from "@/lib/creator-books";
 
 const COVER_PAIRS: [string, string][] = [
   ["#1e3a8a", "#93c5fd"],
@@ -43,9 +48,15 @@ export default function BookUploadPage() {
   const [coverKey, setCoverKey] = useState<string | null>(null);
   const [generatingCover, setGeneratingCover] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [artDirection, setArtDirection] = useState("");
+  const [illustratedPages, setIllustratedPages] = useState<BookPage[]>([]);
+  const [generatingIllustrations, setGeneratingIllustrations] = useState(false);
+  const [generatingPageIndex, setGeneratingPageIndex] = useState<number | null>(null);
+  const [illustrationProgress, setIllustrationProgress] = useState({ done: 0, total: 0 });
 
   const kids = audience === "kids";
-  const pages = useMemo(() => paginateBookManuscript(body, audience), [body, audience]);
+  const basePages = useMemo(() => paginateBookManuscript(body, audience), [body, audience]);
+  const pages = kids ? illustratedPages : basePages;
   const [fallbackFrom, fallbackTo] = useMemo(
     () => COVER_PAIRS[Math.abs(title.length + body.length) % COVER_PAIRS.length],
     [title.length, body.length],
@@ -66,6 +77,33 @@ export default function BookUploadPage() {
       active = false;
     };
   }, [user, author]);
+
+  useEffect(() => {
+    if (!kids) {
+      setIllustratedPages([]);
+      return;
+    }
+    setIllustratedPages((previous) =>
+      basePages.map((page, index) => {
+        const existing = previous[index];
+        return existing?.text === page.text
+          ? { ...page, image: existing.image, imageKey: existing.imageKey, imagePrompt: existing.imagePrompt }
+          : page;
+      }),
+    );
+  }, [basePages, kids]);
+
+  const defaultArtDirection = () => {
+    const storyHint = (blurb.trim() || body.slice(0, 500)).trim();
+    return [
+      "Warm, expressive children's picture-book illustration.",
+      "Keep the same recurring characters, facial features, skin tones, hair, clothing, proportions, and color palette on every page.",
+      "Friendly cinematic composition, colorful but not overly busy, suitable for children.",
+      storyHint ? `Story world and character context: ${storyHint}` : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  };
 
   const generateCover = async () => {
     if (!user) {
@@ -105,6 +143,100 @@ export default function BookUploadPage() {
       toast.error(error?.message || "Could not generate the cover");
     } finally {
       setGeneratingCover(false);
+    }
+  };
+
+  const generatePageIllustration = async (pageIndex: number) => {
+    if (!user) {
+      toast.error("Sign in to create illustrations");
+      return;
+    }
+    if (!kids) return;
+    if (!title.trim() || !author.trim()) {
+      toast.error("Add the title and author first");
+      return;
+    }
+    const page = illustratedPages[pageIndex];
+    if (!page?.text) return;
+
+    setGeneratingPageIndex(pageIndex);
+    try {
+      const direction = artDirection.trim() || defaultArtDirection();
+      const generated = await generateCreatorKidsPageIllustration({
+        userId: user.id,
+        title: title.trim(),
+        author: author.trim(),
+        pageText: page.text,
+        pageNumber: pageIndex + 1,
+        totalPages: illustratedPages.length,
+        artDirection: direction,
+        previousImageKey: page.imageKey || null,
+      });
+      setIllustratedPages((current) =>
+        current.map((item, index) =>
+          index === pageIndex
+            ? { ...item, image: generated.url, imageKey: generated.key || undefined, imagePrompt: generated.prompt }
+            : item,
+        ),
+      );
+      toast.success(`Page ${pageIndex + 1} illustration created`);
+    } catch (error: any) {
+      toast.error(error?.message || `Could not create page ${pageIndex + 1}`);
+    } finally {
+      setGeneratingPageIndex(null);
+    }
+  };
+
+  const generateAllIllustrations = async () => {
+    if (!user) {
+      toast.error("Sign in to create illustrations");
+      return;
+    }
+    if (!kids || !illustratedPages.length) {
+      toast.error("Add your kids story first");
+      return;
+    }
+    if (!title.trim() || !author.trim()) {
+      toast.error("Add the title and author first");
+      return;
+    }
+
+    setGeneratingIllustrations(true);
+    setIllustrationProgress({ done: 0, total: illustratedPages.length });
+    const direction = artDirection.trim() || defaultArtDirection();
+
+    try {
+      let working = [...illustratedPages];
+      for (let index = 0; index < working.length; index += 1) {
+        setGeneratingPageIndex(index);
+        const page = working[index];
+        try {
+          const generated = await generateCreatorKidsPageIllustration({
+            userId: user.id,
+            title: title.trim(),
+            author: author.trim(),
+            pageText: page.text,
+            pageNumber: index + 1,
+            totalPages: working.length,
+            artDirection: direction,
+            previousImageKey: page.imageKey || null,
+          });
+          working[index] = {
+            ...page,
+            image: generated.url,
+            imageKey: generated.key || undefined,
+            imagePrompt: generated.prompt,
+          };
+          setIllustratedPages([...working]);
+        } catch (error: any) {
+          toast.error(error?.message || `Page ${index + 1} could not be illustrated`);
+        }
+        setIllustrationProgress({ done: index + 1, total: working.length });
+      }
+      toast.success("Kids book illustrations are ready");
+    } finally {
+      setGeneratingPageIndex(null);
+      setGeneratingIllustrations(false);
     }
   };
 
