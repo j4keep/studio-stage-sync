@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, BriefcaseBusiness, Film, Loader2, Search, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, BriefcaseBusiness, Film, Loader2, Search, Shield, ShoppingBag, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { adminDeleteCreatorBook, listAllCreatorBooksForAdmin } from "@/lib/creat
 import type { BookItem } from "@/lib/books-catalog";
 import { WheuatTv, type WheuatTvItem } from "@/pages/wheuat-tv/wheuatTvStore";
 
-type Tab = "books" | "tv" | "jobs";
+type Tab = "books" | "tv" | "jobs" | "marketplace";
 
 type AdminJob = {
   id: string;
@@ -20,6 +20,19 @@ type AdminJob = {
   created_at: string;
 };
 
+type AdminMarketplaceListing = {
+  id: string;
+  seller_id: string;
+  title: string;
+  category: string;
+  price: number | null;
+  status: string;
+  cover_url: string | null;
+  city: string | null;
+  state: string | null;
+  created_at: string;
+};
+
 export default function AdminContentPage() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -28,6 +41,7 @@ export default function AdminContentPage() {
   const [books, setBooks] = useState<BookItem[]>([]);
   const [tv, setTv] = useState<WheuatTvItem[]>([]);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
+  const [marketplace, setMarketplace] = useState<AdminMarketplaceListing[]>([]);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("Policy violation");
   const [loading, setLoading] = useState(true);
@@ -45,18 +59,25 @@ export default function AdminContentPage() {
     if (!isAdmin) return;
     setLoading(true);
     try {
-      const [bookRows, tvRows, jobsResult] = await Promise.all([
+      const [bookRows, tvRows, jobsResult, marketplaceResult] = await Promise.all([
         listAllCreatorBooksForAdmin(),
         WheuatTv.list(),
         (supabase as any)
           .from("job_listings")
           .select("id,employer_id,title,category,location,status,created_at")
           .order("created_at", { ascending: false }),
+        (supabase as any)
+          .from("marketplace_listings")
+          .select("id,seller_id,title,category,price,status,cover_url,city,state,created_at")
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false }),
       ]);
       if (jobsResult.error) throw jobsResult.error;
+      if (marketplaceResult.error) throw marketplaceResult.error;
       setBooks(bookRows);
       setTv(tvRows.filter((item) => !item.isOriginal));
       setJobs((jobsResult.data || []) as AdminJob[]);
+      setMarketplace((marketplaceResult.data || []) as AdminMarketplaceListing[]);
     } catch (e: any) {
       toast.error(e?.message || "Could not load creator content");
     } finally {
@@ -80,6 +101,19 @@ export default function AdminContentPage() {
   const filteredJobs = useMemo(
     () => !q ? jobs : jobs.filter((job) => [job.title, job.category, job.location, job.status].filter(Boolean).join(" ").toLowerCase().includes(q)),
     [jobs, q],
+  );
+  const filteredMarketplace = useMemo(
+    () =>
+      !q
+        ? marketplace
+        : marketplace.filter((item) =>
+            [item.title, item.category, item.city, item.state, item.status]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(q),
+          ),
+    [marketplace, q],
   );
 
   const removeBook = async (book: BookItem) => {
@@ -148,6 +182,40 @@ export default function AdminContentPage() {
     }
   };
 
+  const removeMarketplaceListing = async (item: AdminMarketplaceListing) => {
+    if (!user) return;
+    if (!window.confirm(`Remove "${item.title}" from Marketplace for: ${reason}?`)) return;
+    setRemoving(`marketplace:${item.id}`);
+    try {
+      const { error: logError } = await (supabase as any).from("admin_content_removals").insert({
+        admin_user_id: user.id,
+        content_type: "marketplace",
+        content_id: item.id,
+        creator_user_id: item.seller_id,
+        title: item.title,
+        reason: reason.trim() || "Policy violation",
+      });
+      if (logError) throw logError;
+
+      const { error } = await (supabase as any)
+        .from("marketplace_listings")
+        .update({
+          status: "removed",
+          deleted_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", item.id);
+      if (error) throw error;
+
+      setMarketplace((current) => current.filter((row) => row.id !== item.id));
+      toast.success("Marketplace listing removed and moderation action logged");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not remove listing");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   if (isAdmin === null) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   if (!isAdmin) {
     return (
@@ -161,7 +229,14 @@ export default function AdminContentPage() {
     );
   }
 
-  const items = tab === "books" ? filteredBooks : tab === "tv" ? filteredTv : filteredJobs;
+  const items =
+    tab === "books"
+      ? filteredBooks
+      : tab === "tv"
+        ? filteredTv
+        : tab === "jobs"
+          ? filteredJobs
+          : filteredMarketplace;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -171,7 +246,7 @@ export default function AdminContentPage() {
         </button>
         <div>
           <h1 className="text-lg font-bold">Content Moderation</h1>
-          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books, YAJ.TV and Opportunities.</p>
+          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books, YAJ.TV, Opportunities and Marketplace.</p>
         </div>
       </header>
 
@@ -184,6 +259,9 @@ export default function AdminContentPage() {
         </button>
         <button onClick={() => setTab("jobs")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "jobs" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
           <BriefcaseBusiness className="mr-1.5 inline h-4 w-4" /> Jobs
+        </button>
+        <button onClick={() => setTab("marketplace")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "marketplace" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <ShoppingBag className="mr-1.5 inline h-4 w-4" /> Marketplace
         </button>
       </div>
 
@@ -242,7 +320,7 @@ export default function AdminContentPage() {
             </article>
           ))}
         </div>
-      ) : (
+      ) : tab === "jobs" ? (
         <div className="mt-5 space-y-3">
           {filteredJobs.map((job) => (
             <article key={job.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
@@ -257,6 +335,36 @@ export default function AdminContentPage() {
               </div>
               <button disabled={removing === `job:${job.id}`} onClick={() => void removeJob(job)} className="flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold text-red-600 disabled:opacity-50">
                 {removing === `job:${job.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {filteredMarketplace.map((item) => (
+            <article key={item.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                {item.cover_url ? (
+                  <img src={item.cover_url} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <ShoppingBag className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{item.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {item.category} · {[item.city, item.state].filter(Boolean).join(", ") || "No location"} · {item.status}
+                </p>
+                <p className="mt-0.5 text-[11px] font-semibold">
+                  {item.price == null ? "No price" : `${Number(item.price).toLocaleString()}`}
+                </p>
+              </div>
+              <button
+                disabled={removing === `marketplace:${item.id}`}
+                onClick={() => void removeMarketplaceListing(item)}
+                className="flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold text-red-600 disabled:opacity-50"
+              >
+                {removing === `marketplace:${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
               </button>
             </article>
           ))}
