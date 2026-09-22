@@ -48,21 +48,20 @@ export default function EmployerDashboardPage() {
       .select("id,title,status,created_at,location")
       .eq("employer_id", user.id).order("created_at", { ascending: false });
 
-    const stats: JobStat[] = [];
-    for (const j of myJobs ?? []) {
-      const { count: apps_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id);
-      const { count: reviewing_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id).eq("status", "reviewing");
-      const { count: applied_count } = await supabase.from("job_applications")
-        .select("id", { count: "exact", head: true }).eq("job_id", j.id).eq("status", "applied");
-      stats.push({
-        ...j,
-        apps_count: apps_count ?? 0,
-        new_count: (reviewing_count ?? 0) + (applied_count ?? 0),
-      });
-    }
+    const jobIds = (myJobs ?? []).map((j) => j.id);
+    const { data: countRows } = jobIds.length
+      ? await (supabase as any).rpc("yaj_employer_application_counts", { p_job_ids: jobIds })
+      : { data: [] as any[] };
+    const countMap = Object.fromEntries(
+      ((countRows ?? []) as any[]).map((r) => [r.job_id, { total: r.total ?? 0, new_count: r.new_count ?? 0 }]),
+    );
+    const stats: JobStat[] = (myJobs ?? []).map((j) => ({
+      ...j,
+      apps_count: countMap[j.id]?.total ?? 0,
+      new_count: countMap[j.id]?.new_count ?? 0,
+    }));
     setJobs(stats);
+
 
     const { data: emp } = await supabase.from("employer_profiles").select("*").eq("user_id", user.id).maybeSingle();
     if (emp) {
