@@ -40,6 +40,7 @@ export async function publishPodcastAudio(input: {
     cover_url: input.coverUrl ?? null,
     media_url: upload.data.key,
     is_video: false,
+    on_radio: true,
   });
   if (error) throw error;
 
