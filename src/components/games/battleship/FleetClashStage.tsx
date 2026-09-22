@@ -50,6 +50,7 @@ type Runtime = {
   duckUntil: number;
   fireCooldown: number;
   rivalFireCooldown: number;
+  bumpCooldown: number;
   finished: boolean;
   nextShotId: number;
   zoneIndex: number;
@@ -65,6 +66,19 @@ type Props = {
   onBack?: () => void;
   onQuit?: () => void;
   liveDock?: ReactNode;
+  level?: number;
+  crewSize?: number;
+  onSnapshot?: (snapshot: {
+    level: number;
+    health: number;
+    rivalHealth: number;
+    progress: number;
+    rivalProgress: number;
+    crew: number;
+    rivalCrew: number;
+    score: number;
+    zone: string;
+  }) => void;
 };
 
 type Zone = {
@@ -75,6 +89,94 @@ type Zone = {
   bank: string;
   accent: string;
 };
+
+type FleetCourse = {
+  level: number;
+  name: string;
+  condition: string;
+  water: string;
+  bank: string;
+  accent: string;
+  sky: string;
+  speedMul: number;
+  steerMul: number;
+  roughness: number;
+  stormAlways?: boolean;
+  decor: "tropical" | "ice" | "canyon" | "storm" | "harbor";
+};
+
+export const FLEET_COURSES: FleetCourse[] = [
+  {
+    level: 1,
+    name: "Tropical Run",
+    condition: "Calm current",
+    water: "#169bc9",
+    bank: "#6ea34c",
+    accent: "#ffd95a",
+    sky: "#6fd4ff",
+    speedMul: 1,
+    steerMul: 1,
+    roughness: 0.22,
+    decor: "tropical",
+  },
+  {
+    level: 2,
+    name: "Arctic Passage",
+    condition: "Icy drift",
+    water: "#6bbbd2",
+    bank: "#d8edf4",
+    accent: "#e9fbff",
+    sky: "#bfe8f4",
+    speedMul: 0.96,
+    steerMul: 0.84,
+    roughness: 0.16,
+    decor: "ice",
+  },
+  {
+    level: 3,
+    name: "Red Canyon Rush",
+    condition: "Fast canyon current",
+    water: "#2a91b2",
+    bank: "#a65f3b",
+    accent: "#ffbd6b",
+    sky: "#f0a15e",
+    speedMul: 1.07,
+    steerMul: 0.94,
+    roughness: 0.3,
+    decor: "canyon",
+  },
+  {
+    level: 4,
+    name: "Storm Coast",
+    condition: "Heavy rain & rough water",
+    water: "#264e6e",
+    bank: "#46565a",
+    accent: "#b9dcff",
+    sky: "#30465d",
+    speedMul: 0.92,
+    steerMul: 0.78,
+    roughness: 0.48,
+    stormAlways: true,
+    decor: "storm",
+  },
+  {
+    level: 5,
+    name: "Midnight Harbor",
+    condition: "Night sprint",
+    water: "#0d3f63",
+    bank: "#202b39",
+    accent: "#4df0ff",
+    sky: "#07182b",
+    speedMul: 1.1,
+    steerMul: 1.06,
+    roughness: 0.2,
+    decor: "harbor",
+  },
+];
+
+function fleetCourse(level: number) {
+  return FLEET_COURSES[Math.max(0, Math.min(FLEET_COURSES.length - 1, level - 1))];
+}
 
 const zones: Zone[] = [
   { name: "Tropical Run", start: 0, end: 170, water: "#169bc9", bank: "#6ea34c", accent: "#ffd95a" },
@@ -160,6 +262,85 @@ function Palm({ x, z, y = 0, s = 1 }: { x: number; z: number; y?: number; s?: nu
   );
 }
 
+function CourseDecoration({ level }: { level: number }) {
+  const course = fleetCourse(level);
+
+  if (course.decor === "ice") {
+    return (
+      <group>
+        {Array.from({ length: 26 }, (_, i) => {
+          const z = 35 + i * 52;
+          const side = i % 2 ? -1 : 1;
+          const x = riverCenterX(z) + side * (14.5 + (i % 3));
+          const s = 0.8 + (i % 4) * 0.12;
+          return (
+            <group key={i} position={[x, riverY(z) + 0.2, z]} scale={s}>
+              <mesh castShadow>
+                <coneGeometry args={[1.5, 4.2, 5]} />
+                <meshStandardMaterial color="#e9fbff" roughness={0.7} />
+              </mesh>
+              <mesh position={[0, 0.2, 0]}>
+                <cylinderGeometry args={[2.2, 2.7, 0.35, 8]} />
+                <meshStandardMaterial color="#cdebf5" roughness={0.8} />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (course.decor === "canyon") {
+    return (
+      <group>
+        {Array.from({ length: 32 }, (_, i) => {
+          const z = 22 + i * 44;
+          const side = i % 2 ? -1 : 1;
+          const x = riverCenterX(z) + side * (15.2 + (i % 4) * 0.7);
+          const h = 5 + (i % 5) * 1.1;
+          return (
+            <mesh key={i} position={[x, riverY(z) + h / 2, z]} castShadow>
+              <cylinderGeometry args={[1.5, 2.5, h, 6]} />
+              <meshStandardMaterial color={i % 2 ? "#8f5034" : "#b66d45"} roughness={0.95} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (course.decor === "harbor") {
+    return (
+      <group>
+        {Array.from({ length: 34 }, (_, i) => {
+          const z = 18 + i * 42;
+          const side = i % 2 ? -1 : 1;
+          const x = riverCenterX(z) + side * 14.5;
+          return (
+            <group key={i} position={[x, riverY(z), z]}>
+              <mesh position={[0, 2.4, 0]} castShadow>
+                <cylinderGeometry args={[0.16, 0.2, 4.8, 8]} />
+                <meshStandardMaterial color="#3a4658" roughness={0.65} />
+              </mesh>
+              <pointLight position={[0, 4.8, 0]} color={i % 3 === 0 ? "#ff6c91" : "#4df0ff"} intensity={2.2} distance={11} />
+              <mesh position={[0, 4.8, 0]}>
+                <sphereGeometry args={[0.18, 8, 8]} />
+                <meshBasicMaterial color={i % 3 === 0 ? "#ff6c91" : "#4df0ff"} />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      <CourseDecoration level={level} />
+    </group>
+  );
+}
+
 function TunnelSection() {
   const arches = Array.from({ length: 8 }, (_, i) => 355 + i * 18);
   return (
@@ -206,7 +387,8 @@ function Rapids() {
 
 const RIVER_SEG = 20;
 
-function RiverWorld() {
+function RiverWorld({ level }: { level: number }) {
+  const course = fleetCourse(level);
   return (
     <group>
       {zones.map((zone) => {
@@ -223,15 +405,15 @@ function RiverWorld() {
                 <group key={i}>
                   <mesh position={[cx, y - 0.25, mid]} receiveShadow>
                     <boxGeometry args={[RIVER_HALF * 2, 0.45, segLen + 1]} />
-                    <meshStandardMaterial color={zone.water} roughness={0.26} metalness={0.04} />
+                    <meshStandardMaterial color={course.water} roughness={course.roughness} metalness={0.04} />
                   </mesh>
                   <mesh position={[cx - 18, y, mid]} receiveShadow>
                     <boxGeometry args={[13.4, 0.9, segLen + 1.5]} />
-                    <meshStandardMaterial color={zone.bank} roughness={0.95} />
+                    <meshStandardMaterial color={course.bank} roughness={0.95} />
                   </mesh>
                   <mesh position={[cx + 18, y, mid]} receiveShadow>
                     <boxGeometry args={[13.4, 0.9, segLen + 1.5]} />
-                    <meshStandardMaterial color={zone.bank} roughness={0.95} />
+                    <meshStandardMaterial color={course.bank} roughness={0.95} />
                   </mesh>
                 </group>
               );
