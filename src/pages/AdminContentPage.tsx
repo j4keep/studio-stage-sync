@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, Film, Loader2, Search, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, BriefcaseBusiness, Film, Loader2, Search, Shield, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,17 @@ import { adminDeleteCreatorBook, listAllCreatorBooksForAdmin } from "@/lib/creat
 import type { BookItem } from "@/lib/books-catalog";
 import { WheuatTv, type WheuatTvItem } from "@/pages/wheuat-tv/wheuatTvStore";
 
-type Tab = "books" | "tv";
+type Tab = "books" | "tv" | "jobs";
+
+type AdminJob = {
+  id: string;
+  employer_id: string;
+  title: string;
+  category: string;
+  location: string | null;
+  status: string;
+  created_at: string;
+};
 
 export default function AdminContentPage() {
   const nav = useNavigate();
@@ -17,6 +27,7 @@ export default function AdminContentPage() {
   const [tab, setTab] = useState<Tab>("books");
   const [books, setBooks] = useState<BookItem[]>([]);
   const [tv, setTv] = useState<WheuatTvItem[]>([]);
+  const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("Policy violation");
   const [loading, setLoading] = useState(true);
@@ -34,9 +45,18 @@ export default function AdminContentPage() {
     if (!isAdmin) return;
     setLoading(true);
     try {
-      const [bookRows, tvRows] = await Promise.all([listAllCreatorBooksForAdmin(), WheuatTv.list()]);
+      const [bookRows, tvRows, jobsResult] = await Promise.all([
+        listAllCreatorBooksForAdmin(),
+        WheuatTv.list(),
+        (supabase as any)
+          .from("job_listings")
+          .select("id,employer_id,title,category,location,status,created_at")
+          .order("created_at", { ascending: false }),
+      ]);
+      if (jobsResult.error) throw jobsResult.error;
       setBooks(bookRows);
       setTv(tvRows.filter((item) => !item.isOriginal));
+      setJobs((jobsResult.data || []) as AdminJob[]);
     } catch (e: any) {
       toast.error(e?.message || "Could not load creator content");
     } finally {
@@ -56,6 +76,10 @@ export default function AdminContentPage() {
   const filteredTv = useMemo(
     () => !q ? tv : tv.filter((item) => [item.title, item.creator.displayName, item.category, item.description].filter(Boolean).join(" ").toLowerCase().includes(q)),
     [tv, q],
+  );
+  const filteredJobs = useMemo(
+    () => !q ? jobs : jobs.filter((job) => [job.title, job.category, job.location, job.status].filter(Boolean).join(" ").toLowerCase().includes(q)),
+    [jobs, q],
   );
 
   const removeBook = async (book: BookItem) => {
@@ -97,6 +121,33 @@ export default function AdminContentPage() {
     }
   };
 
+  const removeJob = async (job: AdminJob) => {
+    if (!user) return;
+    if (!window.confirm(`Remove "${job.title}" from Opportunities for: ${reason}?`)) return;
+    setRemoving(`job:${job.id}`);
+    try {
+      const { error: logError } = await (supabase as any).from("admin_content_removals").insert({
+        admin_user_id: user.id,
+        content_type: "job",
+        content_id: job.id,
+        creator_user_id: job.employer_id,
+        title: job.title,
+        reason: reason.trim() || "Policy violation",
+      });
+      if (logError) throw logError;
+
+      const { error } = await (supabase as any).from("job_listings").delete().eq("id", job.id);
+      if (error) throw error;
+
+      setJobs((current) => current.filter((row) => row.id !== job.id));
+      toast.success("Job removed and moderation action logged");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not remove job");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   if (isAdmin === null) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   if (!isAdmin) {
     return (
@@ -110,7 +161,7 @@ export default function AdminContentPage() {
     );
   }
 
-  const items = tab === "books" ? filteredBooks : filteredTv;
+  const items = tab === "books" ? filteredBooks : tab === "tv" ? filteredTv : filteredJobs;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -120,16 +171,19 @@ export default function AdminContentPage() {
         </button>
         <div>
           <h1 className="text-lg font-bold">Content Moderation</h1>
-          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books and YAJ.TV.</p>
+          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books, YAJ.TV and Opportunities.</p>
         </div>
       </header>
 
-      <div className="mt-5 flex gap-2">
-        <button onClick={() => setTab("books")} className={`flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "books" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+      <div className="mt-5 flex gap-2 overflow-x-auto">
+        <button onClick={() => setTab("books")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "books" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
           <BookOpen className="mr-1.5 inline h-4 w-4" /> Books
         </button>
-        <button onClick={() => setTab("tv")} className={`flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "tv" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+        <button onClick={() => setTab("tv")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "tv" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
           <Film className="mr-1.5 inline h-4 w-4" /> YAJ.TV
+        </button>
+        <button onClick={() => setTab("jobs")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "jobs" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <BriefcaseBusiness className="mr-1.5 inline h-4 w-4" /> Jobs
         </button>
       </div>
 
@@ -171,7 +225,7 @@ export default function AdminContentPage() {
             </article>
           ))}
         </div>
-      ) : (
+      ) : tab === "tv" ? (
         <div className="mt-5 space-y-3">
           {filteredTv.map((item) => (
             <article key={item.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
@@ -184,6 +238,25 @@ export default function AdminContentPage() {
               </div>
               <button disabled={removing === `tv:${item.id}`} onClick={() => void removeTv(item)} className="flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold text-red-600 disabled:opacity-50">
                 {removing === `tv:${item.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {filteredJobs.map((job) => (
+            <article key={job.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <BriefcaseBusiness className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">{job.title}</p>
+                <p className="text-xs text-muted-foreground">
+                  {job.category} · {job.location || "No location"} · {job.status}
+                </p>
+              </div>
+              <button disabled={removing === `job:${job.id}`} onClick={() => void removeJob(job)} className="flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold text-red-600 disabled:opacity-50">
+                {removing === `job:${job.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
               </button>
             </article>
           ))}
