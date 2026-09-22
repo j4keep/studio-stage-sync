@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { prompt, mode = "album", title, author, category } = await req.json();
+    const { prompt, mode = "album", title, author, category, pageText, pageNumber, totalPages, artDirection } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return new Response(JSON.stringify({ error: "Prompt is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -33,7 +33,9 @@ serve(async (req) => {
             content:
               mode === "book"
                 ? `Create an original professional book cover illustration for a YAJ Books creator. Title: "${title || ""}". Author: "${author || ""}". Category: "${category || ""}". Creative direction: ${prompt}. Portrait book-cover composition, 2:3 aspect ratio, polished publishing quality, strong focal image, readable title area, no copyrighted characters, no existing book cover imitation, no logos other than text requested by the user.`
-                : `Create a professional music album cover art: ${prompt}. Make it high quality, artistic, and visually striking. Square format.`,
+                : mode === "kids-book-page"
+                  ? `Create one original children's picture-book illustration for YAJ Books. Book title: "${title || ""}". Page ${pageNumber || ""} of ${totalPages || ""}. Shared art direction for the whole book: ${artDirection || "warm, expressive children's picture-book illustration, consistent characters and palette"}. Page story text: ${pageText || prompt}. Keep recurring characters visually consistent with the shared art direction. Landscape 4:3 picture-book composition, child-friendly, expressive, polished, colorful, no words or captions inside the image, no copyrighted characters, no logos, no imitation of an existing children's book or artist.`
+                  : `Create a professional music album cover art: ${prompt}. Make it high quality, artistic, and visually striking. Square format.`,
           },
         ],
         modalities: ["image", "text"],
