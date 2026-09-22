@@ -499,6 +499,185 @@ function Rapids() {
   );
 }
 
+function CourseSetPieces({ level }: { level: number }) {
+  if (level === 1) {
+    return (
+      <group>
+        {/* Tropical waterfall chute and bamboo race gates. */}
+        {[250, 620, 1010].map((z, i) => (
+          <group key={z} position={[riverCenterX(z), riverY(z), z]}>
+            <mesh position={[-8.8, 2.2, 0]} castShadow>
+              <cylinderGeometry args={[0.22, 0.3, 4.4, 7]} />
+              <meshStandardMaterial color="#8c6239" roughness={0.9} />
+            </mesh>
+            <mesh position={[8.8, 2.2, 0]} castShadow>
+              <cylinderGeometry args={[0.22, 0.3, 4.4, 7]} />
+              <meshStandardMaterial color="#8c6239" roughness={0.9} />
+            </mesh>
+            <mesh position={[0, 4.25, 0]} castShadow>
+              <boxGeometry args={[18, 0.28, 0.3]} />
+              <meshStandardMaterial color={i % 2 ? "#ffd95a" : "#61d3c2"} roughness={0.65} />
+            </mesh>
+          </group>
+        ))}
+        <group position={[riverCenterX(720), -0.7, 726]}>
+          <mesh position={[0, 0.45, 0]} rotation={[-0.18, 0, 0]} receiveShadow>
+            <boxGeometry args={[22.6, 0.35, 54]} />
+            <meshStandardMaterial color="#1494c1" roughness={0.22} />
+          </mesh>
+          {[-8, -4, 0, 4, 8].map((x) => (
+            <mesh key={x} position={[x, 1.2, 24]}>
+              <sphereGeometry args={[0.55, 10, 10]} />
+              <meshBasicMaterial color="#e7fbff" transparent opacity={0.72} />
+            </mesh>
+          ))}
+        </group>
+      </group>
+    );
+  }
+
+  if (level === 2) {
+    return (
+      <group>
+        {/* Arctic ice gates and frozen shelves. */}
+        {[300, 760, 1180].map((z, i) => (
+          <group key={z} position={[riverCenterX(z), riverY(z), z]}>
+            <mesh position={[-9.2, 3.2, 0]} castShadow>
+              <coneGeometry args={[2.0, 6.4, 5]} />
+              <meshStandardMaterial color="#dff7ff" roughness={0.58} />
+            </mesh>
+            <mesh position={[9.2, 3.2, 0]} castShadow>
+              <coneGeometry args={[2.0, 6.4, 5]} />
+              <meshStandardMaterial color="#dff7ff" roughness={0.58} />
+            </mesh>
+            {i === 1 ? (
+              <mesh position={[0, 5.5, 0]} castShadow>
+                <boxGeometry args={[15.4, 0.9, 1.3]} />
+                <meshStandardMaterial color="#bde5ef" transparent opacity={0.92} roughness={0.45} />
+              </mesh>
+            ) : null}
+          </group>
+        ))}
+        {Array.from({ length: 14 }, (_, i) => {
+          const z = 170 + i * 88;
+          const side = i % 2 ? -1 : 1;
+          return (
+            <mesh key={i} position={[riverCenterX(z) + side * 10.2, riverY(z) + 0.08, z]} receiveShadow>
+              <cylinderGeometry args={[2.8, 3.4, 0.34, 9]} />
+              <meshStandardMaterial color="#c9edf5" roughness={0.6} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (level === 3) {
+    return (
+      <group>
+        {/* Canyon cave/tunnel is unique to this course, with tight rock arches. */}
+        <TunnelSection />
+        {[210, 640, 1080].map((z) => (
+          <group key={z} position={[riverCenterX(z), riverY(z), z]}>
+            <mesh position={[-10.2, 4.0, 0]} castShadow>
+              <cylinderGeometry args={[1.8, 2.8, 8, 6]} />
+              <meshStandardMaterial color="#8d4d32" roughness={0.98} />
+            </mesh>
+            <mesh position={[10.2, 4.0, 0]} castShadow>
+              <cylinderGeometry args={[1.8, 2.8, 8, 6]} />
+              <meshStandardMaterial color="#a45c39" roughness={0.98} />
+            </mesh>
+            <mesh position={[0, 7.1, 0]} castShadow>
+              <boxGeometry args={[20.2, 1.3, 2.0]} />
+              <meshStandardMaterial color="#79432e" roughness={0.98} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
+  }
+
+  if (level === 4) {
+    return (
+      <group>
+        {/* Storm swells and wreckage markers. */}
+        <Rapids />
+        {Array.from({ length: 18 }, (_, i) => {
+          const z = 120 + i * 70;
+          const cx = riverCenterX(z);
+          return (
+            <mesh key={i} position={[cx + (i % 2 ? -3.5 : 3.5), riverY(z) + 0.035, z]} rotation={[-Math.PI / 2, 0, i % 2 ? 0.18 : -0.18]}>
+              <planeGeometry args={[10, 0.52]} />
+              <meshBasicMaterial color="#d7efff" transparent opacity={0.7} />
+            </mesh>
+          );
+        })}
+        {[410, 980].map((z, i) => (
+          <group key={z} position={[riverCenterX(z) + (i ? 7 : -7), riverY(z), z]}>
+            <mesh position={[0, 2.4, 0]} rotation={[0, 0, i ? -0.38 : 0.38]} castShadow>
+              <cylinderGeometry args={[0.22, 0.34, 4.8, 7]} />
+              <meshStandardMaterial color="#4c3a2e" roughness={0.95} />
+            </mesh>
+            <mesh position={[0.8 * (i ? -1 : 1), 3.5, 0]} rotation={[0, 0, i ? -0.8 : 0.8]} castShadow>
+              <boxGeometry args={[0.16, 2.3, 0.7]} />
+              <meshStandardMaterial color="#6a6f73" roughness={0.88} />
+            </mesh>
+          </group>
+        ))}
+      </group>
+    );
+  }
+
+  return (
+    <group>
+      {/* Midnight harbor: docks, cranes and a lit bridge — no canyon tunnel or waterfall. */}
+      {[260, 720, 1160].map((z, i) => (
+        <group key={z} position={[riverCenterX(z), riverY(z), z]}>
+          <mesh position={[-10.4, 1.0, 0]} castShadow receiveShadow>
+            <boxGeometry args={[5.2, 0.65, 15]} />
+            <meshStandardMaterial color="#394453" roughness={0.78} />
+          </mesh>
+          <mesh position={[10.4, 1.0, 0]} castShadow receiveShadow>
+            <boxGeometry args={[5.2, 0.65, 15]} />
+            <meshStandardMaterial color="#394453" roughness={0.78} />
+          </mesh>
+          {i === 1 ? (
+            <>
+              <mesh position={[-9.4, 5.0, 0]} castShadow>
+                <boxGeometry args={[0.65, 8.0, 0.65]} />
+                <meshStandardMaterial color="#586675" metalness={0.35} roughness={0.5} />
+              </mesh>
+              <mesh position={[9.4, 5.0, 0]} castShadow>
+                <boxGeometry args={[0.65, 8.0, 0.65]} />
+                <meshStandardMaterial color="#586675" metalness={0.35} roughness={0.5} />
+              </mesh>
+              <mesh position={[0, 8.3, 0]} castShadow>
+                <boxGeometry args={[19.4, 0.5, 0.85]} />
+                <meshStandardMaterial color="#3e4c5b" metalness={0.3} roughness={0.52} />
+              </mesh>
+              {[-7, -3.5, 0, 3.5, 7].map((x) => (
+                <pointLight key={x} position={[x, 7.8, 0]} color="#4df0ff" intensity={1.8} distance={9} />
+              ))}
+            </>
+          ) : null}
+        </group>
+      ))}
+      {[470, 1320].map((z, i) => (
+        <group key={z} position={[riverCenterX(z) + (i ? 10 : -10), riverY(z), z]}>
+          <mesh position={[0, 4.0, 0]} castShadow>
+            <boxGeometry args={[0.7, 8, 0.7]} />
+            <meshStandardMaterial color="#596675" metalness={0.4} roughness={0.48} />
+          </mesh>
+          <mesh position={[3 * (i ? -1 : 1), 7.3, 0]} rotation={[0, 0, i ? -0.35 : 0.35]} castShadow>
+            <boxGeometry args={[6.5, 0.35, 0.45]} />
+            <meshStandardMaterial color="#778696" metalness={0.45} roughness={0.42} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
 const RIVER_SEG = 20;
 
 function RiverWorld({ level }: { level: number }) {
@@ -539,22 +718,7 @@ function RiverWorld({ level }: { level: number }) {
 
       <CourseDecoration level={level} />
 
-      <TunnelSection />
-      <Rapids />
-
-      {/* Waterfall lip + spray. */}
-      <group position={[0, -0.7, 726]}>
-        <mesh position={[0, 0.45, 0]} rotation={[-0.18, 0, 0]} receiveShadow>
-          <boxGeometry args={[22.6, 0.35, 54]} />
-          <meshStandardMaterial color="#1494c1" roughness={0.22} />
-        </mesh>
-        {[-8, -4, 0, 4, 8].map((x) => (
-          <mesh key={x} position={[x, 1.2, 24]}>
-            <sphereGeometry args={[0.55, 10, 10]} />
-            <meshBasicMaterial color="#e7fbff" transparent opacity={0.72} />
-          </mesh>
-        ))}
-      </group>
+      <CourseSetPieces level={level} />
 
       {courseHazards.map((o) => {
         const y = riverY(o.z);
