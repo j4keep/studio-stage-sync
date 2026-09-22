@@ -398,49 +398,113 @@ function TeamBoat({
   t: number;
 }) {
   const { skinTone } = useCharacterAppearance();
-  const hull = enemy ? "#ff785f" : color;
+  const hull = enemy ? "#d94f45" : color;
+  const hullDark = enemy ? "#7d2f2a" : "#39226f";
   const trim = enemy ? "#ffb357" : "#61d3c2";
+  const metal = "#2b3440";
+  const glass = enemy ? "#9fd6e6" : "#aee8ff";
   const slots: Vec[] = [
-    { x: -0.94, y: 0, z: 0.9 },
-    { x: 0.94, y: 0, z: 0.9 },
-    { x: -0.79, y: 0, z: -1.0 },
-    { x: 0.79, y: 0, z: -1.0 },
+    { x: -0.82, y: 0, z: 0.65 },
+    { x: 0.82, y: 0, z: 0.65 },
+    { x: -0.68, y: 0, z: -0.75 },
+    { x: 0.68, y: 0, z: -0.75 },
   ];
+  const wakePulse = 0.62 + Math.sin(t * 7) * 0.1;
 
   return (
     <group>
-      {/* Narrow arcade river boat with a pointed bow and visible deck. */}
-      <mesh position={[0, 0.2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[3.6, 0.48, 6.4]} />
-        <meshStandardMaterial color={hull} roughness={0.42} />
+      {/* More believable speedboat hull: deep body, pointed bow, raised deck and stern. */}
+      <mesh position={[0, 0.18, -0.15]} castShadow receiveShadow>
+        <boxGeometry args={[3.25, 0.58, 5.55]} />
+        <meshStandardMaterial color={hull} roughness={0.36} metalness={0.05} />
       </mesh>
-      <mesh position={[0, 0.22, 3.5]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <coneGeometry args={[1.8, 1.5, 4]} />
-        <meshStandardMaterial color={hull} roughness={0.42} />
+      <mesh position={[0, 0.19, 3.05]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <coneGeometry args={[1.62, 1.75, 4]} />
+        <meshStandardMaterial color={hull} roughness={0.34} metalness={0.06} />
       </mesh>
-      <mesh position={[0, 0.45, -0.35]} castShadow>
-        <boxGeometry args={[3.05, 0.2, 5.6]} />
-        <meshStandardMaterial color={trim} roughness={0.5} />
+      <mesh position={[0, 0.47, -0.1]} castShadow>
+        <boxGeometry args={[2.82, 0.2, 5.15]} />
+        <meshStandardMaterial color={trim} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 0.72, 2.65]} rotation={[0.12, 0, 0]} castShadow>
-        <boxGeometry args={[2.55, 0.26, 0.85]} />
-        <meshStandardMaterial color="#e7f1f4" roughness={0.55} />
+
+      {/* Lower keel and side rails make the silhouette read like a real boat instead of a block. */}
+      <mesh position={[0, -0.16, -0.3]} castShadow>
+        <boxGeometry args={[2.35, 0.22, 4.8]} />
+        <meshStandardMaterial color={hullDark} roughness={0.45} />
       </mesh>
-      <mesh position={[0, 0.82, -2.25]} castShadow>
-        <boxGeometry args={[1.65, 0.25, 0.65]} />
-        <meshStandardMaterial color="#5d3f27" roughness={0.8} />
+      {[-1.42, 1.42].map((x) => (
+        <mesh key={x} position={[x, 0.72, -0.2]} castShadow>
+          <boxGeometry args={[0.08, 0.08, 4.8]} />
+          <meshStandardMaterial color="#d9e2ea" metalness={0.45} roughness={0.3} />
+        </mesh>
+      ))}
+
+      {/* Compact cockpit / windshield. */}
+      <mesh position={[0, 0.86, 1.45]} rotation={[-0.08, 0, 0]} castShadow>
+        <boxGeometry args={[2.08, 0.48, 0.82]} />
+        <meshStandardMaterial color="#e8eef2" roughness={0.34} />
       </mesh>
-      {/* Cannon / launcher. */}
-      <mesh position={[0, 1.05, 2.0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.18, 0.18, 2.15, 10]} />
-        <meshStandardMaterial color="#30343c" metalness={0.35} roughness={0.4} />
+      <mesh position={[0, 1.06, 1.72]} rotation={[-0.34, 0, 0]}>
+        <boxGeometry args={[1.82, 0.34, 0.08]} />
+        <meshStandardMaterial color={glass} transparent opacity={0.72} roughness={0.15} metalness={0.1} />
       </mesh>
+      <mesh position={[0, 0.72, -2.35]} castShadow>
+        <boxGeometry args={[2.12, 0.34, 0.82]} />
+        <meshStandardMaterial color="#6b4428" roughness={0.76} />
+      </mesh>
+
+      {/* Twin outboard motors at the stern. */}
+      {[-0.62, 0.62].map((x) => (
+        <group key={x} position={[x, 0.18, -3.02]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.55, 0.72, 0.52]} />
+            <meshStandardMaterial color={metal} metalness={0.42} roughness={0.32} />
+          </mesh>
+          <mesh position={[0, -0.3, -0.32]}>
+            <cylinderGeometry args={[0.12, 0.12, 0.62, 8]} />
+            <meshStandardMaterial color="#151b22" metalness={0.5} roughness={0.35} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Forward cannon with a proper turret base. */}
+      <mesh position={[0, 0.87, 2.0]} castShadow>
+        <cylinderGeometry args={[0.38, 0.46, 0.22, 12]} />
+        <meshStandardMaterial color={metal} metalness={0.5} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, 1.08, 2.54]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.16, 0.19, 1.35, 10]} />
+        <meshStandardMaterial color="#202832" metalness={0.62} roughness={0.24} />
+      </mesh>
+
+      {/* Navigation lights. */}
+      <mesh position={[-1.48, 0.73, 2.35]}>
+        <sphereGeometry args={[0.08, 8, 8]} />
+        <meshBasicMaterial color="#ff4d57" />
+      </mesh>
+      <mesh position={[1.48, 0.73, 2.35]}>
+        <sphereGeometry args={[0.08, 8, 8]} />
+        <meshBasicMaterial color="#6cff88" />
+      </mesh>
+
+      {/* Animated wake behind the motors. */}
+      {[0, 1, 2].map((i) => (
+        <mesh
+          key={i}
+          position={[0, -0.12, -3.8 - i * 0.9]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[1 + i * 0.38, 1 + i * 0.18, 1]}
+        >
+          <ringGeometry args={[0.42 + i * 0.18, 0.66 + i * 0.22, 20]} />
+          <meshBasicMaterial color="#dffaff" transparent opacity={Math.max(0.12, wakePulse - i * 0.15)} />
+        </mesh>
+      ))}
 
       {slots.map((slot, i) => {
         if (i >= crew.length) return null;
         const knocked = crew[i].knockedUntil > t;
         if (knocked) return null;
-        const shift = Math.sin(t * 1.2 + i * 1.7) * 0.1;
+        const shift = Math.sin(t * 1.2 + i * 1.7) * 0.08;
         return (
           <CrewFigure
             key={i}
@@ -510,20 +574,24 @@ function Rain({ originRef }: { originRef: MutableRefObject<Runtime> }) {
 }
 
 function ProjectileMesh({ shot }: { shot: Shot }) {
+  const heading = Math.atan2(shot.vx, shot.vz);
+  const color = shot.owner === "player" ? "#ffd43b" : "#ff675c";
+  const glow = shot.owner === "player" ? "#ff9f1a" : "#ff2d55";
   return (
-    <group position={[shot.x, shot.y, shot.z]}>
+    <group position={[shot.x, shot.y, shot.z]} rotation={[0, heading, 0]}>
       <mesh castShadow>
-        <sphereGeometry args={[0.24, 12, 12]} />
-        <meshStandardMaterial
-          color={shot.owner === "player" ? "#ffd43b" : "#ff675c"}
-          emissive={shot.owner === "player" ? "#ff9f1a" : "#ff2d55"}
-          emissiveIntensity={1.25}
-        />
+        <sphereGeometry args={[0.27, 14, 14]} />
+        <meshStandardMaterial color={color} emissive={glow} emissiveIntensity={1.8} metalness={0.1} roughness={0.3} />
       </mesh>
-      <mesh position={[0, 0, shot.owner === "player" ? -0.35 : 0.35]}>
-        <sphereGeometry args={[0.13, 8, 8]} />
-        <meshBasicMaterial color="#fff1a8" transparent opacity={0.65} />
+      <mesh position={[0, 0, -0.5]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.11, 0.22, 1.1, 8]} />
+        <meshBasicMaterial color="#ffe6a6" transparent opacity={0.72} />
       </mesh>
+      <mesh position={[0, 0, -1.0]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.04, 0.14, 1.15, 8]} />
+        <meshBasicMaterial color={glow} transparent opacity={0.34} />
+      </mesh>
+      <pointLight color={glow} intensity={1.1} distance={4.5} decay={2} />
     </group>
   );
 }
@@ -798,7 +866,8 @@ function BattleScene({
     if (playerGroup.current) {
       const y = riverY(s.z);
       playerGroup.current.position.set(s.x, y + 0.08 + Math.sin(t * 2.2) * 0.05, s.z);
-      playerGroup.current.rotation.z = -inputRef.current.x * 0.06 + Math.sin(t * 1.8) * 0.015;
+      const playerHitShake = s.hitCooldown > 0.28 ? Math.sin(t * 46) * 0.055 : 0;
+      playerGroup.current.rotation.z = -inputRef.current.x * 0.06 + Math.sin(t * 1.8) * 0.015 + playerHitShake;
       playerGroup.current.rotation.y = -inputRef.current.x * 0.09;
       if (s.z > 700 && s.z < 760) playerGroup.current.rotation.x = -0.12;
       else playerGroup.current.rotation.x *= 0.9;
@@ -806,7 +875,8 @@ function BattleScene({
     if (rivalGroup.current) {
       const y = riverY(s.rivalZ);
       rivalGroup.current.position.set(s.rivalX, y + 0.08 + Math.sin(t * 2.05 + 1.3) * 0.05, s.rivalZ);
-      rivalGroup.current.rotation.z = Math.sin(t * 1.7 + 1.1) * 0.02;
+      const rivalHitShake = s.rivalHitCooldown > 0.28 ? Math.sin(t * 43) * 0.055 : 0;
+      rivalGroup.current.rotation.z = Math.sin(t * 1.7 + 1.1) * 0.02 + rivalHitShake;
       if (s.rivalZ > 700 && s.rivalZ < 760) rivalGroup.current.rotation.x = -0.12;
       else rivalGroup.current.rotation.x *= 0.9;
     }
@@ -814,7 +884,8 @@ function BattleScene({
     // Follow both boats: the camera sits behind the player but keeps the rival in view when nearby.
     const focusZ = Math.max(s.z + 8, Math.min(s.z + 18, (s.z + s.rivalZ) / 2 + 7));
     const playerY = riverY(s.z);
-    camera.position.x += (s.x * 0.22 - camera.position.x) * Math.min(1, dt * 5.4);
+    const cameraShake = s.hitCooldown > 0.28 ? Math.sin(t * 58) * 0.18 : 0;
+    camera.position.x += (s.x * 0.22 + cameraShake - camera.position.x) * Math.min(1, dt * 5.4);
     camera.position.y += (playerY + 11.2 - camera.position.y) * Math.min(1, dt * 4.8);
     camera.position.z += (s.z - 15.5 - camera.position.z) * Math.min(1, dt * 5.5);
     camera.lookAt((s.x + s.rivalX * 0.35) * 0.2, playerY + 0.9, focusZ);
@@ -856,11 +927,13 @@ function BattleScene({
 
     // Running out of hull does not immediately end the race: it slows you and restores one hull point.
     if (s.health <= 0) {
+      battleshipSfx.sunk();
       s.health = 1;
       s.z = Math.max(0, s.z - 16);
       onStatus("Boat recovered — you lost ground but you're still in the race");
     }
     if (s.rivalHealth <= 0) {
+      battleshipSfx.sunk();
       s.rivalHealth = 1;
       s.rivalZ = Math.max(0, s.rivalZ - 16);
       onStatus("Rival boat damaged — they're losing ground");
