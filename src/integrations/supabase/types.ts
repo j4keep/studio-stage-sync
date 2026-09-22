@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_content_removals: {
+        Row: {
+          admin_user_id: string
+          content_id: string
+          content_type: string
+          created_at: string
+          creator_user_id: string | null
+          id: string
+          reason: string
+          title: string | null
+        }
+        Insert: {
+          admin_user_id: string
+          content_id: string
+          content_type: string
+          created_at?: string
+          creator_user_id?: string | null
+          id?: string
+          reason: string
+          title?: string | null
+        }
+        Update: {
+          admin_user_id?: string
+          content_id?: string
+          content_type?: string
+          created_at?: string
+          creator_user_id?: string | null
+          id?: string
+          reason?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       ai_generations: {
         Row: {
           audio_url: string | null
@@ -311,6 +344,27 @@ export type Database = {
           blocker_id?: string
           created_at?: string
           id?: string
+        }
+        Relationships: []
+      }
+      book_library: {
+        Row: {
+          acquisition: string
+          book_id: string
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          acquisition?: string
+          book_id: string
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          acquisition?: string
+          book_id?: string
+          created_at?: string
+          user_id?: string
         }
         Relationships: []
       }
