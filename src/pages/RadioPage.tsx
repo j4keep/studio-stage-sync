@@ -709,7 +709,11 @@ const RadioPage = () => {
           </div>
 
           <div className="flex-1 overflow-y-auto">
-            {trackComments.length === 0 ? (
+            {commentsLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <p className="text-sm text-muted-foreground">Loading comments…</p>
+              </div>
+            ) : trackComments.length === 0 ? (
               <div className="flex h-full items-center justify-center">
                 <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
               </div>
