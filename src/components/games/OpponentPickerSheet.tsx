@@ -1,27 +1,39 @@
 import { useEffect, useState } from "react";
-import { Loader2, Search, X } from "lucide-react";
+import { Check, Loader2, Search, Users, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-type Person = { user_id: string; display_name: string | null; avatar_url: string | null };
+export type Person = { user_id: string; display_name: string | null; avatar_url: string | null };
 
 type Props = {
   open: boolean;
   onClose: () => void;
   onPick: (person: Person) => void;
   title?: string;
+  multiSelect?: boolean;
+  maxSelections?: number;
+  onConfirmMultiple?: (people: Person[]) => void;
 };
 
 const TABS = ["Circle", "Following", "Followers", "Search"] as const;
 type Tab = (typeof TABS)[number];
 
 /** Opponent picker for multiplayer game invites. */
-export default function OpponentPickerSheet({ open, onClose, onPick, title = "Choose an opponent" }: Props) {
+export default function OpponentPickerSheet({
+  open,
+  onClose,
+  onPick,
+  title = "Choose an opponent",
+  multiSelect = false,
+  maxSelections = 3,
+  onConfirmMultiple,
+}: Props) {
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>("Following");
   const [query, setQuery] = useState("");
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selected, setSelected] = useState<Person[]>([]);
 
   useEffect(() => {
     if (!open || !user) return;
@@ -91,6 +103,10 @@ export default function OpponentPickerSheet({ open, onClose, onPick, title = "Ch
     };
   }, [open, tab, query, user?.id]);
 
+  useEffect(() => {
+    if (!open) setSelected([]);
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -146,8 +162,23 @@ export default function OpponentPickerSheet({ open, onClose, onPick, title = "Ch
               <li key={p.user_id}>
                 <button
                   type="button"
-                  onClick={() => onPick(p)}
-                  className="flex w-full items-center gap-3 rounded-xl p-2 text-left hover:bg-muted"
+                  onClick={() => {
+                    if (!multiSelect) {
+                      onPick(p);
+                      return;
+                    }
+                    setSelected((current) => {
+                      const exists = current.some((item) => item.user_id === p.user_id);
+                      if (exists) return current.filter((item) => item.user_id !== p.user_id);
+                      if (current.length >= maxSelections) return current;
+                      return [...current, p];
+                    });
+                  }}
+                  className={`flex w-full items-center gap-3 rounded-xl p-2 text-left transition ${
+                    selected.some((item) => item.user_id === p.user_id)
+                      ? "bg-primary/10 ring-1 ring-primary/30"
+                      : "hover:bg-muted"
+                  }`}
                 >
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
                     {p.avatar_url ? (
@@ -158,7 +189,12 @@ export default function OpponentPickerSheet({ open, onClose, onPick, title = "Ch
                       </span>
                     )}
                   </div>
-                  <span className="truncate text-sm font-bold">{p.display_name || "YAJ user"}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold">{p.display_name || "YAJ user"}</span>
+                  {multiSelect && selected.some((item) => item.user_id === p.user_id) ? (
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                      <Check className="h-4 w-4" />
+                    </span>
+                  ) : null}
                 </button>
               </li>
             ))}
@@ -168,6 +204,26 @@ export default function OpponentPickerSheet({ open, onClose, onPick, title = "Ch
             {tab === "Search" ? "Type at least 2 letters to search." : `No one found in ${tab} yet.`}
           </p>
         )}
+        {multiSelect ? (
+          <div className="sticky bottom-0 -mx-4 mt-3 border-t border-border bg-background/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+            <div className="mb-2 flex items-center justify-between text-xs">
+              <span className="font-bold text-muted-foreground">
+                {selected.length}/{maxSelections} crew selected
+              </span>
+              <span className="inline-flex items-center gap-1 font-bold text-primary">
+                <Users className="h-3.5 w-3.5" /> {selected.length + 1} players total
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={!selected.length}
+              onClick={() => onConfirmMultiple?.(selected)}
+              className="w-full rounded-full bg-primary px-4 py-3 text-sm font-black text-primary-foreground disabled:opacity-40"
+            >
+              Invite Crew
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
