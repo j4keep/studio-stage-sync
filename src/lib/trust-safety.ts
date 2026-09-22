@@ -196,7 +196,7 @@ export async function submitModerationAppeal(message: string) {
 }
 
 
-export type ReportableContentType = "battle" | "post" | "book" | "tv" | "job" | "other";
+export type ReportableContentType = "battle" | "post" | "book" | "tv" | "job" | "marketplace" | "other";
 
 export async function submitContentReport(opts: {
   targetType: ReportableContentType;
