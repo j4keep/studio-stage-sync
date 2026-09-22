@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldCheck, ChevronDown, ChevronUp, Upload, Pencil, FileText, Video } from "lucide-react";
+import { ArrowLeft, Briefcase, Users, TrendingUp, Building2, BadgeCheck, ShieldCheck, ChevronDown, ChevronUp, Upload, Pencil, FileText, Video, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -39,6 +39,7 @@ export default function EmployerDashboardPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [editJob, setEditJob] = useState<EditableJob | null>(null);
   const [showEditSheet, setShowEditSheet] = useState(false);
+  const [showCreateSheet, setShowCreateSheet] = useState(false);
   const [interviewApp, setInterviewApp] = useState<any | null>(null);
 
   const loadJobs = async () => {
@@ -239,6 +240,12 @@ export default function EmployerDashboardPage() {
           Employer Dashboard
           {verified && <BadgeCheck className="w-4 h-4 text-sky-500" aria-label="Verified" />}
         </h1>
+        <button
+          onClick={() => setShowCreateSheet(true)}
+          className="h-8 px-3 rounded-full bg-primary text-primary-foreground text-[11px] font-bold flex items-center gap-1"
+        >
+          <Plus className="w-3 h-3" /> Post Job
+        </button>
         <button onClick={() => setShowCompany(true)} className="h-8 px-3 rounded-full bg-muted text-[11px] font-bold flex items-center gap-1">
           <Building2 className="w-3 h-3" /> Company
         </button>
@@ -272,7 +279,7 @@ export default function EmployerDashboardPage() {
           <div className="text-center py-16">
             <Briefcase className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">No jobs posted yet.</p>
-            <button onClick={() => nav("/jobs")} className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
+            <button onClick={() => setShowCreateSheet(true)} className="mt-3 h-10 px-5 rounded-full bg-primary text-primary-foreground text-xs font-bold">
               Post your first job
             </button>
           </div>
@@ -443,6 +450,15 @@ export default function EmployerDashboardPage() {
           </div>
         </div>
       )}
+
+      <PostJobSheet
+        open={showCreateSheet}
+        onClose={() => setShowCreateSheet(false)}
+        onCreated={() => {
+          setShowCreateSheet(false);
+          void loadJobs();
+        }}
+      />
 
       <PostJobSheet
         open={showEditSheet}
