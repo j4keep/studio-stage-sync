@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { dataUrlToFile } from "@/lib/video-preview";
 import { generateR2Key, getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import type { BookAudience, BookCategoryId, BookItem, BookListingType, BookPage } from "@/lib/books-catalog";
+import { normalizeCreatorBookPages } from "@/lib/book-pagination";
 
 type CreatorBookRow = {
   id: string;
@@ -47,7 +48,7 @@ function rowToBook(row: CreatorBookRow): BookItem {
     coverTo: "#6d28d9",
     coverImage: row.cover_url || undefined,
     blurb: row.blurb || "A creator-published book on YAJ.",
-    pages: Array.isArray(row.pages) ? row.pages : [],
+    pages: normalizeCreatorBookPages(Array.isArray(row.pages) ? row.pages : [], row.audience),
     userUploaded: true,
     creatorUserId: row.user_id,
   };
