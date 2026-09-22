@@ -79,12 +79,12 @@ export default function BooksIntroPage() {
 
             <button
               type="button"
-              onClick={() => enter("/books/upload")}
+              onClick={() => enter("/books/create")}
               className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-left transition active:scale-[0.99]"
               style={{ background: "var(--books-accent)", color: "var(--books-accent-ink)" }}
             >
               <Upload className="h-5 w-5" />
-              <span className="text-sm font-bold">Upload a digital book</span>
+              <span className="text-sm font-bold">Create a Book</span>
             </button>
           </div>
         </div>
