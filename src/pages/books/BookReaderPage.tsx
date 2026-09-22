@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
+import { ArrowLeft, Bookmark, BookmarkCheck, Flag } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookPageFlipper, { type BookPageFlipperHandle } from "@/components/books/BookPageFlipper";
 import BookNarratorBar from "@/components/books/BookNarratorBar";
 import YajBuddyIcon from "@/components/YajBuddyIcon";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { submitContentReport } from "@/lib/trust-safety";
 import { useBookNarration } from "@/hooks/useBookNarration";
 import { formatBookPrice, getBookById } from "@/lib/books-catalog";
 import {
@@ -53,6 +54,33 @@ export default function BookReaderPage() {
       active = false;
     };
   }, [user?.id, id]);
+
+  const reportBook = async () => {
+    if (!user) {
+      toast.error("Sign in to report a book");
+      return;
+    }
+    if (!book?.userUploaded) {
+      toast.error("This title is part of the YAJ catalog");
+      return;
+    }
+    const reason = window.prompt(
+      "Why are you reporting this book? Examples: adult/graphic content in Kids, pornography, copyright, wrong category, spam.",
+      "Policy violation",
+    );
+    if (!reason?.trim()) return;
+    try {
+      await submitContentReport({
+        targetType: "book",
+        targetId: book.id,
+        reason: reason.trim(),
+        details: `Book: ${book.title} · Audience: ${book.audience} · Category: ${book.category}`,
+      });
+      toast.success("Report sent to Trust & Safety");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not submit report");
+    }
+  };
 
   const toggleMyList = async () => {
     if (!user) {
@@ -188,6 +216,16 @@ export default function BookReaderPage() {
             >
               {inMyList ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
             </button>
+            {book.userUploaded && book.creatorUserId !== user?.id && (
+              <button
+                type="button"
+                onClick={() => void reportBook()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/10 text-white"
+                aria-label="Report book"
+              >
+                <Flag className="h-4 w-4" />
+              </button>
+            )}
           </div>
 
           <div className="mx-auto mt-4 flex w-full max-w-sm flex-1 flex-col items-center px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-2">
