@@ -5754,7 +5754,10 @@ export type Database = {
       }
       increment_post_views: { Args: { post_id: string }; Returns: undefined }
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
-      increment_tv_post_views: { Args: { p_post_id: string }; Returns: undefined }
+      increment_tv_post_views: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_circle_member: {
