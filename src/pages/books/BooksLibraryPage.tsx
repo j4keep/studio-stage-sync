@@ -41,7 +41,7 @@ export default function BooksLibraryPage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <h1 className="flex-1 text-lg font-bold tracking-tight">Books</h1>
-          <button type="button" onClick={() => nav("/books/upload")} className="rounded-full p-2" aria-label="Upload">
+          <button type="button" onClick={() => nav("/books/create")} className="rounded-full p-2" aria-label="Create a Book">
             <Upload className="h-4 w-4" style={{ color: "var(--books-accent)" }} />
           </button>
           <button
