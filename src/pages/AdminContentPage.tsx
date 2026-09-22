@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, BookOpen, BriefcaseBusiness, Film, Loader2, Search, Shield, ShoppingBag, Trash2 } from "lucide-react";
+import { ArrowLeft, BookOpen, BriefcaseBusiness, Film, Loader2, Search, Shield, ShoppingBag, Swords, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +8,7 @@ import { adminDeleteCreatorBook, listAllCreatorBooksForAdmin } from "@/lib/creat
 import type { BookItem } from "@/lib/books-catalog";
 import { WheuatTv, type WheuatTvItem } from "@/pages/wheuat-tv/wheuatTvStore";
 
-type Tab = "books" | "tv" | "jobs" | "marketplace";
+type Tab = "books" | "tv" | "jobs" | "marketplace" | "battles";
 
 type AdminJob = {
   id: string;
@@ -33,6 +33,18 @@ type AdminMarketplaceListing = {
   created_at: string;
 };
 
+type AdminBattle = {
+  id: string;
+  challenger_id: string;
+  opponent_id: string | null;
+  title: string;
+  media_type: string;
+  status: string;
+  challenger_cover_url: string | null;
+  opponent_cover_url: string | null;
+  created_at: string;
+};
+
 export default function AdminContentPage() {
   const nav = useNavigate();
   const { user } = useAuth();
@@ -42,6 +54,7 @@ export default function AdminContentPage() {
   const [tv, setTv] = useState<WheuatTvItem[]>([]);
   const [jobs, setJobs] = useState<AdminJob[]>([]);
   const [marketplace, setMarketplace] = useState<AdminMarketplaceListing[]>([]);
+  const [battles, setBattles] = useState<AdminBattle[]>([]);
   const [query, setQuery] = useState("");
   const [reason, setReason] = useState("Policy violation");
   const [loading, setLoading] = useState(true);
@@ -59,7 +72,7 @@ export default function AdminContentPage() {
     if (!isAdmin) return;
     setLoading(true);
     try {
-      const [bookRows, tvRows, jobsResult, marketplaceResult] = await Promise.all([
+      const [bookRows, tvRows, jobsResult, marketplaceResult, battlesResult] = await Promise.all([
         listAllCreatorBooksForAdmin(),
         WheuatTv.list(),
         (supabase as any)
@@ -71,13 +84,19 @@ export default function AdminContentPage() {
           .select("id,seller_id,title,category,price,status,cover_url,city,state,created_at")
           .is("deleted_at", null)
           .order("created_at", { ascending: false }),
+        (supabase as any)
+          .from("battles")
+          .select("id,challenger_id,opponent_id,title,media_type,status,challenger_cover_url,opponent_cover_url,created_at")
+          .order("created_at", { ascending: false }),
       ]);
       if (jobsResult.error) throw jobsResult.error;
       if (marketplaceResult.error) throw marketplaceResult.error;
+      if (battlesResult.error) throw battlesResult.error;
       setBooks(bookRows);
       setTv(tvRows.filter((item) => !item.isOriginal));
       setJobs((jobsResult.data || []) as AdminJob[]);
       setMarketplace((marketplaceResult.data || []) as AdminMarketplaceListing[]);
+      setBattles((battlesResult.data || []) as AdminBattle[]);
     } catch (e: any) {
       toast.error(e?.message || "Could not load creator content");
     } finally {
@@ -114,6 +133,20 @@ export default function AdminContentPage() {
               .includes(q),
           ),
     [marketplace, q],
+  );
+
+  const filteredBattles = useMemo(
+    () =>
+      !q
+        ? battles
+        : battles.filter((battle) =>
+            [battle.title, battle.media_type, battle.status]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase()
+              .includes(q),
+          ),
+    [battles, q],
   );
 
   const removeBook = async (book: BookItem) => {
@@ -216,6 +249,33 @@ export default function AdminContentPage() {
     }
   };
 
+  const removeBattle = async (battle: AdminBattle) => {
+    if (!user) return;
+    if (!window.confirm(`Remove "${battle.title}" from Battles for: ${reason}?`)) return;
+    setRemoving(`battle:${battle.id}`);
+    try {
+      const { error: logError } = await (supabase as any).from("admin_content_removals").insert({
+        admin_user_id: user.id,
+        content_type: "battle",
+        content_id: battle.id,
+        creator_user_id: battle.challenger_id,
+        title: battle.title,
+        reason: reason.trim() || "Policy violation",
+      });
+      if (logError) throw logError;
+
+      const { error } = await (supabase as any).from("battles").delete().eq("id", battle.id);
+      if (error) throw error;
+
+      setBattles((current) => current.filter((row) => row.id !== battle.id));
+      toast.success("Battle removed and moderation action logged");
+    } catch (e: any) {
+      toast.error(e?.message || "Could not remove battle");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
   if (isAdmin === null) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>;
   if (!isAdmin) {
     return (
@@ -236,7 +296,9 @@ export default function AdminContentPage() {
         ? filteredTv
         : tab === "jobs"
           ? filteredJobs
-          : filteredMarketplace;
+          : tab === "marketplace"
+            ? filteredMarketplace
+            : filteredBattles;
 
   return (
     <div className="mx-auto max-w-3xl px-4 pb-24 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -246,7 +308,7 @@ export default function AdminContentPage() {
         </button>
         <div>
           <h1 className="text-lg font-bold">Content Moderation</h1>
-          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books, YAJ.TV, Opportunities and Marketplace.</p>
+          <p className="text-xs text-muted-foreground">Operator removal controls for creator Books, YAJ.TV, Opportunities, Marketplace and Battles.</p>
         </div>
       </header>
 
@@ -262,6 +324,9 @@ export default function AdminContentPage() {
         </button>
         <button onClick={() => setTab("marketplace")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "marketplace" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
           <ShoppingBag className="mr-1.5 inline h-4 w-4" /> Marketplace
+        </button>
+        <button onClick={() => setTab("battles")} className={`shrink-0 flex-1 rounded-full px-4 py-2 text-sm font-bold ${tab === "battles" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+          <Swords className="mr-1.5 inline h-4 w-4" /> Battles
         </button>
       </div>
 
@@ -339,7 +404,7 @@ export default function AdminContentPage() {
             </article>
           ))}
         </div>
-      ) : (
+      ) : tab === "marketplace" ? (
         <div className="mt-5 space-y-3">
           {filteredMarketplace.map((item) => (
             <article key={item.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
@@ -368,6 +433,34 @@ export default function AdminContentPage() {
               </button>
             </article>
           ))}
+        </div>
+      ) : (
+        <div className="mt-5 space-y-3">
+          {filteredBattles.map((battle) => {
+            const cover = battle.challenger_cover_url || battle.opponent_cover_url;
+            return (
+              <article key={battle.id} className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted">
+                  {cover ? (
+                    <img src={cover} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Swords className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">{battle.title}</p>
+                  <p className="text-xs text-muted-foreground">{battle.media_type} battle · {battle.status}</p>
+                </div>
+                <button
+                  disabled={removing === `battle:${battle.id}`}
+                  onClick={() => void removeBattle(battle)}
+                  className="flex h-9 items-center gap-1.5 rounded-full border px-3 text-xs font-bold text-red-600 disabled:opacity-50"
+                >
+                  {removing === `battle:${battle.id}` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Remove
+                </button>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>
