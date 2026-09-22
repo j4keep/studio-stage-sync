@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import BooksShell from "@/components/books/BooksShell";
 import BookCoverCard from "@/components/books/BookCoverCard";
@@ -8,14 +9,27 @@ import {
   booksForCategory,
   type RegularCategoryId,
 } from "@/lib/books-catalog";
+import { listPublishedCreatorBooks } from "@/lib/creator-books";
 
 export default function BooksCategoryPage() {
   const { slug = "drama" } = useParams();
   const nav = useNavigate();
   const meta = REGULAR_CATEGORIES.find((c) => c.id === slug);
-  const books = useMemo(
+  const seedBooks = useMemo(
     () => booksForCategory((meta?.id ?? "drama") as RegularCategoryId),
     [meta?.id],
+  );
+  const { data: creatorBooks = [] } = useQuery({
+    queryKey: ["creator-books"],
+    queryFn: listPublishedCreatorBooks,
+    staleTime: 30_000,
+  });
+  const books = useMemo(
+    () => [
+      ...creatorBooks.filter((book) => book.audience === "regular" && book.category === (meta?.id ?? "drama")),
+      ...seedBooks,
+    ],
+    [creatorBooks, meta?.id, seedBooks],
   );
 
   return (
