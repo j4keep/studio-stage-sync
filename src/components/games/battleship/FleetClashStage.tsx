@@ -786,7 +786,8 @@ function nextCrewHit(crew: CrewState[], t: number) {
   return crew.findIndex((c) => c.knockedUntil <= t);
 }
 
-function resetRuntime(): Runtime {
+function resetRuntime(crewSize = DEFAULT_CREW): Runtime {
+  const size = Math.max(1, Math.min(MAX_CREW, crewSize));
   return {
     x: -2.6,
     z: 0,
@@ -796,13 +797,14 @@ function resetRuntime(): Runtime {
     rivalHealth: 3,
     score: 0,
     shots: [],
-    playerCrew: Array.from({ length: DEFAULT_CREW }, (_, i) => ({ knockedUntil: 0, side: i % 2 ? 1 : -1 } as CrewState)),
-    rivalCrew: Array.from({ length: DEFAULT_CREW }, (_, i) => ({ knockedUntil: 0, side: i % 2 ? 1 : -1 } as CrewState)),
+    playerCrew: Array.from({ length: size }, (_, i) => ({ knockedUntil: 0, side: i % 2 ? 1 : -1 } as CrewState)),
+    rivalCrew: Array.from({ length: Math.max(DEFAULT_CREW, size) }, (_, i) => ({ knockedUntil: 0, side: i % 2 ? 1 : -1 } as CrewState)),
     hitCooldown: 0,
     rivalHitCooldown: 0,
     duckUntil: 0,
     fireCooldown: 0,
     rivalFireCooldown: 1.3,
+    bumpCooldown: 0,
     finished: false,
     nextShotId: 1,
     zoneIndex: 0,
@@ -816,6 +818,8 @@ function BattleScene({
   onHud,
   onStatus,
   onFinish,
+  level,
+  crewSize,
 }: {
   inputRef: MutableRefObject<Input>;
   fireRef: MutableRefObject<boolean>;
@@ -823,11 +827,13 @@ function BattleScene({
   onHud: (health: number, rivalHealth: number, score: number, progress: number, rivalProgress: number, crew: number, rivalCrew: number, zone: string) => void;
   onStatus: (status: string) => void;
   onFinish: (won: boolean, score: number) => void;
+  level: number;
+  crewSize: number;
 }) {
   const playerGroup = useRef<any>(null);
   const rivalGroup = useRef<any>(null);
   const { camera } = useThree();
-  const runtime = useRef<Runtime>(resetRuntime());
+  const runtime = useRef<Runtime>(resetRuntime(crewSize));
   const lastHud = useRef(0);
   const lastStatus = useRef(0);
   const ambientRef = useRef<any>(null);
@@ -886,18 +892,20 @@ function BattleScene({
     s.rivalHitCooldown = Math.max(0, s.rivalHitCooldown - dt);
     s.fireCooldown = Math.max(0, s.fireCooldown - dt);
     s.rivalFireCooldown = Math.max(0, s.rivalFireCooldown - dt);
+    s.bumpCooldown = Math.max(0, s.bumpCooldown - dt);
     if (duckRef.current) s.duckUntil = t + 0.2;
 
+    const course = fleetCourse(level);
     const playerCrewCount = Math.max(1, activeCrew(s.playerCrew, t));
     const rivalCrewCount = Math.max(1, activeCrew(s.rivalCrew, t));
     const crewSpeedMul = 0.78 + playerCrewCount * 0.11;
     const rivalCrewSpeedMul = 0.78 + rivalCrewCount * 0.11;
 
     // Screen gestures steer only; the river provides forward motion.
-    s.x += inputRef.current.x * STEER_SPEED * dt;
+    s.x += inputRef.current.x * STEER_SPEED * course.steerMul * dt;
     const playerChannel = riverCenterX(s.z);
     s.x = Math.max(playerChannel - RIVER_HALF + 2.0, Math.min(playerChannel + RIVER_HALF - 2.0, s.x));
-    s.z += PLAYER_SPEED * crewSpeedMul * dt;
+    s.z += PLAYER_SPEED * course.speedMul * crewSpeedMul * dt;
 
     // AI rival races alongside the user and gradually becomes more aggressive.
     const currentZone = Math.max(0, zoneAt(s.rivalZ));
@@ -912,7 +920,43 @@ function BattleScene({
     s.rivalX += Math.max(-1, Math.min(1, desiredX - s.rivalX)) * 4.5 * dt;
     s.rivalX = Math.max(rivalChannel - RIVER_HALF + 2.0, Math.min(rivalChannel + RIVER_HALF - 2.0, s.rivalX));
     const catchup = s.rivalZ < s.z - 18 ? 1.16 : s.rivalZ > s.z + 18 ? 0.9 : 1;
-    s.rivalZ += RIVAL_SPEED * rivalCrewSpeedMul * difficulty * catchup * dt;
+    s.rivalZ += RIVAL_SPEED * course.speedMul * rivalCrewSpeedMul * difficulty * catchup * dt;
+
+    // Boat-to-boat collision: resolve overlap instead of letting hulls ghost through each other.
+    // Elliptical distance matches the long/narrow boat silhouette better than a simple circle.
+    const boatDx = s.rivalX - s.x;
+    const boatDz = s.rivalZ - s.z;
+    const normalizedBoatDistance = Math.hypot(boatDx / 3.6, boatDz / 6.2);
+    if (normalizedBoatDistance < 1) {
+      const len = Math.hypot(boatDx, boatDz) || 1;
+      const nx = boatDx / len;
+      const nz = boatDz / len;
+      const overlap = 1 - normalizedBoatDistance;
+      const shove = 2.2 + overlap * 3.8;
+
+      s.x -= nx * shove * 0.7;
+      s.rivalX += nx * shove * 0.7;
+      s.z -= nz * shove * 0.45;
+      s.rivalZ += nz * shove * 0.45;
+
+      const pCenter = riverCenterX(s.z);
+      const rCenter = riverCenterX(s.rivalZ);
+      s.x = Math.max(pCenter - RIVER_HALF + 2.0, Math.min(pCenter + RIVER_HALF - 2.0, s.x));
+      s.rivalX = Math.max(rCenter - RIVER_HALF + 2.0, Math.min(rCenter + RIVER_HALF - 2.0, s.rivalX));
+
+      if (s.bumpCooldown <= 0) {
+        s.bumpCooldown = 0.55;
+        s.score += Math.max(0, Math.round(35 + overlap * 45));
+        setPlayerPose("stumble");
+        setRivalPose("stumble");
+        window.setTimeout(() => {
+          setPlayerPose(null);
+          setRivalPose(null);
+        }, 280);
+        onStatus("BOAT BUMP! You shoved the rival off line");
+        battleshipSfx.collision();
+      }
+    }
 
     if (fireRef.current) {
       fireRef.current = false;
@@ -1080,7 +1124,7 @@ function BattleScene({
 
     // Storm Reach: rolling rain ambience plus the occasional lightning strike that briefly
     // brightens the whole scene and cracks with thunder.
-    const inStorm = s.z >= STORM_START && s.z < STORM_END;
+    const inStorm = course.stormAlways || (s.z >= STORM_START && s.z < STORM_END);
     if (inStorm !== stormActiveRef.current) {
       stormActiveRef.current = inStorm;
       if (inStorm) battleshipSfx.rainStart();
@@ -1143,10 +1187,12 @@ function BattleScene({
   const inStorm = runtime.current.z >= STORM_START && runtime.current.z < STORM_END;
   return (
     <>
-      <ambientLight ref={ambientRef} intensity={1.15} />
-      <directionalLight ref={dirRef} position={[8, 20, -6]} intensity={1.8} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
-      <hemisphereLight args={["#dff5ff", "#446b3b", 0.85]} />
-      <RiverWorld />
+      <color attach="background" args={[fleetCourse(level).sky]} />
+      <fog attach="fog" args={[fleetCourse(level).sky, level === 4 ? 20 : 36, level === 5 ? 92 : 120]} />
+      <ambientLight ref={ambientRef} intensity={level === 5 ? 0.7 : 1.15} />
+      <directionalLight ref={dirRef} position={[8, 20, -6]} intensity={level === 5 ? 1.15 : 1.8} castShadow shadow-mapSize-width={1024} shadow-mapSize-height={1024} />
+      <hemisphereLight args={[fleetCourse(level).sky, fleetCourse(level).bank, level === 5 ? 0.5 : 0.85]} />
+      <RiverWorld level={level} />
       {inStorm && <Rain originRef={runtime} />}
 
       <group ref={playerGroup}>
