@@ -18,10 +18,14 @@ export type BookPage = {
   /** Optional chapter label shown in the slim adult reader header. */
   chapter?: string;
   /**
-   * Optional kids illustration URL (imported asset).
+   * Optional kids illustration URL.
    * Kids reader shows a big picture on top with short text underneath.
    */
   image?: string;
+  /** R2 key when a creator-generated kids illustration is stored in YAJ cloud storage. */
+  imageKey?: string;
+  /** Prompt used for a creator-generated page illustration; useful for consistent regeneration. */
+  imagePrompt?: string;
 };
 
 export type BookItem = {
