@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Anchor, ArrowLeft, Heart, Loader2, Radio, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,21 +10,47 @@ import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import FleetClashStage from "@/components/games/battleship/FleetClashStage";
+import OpponentPickerSheet, { type Person } from "@/components/games/OpponentPickerSheet";
+import FleetClashStage, { FLEET_COURSES } from "@/components/games/battleship/FleetClashStage";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { bumpStats, createMultiplayerGame, createSoloGame, endGame, updateGameState } from "@/lib/games";
+import {
+  bumpStats,
+  createFleetClashCrewGame,
+  createSoloGame,
+  endGame,
+  updateGameState,
+} from "@/lib/games";
 import { initialBattleship } from "@/lib/battleship";
 import { gameRoute } from "@/lib/game-routes";
 import fleetClashArtAsset from "@/assets/games/adventures/fleet-clash.png.asset.json";
 
 const fleetClashArt = fleetClashArtAsset.url;
 
+type FleetSnapshot = {
+  level?: number;
+  health?: number;
+  rivalHealth?: number;
+  progress?: number;
+  rivalProgress?: number;
+  crew?: number;
+  rivalCrew?: number;
+  score?: number;
+  zone?: string;
+};
+
 export default function BattleshipPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
+  const {
+    game,
+    loading,
+    refresh,
+    me,
+    players,
+    opponentName,
+    opponentAvatar,
+  } = useTurnGame(id, user?.id);
 
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
@@ -34,7 +60,9 @@ export default function BattleshipPage() {
   const [finished, setFinished] = useState(false);
   const [won, setWon] = useState(false);
   const [score, setScore] = useState(0);
+  const [level, setLevel] = useState(1);
   const saved = useRef(false);
+  const lastSnapshotAt = useRef(0);
 
   const { stats, matchups } = useGameRecord("battleship", user?.id, finished);
 
@@ -55,58 +83,177 @@ export default function BattleshipPage() {
     setFinished(false);
     setWon(false);
     setScore(0);
+    setLevel(Math.max(1, Math.min(5, Number(game?.game_state?.fleetClashLevel || 1))));
     saved.current = false;
+    lastSnapshotAt.current = 0;
   }, [game?.id]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!game) {
+    return (
+      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-6 text-center">
+        <p className="font-bold">This game is no longer available.</p>
+        <button
+          type="button"
+          onClick={() => navigate("/games")}
+          className="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground"
+        >
+          Back to Games
+        </button>
+      </div>
+    );
+  }
+
+  const humanPlayers = players.filter((player) => !player.is_computer && player.user_id);
+  const crewMode = game.mode === "multiplayer" && Boolean(game.game_state?.fleetClashCrewMode);
+  const isCaptain = game.host_user_id === user?.id;
+  const crewSize = game.mode === "solo" ? 2 : Math.max(2, Math.min(4, humanPlayers.length));
+  const course = FLEET_COURSES[level - 1] || FLEET_COURSES[0];
+  const snapshot = (game.game_state?.fleetClashSnapshot || {}) as FleetSnapshot;
+
+  const quitGame = () => {
+    void (async () => {
+      await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
+  const publishSnapshot = (next: FleetSnapshot) => {
+    if (!crewMode || !isCaptain) return;
+    const now = Date.now();
+    if (now - lastSnapshotAt.current < 850) return;
+    lastSnapshotAt.current = now;
+    void (supabase as any)
+      .rpc("fleet_clash_update_snapshot", {
+        p_game_id: game.id,
+        p_snapshot: next,
+      })
+      .catch(() => undefined);
+  };
 
   const finishRun = async (didWin: boolean, finalScore: number) => {
     setFinished(true);
     setWon(didWin);
     setScore(finalScore);
-    if (!game || !user || saved.current) return;
+
+    // Levels 1–4 are campaign checkpoints, not separate finished game records.
+    if (!didWin || level < 5) return;
+    if (!user || saved.current) return;
+
     saved.current = true;
     try {
       await updateGameState(game.id, {
         status: "completed",
-        winner_user_id: didWin ? user.id : (game.mode === "multiplayer" ? opponent?.user_id ?? null : null),
+        winner_user_id: user.id,
         is_draw: false,
         finished_at: new Date().toISOString(),
-        game_state: { ...(game.game_state || {}), fleetClashAction: { score: finalScore, won: didWin } },
+        game_state: {
+          ...(game.game_state || {}),
+          fleetClashLevel: 5,
+          fleetClashAction: { score: finalScore, won: true, campaignComplete: true },
+        },
       });
-      await bumpStats(user.id, "battleship", didWin ? "win" : "loss");
+      await bumpStats(user.id, "battleship", "win", finalScore);
       await refresh();
     } catch {
       // The run itself is local/action gameplay; a stats sync failure should not break the result screen.
     }
   };
 
-  const rematch = async () => {
-    if (!user || !game) return;
+  const persistLevel = async (nextLevel: number) => {
+    if (!isCaptain) return;
     try {
-      const state = { battleship: initialBattleship(), moveNumber: 0 };
-      const next = game.mode === "solo"
-        ? await createSoloGame("battleship", user.id, state)
-        : opponent?.user_id
-          ? await createMultiplayerGame("battleship", user.id, opponent.user_id, state)
-          : null;
-      if (next) navigate(gameRoute("battleship", next.id), { replace: true });
-    } catch (e: any) {
-      toast({ title: "Could not start a rematch", description: e?.message, variant: "destructive" });
+      await (supabase as any)
+        .from("games")
+        .update({
+          game_state: {
+            ...(game.game_state || {}),
+            fleetClashLevel: nextLevel,
+            fleetClashSnapshot: null,
+          },
+        })
+        .eq("id", game.id)
+        .eq("host_user_id", user?.id);
+    } catch {
+      // Level progression still works locally if a background sync is briefly unavailable.
     }
   };
 
-  const challengeOther = async (opponentId: string, name: string) => {
+  const primaryResultAction = () => {
+    if (won && level < 5) {
+      const next = level + 1;
+      setLevel(next);
+      setFinished(false);
+      setScore(0);
+      setSeated(true);
+      void persistLevel(next);
+      return;
+    }
+
+    if (!won) {
+      setFinished(false);
+      setScore(0);
+      setSeated(true);
+      return;
+    }
+
+    void startNewCampaign();
+  };
+
+  const startNewCampaign = async () => {
     if (!user) return;
     try {
-      const next = await createMultiplayerGame("battleship", user.id, opponentId, { battleship: initialBattleship(), moveNumber: 0 });
-      toast({ title: `Challenge sent to ${name}` });
+      const state = { battleship: initialBattleship(), moveNumber: 0, fleetClashLevel: 1 };
+      let next = null;
+
+      if (crewMode) {
+        const invitees = humanPlayers
+          .map((player) => player.user_id)
+          .filter((uid): uid is string => Boolean(uid && uid !== user.id));
+        next = invitees.length
+          ? await createFleetClashCrewGame(user.id, invitees, state)
+          : await createSoloGame("battleship", user.id, state);
+      } else {
+        next = await createSoloGame("battleship", user.id, state);
+      }
+
       navigate(gameRoute("battleship", next.id), { replace: true });
     } catch (e: any) {
-      toast({ title: "Could not send the challenge", description: e?.message, variant: "destructive" });
+      toast({ title: "Could not start a new campaign", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const challengeCrew = async (people: Person[]) => {
+    if (!user || !people.length) return;
+    try {
+      const next = await createFleetClashCrewGame(
+        user.id,
+        people.map((person) => person.user_id),
+        { battleship: initialBattleship(), moveNumber: 0, fleetClashLevel: 1 },
+      );
+      toast({
+        title: people.length === 1 ? "Crew invite sent" : `${people.length} crew invites sent`,
+        description: "Fleet Clash starts when everyone responds.",
+      });
+      setPicker(false);
+      navigate(gameRoute("battleship", next.id), { replace: true });
+    } catch (e: any) {
+      toast({ title: "Could not create the crew", description: e?.message, variant: "destructive" });
     }
   };
 
   const shareResult = async () => {
-    const text = `I just scored ${score.toLocaleString()} in YAJ Fleet Clash 🌊`;
+    const text =
+      level >= 5 && won
+        ? `I cleared all 5 levels of YAJ Fleet Clash with ${score.toLocaleString()} points 🌊`
+        : `I scored ${score.toLocaleString()} on Level ${level} of YAJ Fleet Clash 🌊`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -118,38 +265,39 @@ export default function BattleshipPage() {
     }
   };
 
-  if (loading) {
-    return <div className="flex min-h-[100dvh] items-center justify-center bg-background"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
-  }
-
-  if (!game) {
+  // Crew members share the match but the captain owns the real-time boat controls.
+  // They see the captain's synced race state and stay connected through voice/live chat,
+  // rather than accidentally running a separate local copy of the race.
+  if (crewMode && !isCaptain && game.status === "active") {
     return (
-      <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-6 text-center">
-        <p className="font-bold">This game is no longer available.</p>
-        <button type="button" onClick={() => navigate("/games")} className="rounded-full bg-primary px-4 py-2 text-sm font-black text-primary-foreground">Back to Games</button>
-      </div>
+      <FleetCrewView
+        gameId={game.id}
+        userId={user?.id}
+        isLive={Boolean((game as any).is_live)}
+        crewCount={crewSize}
+        captainName={opponentName || "Captain"}
+        snapshot={snapshot}
+        onBack={() => navigate("/games")}
+        onRefresh={refresh}
+      />
     );
   }
 
-  const quitGame = () => {
-    void (async () => {
-      await endGame(game.id);
-      navigate("/games");
-    })();
-  };
-
-  const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
+  const rivalLabel = "Rival Fleet";
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
-        {seated && (
+        {seated && isCaptain && (
           <FleetClashStage
-            key={game.id}
-            opponentName={oppLabel}
+            key={`${game.id}-level-${level}-crew-${crewSize}`}
+            opponentName={rivalLabel}
+            level={level}
+            crewSize={crewSize}
             muted={muted}
-            onToggleMute={() => setMuted((v) => !v)}
+            onToggleMute={() => setMuted((value) => !value)}
             onStatus={() => {}}
+            onSnapshot={publishSnapshot}
             onFinish={(didWin, finalScore) => void finishRun(didWin, finalScore)}
             onBack={() => navigate("/games")}
             onQuit={quitGame}
@@ -159,7 +307,7 @@ export default function BattleshipPage() {
                 userId={user?.id}
                 isPlayer={!!me}
                 isLive={Boolean((game as any).is_live)}
-                hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
+                hasHumanOpponent={humanPlayers.length > 1}
                 placement="rail"
                 onChanged={refresh}
               />
@@ -176,60 +324,202 @@ export default function BattleshipPage() {
         />
 
         <WaitingForOpponentGate
-          show={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
-          opponentName={opponentName}
+          show={crewMode && game.status === "waiting" && isCaptain}
+          opponentName={humanPlayers.length > 2 ? "your crew" : opponentName}
           onCancel={quitGame}
         />
 
-        <GameIntro
-          showCharacterCustomize
-          open={!seated && !finished}
-          title="YAJ Fleet Clash"
-          subtitle={game.mode === "solo" ? "River race — solo run" : `River race — you vs ${opponentName}`}
-          artUrl={fleetClashArt}
-          me={{ name: myName, avatarUrl: myAvatar }}
-          them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
-          stats={stats}
-          matchups={matchups}
-          onStart={() => setSeated(true)}
-          onBack={() => navigate("/games")}
-          onPlaySolo={() => {
-            if (game.mode === "solo" && game.status === "active") {
-              setSeated(true);
-              return;
+        {(!crewMode || isCaptain) && (
+          <GameIntro
+            showCharacterCustomize
+            open={!seated && !finished && game.status !== "waiting"}
+            title="YAJ Fleet Clash"
+            subtitle={
+              game.mode === "solo"
+                ? `5-level river campaign · Level ${level}: ${course.name}`
+                : `${crewSize}-player crew · Captain + crew vs the Rival Fleet`
             }
-            void (async () => {
-              try {
-                const next = await createSoloGame("battleship", user!.id, { battleship: initialBattleship(), moveNumber: 0 });
-                navigate(gameRoute("battleship", next.id), { replace: true });
-              } catch (e: any) {
-                toast({ title: "Could not start a solo game", description: e?.message, variant: "destructive" });
+            artUrl={fleetClashArt}
+            me={{ name: myName, avatarUrl: myAvatar }}
+            them={{
+              name: game.mode === "solo" ? "Computer" : `${crewSize}-player crew`,
+              avatarUrl: game.mode === "solo" ? null : opponentAvatar,
+              isComputer: game.mode === "solo",
+            }}
+            stats={stats}
+            matchups={matchups}
+            onStart={() => setSeated(true)}
+            onBack={() => navigate("/games")}
+            onPlaySolo={() => {
+              if (game.mode === "solo" && game.status === "active") {
+                setSeated(true);
+                return;
               }
-            })();
-          }}
-          onQuickMatch={() => setPicker(true)}
-        />
+              void (async () => {
+                try {
+                  const next = await createSoloGame("battleship", user!.id, {
+                    battleship: initialBattleship(),
+                    moveNumber: 0,
+                    fleetClashLevel: 1,
+                  });
+                  navigate(gameRoute("battleship", next.id), { replace: true });
+                } catch (e: any) {
+                  toast({ title: "Could not start a solo game", description: e?.message, variant: "destructive" });
+                }
+              })();
+            }}
+            onQuickMatch={() => setPicker(true)}
+          />
+        )}
       </div>
 
-      <GameResultCard
-        open={finished}
-        outcome={won ? "win" : "loss"}
-        title={won ? "Fleet Victory!" : "Boat Disabled"}
-        detail={won ? `Your crew crossed the final cove first with ${score.toLocaleString()} points.` : `The rival crossed first. You scored ${score.toLocaleString()} points — run the river again.`}
-        onRematch={rematch}
-        onChallenge={() => setPicker(true)}
-        onShare={shareResult}
-      />
+      {isCaptain && (
+        <GameResultCard
+          open={finished}
+          outcome={won ? "win" : "loss"}
+          title={
+            won
+              ? level < 5
+                ? `${course.name} Cleared!`
+                : "Fleet Champion!"
+              : `${course.name} Defeated You`
+          }
+          detail={
+            won
+              ? level < 5
+                ? `Level ${level} complete with ${score.toLocaleString()} points. Next: ${FLEET_COURSES[level]?.name}.`
+                : `You conquered all five Fleet Clash courses with ${score.toLocaleString()} points.`
+              : `You scored ${score.toLocaleString()} points. Retry Level ${level} and take the river back.`
+          }
+          primaryLabel={won ? (level < 5 ? "Next Level" : "New Campaign") : "Retry Level"}
+          onRematch={primaryResultAction}
+          onChallenge={() => setPicker(true)}
+          onShare={shareResult}
+        />
+      )}
 
       <OpponentPickerSheet
         open={picker}
         onClose={() => setPicker(false)}
-        onPick={(p) => {
-          setPicker(false);
-          void challengeOther(p.user_id, p.display_name || "your opponent");
-        }}
-        title="Challenge to YAJ Fleet Clash"
+        onPick={() => {}}
+        multiSelect
+        maxSelections={3}
+        onConfirmMultiple={(people) => void challengeCrew(people)}
+        title="Build Your Fleet Clash Crew"
       />
+    </div>
+  );
+}
+
+function FleetCrewView({
+  gameId,
+  userId,
+  isLive,
+  crewCount,
+  captainName,
+  snapshot,
+  onBack,
+  onRefresh,
+}: {
+  gameId: string;
+  userId: string | undefined;
+  isLive: boolean;
+  crewCount: number;
+  captainName: string;
+  snapshot: FleetSnapshot;
+  onBack: () => void;
+  onRefresh: () => void;
+}) {
+  const level = Math.max(1, Math.min(5, Number(snapshot.level || 1)));
+  const course = FLEET_COURSES[level - 1] || FLEET_COURSES[0];
+  const progress = Math.round(Number(snapshot.progress || 0) * 100);
+  const rivalProgress = Math.round(Number(snapshot.rivalProgress || 0) * 100);
+
+  return (
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-[radial-gradient(circle_at_top,#16456b,#07111f_60%)] text-white">
+      <div className="absolute inset-0 opacity-25">
+        <img src={fleetClashArt} alt="" className="h-full w-full object-cover" />
+      </div>
+      <div className="absolute inset-0 bg-black/55" />
+
+      <div className="relative z-10 flex h-full flex-col px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={onBack} className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 backdrop-blur">
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <div className="rounded-full bg-cyan-400/15 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">
+            Crew View
+          </div>
+          <GameLiveDock
+            gameId={gameId}
+            userId={userId}
+            isPlayer
+            isLive={isLive}
+            hasHumanOpponent
+            placement="rail"
+            onChanged={onRefresh}
+          />
+        </div>
+
+        <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center">
+          <div className="rounded-[28px] border border-white/15 bg-slate-950/70 p-5 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400/15">
+                <Anchor className="h-6 w-6 text-cyan-200" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">YAJ Fleet Clash</p>
+                <h1 className="mt-1 text-xl font-black">You're on {captainName}'s crew</h1>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-2xl bg-white/8 p-3">
+                <p className="text-[9px] font-black uppercase tracking-wider text-white/50">Course</p>
+                <p className="mt-1 text-sm font-black">Level {level}/5</p>
+                <p className="mt-0.5 text-xs text-cyan-200">{course.name}</p>
+              </div>
+              <div className="rounded-2xl bg-white/8 p-3">
+                <p className="text-[9px] font-black uppercase tracking-wider text-white/50">Boat Crew</p>
+                <p className="mt-1 flex items-center gap-1.5 text-sm font-black"><Users className="h-4 w-4" /> {crewCount}/4</p>
+                <p className="mt-0.5 text-xs text-white/55">Captain controls the boat</p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-wider text-violet-200">Your boat</p>
+                  <p className="mt-1 flex items-center gap-1 text-xs font-bold">
+                    <Heart className="h-3.5 w-3.5 fill-red-400 text-red-400" /> {Math.max(0, Number(snapshot.health ?? 3))} hull
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-orange-200">Rival Fleet</p>
+                  <p className="mt-1 text-xs font-bold">{snapshot.zone || course.condition}</p>
+                </div>
+              </div>
+
+              <div className="relative mt-3 h-4 overflow-hidden rounded-full bg-white/10">
+                <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style={{ width: `${progress}%` }} />
+                <div className="absolute inset-y-0 w-1 bg-orange-300" style={{ left: `${rivalProgress}%` }} />
+              </div>
+              <div className="mt-2 flex justify-between text-[11px] font-black">
+                <span>{progress}%</span>
+                <span>{rivalProgress}% rival</span>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-3 text-center">
+              <Radio className="mx-auto h-5 w-5 text-cyan-200" />
+              <p className="mt-2 text-xs font-black">Stay with the captain</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-white/55">
+                Use the Live button above for crew voice/chat while the captain drives, fires and advances through the five courses.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
