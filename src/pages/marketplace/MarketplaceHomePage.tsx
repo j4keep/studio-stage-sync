@@ -15,15 +15,13 @@ import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTip
 import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
 
-type FilterId = "mine" | "all" | "free" | "distance" | "relevant" | "discounted";
+type FilterId = "mine" | "all" | "free" | "newest";
 
 const FILTERS: { id: FilterId; label: string }[] = [
   { id: "mine", label: "My Listings" },
   { id: "all", label: "All Categories" },
   { id: "free", label: "Free" },
-  { id: "distance", label: "15 mi" },
-  { id: "relevant", label: "Most Relevant" },
-  { id: "discounted", label: "Discounted" },
+  { id: "newest", label: "Newest" },
 ];
 
 function isMissingTableError(msg: string) {
@@ -40,7 +38,7 @@ export default function MarketplaceHomePage() {
   const [q, setQ] = useState("");
   const [searchFocus, setSearchFocus] = useState(false);
   const [recents, setRecents] = useState(getRecentSearches);
-  const [filter, setFilter] = useState<FilterId>("relevant");
+  const [filter, setFilter] = useState<FilterId>("newest");
   const [category, setCategory] = useState<string | null>(null);
   const [setupNeeded, setSetupNeeded] = useState(false);
 
@@ -52,7 +50,7 @@ export default function MarketplaceHomePage() {
         viewerId: user?.id,
         limit: 48,
         excludeFiveUnder: true,
-        sort: filter === "relevant" ? "newest" : "newest",
+        sort: "newest",
       };
       if (filter === "mine" && user) opts.sellerId = user.id;
       if (filter === "free") opts.category = "free";
