@@ -185,7 +185,12 @@ export default function BoxingRing({
   useEffect(() => {
     if (!impact || impact.nonce === seen.current) return;
     seen.current = impact.nonce;
-    setSpark({ x: impact.side === "opp" ? 470 : 430, y: 232 });
+    const leftCenter = 250 + Math.min(172, 42 + myAdvance);
+    const rightCenter = 650 - Math.min(172, 42 + oppAdvance);
+    setSpark({
+      x: impact.side === "opp" ? rightCenter - 26 : leftCenter + 26,
+      y: 186,
+    });
     setShake(true);
     const a = window.setTimeout(() => setShake(false), 200);
     const b = window.setTimeout(() => setSpark(null), 220);
@@ -193,7 +198,7 @@ export default function BoxingRing({
       window.clearTimeout(a);
       window.clearTimeout(b);
     };
-  }, [impact?.nonce]);
+  }, [impact?.nonce, impact?.side, myAdvance, oppAdvance]);
 
   const canAct = interactive && !finished;
   const inRange = gap <= PUNCHES.jab.reach + 62;
@@ -353,7 +358,13 @@ export default function BoxingRing({
       </svg>
 
       {/* Top HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-2">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 pt-2"
+        style={{
+          paddingLeft: "max(0.75rem, calc(env(safe-area-inset-left) + 0.75rem))",
+          paddingRight: "max(0.75rem, calc(env(safe-area-inset-right) + 0.75rem))",
+        }}
+      >
         <div className="pointer-events-auto flex items-center gap-2">
           <div className="w-32 rounded-xl bg-black/45 p-1.5">
             <p className="mb-1 flex items-center gap-1 truncate text-[10px] font-black text-white">
@@ -396,7 +407,10 @@ export default function BoxingRing({
       </div>
 
       {/* Punches — left rail, fire freely on their own cooldowns */}
-      <div className="pointer-events-none absolute inset-y-0 left-2 z-30 flex flex-col items-center justify-center gap-3">
+      <div
+        className="pointer-events-none absolute inset-y-0 z-30 flex flex-col items-center justify-center gap-3"
+        style={{ left: "max(0.75rem, calc(env(safe-area-inset-left) + 0.75rem))" }}
+      >
         {(["jab", "hook", "uppercut"] as Punch[]).map((p) => (
           <div key={p} className="pointer-events-auto">
             <ActionButton
@@ -417,7 +431,10 @@ export default function BoxingRing({
       </div>
 
       {/* Guards — right rail */}
-      <div className="pointer-events-none absolute inset-y-0 right-2 z-30 flex flex-col items-center justify-center gap-3">
+      <div
+        className="pointer-events-none absolute inset-y-0 z-30 flex flex-col items-center justify-center gap-3"
+        style={{ right: "max(0.75rem, calc(env(safe-area-inset-right) + 0.75rem))" }}
+      >
         <div className="pointer-events-auto">
           <ActionButton label="block" hint="guard" Icon={Shield} tone="defend" cooldown={guardCooldown} disabled={!canAct} onPress={() => onGuard("block")} />
         </div>
