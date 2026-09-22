@@ -10,9 +10,9 @@ import {
   REGULAR_CATEGORIES,
   type BookAudience,
   type BookListingType,
-  type BookPage,
   type RegularCategoryId,
 } from "@/lib/books-catalog";
+import { paginateBookManuscript } from "@/lib/book-pagination";
 import { generateCreatorBookCover, publishCreatorBook } from "@/lib/creator-books";
 
 const COVER_PAIRS: [string, string][] = [
@@ -23,41 +23,6 @@ const COVER_PAIRS: [string, string][] = [
   ["#4c1d95", "#c4b5fd"],
   ["#0e7490", "#a5f3fc"],
 ];
-
-function splitLongText(text: string, target = 900): string[] {
-  const clean = text.replace(/\s+/g, " ").trim();
-  if (!clean) return [];
-  if (clean.length <= target) return [clean];
-
-  const sentences = clean.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [clean];
-  const pages: string[] = [];
-  let current = "";
-
-  for (const sentence of sentences) {
-    const next = current ? `${current} ${sentence.trim()}` : sentence.trim();
-    if (next.length > target && current) {
-      pages.push(current);
-      current = sentence.trim();
-    } else {
-      current = next;
-    }
-  }
-  if (current) pages.push(current);
-  return pages;
-}
-
-function manuscriptToPages(body: string): BookPage[] {
-  const sections = body
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  const pageTexts = sections.length
-    ? sections.flatMap((section) => splitLongText(section))
-    : splitLongText(body);
-
-  return pageTexts.map((text) => ({ text }));
-}
 
 export default function BookUploadPage() {
   const nav = useNavigate();
@@ -80,7 +45,7 @@ export default function BookUploadPage() {
   const [publishing, setPublishing] = useState(false);
 
   const kids = audience === "kids";
-  const pages = useMemo(() => manuscriptToPages(body), [body]);
+  const pages = useMemo(() => paginateBookManuscript(body, audience), [body, audience]);
   const [fallbackFrom, fallbackTo] = useMemo(
     () => COVER_PAIRS[Math.abs(title.length + body.length) % COVER_PAIRS.length],
     [title.length, body.length],
@@ -299,7 +264,7 @@ export default function BookUploadPage() {
             <div>
               <h2 className="text-sm font-bold">Write or paste your manuscript</h2>
               <p className="mt-0.5 text-[11px]" style={{ color: "var(--books-muted)" }}>
-                YAJ automatically turns your manuscript into readable pages.
+                YAJ automatically groups your manuscript into full reading pages.
               </p>
             </div>
             <span
@@ -317,7 +282,7 @@ export default function BookUploadPage() {
             className="mt-3 w-full resize-y rounded-xl border px-3 py-3 text-[15px] leading-relaxed outline-none"
             style={{ borderColor: "var(--books-line)", background: "var(--books-surface)", color: "var(--books-ink)" }}
             placeholder={
-              "Start writing here, or paste a manuscript you already wrote.\n\nUse a blank line when you want a natural page or section break."
+              "Start writing here, or paste a manuscript you already wrote.\n\nBlank lines create paragraph breaks — YAJ will combine them into full reading pages automatically."
             }
           />
 
