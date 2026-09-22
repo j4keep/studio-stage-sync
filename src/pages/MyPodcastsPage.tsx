@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2, Heart, Eye } from "lucide-react";
+import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2, Heart, Eye, Radio } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,7 @@ interface Podcast {
   media_url?: string;
   is_video?: boolean;
   likes_count: number;
+  on_radio?: boolean;
 }
 
 const formatDuration = (seconds: number) => {
@@ -58,6 +59,7 @@ const MyPodcastsPage = () => {
         media_url: p.media_url ? getR2DownloadUrl(p.media_url) : undefined,
         is_video: p.is_video,
         likes_count: p.likes_count || 0,
+        on_radio: Boolean(p.on_radio),
       })));
     }
     setLoading(false);
@@ -133,11 +135,11 @@ const MyPodcastsPage = () => {
         return;
       }
 
-      const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: r2Result.data!.key, is_video: video }).select().single();
+      const { data, error } = await (supabase as any).from("podcasts").insert({ user_id: user!.id, title, episode: "New Episode", duration, cover_url: cover, media_url: r2Result.data!.key, is_video: video, on_radio: false }).select().single();
       if (error) { setUploading(false); toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
       const playbackUrl = getR2DownloadUrl(r2Result.data!.key);
-      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video, likes_count: 0 }, ...prev]);
+      setPodcasts(prev => [{ id: data.id, title, episode: "New Episode", duration, plays: "0", cover_url: cover || podcast1, media_url: playbackUrl, is_video: video, likes_count: 0, on_radio: false }, ...prev]);
       setPendingFile(null); setPendingCover(null); setShowUpload(false); setUploading(false); setUploadProgress(0);
       toast({ title: "Podcast uploaded! ☁️", description: `"${title}" is now stored permanently` });
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -146,6 +148,29 @@ const MyPodcastsPage = () => {
 
     el.addEventListener("loadedmetadata", onMeta);
     el.addEventListener("error", () => { toast({ title: "Error", description: "Could not read media file", variant: "destructive" }); });
+  };
+
+  const toggleRadio = async (p: Podcast) => {
+    if (p.is_video) {
+      toast({ title: "Audio podcasts only", description: "Video podcasts belong on YAJ.TV." });
+      return;
+    }
+    const next = !p.on_radio;
+    const { error } = await (supabase as any)
+      .from("podcasts")
+      .update({ on_radio: next })
+      .eq("id", p.id)
+      .eq("user_id", user!.id);
+    if (error) {
+      toast({ title: "Could not update Radio", description: error.message, variant: "destructive" });
+      return;
+    }
+    setPodcasts((current) => current.map((item) => item.id === p.id ? { ...item, on_radio: next } : item));
+    window.dispatchEvent(new CustomEvent("wheuat-radio-updated"));
+    toast({
+      title: next ? "Published to YAJ Radio 📻" : "Removed from YAJ Radio",
+      description: next ? "This episode is now available in Radio Podcasts." : "The episode remains in My Podcasts.",
+    });
   };
 
   const getMode = (p: Podcast): "video" | "audio" => playMode[p.id] || (p.is_video ? "video" : "audio");
@@ -263,6 +288,21 @@ const MyPodcastsPage = () => {
                         <Headphones className="w-3 h-3" />
                       </button>
                     </div>
+                  )}
+                  {!p.is_video && (
+                    <button
+                      type="button"
+                      onClick={() => void toggleRadio(p)}
+                      title={p.on_radio ? "Remove from YAJ Radio" : "Publish to YAJ Radio"}
+                      className={`flex h-8 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-bold transition ${
+                        p.on_radio
+                          ? "bg-primary text-primary-foreground"
+                          : "border border-border bg-card text-muted-foreground"
+                      }`}
+                    >
+                      <Radio className="h-3 w-3" />
+                      {p.on_radio ? "On Radio" : "Radio"}
+                    </button>
                   )}
                   <button onClick={() => removePodcast(p.id)} className="w-7 h-7 rounded-full bg-destructive/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <Trash2 className="w-3 h-3 text-destructive" />
