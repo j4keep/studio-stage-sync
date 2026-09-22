@@ -1220,32 +1220,101 @@ function BattleScene({
         continue;
       }
       if (Math.abs(o.z - s.z) < 3.8) {
-        const d = Math.hypot(hazardX(o, t) - s.x, o.z - s.z);
+        const ox = hazardX(o, t);
+        const d = Math.hypot(ox - s.x, o.z - s.z);
         if (d < o.r + 1.25 && s.hitCooldown <= 0) {
-          s.hitCooldown = 1.05;
-          s.health -= 1;
-          s.score = Math.max(0, s.score - 80);
-          s.x += s.x <= hazardX(o, t) ? -2.0 : 2.0;
-          setPlayerPose("stumble");
-          window.setTimeout(() => setPlayerPose(null), 520);
-          onStatus("Obstacle hit — recover and keep racing");
-          battleshipSfx.hit();
+          const sameObstacle = s.lastPlayerObstacleId === o.id;
+          s.playerObstacleBumps = sameObstacle ? s.playerObstacleBumps + 1 : 1;
+          s.lastPlayerObstacleId = o.id;
+
+          if (s.playerObstacleBumps >= 2) {
+            // Second bump on the same obstacle: release the boat forward so hazards
+            // slow a racer down but can never pin them for the rest of the race.
+            const releaseZ = o.z + o.r + 5.5;
+            s.z = Math.max(s.z, releaseZ);
+            const center = riverCenterX(s.z);
+            const side = s.x <= ox ? -1 : 1;
+            s.x = Math.max(
+              center - RIVER_HALF + 2.0,
+              Math.min(center + RIVER_HALF - 2.0, center + side * Math.min(7.2, o.r + 3.2)),
+            );
+            s.hitCooldown = 0.45;
+            s.playerObstacleBumps = 0;
+            s.lastPlayerObstacleId = null;
+            onStatus("Broke free — obstacle cleared");
+            battleshipSfx.collision();
+          } else {
+            s.hitCooldown = 1.05;
+            s.health -= o.kind === "mine" ? 2 : 1;
+            s.score = Math.max(0, s.score - (o.kind === "mine" ? 130 : 80));
+            s.x += s.x <= ox ? -2.0 : 2.0;
+            setPlayerPose("stumble");
+            window.setTimeout(() => setPlayerPose(null), 520);
+            onStatus(
+              o.kind === "iceberg" || o.kind === "ice_chunk"
+                ? "Ice collision — steer around the drift!"
+                : o.kind === "mine"
+                  ? "Sea mine blast — get clear!"
+                  : o.kind === "cargo"
+                    ? "Cargo collision — push through!"
+                    : o.kind === "plane"
+                      ? "Low plane clipped the boat!"
+                      : "Obstacle hit — recover and keep racing",
+            );
+            battleshipSfx.hit();
+          }
         }
       }
       if (Math.abs(o.z - s.rivalZ) < 3.8) {
-        const d = Math.hypot(hazardX(o, t) - s.rivalX, o.z - s.rivalZ);
+        const ox = hazardX(o, t);
+        const d = Math.hypot(ox - s.rivalX, o.z - s.rivalZ);
         if (d < o.r + 1.25 && s.rivalHitCooldown <= 0) {
-          s.rivalHitCooldown = 1.0;
-          s.rivalHealth -= 1;
-          s.rivalX += s.rivalX <= hazardX(o, t) ? -2.0 : 2.0;
-          setRivalPose("stumble");
-          window.setTimeout(() => setRivalPose(null), 500);
-          battleshipSfx.hit();
+          const sameObstacle = s.lastRivalObstacleId === o.id;
+          s.rivalObstacleBumps = sameObstacle ? s.rivalObstacleBumps + 1 : 1;
+          s.lastRivalObstacleId = o.id;
+
+          if (s.rivalObstacleBumps >= 2) {
+            const releaseZ = o.z + o.r + 6.5;
+            s.rivalZ = Math.max(s.rivalZ, releaseZ);
+            const center = riverCenterX(s.rivalZ);
+            const side = s.rivalX <= ox ? -1 : 1;
+            s.rivalX = Math.max(
+              center - RIVER_HALF + 2.0,
+              Math.min(center + RIVER_HALF - 2.0, center + side * Math.min(7.5, o.r + 3.4)),
+            );
+            s.rivalHitCooldown = 0.42;
+            s.rivalObstacleBumps = 0;
+            s.lastRivalObstacleId = null;
+            onStatus("Rival broke free and is back in the race");
+            battleshipSfx.collision();
+          } else {
+            s.rivalHitCooldown = 1.0;
+            s.rivalHealth -= o.kind === "mine" ? 2 : 1;
+            s.rivalX += s.rivalX <= ox ? -2.0 : 2.0;
+            setRivalPose("stumble");
+            window.setTimeout(() => setRivalPose(null), 500);
+            battleshipSfx.hit();
+          }
         }
       }
     }
 
-    const remaining: Shot[] = [];
+    if (
+      s.lastPlayerObstacleId !== null &&
+      !courseHazards.some((o) => o.id === s.lastPlayerObstacleId && Math.abs(o.z - s.z) < 7.5)
+    ) {
+      s.lastPlayerObstacleId = null;
+      s.playerObstacleBumps = 0;
+    }
+    if (
+      s.lastRivalObstacleId !== null &&
+      !courseHazards.some((o) => o.id === s.lastRivalObstacleId && Math.abs(o.z - s.rivalZ) < 7.5)
+    ) {
+      s.lastRivalObstacleId = null;
+      s.rivalObstacleBumps = 0;
+    }
+
+        const remaining: Shot[] = [];
     let crewChanged = false;
     for (const sh of s.shots) {
       sh.x += sh.vx * dt;
