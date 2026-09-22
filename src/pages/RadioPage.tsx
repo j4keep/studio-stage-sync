@@ -20,6 +20,8 @@ import {
   Upload,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/contexts/RadioContext";
 import { GENRES } from "@/lib/genres";
 import { useLikes } from "@/hooks/use-likes";
@@ -50,10 +52,12 @@ interface RadioComment {
   timestamp: number;
   createdAt: Date;
   author: string;
+  userId: string;
 }
 
 const RadioPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     isPlaying,
     currentTrack,
@@ -96,12 +100,61 @@ const RadioPage = () => {
   const [seekPreview, setSeekPreview] = useState<number | null>(null);
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const swipeStartX = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
   const seekGestureLockRef = useRef(false);
 
   const trackComments = currentTrack ? comments[currentTrack.id] || [] : [];
+
+  useEffect(() => {
+    if (!currentTrack) return;
+    let active = true;
+    setCommentsLoading(true);
+    void (async () => {
+      const { data, error } = await (supabase as any)
+        .from("radio_comments")
+        .select("id,user_id,text,playback_seconds,created_at")
+        .eq("track_type", currentTrack.source === "podcast" ? "podcast" : "song")
+        .eq("track_id", currentTrack.id)
+        .order("created_at", { ascending: true })
+        .limit(200);
+
+      if (error) {
+        if (active) setCommentsLoading(false);
+        return;
+      }
+
+      const rows = data || [];
+      const userIds = Array.from(new Set(rows.map((row: any) => row.user_id).filter(Boolean)));
+      const { data: profiles } = userIds.length
+        ? await (supabase as any)
+            .from("profiles")
+            .select("user_id,display_name")
+            .in("user_id", userIds)
+        : { data: [] };
+
+      const names = new Map((profiles || []).map((p: any) => [p.user_id, p.display_name || "YAJ listener"]));
+      const mapped = rows.map((row: any) => ({
+        id: row.id,
+        text: row.text,
+        timestamp: Number(row.playback_seconds || 0),
+        createdAt: new Date(row.created_at),
+        author: row.user_id === user?.id ? "You" : names.get(row.user_id) || "YAJ listener",
+        userId: row.user_id,
+      }));
+
+      if (active) {
+        setComments((current) => ({ ...current, [currentTrack.id]: mapped }));
+        setCommentsLoading(false);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [currentTrack?.id, currentTrack?.source, user?.id]);
   const sliderValue = isSeeking ? (seekPreview ?? currentTime) : currentTime;
   const progressRatio = duration > 0 ? Math.min(1, Math.max(0, sliderValue / duration)) : 0;
   const waveBars = useMemo(() => SEEK_WAVE_BARS, []);
@@ -159,14 +212,38 @@ const RadioPage = () => {
     seekGestureLockRef.current = false;
   };
 
-  const handlePostComment = () => {
+  const handlePostComment = async () => {
     if (!commentText.trim() || !currentTrack) return;
+    if (!user) {
+      toast({ title: "Sign in to comment" });
+      return;
+    }
+
+    const text = commentText.trim().slice(0, 1000);
+    const { data, error } = await (supabase as any)
+      .from("radio_comments")
+      .insert({
+        user_id: user.id,
+        track_type: currentTrack.source === "podcast" ? "podcast" : "song",
+        track_id: currentTrack.id,
+        text,
+        playback_seconds: Math.max(0, Math.floor(currentTime || 0)),
+      })
+      .select("id,user_id,text,playback_seconds,created_at")
+      .single();
+
+    if (error) {
+      toast({ title: "Could not post comment", description: error.message, variant: "destructive" });
+      return;
+    }
+
     const newComment: RadioComment = {
-      id: `c-${Date.now()}`,
-      text: commentText.trim(),
-      timestamp: currentTime,
-      createdAt: new Date(),
+      id: data.id,
+      text: data.text,
+      timestamp: Number(data.playback_seconds || 0),
+      createdAt: new Date(data.created_at),
       author: "You",
+      userId: user.id,
     };
     setComments((prev) => ({
       ...prev,
@@ -667,7 +744,7 @@ const RadioPage = () => {
             />
             <button
               type="button"
-              onClick={handlePostComment}
+              onClick={() => void handlePostComment()}
               disabled={!commentText.trim()}
               className="flex h-9 w-9 items-center justify-center rounded-full gradient-primary disabled:opacity-40"
             >
