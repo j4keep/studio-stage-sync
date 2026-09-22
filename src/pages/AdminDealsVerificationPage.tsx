@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, BadgeCheck, ExternalLink, Shield } from "lucide-react";
+import { ArrowLeft, BadgeCheck, ExternalLink, Flag, Shield } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -17,12 +17,32 @@ import {
 import { toast } from "sonner";
 
 type Filter = "pending" | "approved" | "rejected" | "needs_info" | "suspended" | "all";
+type AdminTab = "businesses" | "reports";
+
+type DealReportRow = {
+  id: string;
+  deal_id: string;
+  reporter_id: string;
+  reason: string;
+  details: string | null;
+  status: "open" | "reviewing" | "resolved" | "dismissed";
+  admin_notes: string | null;
+  created_at: string;
+  deals?: {
+    id: string;
+    title: string;
+    business_id: string;
+    status: string;
+    deal_businesses?: { name: string } | null;
+  } | null;
+};
 
 export default function AdminDealsVerificationPage() {
   const nav = useNavigate();
   const { user } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
   const [filter, setFilter] = useState<Filter>("pending");
+  const [tab, setTab] = useState<AdminTab>("businesses");
   const [rows, setRows] = useState<DealBusiness[]>([]);
   const [selected, setSelected] = useState<DealBusiness | null>(null);
   const [docs, setDocs] = useState<DealBusinessDocument[]>([]);
@@ -30,6 +50,9 @@ export default function AdminDealsVerificationPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [acting, setActing] = useState(false);
+  const [reports, setReports] = useState<DealReportRow[]>([]);
+  const [reportStatus, setReportStatus] = useState<"open" | "reviewing" | "resolved" | "dismissed">("open");
+  const [reportNotes, setReportNotes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) return;
@@ -42,8 +65,17 @@ export default function AdminDealsVerificationPage() {
     if (!isAdmin) return;
     setLoading(true);
     try {
-      const list = await listBusinessesForAdmin(null);
+      const [list, reportResult] = await Promise.all([
+        listBusinessesForAdmin(null),
+        (supabase as any)
+          .from("deal_reports")
+          .select("id,deal_id,reporter_id,reason,details,status,admin_notes,created_at,deals(id,title,business_id,status,deal_businesses(name))")
+          .order("created_at", { ascending: false })
+          .limit(200),
+      ]);
       setRows(list);
+      if (reportResult.error) throw reportResult.error;
+      setReports((reportResult.data || []) as DealReportRow[]);
     } catch (e: any) {
       toast.error(e?.message || "Could not load businesses — apply verification migration?");
       setRows([]);
@@ -68,6 +100,51 @@ export default function AdminDealsVerificationPage() {
     () => (filter === "all" ? rows : rows.filter((r) => r.verification_status === filter)),
     [rows, filter],
   );
+
+  const filteredReports = useMemo(
+    () => reports.filter((report) => report.status === reportStatus),
+    [reports, reportStatus],
+  );
+
+  const updateReport = async (
+    report: DealReportRow,
+    status: "reviewing" | "resolved" | "dismissed",
+    moderate?: "pause" | "hide",
+  ) => {
+    if (!user) return;
+    setActing(true);
+    try {
+      if (moderate && report.deal_id) {
+        await moderateDeal(report.deal_id, moderate, reportNotes[report.id] || `Report: ${report.reason}`);
+      }
+      const { error } = await (supabase as any)
+        .from("deal_reports")
+        .update({
+          status,
+          admin_notes: reportNotes[report.id]?.trim() || report.admin_notes || null,
+          resolved_at: status === "resolved" || status === "dismissed" ? new Date().toISOString() : null,
+          resolved_by: status === "resolved" || status === "dismissed" ? user.id : null,
+        })
+        .eq("id", report.id);
+      if (error) throw error;
+      toast.success(
+        moderate === "hide"
+          ? "Deal hidden and report resolved"
+          : moderate === "pause"
+            ? "Deal paused and report moved to review"
+            : status === "dismissed"
+              ? "Report dismissed"
+              : status === "resolved"
+                ? "Report resolved"
+                : "Report moved to review",
+      );
+      void load();
+    } catch (e: any) {
+      toast.error(e?.message || "Could not update report");
+    } finally {
+      setActing(false);
+    }
+  };
 
   const openBiz = async (b: DealBusiness) => {
     setSelected(b);
@@ -136,6 +213,34 @@ export default function AdminDealsVerificationPage() {
         <BadgeCheck className="h-5 w-5 text-orange-500" />
       </header>
 
+      <div className="grid grid-cols-2 gap-2 px-3 pt-3">
+        <button
+          type="button"
+          onClick={() => setTab("businesses")}
+          className={`rounded-xl px-3 py-2 text-xs font-black ${
+            tab === "businesses"
+              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+              : "bg-muted text-foreground"
+          }`}
+        >
+          Business Verification
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("reports")}
+          className={`rounded-xl px-3 py-2 text-xs font-black ${
+            tab === "reports"
+              ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+              : "bg-muted text-foreground"
+          }`}
+        >
+          <Flag className="mr-1 inline h-3.5 w-3.5" />
+          Reports ({reports.filter((report) => report.status === "open").length})
+        </button>
+      </div>
+
+      {tab === "businesses" ? (
+        <>
       <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-3">
         {(
           [
@@ -197,6 +302,118 @@ export default function AdminDealsVerificationPage() {
           ))
         )}
       </div>
+
+        </>
+      ) : (
+        <>
+          <div className="no-scrollbar flex gap-2 overflow-x-auto px-3 py-3">
+            {(["open", "reviewing", "resolved", "dismissed"] as const).map((status) => (
+              <button
+                key={status}
+                type="button"
+                onClick={() => setReportStatus(status)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold capitalize ${
+                  reportStatus === status
+                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white"
+                    : "bg-slate-300/90 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                }`}
+              >
+                {status} ({reports.filter((report) => report.status === status).length})
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-3 px-3">
+            {loading ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">Loading reports…</p>
+            ) : filteredReports.length === 0 ? (
+              <p className="py-16 text-center text-sm text-muted-foreground">No {reportStatus} deal reports.</p>
+            ) : (
+              filteredReports.map((report) => (
+                <article key={report.id} className="rounded-2xl border border-border bg-card p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-black">{report.deals?.title || "Deleted deal"}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">
+                        {report.deals?.deal_businesses?.name || "Business"} · {new Date(report.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-orange-500/10 px-2 py-1 text-[10px] font-bold capitalize text-orange-700 dark:text-orange-300">
+                      {report.reason.replace(/_/g, " ")}
+                    </span>
+                  </div>
+
+                  {report.details ? (
+                    <p className="mt-3 rounded-xl bg-muted px-3 py-2 text-xs leading-relaxed">{report.details}</p>
+                  ) : null}
+
+                  <textarea
+                    value={reportNotes[report.id] ?? report.admin_notes ?? ""}
+                    onChange={(event) =>
+                      setReportNotes((current) => ({ ...current, [report.id]: event.target.value }))
+                    }
+                    placeholder="Admin notes"
+                    className="mt-3 h-20 w-full resize-none rounded-xl border border-border bg-muted p-3 text-xs outline-none"
+                  />
+
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {report.status === "open" ? (
+                      <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => void updateReport(report, "reviewing")}
+                        className="rounded-full bg-sky-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                      >
+                        Review
+                      </button>
+                    ) : null}
+                    {report.deals && report.status !== "resolved" && report.status !== "dismissed" ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => void updateReport(report, "reviewing", "pause")}
+                          className="rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                        >
+                          Pause deal
+                        </button>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => void updateReport(report, "resolved", "hide")}
+                          className="rounded-full bg-red-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                        >
+                          Hide + resolve
+                        </button>
+                      </>
+                    ) : null}
+                    {report.status !== "resolved" && report.status !== "dismissed" ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => void updateReport(report, "resolved")}
+                          className="rounded-full bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                        >
+                          Resolve
+                        </button>
+                        <button
+                          type="button"
+                          disabled={acting}
+                          onClick={() => void updateReport(report, "dismissed")}
+                          className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-bold disabled:opacity-50"
+                        >
+                          Dismiss
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {selected ? (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
