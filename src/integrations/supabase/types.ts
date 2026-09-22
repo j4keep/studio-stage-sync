@@ -905,6 +905,60 @@ export type Database = {
         }
         Relationships: []
       }
+      creator_books: {
+        Row: {
+          audience: string
+          author: string
+          blurb: string
+          category: string
+          cover_key: string | null
+          cover_url: string | null
+          created_at: string
+          id: string
+          listing_type: string
+          pages: Json
+          price: number | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          audience: string
+          author: string
+          blurb?: string
+          category: string
+          cover_key?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          listing_type: string
+          pages?: Json
+          price?: number | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          audience?: string
+          author?: string
+          blurb?: string
+          category?: string
+          cover_key?: string | null
+          cover_url?: string | null
+          created_at?: string
+          id?: string
+          listing_type?: string
+          pages?: Json
+          price?: number | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       deal_audit_log: {
         Row: {
           action: string
@@ -5754,7 +5808,10 @@ export type Database = {
       }
       increment_post_views: { Args: { post_id: string }; Returns: undefined }
       increment_song_plays: { Args: { song_id: string }; Returns: undefined }
-      increment_tv_post_views: { Args: { p_post_id: string }; Returns: undefined }
+      increment_tv_post_views: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
       increment_video_views: { Args: { video_id: string }; Returns: undefined }
       is_blocked: { Args: { user_a: string; user_b: string }; Returns: boolean }
       is_circle_member: {
