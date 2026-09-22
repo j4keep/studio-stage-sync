@@ -5660,39 +5660,7 @@ export type Database = {
       }
     }
     Views: {
-      employer_profiles_public: {
-        Row: {
-          company_name: string | null
-          created_at: string | null
-          description: string | null
-          id: string | null
-          logo_url: string | null
-          user_id: string | null
-          verified: boolean | null
-          website: string | null
-        }
-        Insert: {
-          company_name?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          logo_url?: string | null
-          user_id?: string | null
-          verified?: boolean | null
-          website?: string | null
-        }
-        Update: {
-          company_name?: string | null
-          created_at?: string | null
-          description?: string | null
-          id?: string | null
-          logo_url?: string | null
-          user_id?: string | null
-          verified?: boolean | null
-          website?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       apply_moderation_action: {
@@ -6083,6 +6051,17 @@ export type Database = {
         }[]
       }
       yaj_employer_applications: { Args: { p_job_id: string }; Returns: Json[] }
+      yaj_employer_public_profiles: {
+        Args: { p_user_ids: string[] }
+        Returns: {
+          company_name: string
+          description: string
+          logo_url: string
+          user_id: string
+          verified: boolean
+          website: string
+        }[]
+      }
       yaj_follows_circle_owner: {
         Args: { _circle_id: string; _user_id: string }
         Returns: boolean
