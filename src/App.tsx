@@ -375,6 +375,7 @@ const ProtectedRoutes = () => {
         <Route path="/books/kids/library" element={<BooksKidsLibraryPage />} />
         <Route path="/books/read/:id" element={<BookReaderPage />} />
         <Route path="/books/create" element={<BookUploadPage />} />
+        <Route path="/books/upload" element={<Navigate to="/books/create" replace />} />
         <Route path="/books/edit/:id" element={<BookUploadPage />} />
         <Route path="/books/my-books" element={<MyBooksPage />} />
         <Route path="/books/my-list" element={<BooksMyListPage />} />
