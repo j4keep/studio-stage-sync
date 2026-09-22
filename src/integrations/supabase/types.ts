@@ -5660,7 +5660,39 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      employer_profiles_public: {
+        Row: {
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          id: string | null
+          logo_url: string | null
+          user_id: string | null
+          verified: boolean | null
+          website: string | null
+        }
+        Insert: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          logo_url?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          website?: string | null
+        }
+        Update: {
+          company_name?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string | null
+          logo_url?: string | null
+          user_id?: string | null
+          verified?: boolean | null
+          website?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       apply_moderation_action: {
@@ -6042,9 +6074,23 @@ export type Database = {
       }
       yaj_circle_is_public: { Args: { _circle_id: string }; Returns: boolean }
       yaj_circle_owner: { Args: { _circle_id: string }; Returns: string }
+      yaj_employer_application_counts: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_id: string
+          new_count: number
+          total: number
+        }[]
+      }
+      yaj_employer_applications: { Args: { p_job_id: string }; Returns: Json[] }
       yaj_follows_circle_owner: {
         Args: { _circle_id: string; _user_id: string }
         Returns: boolean
+      }
+      yaj_job_application_detail: { Args: { p_id: string }; Returns: Json }
+      yaj_mask_application: {
+        Args: { _row: Database["public"]["Tables"]["job_applications"]["Row"] }
+        Returns: Json
       }
       yaj_my_circle_home_contents: {
         Args: never
