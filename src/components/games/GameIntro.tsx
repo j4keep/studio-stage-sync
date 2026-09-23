@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Bot, Gamepad2, Play, Trophy, UserRound, X } from "lucide-react";
 import GameQuickActions, { GameMatchup, GameRecordStats } from "@/components/games/GameQuickActions";
 import CharacterSkinPickerSheet from "@/components/CharacterSkinPickerSheet";
@@ -24,6 +24,8 @@ type Props = {
   /** Shows a "Customize Character" button that opens the shared skin-tone picker — only
    *  meaningful for games that render the illustrated ObbyAvatar-based character. */
   showCharacterCustomize?: boolean;
+  /** Optional game-specific controls shown above the main Play button. */
+  extraContent?: ReactNode;
 };
 
 const ACCENT = "hsl(275 85% 68%)";
@@ -68,6 +70,7 @@ export default function GameIntro({
   soloLabel,
   artUrl,
   showCharacterCustomize,
+  extraContent,
 }: Props) {
   const [showSkinPicker, setShowSkinPicker] = useState(false);
 
@@ -175,6 +178,7 @@ export default function GameIntro({
       </div>
 
       <div className="relative z-10 flex w-full flex-col items-center gap-3">
+        {extraContent}
         <button
           type="button"
           onClick={onStart}
