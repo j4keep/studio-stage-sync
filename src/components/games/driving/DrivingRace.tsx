@@ -1,485 +1,591 @@
-import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, LogOut, Volume2, VolumeX } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { ArrowLeft, Flag, Gauge, LogOut, Volume2, VolumeX } from "lucide-react";
 import GameMenu from "@/components/games/GameMenu";
 import { confirmQuitGame } from "@/components/games/QuitGameButton";
-import { LANE_COUNT, TRACK_LENGTH, TrackItem, spawnTrack } from "@/lib/driving-run";
+import { supabase } from "@/integrations/supabase/client";
 import { drivingSfx } from "@/lib/driving-sfx";
-import type { RunResult } from "@/lib/driving-run";
 
-const PLAYER_X = 210;
-const PX_PER_UNIT = 8.6;
-const ROAD_TOP = 96;
-const ROAD_BOTTOM = 372;
-const LANE_H = (ROAD_BOTTOM - ROAD_TOP) / LANE_COUNT;
-const laneY = (lane: number) => ROAD_TOP + LANE_H * (lane + 0.5);
+export type DriveCarId = "gt" | "muscle" | "sport" | "prototype";
 
-const SPEED = 15.5; // track-units/sec
-const BOOST_SPEED_MUL = 1.34;
-const BOOST_DURATION_MS = 1450;
-const STEER_RATE = 210; // px/sec lateral
-const CRASH_RADIUS = 15;
-const CLOSE_CALL_RADIUS = 30;
-const BOOST_RADIUS = 20;
-const TICK_MS = 55;
-const GRACE_TICKS = Math.round(500 / TICK_MS);
+export const DRIVE_CARS: { id: DriveCarId; name: string; color: string; accent: string; speed: number; handling: number }[] = [
+  { id: "gt", name: "YAJ GT", color: "#2563eb", accent: "#73d8ff", speed: 1, handling: 1 },
+  { id: "muscle", name: "Street Muscle", color: "#dc3f36", accent: "#ffb25f", speed: 1.03, handling: 0.92 },
+  { id: "sport", name: "Neon Sport", color: "#8b5cf6", accent: "#6ef0d0", speed: 1.06, handling: 1.05 },
+  { id: "prototype", name: "Apex Prototype", color: "#111827", accent: "#f7d154", speed: 1.1, handling: 1.08 },
+];
 
-function clamp(v: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, v));
-}
-function lerp(a: number, b: number, u: number) {
-  return a + (b - a) * u;
-}
+export const DRIVE_COURSES = [
+  { level: 1, name: "Sunset Speedway", condition: "Fast sweepers", sky: "#ef9a62", ground: "#6b7d45", road: "#30343a", curve: 1, speed: 1, hazard: "barriers" },
+  { level: 2, name: "Desert Canyon", condition: "Tight canyon bends", sky: "#d47b48", ground: "#9a5736", road: "#343239", curve: 1.35, speed: 1.03, hazard: "rocks" },
+  { level: 3, name: "Coastal Night", condition: "Fast coastal chicanes", sky: "#0b1d35", ground: "#153b45", road: "#20262f", curve: 1.55, speed: 1.07, hazard: "cones" },
+  { level: 4, name: "Mountain Storm", condition: "Wet mountain switchbacks", sky: "#394957", ground: "#435341", road: "#252a2e", curve: 1.8, speed: 1.08, hazard: "rain" },
+  { level: 5, name: "Metro Grand Prix", condition: "Pro city circuit", sky: "#081425", ground: "#1a2431", road: "#181c23", curve: 2.1, speed: 1.12, hazard: "walls" },
+] as const;
 
-function CarSprite({ x, y, scale = 1, color, dim = false }: { x: number; y: number; scale?: number; color: string; dim?: boolean }) {
-  return (
-    <g transform={`translate(${x} ${y}) scale(${scale})`} opacity={dim ? 0.4 : 1}>
-      <ellipse cx="0" cy="12" rx="24" ry="7" fill="rgba(0,0,0,0.35)" />
-      <path
-        d="M -22,-11 Q -25,-14 -17,-14 L 13,-14 Q 25,-15 25,-5 L 25,5 Q 25,15 13,14 L -17,14 Q -25,14 -22,11 Z"
-        fill={color}
-        stroke="#0f1115"
-        strokeWidth="1.6"
-      />
-      <path d="M -3,-9 L 11,-9.5 Q 16,-9 16,-4 L 16,4 Q 16,9 11,9.5 L -3,9 Z" fill="#a9dcff" opacity="0.9" />
-      <line x1="7" y1="-9" x2="7" y2="9" stroke="#0f1115" strokeWidth="1" opacity="0.35" />
-      <rect x="-17" y="-17" width="10" height="5.5" rx="1.6" fill="#0c0d10" />
-      <rect x="-17" y="11.5" width="10" height="5.5" rx="1.6" fill="#0c0d10" />
-      <rect x="7" y="-17" width="10" height="5.5" rx="1.6" fill="#0c0d10" />
-      <rect x="7" y="11.5" width="10" height="5.5" rx="1.6" fill="#0c0d10" />
-      <circle cx="23" cy="-6" r="2.1" fill="#fff7c2" />
-      <circle cx="23" cy="6" r="2.1" fill="#fff7c2" />
-      <circle cx="-22" cy="-6" r="1.7" fill="#ff5555" />
-      <circle cx="-22" cy="6" r="1.7" fill="#ff5555" />
-    </g>
-  );
-}
+type RacerState = {
+  userId: string;
+  z: number;
+  offset: number;
+  speed: number;
+  carId: DriveCarId;
+  finished?: boolean;
+};
 
-function BoostIcon({ x, y }: { x: number; y: number }) {
-  return (
-    <g transform={`translate(${x} ${y})`}>
-      <circle r="13" fill="#f0d84c" opacity="0.18" />
-      <path d="M -4,-10 L 6,-2 L 0,-1 L 4,10 L -7,0 L -1,-1 Z" fill="#f0d84c" stroke="#8a6d00" strokeWidth="1" />
-    </g>
-  );
-}
+type RacerInfo = {
+  userId: string;
+  name: string;
+  carId: DriveCarId;
+};
 
-type Item = TrackItem & { id: number; resolved: boolean };
-type Popup = { id: number; text: string; x: number; y: number };
-
-function seededDrivingRandom(seed: number) {
-  let state = (Math.max(1, Math.floor(seed)) * 2654435761) >>> 0;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-}
-
-export default function DrivingRace({
-  active,
-  auto = false,
-  skill = 0.7,
-  carColor,
-  driveLabel,
-  myScore,
-  oppScore,
-  muted,
-  onToggleMute,
-  onBack,
-  onQuit,
-  onComplete,
-  runSeed = 1,
-}: {
-  active: boolean;
-  auto?: boolean;
-  skill?: number;
-  carColor: string;
-  driveLabel: string;
-  myScore: number;
-  oppScore: number;
+type Props = {
+  gameId: string;
+  userId: string;
+  courseLevel: number;
+  carId: DriveCarId;
+  racers: RacerInfo[];
   muted: boolean;
   onToggleMute: () => void;
   onBack: () => void;
   onQuit?: () => void;
-  onComplete: (result: RunResult) => void;
-  /** Same round number gives both racers the same traffic/boost layout. */
-  runSeed?: number;
-}) {
-  const [, force] = useState(0);
-  const bump = () => force((n) => n + 1);
-  const [popups, setPopups] = useState<Popup[]>([]);
-  const [banner, setBanner] = useState<{ text: string; sub: string; good: boolean } | null>(null);
-  const [shake, setShake] = useState(false);
+  onFinish: (place: number) => void;
+};
 
-  const distanceRef = useRef(0);
-  const laneYRef = useRef(laneY(1.5));
-  const dragTargetRef = useRef(laneY(1.5));
-  const lastTouchRef = useRef<number | null>(null);
-  const itemsRef = useRef<Item[]>([]);
-  const boostsRef = useRef(0);
-  const boostUntilRef = useRef(0);
-  const runTicksRef = useRef(0);
-  const phaseRef = useRef<"countdown" | "running" | "done">("countdown");
-  const completedRef = useRef(false);
-  const popupIdRef = useRef(0);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+const TRACK_LENGTH = 920;
+const ROAD_HALF = 7.2;
+const BASE_SPEED = 31;
+const STEER_SPEED = 7.6;
 
-  useEffect(() => {
-    if (!active) {
-      phaseRef.current = "countdown";
-      return;
-    }
-    distanceRef.current = 0;
-    laneYRef.current = laneY(1.5);
-    dragTargetRef.current = laneY(1.5);
-    boostsRef.current = 0;
-    boostUntilRef.current = 0;
-    runTicksRef.current = 0;
-    completedRef.current = false;
-    setBanner(null);
-    setPopups([]);
-    itemsRef.current = spawnTrack(seededDrivingRandom(runSeed)).map((t, i) => ({ ...t, id: i, resolved: false }));
-    phaseRef.current = "countdown";
-    bump();
-    drivingSfx.startEngine();
+function courseAt(level: number) {
+  return DRIVE_COURSES[Math.max(0, Math.min(DRIVE_COURSES.length - 1, level - 1))];
+}
 
-    const startTimer = window.setTimeout(() => {
-      phaseRef.current = "running";
-      bump();
-    }, 550);
+function carAt(id: DriveCarId) {
+  return DRIVE_CARS.find((car) => car.id === id) || DRIVE_CARS[0];
+}
 
-    const finish = (crashed: boolean) => {
-      if (completedRef.current) return;
-      completedRef.current = true;
-      phaseRef.current = "done";
-      drivingSfx.stopEngine();
-      const distance = clamp(distanceRef.current, 0, TRACK_LENGTH);
-      const boosts = boostsRef.current;
-      const finished = !crashed;
-      if (finished) {
-        drivingSfx.finish();
-        setBanner({ text: "FINISHED!", sub: `${Math.round(distance)} units, +${boosts * 30} boost bonus`, good: true });
-      } else {
-        drivingSfx.crash();
-        setShake(true);
-        window.setTimeout(() => setShake(false), 220);
-        setBanner({ text: "CRASHED", sub: `${Math.round(distance)} units, ${boosts} boost${boosts === 1 ? "" : "s"}`, good: false });
-      }
-      window.setTimeout(() => {
-        const score = Math.round(Math.max(0, distance) + boosts * 30 + (finished ? 400 : 0));
-        onComplete({ distance, boosts, finished, score });
-      }, 1200);
-    };
+function roadCenter(z: number, level: number) {
+  const c = courseAt(level).curve;
+  return (
+    Math.sin(z * 0.0105) * 7.5 * c +
+    Math.sin(z * 0.0042 + 1.6) * 4.0 * c +
+    Math.sin(z * 0.022 + 0.4) * 1.8 * Math.max(0, c - 1)
+  );
+}
 
-    const id = window.setInterval(() => {
-      const dt = TICK_MS / 1000;
-      if (phaseRef.current !== "running") return;
-      runTicksRef.current += 1;
-      const pastGrace = runTicksRef.current > GRACE_TICKS;
+function roadHeading(z: number, level: number) {
+  const ahead = roadCenter(z + 2, level);
+  const behind = roadCenter(z - 2, level);
+  return Math.atan2(ahead - behind, 4);
+}
 
-      const boosted = performance.now() < boostUntilRef.current;
-      const speedMul = boosted ? BOOST_SPEED_MUL : 1;
-      distanceRef.current = clamp(distanceRef.current + SPEED * speedMul * dt, 0, TRACK_LENGTH);
-      drivingSfx.updateEngine(
-        0.55 + Math.min(1, distanceRef.current / TRACK_LENGTH) * 0.3 + (boosted ? 0.15 : 0),
-      );
+function ArcadeCar({ carId, dim = false }: { carId: DriveCarId; dim?: boolean }) {
+  const car = carAt(carId);
+  return (
+    <group scale={[0.9, 0.9, 0.9]}>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <boxGeometry args={[2.2, 0.55, 4.2]} />
+        <meshStandardMaterial color={car.color} metalness={0.35} roughness={0.28} transparent opacity={dim ? 0.5 : 1} />
+      </mesh>
+      <mesh position={[0, 0.9, -0.2]} castShadow>
+        <boxGeometry args={[1.7, 0.62, 1.85]} />
+        <meshStandardMaterial color={car.accent} metalness={0.2} roughness={0.2} transparent opacity={dim ? 0.5 : 0.92} />
+      </mesh>
+      <mesh position={[0, 0.65, 2.0]} castShadow>
+        <boxGeometry args={[1.85, 0.18, 0.45]} />
+        <meshStandardMaterial color={car.color} metalness={0.4} roughness={0.25} />
+      </mesh>
+      <mesh position={[0, 0.7, -2.15]} castShadow>
+        <boxGeometry args={[2.0, 0.12, 0.42]} />
+        <meshStandardMaterial color={car.accent} metalness={0.5} roughness={0.22} />
+      </mesh>
+      {[-0.92, 0.92].flatMap((x) => [-1.35, 1.35].map((z) => (
+        <mesh key={`${x}-${z}`} position={[x, 0.25, z]} rotation={[0, 0, Math.PI / 2]} castShadow>
+          <cylinderGeometry args={[0.42, 0.42, 0.34, 12]} />
+          <meshStandardMaterial color="#0a0d12" roughness={0.72} />
+        </mesh>
+      )))}
+      <mesh position={[-0.62, 0.55, 2.18]}>
+        <boxGeometry args={[0.42, 0.18, 0.08]} />
+        <meshBasicMaterial color="#fff0aa" />
+      </mesh>
+      <mesh position={[0.62, 0.55, 2.18]}>
+        <boxGeometry args={[0.42, 0.18, 0.08]} />
+        <meshBasicMaterial color="#fff0aa" />
+      </mesh>
+    </group>
+  );
+}
 
-      if (auto) {
-        const upcomingCars = itemsRef.current
-          .filter((it) => it.kind === "car" && !it.resolved)
-          .map((it) => ({ it, dist: it.distance - distanceRef.current }))
-          .filter((entry) => entry.dist > -1 && entry.dist < 22)
-          .sort((a, b) => a.dist - b.dist);
+function TrackWorld({ level }: { level: number }) {
+  const course = courseAt(level);
+  const segments = useMemo(() => Array.from({ length: 94 }, (_, i) => i * 10), []);
 
-        const threat = upcomingCars.find(
-          ({ it, dist }) => dist < 15 && Math.abs(laneY(it.lane) - laneYRef.current) < LANE_H * 0.55,
+  return (
+    <group>
+      <color attach="background" args={[course.sky]} />
+      <fog attach="fog" args={[course.sky, 50, 150]} />
+
+      {segments.map((z) => {
+        const x = roadCenter(z, level);
+        const heading = roadHeading(z, level);
+        return (
+          <group key={z} position={[x, 0, z]} rotation={[0, -heading, 0]}>
+            <mesh receiveShadow position={[0, -0.08, 0]}>
+              <boxGeometry args={[ROAD_HALF * 2, 0.22, 10.6]} />
+              <meshStandardMaterial color={course.road} roughness={level === 4 ? 0.28 : 0.6} metalness={level === 4 ? 0.16 : 0.03} />
+            </mesh>
+            <mesh position={[-ROAD_HALF - 0.3, 0.02, 0]}>
+              <boxGeometry args={[0.36, 0.14, 10.6]} />
+              <meshStandardMaterial color={level === 5 ? "#ff4545" : "#e9e9e9"} />
+            </mesh>
+            <mesh position={[ROAD_HALF + 0.3, 0.02, 0]}>
+              <boxGeometry args={[0.36, 0.14, 10.6]} />
+              <meshStandardMaterial color={level === 5 ? "#4dd9ff" : "#e9e9e9"} />
+            </mesh>
+            {[-2.35, 2.35].map((lane) => (
+              <mesh key={lane} position={[lane, 0.04, 0]}>
+                <boxGeometry args={[0.08, 0.025, 4.0]} />
+                <meshBasicMaterial color="#d7d7d7" transparent opacity={0.65} />
+              </mesh>
+            ))}
+          </group>
         );
+      })}
 
-        if (threat) {
-          const laneSafety = Array.from({ length: LANE_COUNT }, (_, lane) => {
-            const closest = upcomingCars
-              .filter(({ it }) => it.lane === lane)
-              .reduce((best, entry) => Math.min(best, entry.dist), 999);
-            const changeCost = Math.abs(laneY(lane) - laneYRef.current) / LANE_H;
-            return { lane, score: closest - changeCost * 1.8 };
-          }).sort((a, b) => b.score - a.score);
+      <CourseScenery level={level} />
 
-          // skill controls whether the computer picks the safest lane or makes a human-like mistake.
-          const pickSafe = Math.random() < skill;
-          const targetLane = pickSafe ? laneSafety[0].lane : laneSafety[Math.min(1, laneSafety.length - 1)].lane;
-          dragTargetRef.current = laneY(targetLane);
-        } else {
-          const boostAhead = itemsRef.current.find(
-            (it) =>
-              it.kind === "boost" &&
-              !it.resolved &&
-              it.distance - distanceRef.current > 0 &&
-              it.distance - distanceRef.current < 18,
-          );
-          if (boostAhead) dragTargetRef.current = laneY(boostAhead.lane);
-        }
-      }
+      <group position={[roadCenter(TRACK_LENGTH, level), 0, TRACK_LENGTH]}>
+        <mesh position={[0, 4.5, 0]}>
+          <boxGeometry args={[16, 0.6, 0.7]} />
+          <meshStandardMaterial color="#111827" />
+        </mesh>
+        {[-6, -2, 2, 6].map((x, i) => (
+          <mesh key={x} position={[x, 4.5, 0.38]}>
+            <boxGeometry args={[1.6, 0.35, 0.08]} />
+            <meshBasicMaterial color={i % 2 ? "#ffffff" : "#111111"} />
+          </mesh>
+        ))}
+        <mesh position={[-7.4, 2.2, 0]}>
+          <boxGeometry args={[0.5, 4.6, 0.5]} />
+          <meshStandardMaterial color="#555f6a" />
+        </mesh>
+        <mesh position={[7.4, 2.2, 0]}>
+          <boxGeometry args={[0.5, 4.6, 0.5]} />
+          <meshStandardMaterial color="#555f6a" />
+        </mesh>
+      </group>
+    </group>
+  );
+}
 
-      const maxStep = STEER_RATE * dt;
-      const dy = clamp(dragTargetRef.current, ROAD_TOP + LANE_H * 0.3, ROAD_BOTTOM - LANE_H * 0.3) - laneYRef.current;
-      laneYRef.current += clamp(dy, -maxStep, maxStep);
-
-      if (pastGrace) {
-        const newPopups: Popup[] = [];
-        for (const item of itemsRef.current) {
-          if (item.resolved) continue;
-          const distanceAhead = item.distance - distanceRef.current;
-          if (distanceAhead > 0) continue;
-          item.resolved = true;
-          const itemScreenX = PLAYER_X + distanceAhead * PX_PER_UNIT;
-          const itemY = laneY(item.lane);
-          const dist = Math.hypot(PLAYER_X - itemScreenX, laneYRef.current - itemY);
-          if (item.kind === "car") {
-            if (dist < CRASH_RADIUS) {
-              finish(true);
-              break;
-            } else if (dist < CLOSE_CALL_RADIUS) {
-              drivingSfx.closeCall();
-            }
-          } else if (item.kind === "boost") {
-            if (dist < BOOST_RADIUS) {
-              boostsRef.current += 1;
-              boostUntilRef.current = Math.max(boostUntilRef.current, performance.now()) + BOOST_DURATION_MS;
-              drivingSfx.boost();
-              popupIdRef.current += 1;
-              newPopups.push({ id: popupIdRef.current, text: "BOOST +30", x: PLAYER_X, y: laneYRef.current - 30 });
-            }
-          }
-        }
-        if (newPopups.length) {
-          setPopups((p) => [...p, ...newPopups]);
-          newPopups.forEach((p) => window.setTimeout(() => setPopups((cur) => cur.filter((x) => x.id !== p.id)), 900));
-        }
-      }
-
-      if (phaseRef.current === "running" && distanceRef.current >= TRACK_LENGTH) finish(false);
-
-      bump();
-    }, TICK_MS);
-
-    return () => {
-      window.clearTimeout(startTimer);
-      window.clearInterval(id);
-      drivingSfx.stopEngine();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, runSeed]);
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (auto || phaseRef.current !== "running") return;
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-    lastTouchRef.current = e.clientY;
-  };
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (auto || phaseRef.current !== "running" || lastTouchRef.current == null || !containerRef.current) return;
-    const deltaPx = e.clientY - lastTouchRef.current;
-    lastTouchRef.current = e.clientY;
-    const heightPx = containerRef.current.clientHeight || 1;
-    const deltaSvg = (deltaPx / heightPx) * 420;
-    dragTargetRef.current = clamp(dragTargetRef.current + deltaSvg, ROAD_TOP, ROAD_BOTTOM);
-  };
-  const handlePointerUp = () => {
-    lastTouchRef.current = null;
-  };
-
-  if (!active) {
+function CourseScenery({ level }: { level: number }) {
+  const items = Array.from({ length: 48 }, (_, i) => 20 + i * 19);
+  if (level === 1) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-[hsl(210,45%,8%)] text-white">
-        <p className="text-sm font-black uppercase tracking-wide text-white/60">{driveLabel}</p>
-        <p className="text-xs text-white/40">Waiting for the other run to finish…</p>
-      </div>
+      <group>
+        {items.map((z, i) => {
+          const side = i % 2 ? -1 : 1;
+          const x = roadCenter(z, level) + side * (10.5 + (i % 3));
+          return (
+            <group key={i} position={[x, 0, z]}>
+              <mesh position={[0, 1.2, 0]} castShadow>
+                <cylinderGeometry args={[0.16, 0.22, 2.4, 8]} />
+                <meshStandardMaterial color="#5e6c72" />
+              </mesh>
+              <mesh position={[0, 2.5, 0]}>
+                <boxGeometry args={[0.9, 0.45, 0.22]} />
+                <meshStandardMaterial color={i % 2 ? "#f3cf58" : "#ef5350"} />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
     );
   }
 
-  const phase = phaseRef.current;
-  const distance = distanceRef.current;
-  const sx = (worldDistance: number) => PLAYER_X + (worldDistance - distance) * PX_PER_UNIT;
+  if (level === 2) {
+    return (
+      <group>
+        {items.map((z, i) => {
+          const side = i % 2 ? -1 : 1;
+          const x = roadCenter(z, level) + side * (11 + (i % 4));
+          const h = 2.8 + (i % 5) * 1.2;
+          return (
+            <mesh key={i} position={[x, h / 2 - 0.1, z]} castShadow>
+              <cylinderGeometry args={[1.5, 2.4, h, 6]} />
+              <meshStandardMaterial color={i % 2 ? "#a85e37" : "#c47748"} roughness={0.95} />
+            </mesh>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (level === 3) {
+    return (
+      <group>
+        {items.map((z, i) => {
+          const side = i % 2 ? -1 : 1;
+          const x = roadCenter(z, level) + side * 10.5;
+          return (
+            <group key={i} position={[x, 0, z]}>
+              <mesh position={[0, 2.7, 0]} castShadow>
+                <cylinderGeometry args={[0.12, 0.16, 5.4, 8]} />
+                <meshStandardMaterial color="#334b58" />
+              </mesh>
+              <pointLight position={[0, 5.0, 0]} color={i % 3 ? "#60e0ff" : "#ff5a98"} intensity={1.6} distance={9} />
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
+
+  if (level === 4) {
+    return (
+      <group>
+        {items.map((z, i) => {
+          const side = i % 2 ? -1 : 1;
+          const x = roadCenter(z, level) + side * (10.5 + (i % 2));
+          return (
+            <group key={i} position={[x, 0, z]}>
+              <mesh position={[0, 2.5, 0]} rotation={[0, 0, side * 0.12]} castShadow>
+                <cylinderGeometry args={[0.22, 0.35, 5, 7]} />
+                <meshStandardMaterial color="#4d5559" />
+              </mesh>
+            </group>
+          );
+        })}
+      </group>
+    );
+  }
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative h-full w-full touch-none select-none overflow-hidden ${shake ? "drv-shaking" : ""}`}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      style={{ background: "linear-gradient(180deg, hsl(205 60% 22%) 0%, hsl(210 50% 12%) 40%, hsl(212 45% 8%) 100%)", paddingTop: "env(safe-area-inset-top)" }}
-    >
-      <style>{`
-        @keyframes drv-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
-        @keyframes drv-pop { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 25% { transform: translateY(-6px) scale(1.1); opacity: 1; } 100% { transform: translateY(-46px) scale(1); opacity: 0; } }
-        @keyframes drv-banner { 0% { transform: scale(0.5); opacity: 0; } 40% { transform: scale(1.08); opacity: 1; } 75% { transform: scale(1); opacity: 1; } 100% { transform: scale(1); opacity: 0; } }
-        @keyframes drv-count { 0% { opacity: 0; transform: scale(0.7); } 30% { opacity: 1; transform: scale(1.1); } 60% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
-        .drv-shaking { animation: drv-shake 180ms ease-in-out 2; }
-        .drv-pop { animation: drv-pop 900ms ease-out forwards; }
-        .drv-banner { animation: drv-banner 1.2s ease-out forwards; }
-        .drv-count { animation: drv-count 550ms ease-out forwards; }
-      `}</style>
+    <group>
+      {items.map((z, i) => {
+        const side = i % 2 ? -1 : 1;
+        const x = roadCenter(z, level) + side * 11.5;
+        const h = 5 + (i % 5) * 2.5;
+        return (
+          <group key={i} position={[x, 0, z]}>
+            <mesh position={[0, h / 2, 0]} castShadow>
+              <boxGeometry args={[4.8, h, 5.0]} />
+              <meshStandardMaterial color={i % 2 ? "#1f3145" : "#263b50"} roughness={0.72} />
+            </mesh>
+            {Array.from({ length: 3 }, (_, w) => (
+              <mesh key={w} position={[side * -2.43, 2 + w * 2.1, 0]}>
+                <boxGeometry args={[0.06, 0.55, 2.8]} />
+                <meshBasicMaterial color={w % 2 ? "#ffd26a" : "#5ae1ff"} />
+              </mesh>
+            ))}
+          </group>
+        );
+      })}
+    </group>
+  );
+}
 
-      <svg viewBox="0 0 900 420" preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
-        <defs>
-          <linearGradient id="drv-road" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="hsl(220 12% 24%)" />
-            <stop offset="100%" stopColor="hsl(220 14% 14%)" />
-          </linearGradient>
-        </defs>
+function RaceScene({
+  gameId,
+  userId,
+  courseLevel,
+  carId,
+  racers,
+  onProgress,
+  onFinish,
+}: {
+  gameId: string;
+  userId: string;
+  courseLevel: number;
+  carId: DriveCarId;
+  racers: RacerInfo[];
+  onProgress: (progress: number, place: number, speed: number) => void;
+  onFinish: (place: number) => void;
+}) {
+  const playerRef = useRef<any>(null);
+  const remoteRefs = useRef<Record<string, any>>({});
+  const { camera } = useThree();
+  const [remoteStates, setRemoteStates] = useState<Record<string, RacerState>>({});
+  const input = useRef(0);
+  const dragX = useRef<number | null>(null);
+  const state = useRef({ z: 0, offset: 0, speed: 0, finished: false, lastSend: 0, hit: 0 });
+  const channelRef = useRef<any>(null);
+  const ai = useRef(
+    Array.from({ length: Math.max(0, 4 - racers.length) }, (_, i) => ({
+      userId: `ai-${i}`,
+      z: -2 - i * 3,
+      offset: [-3.3, 0, 3.3][i % 3],
+      speed: BASE_SPEED * (0.9 + i * 0.025),
+      carId: (["muscle", "sport", "prototype"] as DriveCarId[])[i % 3],
+      finished: false,
+    })),
+  );
+  const aiRefs = useRef<any[]>([]);
+  const course = courseAt(courseLevel);
+  const car = carAt(carId);
 
-        {/* Sky/scenery */}
-        <rect x="0" y="0" width="900" height={ROAD_TOP} fill="hsl(205 55% 24%)" />
-        {Array.from({ length: 8 }).map((_, i) => {
-          const worldX = i * 30 - 10;
-          const x = sx(worldX) % 940;
-          return <rect key={i} x={((x % 940) + 940) % 940 - 40} y={ROAD_TOP - 46} width="26" height="46" rx="3" fill="hsl(205 40% 16%)" opacity="0.6" />;
-        })}
+  useEffect(() => {
+    const channel = supabase
+      .channel(`drive-race-${gameId}`)
+      .on("broadcast", { event: "race_state" }, ({ payload }: any) => {
+        const next = payload as RacerState;
+        if (!next?.userId || next.userId === userId) return;
+        setRemoteStates((current) => ({ ...current, [next.userId]: next }));
+      })
+      .subscribe();
+    channelRef.current = channel;
+    return () => {
+      void supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [gameId, userId]);
 
-        {/* Roadside scenery — guardrails, lights and moving skyline give the short run real speed. */}
-        {Array.from({ length: 15 }).map((_, i) => {
-          const wx = i * 15;
-          const x = ((sx(wx) % 980) + 980) % 980 - 40;
-          const h = 18 + (i % 4) * 9;
-          return (
-            <g key={`roadside-${i}`} opacity={0.82}>
-              <rect x={x} y={ROAD_TOP - h} width={16 + (i % 3) * 5} height={h} rx="2" fill={i % 2 ? "#173149" : "#1d3a4f"} />
-              <rect x={x + 4} y={ROAD_TOP - h + 6} width="3" height="3" fill="#ffd76a" opacity={0.85} />
-              <rect x={x + 10} y={ROAD_TOP - h + 12} width="3" height="3" fill="#7de7ff" opacity={0.75} />
-            </g>
-          );
-        })}
-        <rect x="0" y={ROAD_TOP - 10} width="900" height="4" fill="#79828c" opacity="0.9" />
-        <rect x="0" y={ROAD_BOTTOM + 6} width="900" height="4" fill="#79828c" opacity="0.9" />
-        {Array.from({ length: 12 }).map((_, i) => {
-          const offset = ((distance * PX_PER_UNIT * 1.8 + i * 86) % 1030) - 80;
-          return (
-            <line
-              key={`speed-${i}`}
-              x1={900 - offset}
-              x2={940 - offset}
-              y1={40 + (i % 5) * 72}
-              y2={40 + (i % 5) * 72}
-              stroke="rgba(255,255,255,0.15)"
-              strokeWidth="2"
-            />
-          );
-        })}
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      dragX.current = e.clientX;
+    };
+    const move = (e: PointerEvent) => {
+      if (dragX.current == null) return;
+      const dx = e.clientX - dragX.current;
+      dragX.current = e.clientX;
+      input.current = Math.max(-1, Math.min(1, dx / 28));
+    };
+    const up = () => {
+      dragX.current = null;
+      input.current = 0;
+    };
+    window.addEventListener("pointerdown", down);
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+    return () => {
+      window.removeEventListener("pointerdown", down);
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+    };
+  }, []);
 
-        {/* Road */}
-        <rect x="0" y={ROAD_TOP} width="900" height={ROAD_BOTTOM - ROAD_TOP} fill="url(#drv-road)" />
-        {/* Shoulders */}
-        <rect x="0" y={ROAD_TOP - 6} width="900" height="6" fill="#f0d84c" opacity="0.7" />
-        <rect x="0" y={ROAD_BOTTOM} width="900" height="6" fill="#f0d84c" opacity="0.7" />
+  useFrame(({ clock }, rawDt) => {
+    const dt = Math.min(rawDt, 1 / 30);
+    const s = state.current;
+    if (s.finished) return;
 
-        {/* Lane dividers, scrolling with distance */}
-        {Array.from({ length: LANE_COUNT - 1 }).map((_, i) => {
-          const y = ROAD_TOP + LANE_H * (i + 1);
-          return (
-            <line
-              key={i}
-              x1="0"
-              y1={y}
-              x2="900"
-              y2={y}
-              stroke="rgba(255,255,255,0.35)"
-              strokeWidth="2.5"
-              strokeDasharray="24 20"
-              strokeDashoffset={-(distance * PX_PER_UNIT) % 44}
-            />
-          );
-        })}
+    const targetSpeed = BASE_SPEED * course.speed * car.speed;
+    s.speed += (targetSpeed - s.speed) * Math.min(1, dt * 2.5);
+    s.hit = Math.max(0, s.hit - dt);
+    s.offset += input.current * STEER_SPEED * car.handling * dt;
+    s.offset = Math.max(-ROAD_HALF + 1.25, Math.min(ROAD_HALF - 1.25, s.offset));
+    s.z += s.speed * dt;
 
-        {/* Track items */}
-        {itemsRef.current.map((item) => {
-          const x = sx(item.distance);
-          if (x < -40 || x > 940) return null;
-          const y = laneY(item.lane);
-          if (item.kind === "boost") return item.resolved ? null : <BoostIcon key={item.id} x={x} y={y} />;
-          const trafficColors = ["#e0453f", "#f59e0b", "#16a3b6", "#8b5cf6", "#d7dde6"];
-          return (
-            <CarSprite
-              key={item.id}
-              x={x}
-              y={y}
-              scale={0.95}
-              color={trafficColors[item.id % trafficColors.length]}
-              dim={item.resolved}
-            />
-          );
-        })}
+    const peers = Object.values(remoteStates);
+    for (const peer of peers) {
+      if (Math.abs(peer.z - s.z) < 3.8 && Math.abs(peer.offset - s.offset) < 2.0 && s.hit <= 0) {
+        const side = peer.offset >= s.offset ? -1 : 1;
+        s.offset += side * 1.25;
+        s.speed *= 0.82;
+        s.hit = 0.45;
+        drivingSfx.crash();
+      }
+    }
 
-        {/* Player car */}
-        {performance.now() < boostUntilRef.current ? (
-          <g opacity="0.8">
-            <line x1={PLAYER_X - 42} x2={PLAYER_X - 8} y1={laneYRef.current - 7} y2={laneYRef.current - 7} stroke="#5ee7ff" strokeWidth="4" />
-            <line x1={PLAYER_X - 50} x2={PLAYER_X - 12} y1={laneYRef.current + 7} y2={laneYRef.current + 7} stroke="#ffd54a" strokeWidth="3" />
-          </g>
-        ) : null}
-        <CarSprite x={PLAYER_X} y={laneYRef.current} scale={1.05} color={carColor} />
-      </svg>
+    for (const bot of ai.current) {
+      const curveBias = Math.sin((bot.z + bot.userId.length * 7) * 0.018) * 2.8;
+      bot.offset += (curveBias - bot.offset) * Math.min(1, dt * 0.7);
+      bot.z += bot.speed * course.speed * dt;
+      if (bot.z >= TRACK_LENGTH) bot.finished = true;
+    }
 
-      {popups.map((p) => (
-        <span
-          key={p.id}
-          className="drv-pop pointer-events-none absolute -translate-x-1/2 rounded-full bg-[#f0d84c] px-2 py-0.5 text-[11px] font-black text-black"
-          style={{ left: `${(p.x / 900) * 100}%`, top: `${(p.y / 420) * 100}%` }}
-        >
-          {p.text}
-        </span>
-      ))}
+    const x = roadCenter(s.z, courseLevel) + s.offset;
+    const heading = roadHeading(s.z, courseLevel);
+    if (playerRef.current) {
+      playerRef.current.position.set(x, 0.12, s.z);
+      playerRef.current.rotation.y = -heading + input.current * -0.08;
+      playerRef.current.rotation.z = input.current * -0.05;
+    }
 
-      {phase === "countdown" && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="drv-count rounded-xl border-2 border-[#f0d84c] bg-black/60 px-5 py-2 text-2xl font-black uppercase tracking-widest text-[#f0d84c]">
-            Go!
-          </span>
-        </div>
-      )}
+    Object.values(remoteStates).forEach((peer) => {
+      const ref = remoteRefs.current[peer.userId];
+      if (!ref) return;
+      ref.position.set(roadCenter(peer.z, courseLevel) + peer.offset, 0.12, peer.z);
+      ref.rotation.y = -roadHeading(peer.z, courseLevel);
+    });
 
-      {banner && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div
-            className="drv-banner flex flex-col items-center gap-1 rounded-2xl border-2 px-6 py-3 text-center"
-            style={{ color: banner.good ? "#f0d84c" : "#ff6b6b", borderColor: banner.good ? "#f0d84c" : "#ff6b6b", background: "rgba(0,0,0,0.7)" }}
+    ai.current.forEach((bot, i) => {
+      const ref = aiRefs.current[i];
+      if (!ref) return;
+      ref.position.set(roadCenter(bot.z, courseLevel) + bot.offset, 0.12, bot.z);
+      ref.rotation.y = -roadHeading(bot.z, courseLevel);
+    });
+
+    camera.position.x += (x * 0.35 - camera.position.x) * Math.min(1, dt * 3.8);
+    camera.position.y += (5.0 - camera.position.y) * Math.min(1, dt * 4.0);
+    camera.position.z += (s.z - 10.5 - camera.position.z) * Math.min(1, dt * 4.2);
+    camera.lookAt(x, 0.7, s.z + 10);
+
+    const now = clock.elapsedTime;
+    if (now - s.lastSend > 0.09 && channelRef.current) {
+      s.lastSend = now;
+      void channelRef.current.send({
+        type: "broadcast",
+        event: "race_state",
+        payload: { userId, z: s.z, offset: s.offset, speed: s.speed, carId, finished: false } satisfies RacerState,
+      });
+    }
+
+    const allStates: RacerState[] = [
+      { userId, z: s.z, offset: s.offset, speed: s.speed, carId },
+      ...peers,
+      ...ai.current,
+    ];
+    const sorted = [...allStates].sort((a, b) => b.z - a.z);
+    const place = Math.max(1, sorted.findIndex((r) => r.userId === userId) + 1);
+    onProgress(Math.min(1, s.z / TRACK_LENGTH), place, s.speed);
+
+    if (s.z >= TRACK_LENGTH) {
+      s.finished = true;
+      void channelRef.current?.send({
+        type: "broadcast",
+        event: "race_state",
+        payload: { userId, z: TRACK_LENGTH, offset: s.offset, speed: 0, carId, finished: true } satisfies RacerState,
+      });
+      drivingSfx.finish();
+      onFinish(place);
+    }
+  });
+
+  const humanOpponents = racers.filter((r) => r.userId !== userId);
+
+  return (
+    <>
+      <ambientLight intensity={courseLevel >= 3 ? 0.85 : 1.25} />
+      <directionalLight position={[10, 18, -8]} intensity={courseLevel === 4 ? 1.2 : 1.8} castShadow />
+      <TrackWorld level={courseLevel} />
+
+      <group ref={playerRef}>
+        <ArcadeCar carId={carId} />
+      </group>
+
+      {humanOpponents.map((racer) => {
+        const peer = remoteStates[racer.userId];
+        return (
+          <group
+            key={racer.userId}
+            ref={(node) => {
+              remoteRefs.current[racer.userId] = node;
+            }}
+            position={[roadCenter(peer?.z ?? -6, courseLevel) + (peer?.offset ?? 0), 0.12, peer?.z ?? -6]}
           >
-            <span className="text-3xl font-black uppercase tracking-wide">{banner.text}</span>
-            <span className="text-xs font-bold text-white/80">{banner.sub}</span>
-          </div>
-        </div>
-      )}
+            <ArcadeCar carId={(peer?.carId || racer.carId) as DriveCarId} />
+          </group>
+        );
+      })}
 
-      {/* HUD */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-2">
-        <div className="pointer-events-auto flex items-center gap-2">
-          <div className="rounded-xl bg-black/45 px-2 py-1">
-            <p className="text-[9px] font-black uppercase text-white/50">You</p>
-            <p className="text-base font-black leading-none text-white">{myScore}</p>
+      {ai.current.map((bot, i) => (
+        <group
+          key={bot.userId}
+          ref={(node) => {
+            aiRefs.current[i] = node;
+          }}
+          position={[roadCenter(bot.z, courseLevel) + bot.offset, 0.12, bot.z]}
+        >
+          <ArcadeCar carId={bot.carId} />
+        </group>
+      ))}
+    </>
+  );
+}
+
+export default function DrivingRace({
+  gameId,
+  userId,
+  courseLevel,
+  carId,
+  racers,
+  muted,
+  onToggleMute,
+  onBack,
+  onQuit,
+  onFinish,
+}: Props) {
+  const [progress, setProgress] = useState(0);
+  const [place, setPlace] = useState(1);
+  const [speed, setSpeed] = useState(0);
+  const course = courseAt(courseLevel);
+
+  useEffect(() => {
+    drivingSfx.startEngine();
+    return () => drivingSfx.stopEngine();
+  }, []);
+
+  useEffect(() => {
+    drivingSfx.updateEngine(Math.min(1, speed / 42));
+  }, [speed]);
+
+  return (
+    <div className="relative h-full w-full touch-none select-none overflow-hidden bg-black">
+      <Canvas shadows camera={{ position: [0, 5, -10], fov: 58 }}>
+        <RaceScene
+          gameId={gameId}
+          userId={userId}
+          courseLevel={courseLevel}
+          carId={carId}
+          racers={racers}
+          onProgress={(p, rank, currentSpeed) => {
+            setProgress(p);
+            setPlace(rank);
+            setSpeed(currentSpeed);
+          }}
+          onFinish={onFinish}
+        />
+      </Canvas>
+
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between gap-2 px-3 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="rounded-xl bg-black/65 px-3 py-2 text-white backdrop-blur">
+          <p className="text-[9px] font-black uppercase tracking-wider text-white/55">Position</p>
+          <p className="text-2xl font-black leading-none">{place}<span className="text-xs text-white/50">/4</span></p>
+        </div>
+
+        <div className="rounded-xl bg-black/65 px-4 py-2 text-center text-white backdrop-blur">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-cyan-200">Level {courseLevel} · {course.name}</p>
+          <div className="mt-1 flex items-center justify-center gap-3 text-xs font-black">
+            <span className="inline-flex items-center gap-1"><Gauge className="h-3.5 w-3.5" /> {Math.round(speed * 5.2)} MPH</span>
+            <span>{Math.round(progress * 100)}%</span>
           </div>
         </div>
-        <div className="mt-0.5 flex flex-col items-center gap-0.5">
-          <span className="rounded-full bg-black/60 px-3 py-0.5 text-[11px] font-black text-white">{Math.round(Math.max(0, distance))} / {TRACK_LENGTH}</span>
-          <span className="text-[9px] font-bold text-white/40">{driveLabel}</span>
-        </div>
-        <div className="pointer-events-auto flex items-center gap-2">
-          <div className="rounded-xl bg-black/45 px-2 py-1 text-right">
-            <p className="text-[9px] font-black uppercase text-white/50">Rival</p>
-            <p className="text-base font-black leading-none text-white">{oppScore}</p>
-          </div>
+
+        <div className="pointer-events-auto">
           <GameMenu
-            triggerClassName="flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1.5 text-white active:scale-95"
+            triggerClassName="flex h-10 w-10 items-center justify-center rounded-full bg-black/65 text-white backdrop-blur"
             actions={[
               { key: "mute", label: muted ? "Unmute" : "Mute", icon: muted ? VolumeX : Volume2, onClick: onToggleMute, active: muted },
               { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: onBack },
-              ...(onQuit ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
+              ...(onQuit ? [{ key: "quit", label: "Quit Race", icon: LogOut, onClick: () => confirmQuitGame(onQuit), destructive: true }] : []),
             ]}
           />
         </div>
       </div>
 
-      {!auto && phase === "running" && (
-        <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white/40">Drag up/down to change lanes</p>
-      )}
+      <div className="pointer-events-none absolute inset-x-0 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 flex justify-center">
+        <div className="rounded-full bg-black/55 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-white/75 backdrop-blur">
+          Drag left/right to steer · Stay on the racing line
+        </div>
+      </div>
+
+      <div className="pointer-events-none absolute bottom-0 left-0 top-0 w-1 bg-white/10">
+        <div className="absolute bottom-0 left-0 w-full bg-cyan-300" style={{ height: `${Math.round(progress * 100)}%` }} />
+      </div>
+
+      {progress >= 1 ? (
+        <div className="pointer-events-none absolute inset-0 z-40 flex items-center justify-center bg-black/20">
+          <div className="rounded-2xl border border-white/20 bg-black/75 px-6 py-4 text-center text-white backdrop-blur">
+            <Flag className="mx-auto h-7 w-7 text-cyan-200" />
+            <p className="mt-2 text-2xl font-black">FINISH!</p>
+            <p className="text-xs font-bold text-white/60">You placed #{place}</p>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
