@@ -83,7 +83,10 @@ export default function BattleshipPage() {
     setFinished(false);
     setWon(false);
     setScore(0);
-    setLevel(Math.max(1, Math.min(5, Number(game?.game_state?.fleetClashLevel || 1))));
+    // Every fresh visit begins at Level 1. Advancing inside the same campaign still
+    // moves forward normally, but leaving the game never strands the next visit on Level 2+.
+    setLevel(1);
+    setSeated(false);
     saved.current = false;
     lastSnapshotAt.current = 0;
   }, [game?.id]);
@@ -119,10 +122,7 @@ export default function BattleshipPage() {
   const snapshot = (game.game_state?.fleetClashSnapshot || {}) as FleetSnapshot;
 
   const quitGame = () => {
-    void (async () => {
-      await endGame(game.id);
-      navigate("/games");
-    })();
+    void resetAndExit();
   };
 
   const publishSnapshot = (next: FleetSnapshot) => {
@@ -184,6 +184,45 @@ export default function BattleshipPage() {
     } catch {
       // Level progression still works locally if a background sync is briefly unavailable.
     }
+  };
+
+  const resetAndExit = async () => {
+    if (!game) {
+      navigate("/games");
+      return;
+    }
+
+    try {
+      if (isCaptain) {
+        await (supabase as any)
+          .from("games")
+          .update({
+            game_state: {
+              ...(game.game_state || {}),
+              fleetClashLevel: 1,
+              fleetClashSnapshot: null,
+            },
+          })
+          .eq("id", game.id)
+          .eq("host_user_id", user?.id);
+      }
+      await endGame(game.id);
+    } catch {
+      // Always let the player leave even if the cleanup request briefly fails.
+    } finally {
+      setLevel(1);
+      setFinished(false);
+      setSeated(false);
+      navigate("/games");
+    }
+  };
+
+  const chooseLevel = (nextLevel: number) => {
+    const next = Math.max(1, Math.min(5, nextLevel));
+    setLevel(next);
+    setFinished(false);
+    setScore(0);
+    void persistLevel(next);
   };
 
   const primaryResultAction = () => {
@@ -346,8 +385,41 @@ export default function BattleshipPage() {
             }}
             stats={stats}
             matchups={matchups}
+            extraContent={
+              <div className="w-full max-w-sm rounded-2xl border border-white/15 bg-black/45 p-3 backdrop-blur-md">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/55">Choose Level</p>
+                    <p className="mt-0.5 text-xs font-bold text-white">{course.name}</p>
+                  </div>
+                  <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-black text-cyan-200">
+                    {course.condition}
+                  </span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {FLEET_COURSES.map((item) => (
+                    <button
+                      key={item.level}
+                      type="button"
+                      onClick={() => chooseLevel(item.level)}
+                      aria-label={`Choose Level ${item.level}: ${item.name}`}
+                      className={`min-h-11 rounded-xl border text-sm font-black transition active:scale-95 ${
+                        level === item.level
+                          ? "border-cyan-300 bg-cyan-300 text-slate-950"
+                          : "border-white/15 bg-white/5 text-white"
+                      }`}
+                    >
+                      {item.level}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-2 text-center text-[10px] font-bold text-white/50">
+                  Pick any course before you start.
+                </p>
+              </div>
+            }
             onStart={() => setSeated(true)}
-            onBack={() => navigate("/games")}
+            onBack={() => void resetAndExit()}
             onPlaySolo={() => {
               if (game.mode === "solo" && game.status === "active") {
                 setSeated(true);
@@ -393,6 +465,8 @@ export default function BattleshipPage() {
           onRematch={primaryResultAction}
           onChallenge={() => setPicker(true)}
           onShare={shareResult}
+          onExit={() => void resetAndExit()}
+          exitLabel="Exit to Games"
         />
       )}
 
