@@ -1,4 +1,4 @@
-import { RotateCcw, Share2, Trophy, Users } from "lucide-react";
+import { LogOut, RotateCcw, Share2, Trophy, Users } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -9,6 +9,9 @@ type Props = {
   primaryLabel?: string;
   onChallenge?: () => void;
   onShare: () => void;
+  onExit?: () => void;
+  exitLabel?: string;
+  
 };
 
 export default function GameResultCard({
@@ -20,6 +23,8 @@ export default function GameResultCard({
   primaryLabel = "Rematch",
   onChallenge,
   onShare,
+  onExit,
+  exitLabel = "Exit to Games",
 }: Props) {
   if (!open) return null;
 
@@ -102,6 +107,15 @@ export default function GameResultCard({
           >
             <Share2 className="h-4 w-4" /> Share Result
           </button>
+          {onExit && (
+            <button
+              type="button"
+              onClick={onExit}
+              className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-3 text-sm font-black text-white/80 active:scale-[0.98]"
+            >
+              <LogOut className="h-4 w-4" /> {exitLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>
