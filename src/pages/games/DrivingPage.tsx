@@ -196,6 +196,7 @@ export default function DrivingPage() {
             key={`${run.possession}-${run.runNumber}`}
             active
             auto={!myTurn}
+            runSeed={run.runsPlayed[run.possession] + 1}
             carColor={SEAT_COLORS[run.possession]}
             driveLabel={driveLabel}
             myScore={run.scores[mySeat]}
