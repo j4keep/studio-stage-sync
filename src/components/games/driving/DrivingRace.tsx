@@ -66,6 +66,14 @@ function BoostIcon({ x, y }: { x: number; y: number }) {
 type Item = TrackItem & { id: number; resolved: boolean };
 type Popup = { id: number; text: string; x: number; y: number };
 
+function seededDrivingRandom(seed: number) {
+  let state = (Math.max(1, Math.floor(seed)) * 2654435761) >>> 0;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
 export default function DrivingRace({
   active,
   auto = false,
@@ -79,6 +87,7 @@ export default function DrivingRace({
   onBack,
   onQuit,
   onComplete,
+  runSeed = 1,
 }: {
   active: boolean;
   auto?: boolean;
@@ -92,6 +101,8 @@ export default function DrivingRace({
   onBack: () => void;
   onQuit?: () => void;
   onComplete: (result: RunResult) => void;
+  /** Same round number gives both racers the same traffic/boost layout. */
+  runSeed?: number;
 }) {
   const [, force] = useState(0);
   const bump = () => force((n) => n + 1);
@@ -126,7 +137,7 @@ export default function DrivingRace({
     completedRef.current = false;
     setBanner(null);
     setPopups([]);
-    itemsRef.current = spawnTrack().map((t, i) => ({ ...t, id: i, resolved: false }));
+    itemsRef.current = spawnTrack(seededDrivingRandom(runSeed)).map((t, i) => ({ ...t, id: i, resolved: false }));
     phaseRef.current = "countdown";
     bump();
     drivingSfx.startEngine();
@@ -173,17 +184,39 @@ export default function DrivingRace({
       );
 
       if (auto) {
-        const threat = itemsRef.current
+        const upcomingCars = itemsRef.current
           .filter((it) => it.kind === "car" && !it.resolved)
           .map((it) => ({ it, dist: it.distance - distanceRef.current }))
-          .filter((t) => t.dist > -1 && t.dist < 16)
-          .sort((a, b) => a.dist - b.dist)[0];
-        if (threat && Math.random() < skill) {
-          const targetLane = threat.it.lane <= 1 ? LANE_COUNT - 1 : 0;
+          .filter((entry) => entry.dist > -1 && entry.dist < 22)
+          .sort((a, b) => a.dist - b.dist);
+
+        const threat = upcomingCars.find(
+          ({ it, dist }) => dist < 15 && Math.abs(laneY(it.lane) - laneYRef.current) < LANE_H * 0.55,
+        );
+
+        if (threat) {
+          const laneSafety = Array.from({ length: LANE_COUNT }, (_, lane) => {
+            const closest = upcomingCars
+              .filter(({ it }) => it.lane === lane)
+              .reduce((best, entry) => Math.min(best, entry.dist), 999);
+            const changeCost = Math.abs(laneY(lane) - laneYRef.current) / LANE_H;
+            return { lane, score: closest - changeCost * 1.8 };
+          }).sort((a, b) => b.score - a.score);
+
+          // skill controls whether the computer picks the safest lane or makes a human-like mistake.
+          const pickSafe = Math.random() < skill;
+          const targetLane = pickSafe ? laneSafety[0].lane : laneSafety[Math.min(1, laneSafety.length - 1)].lane;
           dragTargetRef.current = laneY(targetLane);
+        } else {
+          const boostAhead = itemsRef.current.find(
+            (it) =>
+              it.kind === "boost" &&
+              !it.resolved &&
+              it.distance - distanceRef.current > 0 &&
+              it.distance - distanceRef.current < 18,
+          );
+          if (boostAhead) dragTargetRef.current = laneY(boostAhead.lane);
         }
-        const boostAhead = itemsRef.current.find((it) => it.kind === "boost" && !it.resolved && it.distance - distanceRef.current > 0 && it.distance - distanceRef.current < 20);
-        if (!threat && boostAhead) dragTargetRef.current = laneY(boostAhead.lane);
       }
 
       const maxStep = STEER_RATE * dt;
@@ -234,7 +267,7 @@ export default function DrivingRace({
       drivingSfx.stopEngine();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active]);
+  }, [active, runSeed]);
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (auto || phaseRef.current !== "running") return;
