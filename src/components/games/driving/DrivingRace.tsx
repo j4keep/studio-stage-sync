@@ -14,6 +14,8 @@ const LANE_H = (ROAD_BOTTOM - ROAD_TOP) / LANE_COUNT;
 const laneY = (lane: number) => ROAD_TOP + LANE_H * (lane + 0.5);
 
 const SPEED = 15.5; // track-units/sec
+const BOOST_SPEED_MUL = 1.34;
+const BOOST_DURATION_MS = 1450;
 const STEER_RATE = 210; // px/sec lateral
 const CRASH_RADIUS = 15;
 const CLOSE_CALL_RADIUS = 30;
@@ -103,6 +105,7 @@ export default function DrivingRace({
   const lastTouchRef = useRef<number | null>(null);
   const itemsRef = useRef<Item[]>([]);
   const boostsRef = useRef(0);
+  const boostUntilRef = useRef(0);
   const runTicksRef = useRef(0);
   const phaseRef = useRef<"countdown" | "running" | "done">("countdown");
   const completedRef = useRef(false);
@@ -118,6 +121,7 @@ export default function DrivingRace({
     laneYRef.current = laneY(1.5);
     dragTargetRef.current = laneY(1.5);
     boostsRef.current = 0;
+    boostUntilRef.current = 0;
     runTicksRef.current = 0;
     completedRef.current = false;
     setBanner(null);
@@ -161,8 +165,12 @@ export default function DrivingRace({
       runTicksRef.current += 1;
       const pastGrace = runTicksRef.current > GRACE_TICKS;
 
-      distanceRef.current = clamp(distanceRef.current + SPEED * dt, 0, TRACK_LENGTH);
-      drivingSfx.updateEngine(0.55 + Math.min(1, distanceRef.current / TRACK_LENGTH) * 0.3);
+      const boosted = performance.now() < boostUntilRef.current;
+      const speedMul = boosted ? BOOST_SPEED_MUL : 1;
+      distanceRef.current = clamp(distanceRef.current + SPEED * speedMul * dt, 0, TRACK_LENGTH);
+      drivingSfx.updateEngine(
+        0.55 + Math.min(1, distanceRef.current / TRACK_LENGTH) * 0.3 + (boosted ? 0.15 : 0),
+      );
 
       if (auto) {
         const threat = itemsRef.current
@@ -202,6 +210,7 @@ export default function DrivingRace({
           } else if (item.kind === "boost") {
             if (dist < BOOST_RADIUS) {
               boostsRef.current += 1;
+              boostUntilRef.current = Math.max(boostUntilRef.current, performance.now()) + BOOST_DURATION_MS;
               drivingSfx.boost();
               popupIdRef.current += 1;
               newPopups.push({ id: popupIdRef.current, text: "BOOST +30", x: PLAYER_X, y: laneYRef.current - 30 });
@@ -294,6 +303,36 @@ export default function DrivingRace({
           return <rect key={i} x={((x % 940) + 940) % 940 - 40} y={ROAD_TOP - 46} width="26" height="46" rx="3" fill="hsl(205 40% 16%)" opacity="0.6" />;
         })}
 
+        {/* Roadside scenery — guardrails, lights and moving skyline give the short run real speed. */}
+        {Array.from({ length: 15 }).map((_, i) => {
+          const wx = i * 15;
+          const x = ((sx(wx) % 980) + 980) % 980 - 40;
+          const h = 18 + (i % 4) * 9;
+          return (
+            <g key={`roadside-${i}`} opacity={0.82}>
+              <rect x={x} y={ROAD_TOP - h} width={16 + (i % 3) * 5} height={h} rx="2" fill={i % 2 ? "#173149" : "#1d3a4f"} />
+              <rect x={x + 4} y={ROAD_TOP - h + 6} width="3" height="3" fill="#ffd76a" opacity={0.85} />
+              <rect x={x + 10} y={ROAD_TOP - h + 12} width="3" height="3" fill="#7de7ff" opacity={0.75} />
+            </g>
+          );
+        })}
+        <rect x="0" y={ROAD_TOP - 10} width="900" height="4" fill="#79828c" opacity="0.9" />
+        <rect x="0" y={ROAD_BOTTOM + 6} width="900" height="4" fill="#79828c" opacity="0.9" />
+        {Array.from({ length: 12 }).map((_, i) => {
+          const offset = ((distance * PX_PER_UNIT * 1.8 + i * 86) % 1030) - 80;
+          return (
+            <line
+              key={`speed-${i}`}
+              x1={900 - offset}
+              x2={940 - offset}
+              y1={40 + (i % 5) * 72}
+              y2={40 + (i % 5) * 72}
+              stroke="rgba(255,255,255,0.15)"
+              strokeWidth="2"
+            />
+          );
+        })}
+
         {/* Road */}
         <rect x="0" y={ROAD_TOP} width="900" height={ROAD_BOTTOM - ROAD_TOP} fill="url(#drv-road)" />
         {/* Shoulders */}
@@ -324,10 +363,26 @@ export default function DrivingRace({
           if (x < -40 || x > 940) return null;
           const y = laneY(item.lane);
           if (item.kind === "boost") return item.resolved ? null : <BoostIcon key={item.id} x={x} y={y} />;
-          return <CarSprite key={item.id} x={x} y={y} scale={0.95} color="#e0453f" dim={item.resolved} />;
+          const trafficColors = ["#e0453f", "#f59e0b", "#16a3b6", "#8b5cf6", "#d7dde6"];
+          return (
+            <CarSprite
+              key={item.id}
+              x={x}
+              y={y}
+              scale={0.95}
+              color={trafficColors[item.id % trafficColors.length]}
+              dim={item.resolved}
+            />
+          );
         })}
 
         {/* Player car */}
+        {performance.now() < boostUntilRef.current ? (
+          <g opacity="0.8">
+            <line x1={PLAYER_X - 42} x2={PLAYER_X - 8} y1={laneYRef.current - 7} y2={laneYRef.current - 7} stroke="#5ee7ff" strokeWidth="4" />
+            <line x1={PLAYER_X - 50} x2={PLAYER_X - 12} y1={laneYRef.current + 7} y2={laneYRef.current + 7} stroke="#ffd54a" strokeWidth="3" />
+          </g>
+        ) : null}
         <CarSprite x={PLAYER_X} y={laneYRef.current} scale={1.05} color={carColor} />
       </svg>
 
