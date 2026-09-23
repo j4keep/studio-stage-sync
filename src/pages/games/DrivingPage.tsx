@@ -22,7 +22,6 @@ import { useTurnGame } from "@/hooks/use-turn-game";
 import {
   bumpStats,
   createDriveRaceGame,
-  createSoloGame,
   endGame,
 } from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
@@ -71,6 +70,19 @@ export default function DrivingPage() {
     setSeated(false);
     statsWritten.current = false;
   }, [game?.id, user?.id]);
+
+  useEffect(() => {
+    if (!game) return;
+    const syncedCourse = Math.max(1, Math.min(5, Number(game.game_state?.driveCourse || 1)));
+    if (syncedCourse !== course) {
+      setCourse(syncedCourse);
+      if (finished) {
+        setFinished(false);
+        setPlace(1);
+        setSeated(true);
+      }
+    }
+  }, [game?.game_state?.driveCourse]);
 
   useEffect(() => {
     const ids = players.map((p) => p.user_id).filter(Boolean) as string[];
@@ -157,8 +169,20 @@ export default function DrivingPage() {
   const startCourse = async (nextCourse: number) => {
     if (!game || !user) return;
     const next = Math.max(1, Math.min(5, nextCourse));
+
+    if (game.mode === "multiplayer" && !isHost) {
+      toast({ title: "Waiting for the host", description: "The host advances everyone to the next course together." });
+      await refresh();
+      return;
+    }
+
     try {
-      if (isHost) {
+      if (game.mode === "multiplayer") {
+        await (supabase as any).rpc("drive_advance_course", {
+          p_game_id: game.id,
+          p_next_course: next,
+        });
+      } else {
         await (supabase as any).rpc("drive_update_setup", {
           p_game_id: game.id,
           p_car_id: carId,
@@ -392,7 +416,15 @@ export default function DrivingPage() {
             ? `${courseInfo.name} complete. Next up: ${DRIVE_COURSES[course]?.name}.`
             : "You completed the five-course YAJ Drive championship."
         }
-        primaryLabel={course < 5 ? "Next Course" : "New Championship"}
+        primaryLabel={
+          game.mode === "multiplayer" && !isHost
+            ? course < 5
+              ? "Waiting for Host"
+              : "Championship Complete"
+            : course < 5
+              ? "Next Course"
+              : "New Championship"
+        }
         onRematch={nextCourseAction}
         onChallenge={() => setPicker(true)}
         onShare={shareResult}
