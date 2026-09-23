@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,36 +11,40 @@ import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
-import DrivingRace from "@/components/games/driving/DrivingRace";
+import OpponentPickerSheet, { type Person } from "@/components/games/OpponentPickerSheet";
+import DrivingRace, {
+  DRIVE_CARS,
+  DRIVE_COURSES,
+  type DriveCarId,
+} from "@/components/games/driving/DrivingRace";
 import { drivingSfx } from "@/lib/driving-sfx";
 import { useTurnGame } from "@/hooks/use-turn-game";
-import { DrivingRunState, RunResult, Seat, applyRunResult, initialDrivingRun } from "@/lib/driving-run";
-import { bumpStats, createMultiplayerGame, createSoloGame, endGame, recordMove, updateGameState } from "@/lib/games";
+import {
+  bumpStats,
+  createDriveRaceGame,
+  createSoloGame,
+  endGame,
+} from "@/lib/games";
 import { gameRoute } from "@/lib/game-routes";
 
-const SEAT_COLORS = ["#2563eb", "#e0453f"];
+type RacerProfile = { userId: string; name: string; avatarUrl: string | null };
 
 export default function DrivingPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
-  const statsWritten = useRef<string | null>(null);
-
+  const { game, loading, refresh, me, players } = useTurnGame(id, user?.id);
   const [seated, setSeated] = useState(false);
   const [picker, setPicker] = useState(false);
   const [muted, setMuted] = useState(drivingSfx.muted);
   const [myName, setMyName] = useState("You");
   const [myAvatar, setMyAvatar] = useState<string | null>(null);
-
-  const run: DrivingRunState = (game?.game_state?.drivingRun as DrivingRunState) || initialDrivingRun();
-  const moveNumber: number = game?.game_state?.moveNumber ?? 0;
-  const mySeat: Seat = ((me?.seat ?? 1) === 1 ? 0 : 1) as Seat;
-  const oppSeat: Seat = mySeat === 0 ? 1 : 0;
-  const finished = run.phase === "over";
-  const myTurn = game?.status === "active" && !finished && run.possession === mySeat;
-  const computersTurn = game?.mode === "solo" && !finished && run.possession === oppSeat;
+  const [profiles, setProfiles] = useState<Record<string, RacerProfile>>({});
+  const [course, setCourse] = useState(1);
+  const [carId, setCarId] = useState<DriveCarId>("gt");
+  const [finished, setFinished] = useState(false);
+  const [place, setPlace] = useState(1);
+  const statsWritten = useRef(false);
 
   const { stats, matchups } = useGameRecord("driving", user?.id, finished);
 
@@ -58,77 +62,164 @@ export default function DrivingPage() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!game || !user || !finished || statsWritten.current === game.id) return;
-    if (game.status === "completed") {
-      statsWritten.current = game.id;
+    if (!game) return;
+    setCourse(Math.max(1, Math.min(5, Number(game.game_state?.driveCourse || 1))));
+    const selected = game.game_state?.driveCars?.[user?.id || ""] as DriveCarId | undefined;
+    if (selected && DRIVE_CARS.some((car) => car.id === selected)) setCarId(selected);
+    setFinished(false);
+    setPlace(1);
+    setSeated(false);
+    statsWritten.current = false;
+  }, [game?.id, user?.id]);
+
+  useEffect(() => {
+    const ids = players.map((p) => p.user_id).filter(Boolean) as string[];
+    if (!ids.length) return;
+    void (supabase as any)
+      .from("profiles")
+      .select("user_id, display_name, avatar_url")
+      .in("user_id", ids)
+      .then(({ data }: any) => {
+        const map: Record<string, RacerProfile> = {};
+        for (const row of data || []) {
+          map[row.user_id] = {
+            userId: row.user_id,
+            name: row.display_name || "YAJ Racer",
+            avatarUrl: row.avatar_url || null,
+          };
+        }
+        setProfiles(map);
+      });
+  }, [players.map((p) => p.user_id).join("|")]);
+
+  const humanPlayers = useMemo(
+    () => players.filter((p) => !p.is_computer && p.user_id),
+    [players],
+  );
+  const isHost = game?.host_user_id === user?.id;
+
+  const racers = humanPlayers.map((p) => ({
+    userId: p.user_id as string,
+    name: profiles[p.user_id as string]?.name || (p.user_id === user?.id ? myName : "YAJ Racer"),
+    carId: ((game?.game_state?.driveCars?.[p.user_id as string] as DriveCarId) || "gt"),
+  }));
+
+  const saveSetup = async (nextCar: DriveCarId, nextCourse = course) => {
+    if (!game) return;
+    setCarId(nextCar);
+    if (isHost) setCourse(nextCourse);
+    try {
+      await (supabase as any).rpc("drive_update_setup", {
+        p_game_id: game.id,
+        p_car_id: nextCar,
+        p_course: isHost ? nextCourse : null,
+      });
+      await refresh();
+    } catch {
+      // Keep the local selection responsive if the backend is briefly unavailable.
+    }
+  };
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    drivingSfx.setMuted(next);
+  };
+
+  const quitGame = () => {
+    void (async () => {
+      if (game) await endGame(game.id);
+      navigate("/games");
+    })();
+  };
+
+  const handleFinish = async (finishPlace: number) => {
+    if (!game || !user || finished) return;
+    setPlace(finishPlace);
+    setFinished(true);
+    setSeated(false);
+    try {
+      await (supabase as any).rpc("drive_finish_racer", {
+        p_game_id: game.id,
+        p_place: finishPlace,
+        p_course: course,
+      });
+      if (!statsWritten.current) {
+        statsWritten.current = true;
+        await bumpStats(user.id, "driving", finishPlace === 1 ? "win" : "loss", Math.max(0, 5 - finishPlace) * 250 + course * 100);
+      }
+      await refresh();
+    } catch {
+      // The local finish/result should remain visible if result sync is delayed.
+    }
+  };
+
+  const startCourse = async (nextCourse: number) => {
+    if (!game || !user) return;
+    const next = Math.max(1, Math.min(5, nextCourse));
+    try {
+      if (isHost) {
+        await (supabase as any).rpc("drive_update_setup", {
+          p_game_id: game.id,
+          p_car_id: carId,
+          p_course: next,
+        });
+      }
+      setCourse(next);
+      setFinished(false);
+      setPlace(1);
+      setSeated(true);
+      await refresh();
+    } catch (e: any) {
+      toast({ title: "Could not start the next course", description: e?.message, variant: "destructive" });
+    }
+  };
+
+  const nextCourseAction = () => {
+    if (course < 5) {
+      void startCourse(course + 1);
       return;
     }
-    statsWritten.current = game.id;
-    const draw = run.winnerSeat === null;
-    const iWon = run.winnerSeat === mySeat;
-    const outcome = draw ? "draw" : iWon ? "win" : "loss";
-    void (async () => {
-      await updateGameState(game.id, {
-        status: "completed",
-        is_draw: draw,
-        winner_user_id: draw ? null : iWon ? user.id : (opponent?.user_id ?? null),
-        finished_at: new Date().toISOString(),
-      });
-      await bumpStats(user.id, "driving", outcome);
-      await refresh();
-    })();
-  }, [finished, game?.id, game?.status]);
-
-  const commit = async (state: DrivingRunState, n: number, nextTurnUserId: string | null) => {
-    if (!game || !user) return;
-    setGame({ ...game, game_state: { drivingRun: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
-    await updateGameState(game.id, { game_state: { drivingRun: state, moveNumber: n }, current_turn_user_id: nextTurnUserId });
-    await refresh();
+    void startNewChampionship();
   };
 
-  const finishRun = async (seat: Seat, result: RunResult) => {
-    if (!game || !user) return;
-    const next = applyRunResult(run, seat, result);
-    const n = moveNumber + 1;
-    await recordMove(game.id, seat === mySeat ? user.id : null, n, { result, seat });
-    const nextTurnUserId = game.mode === "solo" ? user.id : next.possession === mySeat ? user.id : (opponent?.user_id ?? null);
-    await commit(next, n, nextTurnUserId);
-  };
-
-  const rematch = async () => {
-    if (!user || !game) return;
+  const startNewChampionship = async () => {
+    if (!user) return;
     try {
-      const state = { drivingRun: initialDrivingRun(), moveNumber: 0 };
-      const g =
-        game.mode === "solo"
-          ? await createSoloGame("driving", user.id, state)
-          : opponent?.user_id
-            ? await createMultiplayerGame("driving", user.id, opponent.user_id, state)
-            : null;
-      if (g) {
-        statsWritten.current = null;
-        navigate(gameRoute("driving", g.id), { replace: true });
-      }
+      const invitees = humanPlayers
+        .map((p) => p.user_id)
+        .filter((uid): uid is string => Boolean(uid && uid !== user.id));
+      const next = invitees.length
+        ? await createDriveRaceGame(user.id, invitees, 1, carId)
+        : await createDriveRaceGame(user.id, [], 1, carId);
+      navigate(gameRoute("driving", next.id), { replace: true });
     } catch (e: any) {
-      toast({ title: "Could not start a rematch", description: e.message, variant: "destructive" });
+      toast({ title: "Could not start a new championship", description: e?.message, variant: "destructive" });
     }
   };
 
-  const challengeOther = async (opponentId: string, name: string) => {
+  const challengeRacers = async (people: Person[]) => {
     if (!user) return;
     try {
-      const g = await createMultiplayerGame("driving", user.id, opponentId, { drivingRun: initialDrivingRun(), moveNumber: 0 });
-      toast({ title: `Challenge sent to ${name}` });
-      navigate(gameRoute("driving", g.id), { replace: true });
+      const next = await createDriveRaceGame(
+        user.id,
+        people.map((p) => p.user_id),
+        course,
+        carId,
+      );
+      setPicker(false);
+      toast({
+        title: people.length === 1 ? "Race invite sent" : `${people.length} race invites sent`,
+        description: "Everyone races together on the same track.",
+      });
+      navigate(gameRoute("driving", next.id), { replace: true });
     } catch (e: any) {
-      toast({ title: "Could not send the challenge", description: e.message, variant: "destructive" });
+      toast({ title: "Could not create the race", description: e?.message, variant: "destructive" });
     }
   };
 
   const shareResult = async () => {
-    const draw = run.winnerSeat === null;
-    const iWon = run.winnerSeat === mySeat;
-    const text = `I just ${draw ? "drew" : iWon ? "won" : "lost"} a race on YAJ 🏎️`;
+    const text = `I finished #${place} on ${DRIVE_COURSES[course - 1]?.name || "YAJ Drive"} 🏁`;
     try {
       if (navigator.share) await navigator.share({ text });
       else {
@@ -148,7 +239,7 @@ export default function DrivingPage() {
     );
   }
 
-  if (!game) {
+  if (!game || !user) {
     return (
       <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <p className="font-bold">This race is no longer available.</p>
@@ -159,147 +250,164 @@ export default function DrivingPage() {
     );
   }
 
-  const oppLabel = game.mode === "solo" ? "Computer" : opponentName;
-  const draw = finished && run.winnerSeat === null;
-  const iWon = finished && run.winnerSeat === mySeat;
-  const outcome: "win" | "loss" | "draw" = draw ? "draw" : iWon ? "win" : "loss";
-
-  const myRunNumber = run.runsPlayed[mySeat] + 1;
-  const oppRunNumber = run.runsPlayed[oppSeat] + 1;
-  const driveLabel = myTurn
-    ? `Your run — ${Math.min(myRunNumber, run.maxRuns)} of ${run.maxRuns}`
-    : `${oppLabel}'s run — ${Math.min(oppRunNumber, run.maxRuns)} of ${run.maxRuns}`;
-
-  const resultTitle = draw ? "Ends in a tie" : iWon ? "You win!" : `${oppLabel} wins`;
-  const resultDetail = finished
-    ? `Final score — you ${run.scores[mySeat]} · ${oppLabel} ${run.scores[oppSeat]}  •  Clean runs ${run.finishes[mySeat]}-${run.finishes[oppSeat]}`
-    : undefined;
-
-  const toggleMute = () => {
-    const next = !muted;
-    setMuted(next);
-    drivingSfx.setMuted(next);
-  };
-
-  const quitGame = () => {
-    void (async () => {
-      await endGame(game.id);
-      navigate("/games");
-    })();
-  };
+  const courseInfo = DRIVE_COURSES[course - 1] || DRIVE_COURSES[0];
+  const opponentCount = Math.max(1, humanPlayers.length - 1);
 
   return (
     <LandscapeStage auto>
       <div className="relative h-full w-full">
-        {seated && !finished && (myTurn || computersTurn) && (
+        {seated && !finished && game.status === "active" && (
           <DrivingRace
-            key={`${run.possession}-${run.runNumber}`}
-            active
-            auto={!myTurn}
-            runSeed={run.runsPlayed[run.possession] + 1}
-            carColor={SEAT_COLORS[run.possession]}
-            driveLabel={driveLabel}
-            myScore={run.scores[mySeat]}
-            oppScore={run.scores[oppSeat]}
+            key={`${game.id}-course-${course}-${carId}`}
+            gameId={game.id}
+            userId={user.id}
+            courseLevel={course}
+            carId={carId}
+            racers={racers}
             muted={muted}
             onToggleMute={toggleMute}
             onBack={() => navigate("/games")}
             onQuit={quitGame}
-            onComplete={(result) => void finishRun(run.possession, result)}
-          />
-        )}
-
-        {seated && !finished && !myTurn && !computersTurn && (
-          <DrivingRace
-            active={false}
-            carColor={SEAT_COLORS[mySeat]}
-            driveLabel={driveLabel}
-            myScore={run.scores[mySeat]}
-            oppScore={run.scores[oppSeat]}
-            muted={muted}
-            onToggleMute={toggleMute}
-            onBack={() => navigate("/games")}
-            onQuit={quitGame}
-            onComplete={() => {}}
+            onFinish={(finishPlace) => void handleFinish(finishPlace)}
           />
         )}
 
         <PendingChallengeGate
           gameId={game.id}
-          userId={user?.id}
-          waiting={game.status === "waiting" && game.host_user_id !== user?.id}
-          challengerName={opponentName}
+          userId={user.id}
+          waiting={game.host_user_id !== user.id && game.status === "waiting"}
+          challengerName={profiles[game.host_user_id]?.name || "YAJ Racer"}
           onAccepted={refresh}
         />
 
         <WaitingForOpponentGate
-          show={game.mode === "multiplayer" && game.status === "waiting" && game.host_user_id === user?.id}
-          opponentName={opponentName}
+          show={game.mode === "multiplayer" && game.status === "waiting" && isHost}
+          opponentName={humanPlayers.length > 2 ? "your racers" : "your opponent"}
           onCancel={quitGame}
         />
 
-        <GameLiveDock
-          gameId={game.id}
-          userId={user?.id}
-          isPlayer={!!me}
-          isLive={Boolean((game as any).is_live)}
-          hasHumanOpponent={game.mode === "multiplayer" && !!opponent?.user_id}
-          placement="rail"
-          onChanged={refresh}
-        />
+        {game.status === "active" && !finished && (
+          <GameLiveDock
+            gameId={game.id}
+            userId={user.id}
+            isPlayer={!!me}
+            isLive={Boolean((game as any).is_live)}
+            hasHumanOpponent={humanPlayers.length > 1}
+            placement="rail"
+            onChanged={refresh}
+          />
+        )}
 
         <GameIntro
-          open={!seated && !finished}
+          open={!seated && !finished && game.status === "active"}
           title="Drive"
-          subtitle={game.mode === "solo" ? "Dodge traffic — solo vs Computer" : `Dodge traffic — you vs ${opponentName}`}
+          subtitle={
+            game.mode === "solo"
+              ? `Arcade Grand Prix · You vs 3 computer racers`
+              : `${humanPlayers.length} racers together · ${courseInfo.name}`
+          }
           me={{ name: myName, avatarUrl: myAvatar }}
-          them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
+          them={{
+            name: game.mode === "solo" ? "3 Racers" : `${opponentCount} Rival${opponentCount === 1 ? "" : "s"}`,
+            avatarUrl: null,
+            isComputer: game.mode === "solo",
+          }}
           stats={stats}
           matchups={matchups}
+          extraContent={
+            <div className="w-full max-w-sm space-y-3 rounded-2xl border border-white/15 bg-black/55 p-3 backdrop-blur-md">
+              <div>
+                <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.15em] text-white/55">Choose Your Car</p>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {DRIVE_CARS.map((car) => (
+                    <button
+                      key={car.id}
+                      type="button"
+                      onClick={() => void saveSetup(car.id)}
+                      className={`min-h-12 rounded-xl border px-1 py-1.5 text-[9px] font-black leading-tight transition active:scale-95 ${
+                        carId === car.id ? "border-cyan-300 bg-cyan-300 text-slate-950" : "border-white/15 bg-white/5 text-white"
+                      }`}
+                    >
+                      <span className="mx-auto mb-1 block h-2.5 w-7 rounded-full" style={{ background: car.color, boxShadow: `0 0 8px ${car.accent}` }} />
+                      {car.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/55">Course</p>
+                  <p className="text-[10px] font-bold text-cyan-200">{courseInfo.condition}</p>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5">
+                  {DRIVE_COURSES.map((item) => (
+                    <button
+                      key={item.level}
+                      type="button"
+                      disabled={!isHost && game.mode === "multiplayer"}
+                      onClick={() => {
+                        if (isHost || game.mode === "solo") void saveSetup(carId, item.level);
+                      }}
+                      className={`min-h-11 rounded-xl border text-sm font-black transition active:scale-95 disabled:opacity-40 ${
+                        course === item.level ? "border-amber-300 bg-amber-300 text-slate-950" : "border-white/15 bg-white/5 text-white"
+                      }`}
+                    >
+                      {item.level}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-center text-[10px] font-bold text-white/45">
+                  {isHost || game.mode === "solo" ? courseInfo.name : `Host selected: ${courseInfo.name}`}
+                </p>
+              </div>
+            </div>
+          }
           onStart={() => {
             setSeated(true);
             void drivingSfx.prime();
           }}
-          onBack={() => navigate("/games")}
+          onBack={quitGame}
           onPlaySolo={() => {
-            if (game.mode === "solo" && game.status === "active") {
-              setSeated(true);
-              void drivingSfx.prime();
-              return;
-            }
             void (async () => {
-              if (!user) return;
               try {
-                const g = await createSoloGame("driving", user.id, { drivingRun: initialDrivingRun(), moveNumber: 0 });
-                statsWritten.current = null;
-                navigate(gameRoute("driving", g.id), { replace: true });
+                const next = await createDriveRaceGame(user.id, [], course, carId);
+                navigate(gameRoute("driving", next.id), { replace: true });
               } catch (e: any) {
-                toast({ title: "Could not start a solo race", description: e.message, variant: "destructive" });
+                toast({ title: "Could not start a solo race", description: e?.message, variant: "destructive" });
               }
             })();
           }}
           onQuickMatch={() => setPicker(true)}
+          soloLabel="Solo Grand Prix"
         />
       </div>
 
       <GameResultCard
         open={finished}
-        outcome={outcome}
-        title={resultTitle}
-        detail={resultDetail}
-        onRematch={rematch}
+        outcome={place === 1 ? "win" : "loss"}
+        title={place === 1 ? "1st Place!" : `Finished #${place}`}
+        detail={
+          course < 5
+            ? `${courseInfo.name} complete. Next up: ${DRIVE_COURSES[course]?.name}.`
+            : "You completed the five-course YAJ Drive championship."
+        }
+        primaryLabel={course < 5 ? "Next Course" : "New Championship"}
+        onRematch={nextCourseAction}
         onChallenge={() => setPicker(true)}
         onShare={shareResult}
+        onExit={quitGame}
+        exitLabel="Exit to Games"
       />
 
       <OpponentPickerSheet
         open={picker}
         onClose={() => setPicker(false)}
-        onPick={(p) => {
-          setPicker(false);
-          void challengeOther(p.user_id, p.display_name || "your opponent");
-        }}
-        title="Challenge to Drive"
+        onPick={() => {}}
+        multiSelect
+        maxSelections={3}
+        onConfirmMultiple={(people) => void challengeRacers(people)}
+        title="Invite Racers"
       />
     </LandscapeStage>
   );
