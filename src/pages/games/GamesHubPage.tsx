@@ -62,7 +62,7 @@ type CardDef = {
 const CARDS: CardDef[] = [
   { type: "pool", title: "8-Ball Pool", players: "2 players", image: poolArt, category: "Sports" },
   { type: "boxing", title: "Boxing", players: "2 players", image: boxingArt, category: "Action" },
-  { type: "battleship", title: "YAJ Fleet Clash", players: "2 players", image: battleshipArt, category: "Strategy", isNew: true },
+  { type: "battleship", title: "YAJ Fleet Clash", players: "1–4 players", image: battleshipArt, category: "Strategy", isNew: true },
   { type: "driving", title: "Drive", players: "2 players", image: drivingArt, category: "Arcade", isNew: true },
   { type: "poker", title: "Texas Hold'em", players: "2 players", image: pokerArt, category: "Card", isNew: true },
   { type: "pop_shot", title: "Pop Shot", players: "2 players", image: popShotArt, category: "Arcade", isNew: true },
@@ -253,9 +253,11 @@ export default function GamesHubPage() {
         <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-black uppercase tracking-wide text-white backdrop-blur-sm">
           {card.players.toLowerCase().includes("solo")
             ? "Solo"
-            : card.players.includes("1–2")
-              ? "1–2P"
-              : "2P"}
+            : card.players.includes("1–4")
+              ? "1–4P"
+              : card.players.includes("1–2")
+                ? "1–2P"
+                : "2P"}
         </span>
 
         {inProgress && (
