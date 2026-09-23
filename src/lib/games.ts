@@ -135,6 +135,24 @@ export async function createFleetClashCrewGame(
   return game as GameRow;
 }
 
+/** Drive arcade race: solo or up to four human racers on one shared track. */
+export async function createDriveRaceGame(
+  userId: string,
+  inviteeIds: string[],
+  course: number,
+  carId: string,
+) {
+  const unique = Array.from(new Set(inviteeIds.filter((id) => id && id !== userId))).slice(0, 3);
+  const { data: game, error } = await db.rpc("create_drive_race_game", {
+    p_course: Math.max(1, Math.min(5, course)),
+    p_car_id: carId,
+    p_invitee_ids: unique,
+  });
+  if (error) throw error;
+  if (!game || game.host_user_id !== userId) throw new Error("The Drive race could not be created securely.");
+  return game as GameRow;
+}
+
 export async function loadGame(gameId: string) {
   const [{ data: game }, { data: players }] = await Promise.all([
     db.from("games").select("*").eq("id", gameId).maybeSingle(),
@@ -181,6 +199,15 @@ export async function respondToInvite(inviteId: string, accept: boolean) {
 
   if (existing?.game_type === "battleship") {
     const { data, error } = await db.rpc("respond_fleet_clash_invite", {
+      p_invite_id: inviteId,
+      p_accept: accept,
+    });
+    if (error) throw error;
+    return data as GameInviteRow;
+  }
+
+  if (existing?.game_type === "driving") {
+    const { data, error } = await db.rpc("respond_drive_invite", {
       p_invite_id: inviteId,
       p_accept: accept,
     });
