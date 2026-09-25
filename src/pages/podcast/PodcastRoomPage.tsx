@@ -289,6 +289,10 @@ const PodcastRoomPage = () => {
   const [activeScreenReqId, setActiveScreenReqId] = useState<string | null>(null);
   const roomShellRef = useRef<HTMLDivElement>(null);
   const presenceKeyRef = useRef<string>(crypto.randomUUID());
+  // A radio viewer needs a device/session identity that is different from the host.
+  // This also allows the station owner to test Tune In from a second phone while
+  // staying logged into the same YAJ account without LiveKit replacing the host.
+  const radioViewerIdentityRef = useRef<string>(`yaj-radio-viewer-${crypto.randomUUID()}`);
 
   // Scheduled session metadata (if any)
   const [scheduled, setScheduled] = useState<ScheduledPodcastSession | undefined>(() => PodcastSessionStore.get(sessionId));
@@ -449,6 +453,7 @@ const PodcastRoomPage = () => {
   // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
     roomName: sessionId,
+    identity: fromRadio && !isHost ? radioViewerIdentityRef.current : undefined,
     displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${doorman.requestId}:${displayName}` : displayName,
     enabled: isAudience || doorman.status === "accepted",
     publish: !isAudience,
@@ -1125,10 +1130,7 @@ const PodcastRoomPage = () => {
               className="gap-1.5"
             >
               <PhoneCall className="h-4 w-4" />
-              {stageCount >= 4 ? "Line Full" : doorman.status === "requesting" ? "Calling…" : "Call In"}
-            </Button>
-            <Button variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
-              <Maximize2 className="h-4 w-4" /> Full Screen
+              {stageCount >= 4 ? "Line Full" : doorman.status === "requesting" ? "On Hold…" : "Call In"}
             </Button>
             <Button variant="secondary" onClick={leave}>Leave</Button>
           </div>
@@ -1181,8 +1183,8 @@ const PodcastRoomPage = () => {
       )}
 
       {/* Host radio call switchboard — four numbered hold lines, never auto-accepted. */}
-      {isHost && fromRadio && doorman.pending.some((req) => req.requestType === "call-in") && (
-        <div className="fixed right-3 top-16 z-50 w-[22rem] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-zinc-700 bg-black/95 p-3 shadow-2xl backdrop-blur">
+      {isHost && fromRadio && !viewerFullscreen && (
+        <div className="fixed bottom-24 left-3 right-3 z-50 max-h-[46vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-black/95 p-3 shadow-2xl backdrop-blur md:bottom-auto md:left-auto md:right-3 md:top-16 md:w-[22rem]">
           <div className="mb-3 flex items-center justify-between">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">YAJ Radio Call Board</p>
