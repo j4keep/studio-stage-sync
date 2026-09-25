@@ -69,6 +69,7 @@ export default function RadioStationsPage() {
   const [radioBackendReady, setRadioBackendReady] = useState(true);
   const [presenceReady, setPresenceReady] = useState(false);
   const [liveHostSessions, setLiveHostSessions] = useState<Set<string>>(new Set());
+  const [liveSessionByStation, setLiveSessionByStation] = useState<Record<string, string>>({});
   const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
 
   // Only the very first load shows placeholders; live refreshes swap data silently
@@ -108,16 +109,21 @@ export default function RadioStationsPage() {
       const metas = Object.values(state).flat();
 
       const hosts = new Set<string>();
+      const hostSessionsByStation: Record<string, string> = {};
       const listeners: Record<string, number> = {};
 
       for (const meta of metas as any[]) {
         const sessionId = meta?.sessionId;
         if (!sessionId) continue;
-        if (meta.role === "host") hosts.add(sessionId);
+        if (meta.role === "host") {
+          hosts.add(sessionId);
+          if (meta.stationId) hostSessionsByStation[String(meta.stationId)] = sessionId;
+        }
         if (meta.role === "audience") listeners[sessionId] = (listeners[sessionId] || 0) + 1;
       }
 
       setLiveHostSessions(hosts);
+      setLiveSessionByStation(hostSessionsByStation);
       setListenerCounts(listeners);
       setPresenceReady(true);
     };
@@ -167,13 +173,18 @@ export default function RadioStationsPage() {
     const q = query.trim().toLowerCase();
     if (!q) return stations;
     return stations.filter((station) =>
-      [station.name, station.tagline, station.genre, station.network_name]
+      [station.name, station.tagline, station.genre, station.network_name, station.live_title]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q)),
     );
   }, [stations, query]);
 
+  const effectiveLiveSessionId = (station: Station) =>
+    liveSessionByStation[station.id] || station.live_session_id || null;
+
   const isActuallyLive = (station: Station) => {
+    const presenceSession = liveSessionByStation[station.id];
+    if (presenceSession) return true;
     if (!station.is_live || !station.live_session_id) return false;
     return presenceReady ? liveHostSessions.has(station.live_session_id) : station.is_live;
   };
@@ -296,8 +307,8 @@ export default function RadioStationsPage() {
               {liveStations.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={{ ...station, is_live: isActuallyLive(station) }}
-                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
+                  station={{ ...station, is_live: isActuallyLive(station), live_session_id: effectiveLiveSessionId(station) }}
+                  listenerCount={effectiveLiveSessionId(station) ? listenerCounts[effectiveLiveSessionId(station)!] || 0 : 0}
                   shows={shows}
                   mine={station.owner_user_id === user?.id}
                   art={STATION_ART[index % STATION_ART.length]}
@@ -348,8 +359,8 @@ export default function RadioStationsPage() {
               {discover.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={{ ...station, is_live: isActuallyLive(station) }}
-                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
+                  station={{ ...station, is_live: isActuallyLive(station), live_session_id: effectiveLiveSessionId(station) }}
+                  listenerCount={effectiveLiveSessionId(station) ? listenerCounts[effectiveLiveSessionId(station)!] || 0 : 0}
                   shows={shows}
                   mine={station.owner_user_id === user?.id}
                   art={STATION_ART[(index + 1) % STATION_ART.length]}
@@ -370,8 +381,8 @@ export default function RadioStationsPage() {
               {mine.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={{ ...station, is_live: isActuallyLive(station) }}
-                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
+                  station={{ ...station, is_live: isActuallyLive(station), live_session_id: effectiveLiveSessionId(station) }}
+                  listenerCount={effectiveLiveSessionId(station) ? listenerCounts[effectiveLiveSessionId(station)!] || 0 : 0}
                   shows={shows}
                   mine
                   art={STATION_ART[(index + 3) % STATION_ART.length]}
