@@ -204,7 +204,14 @@ export default function RadioStationsPage() {
     const presenceSession = liveSessionByStation[station.id];
     if (presenceSession) return true;
     if (!station.is_live || !station.live_session_id) return false;
-    return presenceReady ? liveHostSessions.has(station.live_session_id) : station.is_live;
+    if (!presenceReady) return true;
+    if (liveHostSessions.has(station.live_session_id)) return true;
+
+    // The host writes a small heartbeat to live_started_at every few seconds.
+    // This keeps Tune In reliable on a second device even if Realtime presence
+    // briefly misses a host sync on mobile Safari.
+    const heartbeatAt = station.live_started_at ? new Date(station.live_started_at).getTime() : 0;
+    return heartbeatAt > 0 && Date.now() - heartbeatAt < 20_000;
   };
 
   const liveStations = filtered.filter(isActuallyLive);
