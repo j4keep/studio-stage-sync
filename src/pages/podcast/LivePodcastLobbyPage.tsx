@@ -226,7 +226,7 @@ const LivePodcastLobbyPage = () => {
           .eq("id", radioStationId)
           .eq("owner_user_id", user?.id);
       }
-      navigate(`/podcast/room/${s.id}`);
+      navigate(`/podcast/room/${s.id}${radioStationId ? `?station=${encodeURIComponent(radioStationId)}&source=radio` : ""}`);
     } else {
       setViewMode("planner");
       toast({ title: "Session scheduled", description: new Date(s.scheduledAt).toLocaleString() });
@@ -407,10 +407,10 @@ const LivePodcastLobbyPage = () => {
           <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
             <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center">
               <button
-                onClick={() => navigate("/")}
+                onClick={() => navigate(-1)}
                 className="flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground"
-                title="Back to home"
-                aria-label="Back to home"
+                title="Back"
+                aria-label="Back"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5" /><path d="m12 19-7-7 7-7" /></svg>
               </button>
