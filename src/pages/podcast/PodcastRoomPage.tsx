@@ -4,7 +4,7 @@ import {
   Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Share2, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
   Download, Trash2, Edit3, Check, ArrowLeft, Wifi, AlertTriangle, RotateCcw,
-  Shield, X, LayoutGrid, Captions, Image as ImageIcon, Wand2,
+  Shield, X, LayoutGrid, Captions, Image as ImageIcon, Wand2, Maximize2, Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -282,7 +282,9 @@ const PodcastRoomPage = () => {
 
   const [tab, setTab] = useState<Tab>("people");
   const [permError, setPermError] = useState<string | null>(null);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(() => searchParams.get("invite") === "1");
+  const [viewerFullscreen, setViewerFullscreen] = useState(false);
+  const roomShellRef = useRef<HTMLDivElement>(null);
 
   // Scheduled session metadata (if any)
   const [scheduled, setScheduled] = useState<ScheduledPodcastSession | undefined>(() => PodcastSessionStore.get(sessionId));
@@ -417,6 +419,14 @@ const PodcastRoomPage = () => {
     maxParticipants: isAudience ? 24 : 12,
   });
 
+  const stageParticipants = useMemo(
+    () =>
+      room.participants
+        .filter((participant) => participant.isHost || participant.camOn || participant.micOn || !!participant.videoTrack)
+        .slice(0, 4),
+    [room.participants],
+  );
+
   useEffect(() => {
     if (room.connState === "error") setPermError(room.error || "Could not join podcast room");
     else setPermError(null);
@@ -438,7 +448,7 @@ const PodcastRoomPage = () => {
 
   // Live ref to participants so the rAF draw loop always has the current set.
   const participantsRef = useRef<RoomParticipant[]>([]);
-  useEffect(() => { participantsRef.current = room.participants; }, [room.participants]);
+  useEffect(() => { participantsRef.current = stageParticipants; }, [stageParticipants]);
 
   // chat (in-memory; realtime sync is Phase 2B)
   const [chat, setChat] = useState<{ id: string; from: string; text: string; ts: number }[]>([]);
@@ -702,18 +712,47 @@ const PodcastRoomPage = () => {
     setChatInput("");
   };
 
+  const toggleViewerFullscreen = async () => {
+    const shell = roomShellRef.current;
+    try {
+      if (!document.fullscreenElement && shell?.requestFullscreen) {
+        await shell.requestFullscreen();
+        try { await (screen.orientation as any)?.lock?.("landscape"); } catch {}
+        setViewerFullscreen(true);
+      } else if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        try { (screen.orientation as any)?.unlock?.(); } catch {}
+        setViewerFullscreen(false);
+      } else {
+        // iPhone fallback: theater mode fills the viewport; rotating the phone
+        // naturally gives a landscape full-screen broadcast surface.
+        setViewerFullscreen((value) => !value);
+      }
+    } catch {
+      setViewerFullscreen((value) => !value);
+    }
+  };
+
+  useEffect(() => {
+    const sync = () => {
+      if (!document.fullscreenElement) setViewerFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
   /* ---------------- Render ---------------- */
-  const visible = useMemo(
-    () =>
-      room.participants
-        .filter((participant) => participant.camOn || participant.micOn || !!participant.videoTrack)
-        .slice(0, 4),
-    [room.participants],
-  );
+  const visible = stageParticipants;
   const stageCount = visible.length;
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
+    <div
+      ref={roomShellRef}
+      className={
+        "min-h-screen bg-zinc-950 text-zinc-100 flex flex-col " +
+        (isAudience && viewerFullscreen ? "fixed inset-0 z-[200] h-[100dvh] overflow-hidden" : "")
+      }
+    >
       <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -754,15 +793,21 @@ const PodcastRoomPage = () => {
             </>
           )}
           {isAudience && (
-            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
-              Listening live
-            </span>
+            <>
+              <span className="hidden sm:inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                Listening live
+              </span>
+              <Button size="sm" variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
+                {viewerFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                {viewerFullscreen ? "Exit" : "Full Screen"}
+              </Button>
+            </>
           )}
         </div>
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main className="flex-1 min-w-0 p-3 md:p-5 flex flex-col gap-4 relative">
+        <main className={"flex-1 min-w-0 flex flex-col gap-4 relative " + (isAudience && viewerFullscreen ? "p-0" : "p-3 md:p-5")}>
 
           {permError && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-200">
@@ -852,13 +897,29 @@ const PodcastRoomPage = () => {
       </div>
 
       {isAudience ? (
+        viewerFullscreen ? (
+          <button
+            type="button"
+            onClick={toggleViewerFullscreen}
+            className="fixed right-3 top-3 z-[220] flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur"
+            aria-label="Exit full screen"
+          >
+            <Minimize2 className="h-5 w-5" />
+          </button>
+        ) : (
         <div className="sticky bottom-0 z-40 flex items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
           <div>
             <p className="text-xs font-black text-white">Listening to the live broadcast</p>
             <p className="text-[10px] text-zinc-500">Audience mode · your camera and microphone are off</p>
           </div>
-          <Button variant="secondary" onClick={leave}>Leave</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
+              <Maximize2 className="h-4 w-4" /> Full Screen
+            </Button>
+            <Button variant="secondary" onClick={leave}>Leave</Button>
+          </div>
         </div>
+        )
       ) : (
         <PodcastControlBar
           isRecording={isRecording}
@@ -1133,11 +1194,31 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
     }
   }, [p.videoTrack]);
   useEffect(() => {
-    // Don't render local audio (would feedback).
-    if (audioRef.current) {
-      audioRef.current.srcObject = (!p.isLocal && p.audioTrack) ? new MediaStream([p.audioTrack]) : null;
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.srcObject = (!p.isLocal && p.audioTrack) ? new MediaStream([p.audioTrack]) : null;
+    if (!p.isLocal && p.audioTrack) {
+      audio.muted = false;
+      audio.volume = 1;
+      void audio.play().catch(() => {
+        // iOS may require a user gesture. The next tap on the room will retry.
+      });
     }
   }, [p.audioTrack, p.isLocal]);
+
+  useEffect(() => {
+    if (p.isLocal) return;
+    const retry = () => {
+      const audio = audioRef.current;
+      if (audio?.srcObject) void audio.play().catch(() => {});
+    };
+    window.addEventListener("pointerdown", retry, { passive: true });
+    window.addEventListener("touchend", retry, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", retry);
+      window.removeEventListener("touchend", retry);
+    };
+  }, [p.isLocal]);
 
   const q = QUALITY_STYLE[p.quality];
 
@@ -1179,7 +1260,7 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
           BG off: {seg.error}
         </div>
       )}
-      <audio ref={audioRef} autoPlay />
+      <audio ref={audioRef} autoPlay playsInline preload="auto" />
 
       <div className="absolute top-2 left-2 flex items-center gap-1.5">
         <span className="text-xs px-1.5 py-0.5 rounded bg-black/60 border border-white/10">{p.name}{p.isLocal ? " (you)" : ""}</span>
