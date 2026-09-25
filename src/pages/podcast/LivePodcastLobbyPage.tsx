@@ -1,5 +1,5 @@
 import { ChangeEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   ChevronDown,
@@ -71,6 +71,8 @@ const SUPABASE_URL = "https://cdcdlqbjyptamtleitdp.supabase.co";
 const LivePodcastLobbyPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const radioStationId = searchParams.get("station");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [recordings, setRecordings] = useState<Recording[]>([]);
@@ -212,6 +214,18 @@ const LivePodcastLobbyPage = () => {
     const gate = evaluateJoinGate(s);
     if (gate.kind === "open" || gate.kind === "live") {
       PodcastSessionStore.markLive(s.id);
+      if (radioStationId) {
+        void (supabase as any)
+          .from("radio_stations")
+          .update({
+            is_live: true,
+            live_title: s.title,
+            live_started_at: new Date().toISOString(),
+            live_session_id: s.id,
+          })
+          .eq("id", radioStationId)
+          .eq("owner_user_id", user?.id);
+      }
       navigate(`/podcast/room/${s.id}`);
     } else {
       setViewMode("planner");
