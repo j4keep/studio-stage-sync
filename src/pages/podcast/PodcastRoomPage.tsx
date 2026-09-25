@@ -901,6 +901,7 @@ const PodcastRoomPage = () => {
           isHost={isHost}
           security={security}
           onSecurityChange={setSecurity}
+          radioStationId={radioStationId}
         />
       )}
 
