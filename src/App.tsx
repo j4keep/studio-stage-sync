@@ -30,6 +30,10 @@ import BattlesPage from "./pages/BattlesPage";
 import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
+import RadioStationsPage from "./pages/RadioStationsPage";
+import LivePodcastLobbyPage from "./pages/podcast/LivePodcastLobbyPage";
+import PodcastRoomPage from "./pages/podcast/PodcastRoomPage";
+import PodcastJoinPage from "./pages/podcast/PodcastJoinPage";
 import StudiosPage from "./pages/StudiosPage";
 import MyStudiosPage from "./pages/MyStudiosPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
@@ -337,6 +341,10 @@ const ProtectedRoutes = () => {
         <Route path="/safety/balance" element={<DigitalBalancePage />} />
         <Route path="/safety/parent" element={<ParentDashboardPage />} />
         <Route path="/radio" element={<RadioPage />} />
+        <Route path="/radio/stations" element={<RadioStationsPage />} />
+        <Route path="/podcast/live" element={<LivePodcastLobbyPage />} />
+        <Route path="/podcast/room/:sessionId" element={<PodcastRoomPage />} />
+        <Route path="/podcast/join/:code" element={<PodcastJoinPage />} />
         <Route path="/projects" element={<Navigate to="/my-projects" replace />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/terms" element={<TermsPage />} />
