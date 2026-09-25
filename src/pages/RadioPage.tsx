@@ -18,6 +18,7 @@ import {
   VolumeX,
   Library,
   Upload,
+  RadioTower,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -294,6 +295,19 @@ const RadioPage = () => {
           >
             <Library className="h-4 w-4 text-primary" />
             <span className="text-[12px] font-bold">My Library</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/radio/stations")}
+            className="col-span-2 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-left"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <RadioTower className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[12px] font-black">Stations & Live Shows</span>
+              <span className="block text-[10px] text-muted-foreground">Listen live or create your own station/network</span>
+            </span>
           </button>
         </div>
         <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -615,6 +629,20 @@ const RadioPage = () => {
               <span className="block text-[12px] font-black text-foreground">My Library</span>
               <span className="block text-[10px] text-muted-foreground">Playlists & saves</span>
             </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/radio/stations")}
+            className="col-span-2 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 text-left shadow-sm transition active:scale-[0.98]"
+          >
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <RadioTower className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12px] font-black text-foreground">Stations & Live Shows</span>
+              <span className="block text-[10px] text-muted-foreground">Morning shows, podcasts, music stations & networks</span>
+            </span>
+            <span className="rounded-full bg-red-500/10 px-2 py-1 text-[9px] font-black text-red-500">LIVE</span>
           </button>
         </div>
 
