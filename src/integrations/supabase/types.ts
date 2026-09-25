@@ -4269,6 +4269,160 @@ export type Database = {
           },
         ]
       }
+      radio_station_programming: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          owner_user_id: string
+          position: number
+          source_id: string
+          source_type: string
+          station_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_user_id: string
+          position?: number
+          source_id: string
+          source_type: string
+          station_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_user_id?: string
+          position?: number
+          source_id?: string
+          source_type?: string
+          station_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_station_programming_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "radio_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radio_station_shows: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          host_user_id: string
+          id: string
+          live_session_id: string | null
+          recurring_label: string | null
+          scheduled_at: string | null
+          show_type: string
+          station_id: string
+          status: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_user_id: string
+          id?: string
+          live_session_id?: string | null
+          recurring_label?: string | null
+          scheduled_at?: string | null
+          show_type?: string
+          station_id: string
+          status?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          host_user_id?: string
+          id?: string
+          live_session_id?: string | null
+          recurring_label?: string | null
+          scheduled_at?: string | null
+          show_type?: string
+          station_id?: string
+          status?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_station_shows_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "radio_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      radio_stations: {
+        Row: {
+          banner_url: string | null
+          created_at: string
+          description: string | null
+          genre: string | null
+          id: string
+          is_live: boolean
+          is_public: boolean
+          live_session_id: string | null
+          live_started_at: string | null
+          live_title: string | null
+          logo_url: string | null
+          name: string
+          network_name: string | null
+          owner_user_id: string
+          programming_mode: string
+          tagline: string | null
+          updated_at: string
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          id?: string
+          is_live?: boolean
+          is_public?: boolean
+          live_session_id?: string | null
+          live_started_at?: string | null
+          live_title?: string | null
+          logo_url?: string | null
+          name: string
+          network_name?: string | null
+          owner_user_id: string
+          programming_mode?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string
+          description?: string | null
+          genre?: string | null
+          id?: string
+          is_live?: boolean
+          is_public?: boolean
+          live_session_id?: string | null
+          live_started_at?: string | null
+          live_title?: string | null
+          logo_url?: string | null
+          name?: string
+          network_name?: string | null
+          owner_user_id?: string
+          programming_mode?: string
+          tagline?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       recording_exports: {
         Row: {
           artist_name: string | null
