@@ -27,13 +27,19 @@ type Props = {
   isHost: boolean;
   security: PodcastSecurity;
   onSecurityChange: (s: PodcastSecurity) => void;
+  radioStationId?: string | null;
 };
 
 const INVITE_MESSAGE = "Join my YAJ live broadcast as an on-stage guest";
 
-function buildInviteLink(sessionId: string, password?: string) {
-  const base = `${window.location.origin}/#/podcast/room/${sessionId}?guest=1`;
-  return password ? `${base}&k=${encodeURIComponent(password)}` : base;
+function buildInviteLink(sessionId: string, password?: string, radioStationId?: string | null) {
+  const params = new URLSearchParams({ guest: "1" });
+  if (radioStationId) {
+    params.set("station", radioStationId);
+    params.set("source", "radio");
+  }
+  if (password) params.set("k", password);
+  return `${window.location.origin}/#/podcast/room/${sessionId}?${params.toString()}`;
 }
 
 function copy(text: string) {
@@ -46,7 +52,7 @@ function copy(text: string) {
 }
 
 export default function PodcastInviteSheet({
-  open, onClose, sessionId, isHost, security, onSecurityChange,
+  open, onClose, sessionId, isHost, security, onSecurityChange, radioStationId,
 }: Props) {
   const [qrFull, setQrFull] = useState(false);
   const [manual, setManual] = useState("");
@@ -56,8 +62,12 @@ export default function PodcastInviteSheet({
   useEffect(() => { setDraftPwd(security.password); }, [security.password, open]);
 
   const inviteLink = useMemo(
-    () => buildInviteLink(sessionId, security.visibility === "password" ? security.password : undefined),
-    [sessionId, security.visibility, security.password]
+    () => buildInviteLink(
+      sessionId,
+      security.visibility === "password" ? security.password : undefined,
+      radioStationId,
+    ),
+    [sessionId, security.visibility, security.password, radioStationId]
   );
 
   const message = `${INVITE_MESSAGE}\n${inviteLink}`;
