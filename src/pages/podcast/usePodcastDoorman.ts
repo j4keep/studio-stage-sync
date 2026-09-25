@@ -46,6 +46,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
   });
   const [rejectReason, setRejectReason] = useState<string | null>(null);
   const [forceMuteTick, setForceMuteTick] = useState(0);
+  const [screening, setScreening] = useState(false);
 
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const subscribedRef = useRef(false);
@@ -135,6 +136,12 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
         if (data.type === "force-mute" && data.target === nameRef.current) {
           setForceMuteTick((t) => t + 1);
         }
+        if (data.type === "screen-start" && data.reqId === reqIdRef.current) {
+          setScreening(true);
+        }
+        if (data.type === "screen-stop" && data.reqId === reqIdRef.current) {
+          setScreening(false);
+        }
       }
     });
 
@@ -197,8 +204,24 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     setPending((p) => p.filter((x) => x.reqId !== reqId));
   }, [send]);
 
-  const accept = useCallback((reqId: string) => decide(reqId, true), [decide]);
-  const reject = useCallback((reqId: string, reason?: string) => decide(reqId, false, reason), [decide]);
+  const accept = useCallback((reqId: string) => {
+    send({ type: "screen-stop", reqId });
+    decide(reqId, true);
+  }, [decide, send]);
+  const reject = useCallback((reqId: string, reason?: string) => {
+    send({ type: "screen-stop", reqId });
+    decide(reqId, false, reason);
+  }, [decide, send]);
+
+  const startScreen = useCallback((reqId: string) => {
+    if (!isHost) return;
+    send({ type: "screen-start", reqId });
+  }, [isHost, send]);
+
+  const stopScreen = useCallback((reqId: string) => {
+    if (!isHost) return;
+    send({ type: "screen-stop", reqId });
+  }, [isHost, send]);
 
   const endSession = useCallback((reason?: string) => {
     if (!isHost) return;
@@ -244,12 +267,15 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     policy,
     rejectReason,
     forceMuteTick,
+    screening,
     requestJoin,
     accept,
     reject,
+    startScreen,
+    stopScreen,
     endSession,
     forceMute,
     kick,
     validatePassword,
-  }), [status, pending, policy, rejectReason, forceMuteTick, requestJoin, accept, reject, endSession, forceMute, kick, validatePassword]);
+  }), [status, pending, policy, rejectReason, forceMuteTick, screening, requestJoin, accept, reject, startScreen, stopScreen, endSession, forceMute, kick, validatePassword]);
 }
