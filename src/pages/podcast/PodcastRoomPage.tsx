@@ -764,10 +764,10 @@ const PodcastRoomPage = () => {
       ref={roomShellRef}
       className={
         "min-h-screen bg-zinc-950 text-zinc-100 flex flex-col " +
-        (isAudience && viewerFullscreen ? "fixed inset-0 z-[200] h-[100dvh] overflow-hidden" : "")
+        ((isAudience || isHost) && viewerFullscreen ? "fixed inset-0 z-[200] h-[100dvh] overflow-hidden" : "")
       }
     >
-      <header className={(isAudience && viewerFullscreen ? "hidden " : "") + "flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30"}>
+      <header className={((isAudience || isHost) && viewerFullscreen ? "hidden " : "") + "flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30"}>
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate(-1)}
@@ -793,6 +793,12 @@ const PodcastRoomPage = () => {
           )}
           {!isAudience && (
             <>
+              {isHost && (
+                <Button size="sm" variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
+                  {viewerFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  {viewerFullscreen ? "Exit" : "Full Screen"}
+                </Button>
+              )}
               <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
                 <Share2 className="w-3.5 h-3.5" /> Invite
               </Button>
@@ -821,7 +827,7 @@ const PodcastRoomPage = () => {
       </header>
 
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
-        <main className={"flex-1 min-w-0 flex flex-col gap-4 relative " + (isAudience && viewerFullscreen ? "p-0" : "p-3 md:p-5")}>
+        <main className={"flex-1 min-w-0 flex flex-col gap-4 relative " + ((isAudience || isHost) && viewerFullscreen ? "p-0" : "p-3 md:p-5")}>
 
           {permError && (
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-200">
@@ -848,7 +854,7 @@ const PodcastRoomPage = () => {
             </div>
           )}
 
-          <div className={isAudience && viewerFullscreen ? "flex-1 min-h-0 [&>div]:h-full [&>div]:min-h-0" : ""}>
+          <div className={(isAudience || isHost) && viewerFullscreen ? "flex-1 min-h-0 [&>div]:h-full [&>div]:min-h-0" : ""}>
             <PodcastVideoGrid
               participants={visible}
               isRecording={isRecording}
@@ -897,7 +903,7 @@ const PodcastRoomPage = () => {
           )}
         </main>
 
-        {!isAudience && (
+        {!isAudience && !(isHost && viewerFullscreen) && (
           <PodcastSidebar
             tab={tab} setTab={setTab}
             participants={visible}
@@ -919,7 +925,16 @@ const PodcastRoomPage = () => {
 
       </div>
 
-      {isAudience ? (
+      {isHost && viewerFullscreen ? (
+        <button
+          type="button"
+          onClick={toggleViewerFullscreen}
+          className="fixed right-3 top-3 z-[220] flex h-10 w-10 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur"
+          aria-label="Exit full screen"
+        >
+          <Minimize2 className="h-5 w-5" />
+        </button>
+      ) : isAudience ? (
         viewerFullscreen ? (
           <button
             type="button"
