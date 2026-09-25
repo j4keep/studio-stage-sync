@@ -71,6 +71,7 @@ export default function RadioStationsPage() {
   const [liveHostSessions, setLiveHostSessions] = useState<Set<string>>(new Set());
   const [liveSessionByStation, setLiveSessionByStation] = useState<Record<string, string>>({});
   const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
+  const [hostNames, setHostNames] = useState<Record<string, string>>({});
 
   // Only the very first load shows placeholders; live refreshes swap data silently
   // so the cards never flash blank.
@@ -96,8 +97,25 @@ export default function RadioStationsPage() {
     );
 
     setRadioBackendReady(!backendMissing);
-    setStations((stationResult?.data || []) as Station[]);
+    const nextStations = (stationResult?.data || []) as Station[];
+    setStations(nextStations);
     setShows((showResult?.data || []) as Show[]);
+
+    const ownerIds = Array.from(new Set(nextStations.map((station) => station.owner_user_id).filter(Boolean)));
+    if (ownerIds.length) {
+      const { data: hostRows } = await (supabase as any)
+        .from("users")
+        .select("id,name,username")
+        .in("id", ownerIds);
+      const nextHostNames: Record<string, string> = {};
+      for (const row of hostRows || []) {
+        nextHostNames[row.id] = row.name || row.username || "";
+      }
+      setHostNames(nextHostNames);
+    } else {
+      setHostNames({});
+    }
+
     setLoading(false);
   };
 
@@ -173,11 +191,11 @@ export default function RadioStationsPage() {
     const q = query.trim().toLowerCase();
     if (!q) return stations;
     return stations.filter((station) =>
-      [station.name, station.tagline, station.genre, station.network_name, station.live_title]
+      [station.name, station.tagline, station.genre, station.network_name, station.live_title, hostNames[station.owner_user_id]]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(q)),
     );
-  }, [stations, query]);
+  }, [stations, query, hostNames]);
 
   const effectiveLiveSessionId = (station: Station) =>
     liveSessionByStation[station.id] || station.live_session_id || null;
