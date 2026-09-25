@@ -216,16 +216,16 @@ export default function RadioStationsPage() {
     const presenceSession = liveSessionByStation[station.id];
     if (presenceSession) return true;
 
-    const liveShow = liveShowForStation(station);
-    if (liveShow?.live_session_id) return true;
+    if (!station.is_live) return false;
 
-    if (!station.is_live || !station.live_session_id) return false;
+    const sessionId = effectiveLiveSessionId(station);
+    if (!sessionId) return false;
     if (!presenceReady) return true;
-    if (liveHostSessions.has(station.live_session_id)) return true;
+    if (liveHostSessions.has(sessionId)) return true;
 
     // The host writes a small heartbeat to live_started_at every few seconds.
-    // This keeps Watch Live reliable on a second device even if Realtime presence
-    // briefly misses a host sync on mobile Safari.
+    // This keeps Watch Live reliable on a second device if Realtime presence
+    // briefly misses a host sync, but naturally expires after the host is gone.
     const heartbeatAt = station.live_started_at ? new Date(station.live_started_at).getTime() : 0;
     return heartbeatAt > 0 && Date.now() - heartbeatAt < 20_000;
   };
