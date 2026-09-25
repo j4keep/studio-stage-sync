@@ -294,7 +294,7 @@ function BroadcastHero({
         <span className="inline-flex items-center gap-2 rounded-full bg-red-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.17em]">
           <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Live Broadcasting
         </span>
-        <h2 className="mt-4 text-4xl font-black leading-[0.9] tracking-tight sm:text-5xl">Broadcast like a real station.</h2>
+        <h2 className="mt-4 text-4xl font-black leading-[0.9] tracking-tight sm:text-5xl">Build your broadcast station.</h2>
         <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
           Morning shows, live podcasts, DJ sets, interviews and 24/7 music programming—all under your own station or network.
         </p>
