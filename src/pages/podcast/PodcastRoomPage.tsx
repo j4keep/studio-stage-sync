@@ -866,8 +866,10 @@ const PodcastRoomPage = () => {
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
           <ConnBadge state={room.connState} count={room.participants.length} />
           {fromRadio && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-300">
-              <Users className="h-3.5 w-3.5" /> {listenerCount} listening
+            <span className="inline-flex items-center gap-1 rounded-full border border-zinc-800 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300">
+              <Users className="h-3.5 w-3.5" />
+              <span>{listenerCount}</span>
+              <span className="hidden sm:inline">audience</span>
             </span>
           )}
         </div>
