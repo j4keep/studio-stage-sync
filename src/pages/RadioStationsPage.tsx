@@ -12,7 +12,6 @@ import {
   Image as ImageIcon,
   Pencil,
   Search,
-  TowerControl,
   Waves,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
