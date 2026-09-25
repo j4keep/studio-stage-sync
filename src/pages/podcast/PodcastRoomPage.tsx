@@ -994,6 +994,14 @@ const PodcastRoomPage = () => {
   /* ---------------- Render ---------------- */
   const visible = stageParticipants;
   const stageCount = visible.length;
+  const activeAudioCallers = room.participants.filter(
+    (participant) =>
+      !participant.isLocal &&
+      !participant.isHost &&
+      !participant.name.startsWith("__YAJ_HOLD__:") &&
+      !!participant.audioTrack &&
+      !participant.videoTrack,
+  );
 
   return (
     <div
@@ -1268,11 +1276,11 @@ const PodcastRoomPage = () => {
       )}
 
       {/* Host radio call switchboard — draggable, minimizable, four numbered hold lines. */}
-      {isHost && fromRadio && !viewerFullscreen && (
+      {isHost && fromRadio && (
         <div
           ref={callBoardRef}
           className={
-            "fixed z-[120] select-none rounded-2xl border border-zinc-700 bg-black/95 shadow-2xl backdrop-blur " +
+            "fixed z-[240] select-none rounded-2xl border border-zinc-700 bg-black/95 shadow-2xl backdrop-blur " +
             (callBoardMinimized ? "w-44 p-2" : "w-[min(22rem,calc(100vw-24px))] max-h-[55vh] overflow-y-auto p-3")
           }
           style={{ left: callBoardPos.x, top: callBoardPos.y, touchAction: "none" }}
@@ -1393,6 +1401,41 @@ const PodcastRoomPage = () => {
               </div>
             ))}
           </div>
+
+          {activeAudioCallers.length > 0 && (
+            <div className="mt-3 border-t border-zinc-800 pt-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[9px] font-black uppercase tracking-[0.16em] text-emerald-300">On Air Callers</p>
+                <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300">
+                  {activeAudioCallers.length} active
+                </span>
+              </div>
+              <div className="space-y-2">
+                {activeAudioCallers.map((caller) => (
+                  <div key={caller.id} className="flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] p-2">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-xs font-black text-white">
+                      ON
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-white">{caller.name}</p>
+                      <p className="text-[9px] uppercase tracking-wider text-emerald-300">Audio only · on air</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8 px-2 text-[10px]"
+                      onClick={() => {
+                        doorman.kick(caller.name, "Host ended your call");
+                        toast({ title: "Caller removed", description: `${caller.name} was taken off air. The broadcast is still live.` });
+                      }}
+                    >
+                      End Call
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
             </>
           )}
         </div>
