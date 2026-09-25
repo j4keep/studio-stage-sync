@@ -422,7 +422,7 @@ const PodcastRoomPage = () => {
   const stageParticipants = useMemo(
     () =>
       room.participants
-        .filter((participant) => participant.isHost || participant.camOn || participant.micOn || !!participant.videoTrack)
+        .filter((participant) => participant.camOn || participant.micOn || !!participant.videoTrack || !!participant.audioTrack)
         .slice(0, 4),
     [room.participants],
   );
@@ -753,7 +753,7 @@ const PodcastRoomPage = () => {
         (isAudience && viewerFullscreen ? "fixed inset-0 z-[200] h-[100dvh] overflow-hidden" : "")
       }
     >
-      <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
+      <header className={(isAudience && viewerFullscreen ? "hidden " : "") + "flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30"}>
         <div className="flex items-center gap-3 min-w-0">
           <button
             onClick={() => navigate(-1)}
@@ -834,7 +834,9 @@ const PodcastRoomPage = () => {
             </div>
           )}
 
-          <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} bg={bg} />
+          <div className={isAudience && viewerFullscreen ? "flex-1 min-h-0 [&>div]:h-full [&>div]:min-h-0" : ""}>
+            <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} bg={bg} />
+          </div>
 
           {captionsOn && liveCaption && (
             <div className={`pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-4 max-w-[80%] text-center ${
