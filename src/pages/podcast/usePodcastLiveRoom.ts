@@ -323,10 +323,49 @@ export function usePodcastLiveRoom(opts: {
     });
   }, []);
 
+  /** Prepare only the microphone from the listener's Call In tap (Safari-safe). */
+  const prepareAudioOnlyPublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) throw new Error("Not connected to the live room yet");
+
+    const existing = preparedPublishStreamRef.current;
+    if (existing && existing.getAudioTracks().some((t) => t.readyState === "live")) return;
+
+    existing?.getTracks().forEach((track) => {
+      try { track.stop(); } catch { /* ignore */ }
+    });
+    preparedPublishStreamRef.current = null;
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Microphone is not available in this browser.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    const audio = stream.getAudioTracks()[0];
+    if (!audio) {
+      stream.getTracks().forEach((track) => track.stop());
+      throw new Error("Microphone permission is required to call in.");
+    }
+    preparedPublishStreamRef.current = stream;
+  }, []);
+
   /** Radio call screening: publish microphone only while staying off-stage. */
   const startAudioOnlyPublishing = useCallback(async () => {
     const lp = roomRef.current?.localParticipant;
     if (!lp) throw new Error("Not connected to the live room yet");
+
+    const prepared = preparedPublishStreamRef.current;
+    const audio = prepared?.getAudioTracks().find((t) => t.readyState === "live");
+    if (prepared && audio) {
+      preparedPublishStreamRef.current = null;
+      await lp.publishTrack(audio, { source: Track.Source.Microphone });
+      prepared.getVideoTracks().forEach((track) => {
+        try { track.stop(); } catch { /* ignore */ }
+      });
+      await lp.setCameraEnabled(false);
+      refresh();
+      return;
+    }
+
     await lp.setCameraEnabled(false);
     await lp.setMicrophoneEnabled(true);
     refresh();
@@ -418,6 +457,7 @@ export function usePodcastLiveRoom(opts: {
     setScreen,
     preparePublishing,
     cancelPreparedPublishing,
+    prepareAudioOnlyPublishing,
     startAudioOnlyPublishing,
     stopAudioOnlyPublishing,
     startPublishing,
