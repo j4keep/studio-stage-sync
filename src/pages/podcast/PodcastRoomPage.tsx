@@ -765,6 +765,15 @@ const PodcastRoomPage = () => {
       toast({ title: "Open line is full", description: "There are already 4 people on the broadcast stage." });
       return;
     }
+    doorman.requestJoin(undefined, "call-in");
+    toast({
+      title: "Call-in request sent",
+      description: "You can keep listening while the host decides.",
+    });
+  };
+
+  useEffect(() => {
+    if (!isAudience || doorman.status !== "accepted" || !radioStationId) return;
     const params = new URLSearchParams({
       guest: "1",
       callin: "1",
@@ -772,7 +781,15 @@ const PodcastRoomPage = () => {
       source: "radio",
     });
     navigate(`/podcast/room/${encodeURIComponent(sessionId)}?${params.toString()}`, { replace: true });
-  };
+  }, [isAudience, doorman.status, radioStationId, sessionId, navigate]);
+
+  useEffect(() => {
+    if (!isAudience || doorman.status !== "rejected") return;
+    toast({
+      title: "Call-in not accepted",
+      description: doorman.rejectReason || "The host declined the call-in request. You can keep listening.",
+    });
+  }, [isAudience, doorman.status, doorman.rejectReason]);
 
   const openInvite = () => setInviteOpen(true);
 
@@ -1042,8 +1059,14 @@ const PodcastRoomPage = () => {
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button variant="secondary" onClick={requestCallIn} className="gap-1.5">
-              <PhoneCall className="h-4 w-4" /> Call In
+            <Button
+              variant="secondary"
+              onClick={requestCallIn}
+              disabled={doorman.status === "requesting" || stageCount >= 4}
+              className="gap-1.5"
+            >
+              <PhoneCall className="h-4 w-4" />
+              {stageCount >= 4 ? "Line Full" : doorman.status === "requesting" ? "Calling…" : "Call In"}
             </Button>
             <Button variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
               <Maximize2 className="h-4 w-4" /> Full Screen
