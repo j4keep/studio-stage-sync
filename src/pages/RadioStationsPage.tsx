@@ -10,9 +10,7 @@ import {
   Plus,
   Radio,
   Search,
-  Sparkles,
   TowerControl,
-  Users,
   Waves,
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -63,10 +61,11 @@ export default function RadioStationsPage() {
   const [scheduleStation, setScheduleStation] = useState<Station | null>(null);
   const [liveStation, setLiveStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
+  const [radioBackendReady, setRadioBackendReady] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const [{ data: stationRows }, { data: showRows }] = await Promise.all([
+    const [stationResult, showResult] = await Promise.all([
       (supabase as any)
         .from("radio_stations")
         .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,is_live,live_title,live_started_at,live_session_id")
@@ -80,8 +79,15 @@ export default function RadioStationsPage() {
         .order("scheduled_at", { ascending: true })
         .limit(40),
     ]);
-    setStations((stationRows || []) as Station[]);
-    setShows((showRows || []) as Show[]);
+
+    const backendMissing = Boolean(
+      stationResult?.error?.message?.includes("radio_stations") ||
+      showResult?.error?.message?.includes("radio_station_shows"),
+    );
+
+    setRadioBackendReady(!backendMissing);
+    setStations((stationResult?.data || []) as Station[]);
+    setShows((showResult?.data || []) as Show[]);
     setLoading(false);
   };
 
@@ -122,7 +128,25 @@ export default function RadioStationsPage() {
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
   const upcoming = shows.filter((show) => show.status === "scheduled").slice(0, 8);
 
+  const openCreateStation = () => {
+    if (!radioBackendReady) {
+      toast({
+        title: "Radio setup pending",
+        description: "The station database still needs to be activated before stations can be created.",
+      });
+      return;
+    }
+    setCreatorOpen(true);
+  };
+
   const beginLiveFlow = () => {
+    if (!radioBackendReady) {
+      toast({
+        title: "Radio setup pending",
+        description: "The station database still needs to be activated before live station broadcasting can start.",
+      });
+      return;
+    }
     if (mine.length) {
       setLiveStation(mine[0]);
       return;
@@ -130,7 +154,7 @@ export default function RadioStationsPage() {
     setCreatorOpen(true);
     toast({
       title: "Create your station first",
-      description: "Once the station exists, Go Live opens one broadcast setup and then the studio.",
+      description: "Create the station once, then Go Live opens the broadcast setup.",
     });
   };
 
@@ -158,13 +182,6 @@ export default function RadioStationsPage() {
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300">YAJ Radio Network</p>
             <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl">Stations & Live Broadcasts</h1>
           </div>
-          <button
-            type="button"
-            onClick={() => setCreatorOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-full bg-violet-600 px-4 text-sm font-black shadow-lg shadow-violet-950/30"
-          >
-            <Plus className="h-4 w-4" /> Create
-          </button>
         </div>
 
         <div className="mx-auto mt-3 flex w-full max-w-6xl items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4">
@@ -183,7 +200,7 @@ export default function RadioStationsPage() {
           liveCount={liveStations.length}
           stationCount={stations.length}
           upcomingCount={upcoming.length}
-          onCreate={() => setCreatorOpen(true)}
+          onCreate={openCreateStation}
           onGoLive={beginLiveFlow}
         />
 
@@ -210,7 +227,7 @@ export default function RadioStationsPage() {
               ))}
             </div>
           ) : (
-            <EmptyLive onCreate={() => setCreatorOpen(true)} onGoLive={beginLiveFlow} />
+            <EmptyLive />
           )}
         </section>
 
@@ -287,7 +304,6 @@ export default function RadioStationsPage() {
           </section>
         ) : null}
 
-        <CreatorCta onCreate={() => setCreatorOpen(true)} onLive={beginLiveFlow} />
       </main>
 
       {creatorOpen ? (
@@ -475,40 +491,21 @@ function StationCard({
   );
 }
 
-function EmptyLive({ onCreate, onGoLive }: { onCreate: () => void; onGoLive: () => void }) {
+function EmptyLive() {
   return (
     <div className="relative overflow-hidden rounded-[28px] border border-white/10">
       <img src={podcastHost} alt="" className="absolute inset-0 h-full w-full object-cover opacity-55" />
       <div className="absolute inset-0 bg-gradient-to-r from-[#090c13] via-[#090c13]/90 to-[#090c13]/55" />
       <div className="relative z-10 max-w-xl p-6 sm:p-8">
-        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15 text-red-300"><Radio className="h-5 w-5" /></span>
+        <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-red-500/15 text-red-300">
+          <Radio className="h-5 w-5" />
+        </span>
         <h3 className="mt-4 text-2xl font-black">The air is open.</h3>
-        <p className="mt-2 text-sm leading-relaxed text-white/55">No station is live right now. Be the first to start a morning show, interview, live podcast, or music broadcast.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={onGoLive} className="rounded-full bg-white px-4 py-2.5 text-xs font-black text-slate-950">Start Live Show</button>
-          <button onClick={onCreate} className="rounded-full border border-white/15 bg-black/25 px-4 py-2.5 text-xs font-black">Create Station</button>
-        </div>
+        <p className="mt-2 text-sm leading-relaxed text-white/55">
+          No station is live right now. Live broadcasts will appear here automatically when a station goes on air.
+        </p>
       </div>
     </div>
-  );
-}
-
-function CreatorCta({ onCreate, onLive }: { onCreate: () => void; onLive: () => void }) {
-  return (
-    <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-br from-violet-700/35 via-fuchsia-600/20 to-cyan-500/10 p-6 sm:p-8">
-      <div className="absolute -right-8 -top-10 h-40 w-40 rounded-full bg-cyan-400/10 blur-3xl" />
-      <div className="relative z-10 grid gap-5 sm:grid-cols-[1fr_auto] sm:items-center">
-        <div>
-          <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-violet-200"><Sparkles className="h-4 w-4" /> Creator Broadcast Network</span>
-          <h3 className="mt-2 text-2xl font-black sm:text-3xl">Start your own radio station.</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/55">Build your network, schedule programs, run music between shows, and grow a listener community around your voice.</p>
-        </div>
-        <div className="flex gap-2 sm:flex-col">
-          <button onClick={onCreate} className="flex-1 rounded-full bg-white px-5 py-3 text-xs font-black text-slate-950">Create Station</button>
-          <button onClick={onLive} className="flex-1 rounded-full border border-white/15 px-5 py-3 text-xs font-black">Go Live</button>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -734,7 +731,14 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
     setSaving(false);
 
     if (error) {
-      toast({ title: "Could not create station", description: error.message, variant: "destructive" });
+      const missingTable = String(error.message || "").includes("radio_stations");
+      toast({
+        title: missingTable ? "Radio setup pending" : "Could not create station",
+        description: missingTable
+          ? "The station database has not been activated yet."
+          : error.message,
+        variant: missingTable ? "default" : "destructive",
+      });
       return;
     }
 
