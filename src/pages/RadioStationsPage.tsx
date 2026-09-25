@@ -241,7 +241,7 @@ export default function RadioStationsPage() {
   }, [loading, stations.length, user?.id]);
 
   return (
-    <div className="min-h-screen bg-[#080b12] pb-28 text-white">
+    <div className="min-h-screen bg-[#080b12] pb-[calc(10rem+env(safe-area-inset-bottom))] text-white">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#080b12]/92 px-4 pb-3 pt-3 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
           <button
@@ -334,9 +334,9 @@ export default function RadioStationsPage() {
           </section>
         ) : null}
 
-        <section>
-          <SectionTitle eyebrow="Discover" title="Stations & networks" />
-          {discover.length ? (
+        {discover.length ? (
+          <section>
+            <SectionTitle eyebrow="Discover" title="Stations & networks" />
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {discover.map((station, index) => (
                 <StationCard
@@ -353,14 +353,8 @@ export default function RadioStationsPage() {
                 />
               ))}
             </div>
-          ) : (
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-7 text-center">
-              <TowerControl className="mx-auto h-8 w-8 text-white/35" />
-              <p className="mt-3 text-sm font-black">Your station directory is just getting started.</p>
-              <p className="mx-auto mt-1 max-w-md text-xs leading-relaxed text-white/45">Create the first station, build a network, and start programming shows for listeners.</p>
-            </div>
-          )}
-        </section>
+          </section>
+        ) : null}
 
         {mine.length ? (
           <section>
