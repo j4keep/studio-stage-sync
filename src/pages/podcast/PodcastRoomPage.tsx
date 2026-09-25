@@ -448,7 +448,14 @@ const PodcastRoomPage = () => {
 
   // Live ref to participants so the rAF draw loop always has the current set.
   const participantsRef = useRef<RoomParticipant[]>([]);
-  useEffect(() => { participantsRef.current = stageParticipants; }, [stageParticipants]);
+  const processedLocalVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+  useEffect(() => {
+    participantsRef.current = stageParticipants.map((participant) =>
+      participant.isLocal && processedLocalVideoTrackRef.current
+        ? { ...participant, videoTrack: processedLocalVideoTrackRef.current }
+        : participant,
+    );
+  }, [stageParticipants]);
 
   // chat (in-memory; realtime sync is Phase 2B)
   const [chat, setChat] = useState<{ id: string; from: string; text: string; ts: number }[]>([]);
@@ -558,7 +565,7 @@ const PodcastRoomPage = () => {
       setIsRecording(true);
       setIsPaused(false);
       setElapsed(0);
-      toast({ title: "Recording started", description: "Capturing host + all guests. Auto-saving every 10s." });
+      toast({ title: "Recording started", description: "Capturing the live stage exactly as shown, including your selected background." });
     } catch (e: any) {
       compositeRef.current?.stop();
       compositeRef.current = null;
@@ -835,7 +842,19 @@ const PodcastRoomPage = () => {
           )}
 
           <div className={isAudience && viewerFullscreen ? "flex-1 min-h-0 [&>div]:h-full [&>div]:min-h-0" : ""}>
-            <PodcastVideoGrid participants={visible} isRecording={isRecording} localId={me?.id} layout={activeLayout} bg={bg} />
+            <PodcastVideoGrid
+              participants={visible}
+              isRecording={isRecording}
+              localId={me?.id}
+              layout={activeLayout}
+              bg={bg}
+              onProcessedLocalTrack={(track) => {
+                processedLocalVideoTrackRef.current = track;
+                participantsRef.current = stageParticipants.map((participant) =>
+                  participant.isLocal && track ? { ...participant, videoTrack: track } : participant,
+                );
+              }}
+            />
           </div>
 
           {captionsOn && liveCaption && (
@@ -1120,8 +1139,15 @@ const ConnBadge = ({ state, count }: { state: string; count: number }) => {
 };
 
 const PodcastVideoGrid = ({
-  participants, isRecording, localId, layout = "auto", bg,
-}: { participants: RoomParticipant[]; isRecording: boolean; localId?: string; layout?: string; bg: PodcastBg }) => {
+  participants, isRecording, localId, layout = "auto", bg, onProcessedLocalTrack,
+}: {
+  participants: RoomParticipant[];
+  isRecording: boolean;
+  localId?: string;
+  layout?: string;
+  bg: PodcastBg;
+  onProcessedLocalTrack?: (track: MediaStreamTrack | null) => void;
+}) => {
   const count = participants.length || 1;
   let cols = "grid-cols-1";
   if (layout === "split") cols = "grid-cols-1 md:grid-cols-2";
@@ -1141,10 +1167,10 @@ const PodcastVideoGrid = ({
     const rest = participants.filter((p) => p.id !== main.id);
     return (
       <div className="flex flex-col gap-3 flex-1 min-h-[300px]">
-        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} /></div>
+        <div className="flex-1"><ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} onProcessedLocalTrack={onProcessedLocalTrack} /></div>
         {rest.length > 0 && (
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2 h-24">
-            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} />)}
+            {rest.map((p) => <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} onProcessedLocalTrack={onProcessedLocalTrack} />)}
           </div>
         )}
       </div>
@@ -1155,10 +1181,10 @@ const PodcastVideoGrid = ({
     const rest = participants.filter((p) => p.id !== main.id);
     return (
       <div className="relative flex-1 min-h-[300px]">
-        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} />
+        <ParticipantTile p={main} isRecording={isRecording && main.id === localId} bg={bg} onProcessedLocalTrack={onProcessedLocalTrack} />
         {rest[0] && (
           <div className="absolute right-3 bottom-3 w-40 md:w-56 aspect-video rounded-lg overflow-hidden border-2 border-zinc-700 shadow-xl">
-            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} bg={bg} />
+            <ParticipantTile p={rest[0]} isRecording={isRecording && rest[0].id === localId} bg={bg} onProcessedLocalTrack={onProcessedLocalTrack} />
           </div>
         )}
       </div>
@@ -1167,7 +1193,7 @@ const PodcastVideoGrid = ({
   return (
     <div className={`grid ${cols} gap-3 flex-1 min-h-[300px]`}>
       {participants.map((p) => (
-        <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} />
+        <ParticipantTile key={p.id} p={p} isRecording={isRecording && p.id === localId} bg={bg} onProcessedLocalTrack={onProcessedLocalTrack} />
       ))}
     </div>
   );
@@ -1181,7 +1207,17 @@ const QUALITY_STYLE: Record<RoomParticipant["quality"], { color: string; label: 
   unknown: { color: "text-zinc-400", label: "—" },
 };
 
-const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecording: boolean; bg: PodcastBg }) => {
+const ParticipantTile = ({
+  p,
+  isRecording,
+  bg,
+  onProcessedLocalTrack,
+}: {
+  p: RoomParticipant;
+  isRecording: boolean;
+  bg: PodcastBg;
+  onProcessedLocalTrack?: (track: MediaStreamTrack | null) => void;
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -1189,6 +1225,12 @@ const ParticipantTile = ({ p, isRecording, bg }: { p: RoomParticipant; isRecordi
   // arrive composited from each sender's own device.
   const segEnabled = !!p.isLocal && !!p.camOn && bg.kind !== "none";
   const seg = useBackgroundReplacement(p.videoTrack || null, bg, segEnabled);
+
+  useEffect(() => {
+    if (!p.isLocal) return;
+    onProcessedLocalTrack?.(seg.active ? seg.processedTrack : null);
+    return () => onProcessedLocalTrack?.(null);
+  }, [p.isLocal, seg.active, seg.processedTrack, onProcessedLocalTrack]);
 
   useEffect(() => {
     if (videoRef.current) {
