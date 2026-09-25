@@ -68,6 +68,9 @@ export default function RadioStationsPage() {
   const [editStation, setEditStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
   const [radioBackendReady, setRadioBackendReady] = useState(true);
+  const [presenceReady, setPresenceReady] = useState(false);
+  const [liveHostSessions, setLiveHostSessions] = useState<Set<string>>(new Set());
+  const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
 
   const load = async () => {
     setLoading(true);
@@ -96,6 +99,40 @@ export default function RadioStationsPage() {
     setShows((showResult?.data || []) as Show[]);
     setLoading(false);
   };
+
+  useEffect(() => {
+    const channel = (supabase as any).channel("yaj-radio-live-presence");
+
+    const sync = () => {
+      const state = channel.presenceState() as Record<string, any[]>;
+      const metas = Object.values(state).flat();
+
+      const hosts = new Set<string>();
+      const listeners: Record<string, number> = {};
+
+      for (const meta of metas as any[]) {
+        const sessionId = meta?.sessionId;
+        if (!sessionId) continue;
+        if (meta.role === "host") hosts.add(sessionId);
+        if (meta.role === "audience") listeners[sessionId] = (listeners[sessionId] || 0) + 1;
+      }
+
+      setLiveHostSessions(hosts);
+      setListenerCounts(listeners);
+      setPresenceReady(true);
+    };
+
+    channel.on("presence", { event: "sync" }, sync);
+    channel.on("presence", { event: "join" }, sync);
+    channel.on("presence", { event: "leave" }, sync);
+    channel.subscribe((status: string) => {
+      if (status === "SUBSCRIBED") sync();
+    });
+
+    return () => {
+      void (supabase as any).removeChannel(channel);
+    };
+  }, []);
 
   useEffect(() => {
     void load();
@@ -129,10 +166,41 @@ export default function RadioStationsPage() {
     );
   }, [stations, query]);
 
-  const liveStations = filtered.filter((station) => station.is_live);
-  const discover = filtered.filter((station) => !station.is_live);
+  const isActuallyLive = (station: Station) => {
+    if (!station.is_live || !station.live_session_id) return false;
+    return presenceReady ? liveHostSessions.has(station.live_session_id) : station.is_live;
+  };
+
+  const liveStations = filtered.filter(isActuallyLive);
+  const discover = filtered.filter((station) => !isActuallyLive(station));
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
   const upcoming = shows.filter((show) => show.status === "scheduled").slice(0, 8);
+
+  useEffect(() => {
+    if (!presenceReady || !user?.id) return;
+
+    const stale = stations.filter((station) => {
+      if (station.owner_user_id !== user.id || !station.is_live || !station.live_session_id) return false;
+      if (liveHostSessions.has(station.live_session_id)) return false;
+      const started = station.live_started_at ? new Date(station.live_started_at).getTime() : 0;
+      return !started || Date.now() - started > 20_000;
+    });
+
+    for (const station of stale) {
+      void (supabase as any)
+        .from("radio_stations")
+        .update({
+          is_live: false,
+          live_title: null,
+          live_started_at: null,
+          live_session_id: null,
+        })
+        .eq("id", station.id)
+        .eq("owner_user_id", user.id);
+    }
+
+    if (stale.length) window.setTimeout(() => void load(), 500);
+  }, [presenceReady, stations, liveHostSessions, user?.id]);
 
   const openCreateStation = () => {
     if (!radioBackendReady) {
@@ -221,7 +289,8 @@ export default function RadioStationsPage() {
               {liveStations.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={station}
+                  station={{ ...station, is_live: isActuallyLive(station) }}
+                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
                   shows={shows}
                   mine={station.owner_user_id === user?.id}
                   art={STATION_ART[index % STATION_ART.length]}
@@ -272,7 +341,8 @@ export default function RadioStationsPage() {
               {discover.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={station}
+                  station={{ ...station, is_live: isActuallyLive(station) }}
+                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
                   shows={shows}
                   mine={station.owner_user_id === user?.id}
                   art={STATION_ART[(index + 1) % STATION_ART.length]}
@@ -299,7 +369,8 @@ export default function RadioStationsPage() {
               {mine.map((station, index) => (
                 <StationCard
                   key={station.id}
-                  station={station}
+                  station={{ ...station, is_live: isActuallyLive(station) }}
+                  listenerCount={station.live_session_id ? listenerCounts[station.live_session_id] || 0 : 0}
                   shows={shows}
                   mine
                   art={STATION_ART[(index + 3) % STATION_ART.length]}
@@ -423,6 +494,7 @@ function SectionTitle({ eyebrow, title, count }: { eyebrow: string; title: strin
 
 function StationCard({
   station,
+  listenerCount,
   shows,
   mine,
   art,
@@ -433,6 +505,7 @@ function StationCard({
   onEdit,
 }: {
   station: Station;
+  listenerCount: number;
   shows: Show[];
   mine: boolean;
   art: string;
@@ -486,7 +559,9 @@ function StationCard({
           <div className="rounded-2xl border border-red-400/15 bg-red-500/10 p-3">
             <p className="text-[9px] font-black uppercase tracking-[0.15em] text-red-300">Now on air</p>
             <p className="mt-1 text-sm font-black">{station.live_title || "Live Show"}</p>
-            <p className="mt-1 flex items-center gap-1.5 text-[10px] text-white/45"><Waves className="h-3.5 w-3.5" /> Live broadcast in progress</p>
+            <p className="mt-1 flex items-center gap-1.5 text-[10px] text-white/45">
+              <Waves className="h-3.5 w-3.5" /> Live broadcast in progress · {listenerCount} listening
+            </p>
           </div>
         ) : nextShow ? (
           <div className="rounded-2xl bg-white/[0.05] p-3">
