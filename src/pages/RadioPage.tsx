@@ -32,6 +32,8 @@ import RadioMoreSheet from "@/components/RadioMoreSheet";
 import YajRadioWordmark from "@/components/YajRadioWordmark";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
+import RadioWelcomeSheet from "@/components/radio/RadioWelcomeSheet";
+import RadioBroadcastHero from "@/components/radio/RadioBroadcastHero";
 
 const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter((g) => g !== "Beats")];
 
@@ -102,12 +104,25 @@ const RadioPage = () => {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [liveStationCount, setLiveStationCount] = useState(0);
+  const [upcomingShowCount, setUpcomingShowCount] = useState(0);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const swipeStartX = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
   const seekGestureLockRef = useRef(false);
 
   const trackComments = currentTrack ? comments[currentTrack.id] || [] : [];
+
+  useEffect(() => {
+    void (async () => {
+      const [{ count: liveCount }, { count: showCount }] = await Promise.all([
+        (supabase as any).from("radio_stations").select("id", { count: "exact", head: true }).eq("is_public", true).eq("is_live", true),
+        (supabase as any).from("radio_station_shows").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
+      ]);
+      setLiveStationCount(Number(liveCount || 0));
+      setUpcomingShowCount(Number(showCount || 0));
+    })();
+  }, []);
 
   useEffect(() => {
     if (!currentTrack) return;
@@ -265,6 +280,10 @@ const RadioPage = () => {
   if (!currentTrack) {
     return (
       <div className="flex min-h-screen flex-col bg-background px-4 pt-4 lg:min-h-[calc(100dvh-3.5rem-1.5rem)] lg:rounded-xl lg:border lg:border-border lg:bg-card lg:p-6">
+        <RadioWelcomeSheet
+          onStartListening={() => {}}
+          onCreateStation={() => navigate("/radio/stations")}
+        />
         <div className="mb-5 grid min-h-11 w-full grid-cols-[44px_1fr_44px] items-center">
           <button
             type="button"
@@ -309,6 +328,15 @@ const RadioPage = () => {
               <span className="block text-[10px] text-muted-foreground">Listen live or create your own station/network</span>
             </span>
           </button>
+        </div>
+        <div className="mb-5">
+          <RadioBroadcastHero
+            liveCount={liveStationCount}
+            upcomingCount={upcomingShowCount}
+            onBrowse={() => navigate("/radio/stations")}
+            onCreate={() => navigate("/radio/stations")}
+            onGoLive={() => navigate("/podcast/live")}
+          />
         </div>
         <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
@@ -574,6 +602,10 @@ const RadioPage = () => {
 
   return (
     <div className="relative bg-background lg:rounded-xl lg:border lg:border-border lg:bg-card lg:shadow-sm">
+      <RadioWelcomeSheet
+        onStartListening={() => {}}
+        onCreateStation={() => navigate("/radio/stations")}
+      />
       {/* Header */}
       <div className="sticky top-0 z-20 border-b border-border/70 bg-background/95 px-3 pb-3 pt-3 backdrop-blur lg:static lg:bg-card lg:px-3 lg:pt-4">
         <div className="mb-3 grid min-h-11 grid-cols-[44px_1fr_auto] items-center gap-2">
@@ -684,6 +716,16 @@ const RadioPage = () => {
             )}
           </div>
         )}
+
+        <div className="mb-4">
+          <RadioBroadcastHero
+            liveCount={liveStationCount}
+            upcomingCount={upcomingShowCount}
+            onBrowse={() => navigate("/radio/stations")}
+            onCreate={() => navigate("/radio/stations")}
+            onGoLive={() => navigate("/podcast/live")}
+          />
+        </div>
 
         <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
