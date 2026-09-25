@@ -335,7 +335,7 @@ const RadioPage = () => {
             upcomingCount={upcomingShowCount}
             onBrowse={() => navigate("/radio/stations")}
             onCreate={() => navigate("/radio/stations")}
-            onGoLive={() => navigate("/podcast/live")}
+            onGoLive={() => navigate("/radio/stations?start=live")}
           />
         </div>
         <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
@@ -723,7 +723,7 @@ const RadioPage = () => {
             upcomingCount={upcomingShowCount}
             onBrowse={() => navigate("/radio/stations")}
             onCreate={() => navigate("/radio/stations")}
-            onGoLive={() => navigate("/podcast/live")}
+            onGoLive={() => navigate("/radio/stations?start=live")}
           />
         </div>
 
