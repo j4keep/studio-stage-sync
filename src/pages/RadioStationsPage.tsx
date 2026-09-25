@@ -15,10 +15,11 @@ import {
   Users,
   Waves,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { PodcastSessionStore } from "@/pages/podcast/podcastSessionStore";
 import radioHost from "@/assets/wstudio-orbit-headphones.jpg";
 import studioMic from "@/assets/wstudio-orbit-mic.jpg";
 import studioMixer from "@/assets/wstudio-orbit-mixer.jpg";
@@ -54,11 +55,13 @@ const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
 export default function RadioStationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [stations, setStations] = useState<Station[]>([]);
   const [shows, setShows] = useState<Show[]>([]);
   const [loading, setLoading] = useState(true);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [scheduleStation, setScheduleStation] = useState<Station | null>(null);
+  const [liveStation, setLiveStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
 
   const load = async () => {
@@ -100,6 +103,26 @@ export default function RadioStationsPage() {
   const discover = filtered.filter((station) => !station.is_live);
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
   const upcoming = shows.filter((show) => show.status === "scheduled").slice(0, 8);
+
+  const beginLiveFlow = () => {
+    if (mine.length) {
+      setLiveStation(mine[0]);
+      return;
+    }
+    setCreatorOpen(true);
+    toast({
+      title: "Create your station first",
+      description: "Once the station exists, Go Live opens one broadcast setup and then the studio.",
+    });
+  };
+
+  useEffect(() => {
+    if (loading || searchParams.get("start") !== "live") return;
+    beginLiveFlow();
+    // Only respond once to the entry request.
+    navigate("/radio/stations", { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, stations.length, user?.id]);
 
   return (
     <div className="min-h-screen bg-[#080b12] pb-28 text-white">
@@ -143,7 +166,7 @@ export default function RadioStationsPage() {
           stationCount={stations.length}
           upcomingCount={upcoming.length}
           onCreate={() => setCreatorOpen(true)}
-          onGoLive={() => navigate("/podcast/live")}
+          onGoLive={beginLiveFlow}
         />
 
         <section>
@@ -164,11 +187,12 @@ export default function RadioStationsPage() {
                   featured
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
+                  onGoLive={() => setLiveStation(station)}
                 />
               ))}
             </div>
           ) : (
-            <EmptyLive onCreate={() => setCreatorOpen(true)} onGoLive={() => navigate("/podcast/live")} />
+            <EmptyLive onCreate={() => setCreatorOpen(true)} onGoLive={beginLiveFlow} />
           )}
         </section>
 
@@ -212,6 +236,7 @@ export default function RadioStationsPage() {
                   art={STATION_ART[(index + 1) % STATION_ART.length]}
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
+                  onGoLive={() => setLiveStation(station)}
                 />
               ))}
             </div>
@@ -237,13 +262,14 @@ export default function RadioStationsPage() {
                   art={STATION_ART[(index + 3) % STATION_ART.length]}
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
+                  onGoLive={() => setLiveStation(station)}
                 />
               ))}
             </div>
           </section>
         ) : null}
 
-        <CreatorCta onCreate={() => setCreatorOpen(true)} onLive={() => navigate("/podcast/live")} />
+        <CreatorCta onCreate={() => setCreatorOpen(true)} onLive={beginLiveFlow} />
       </main>
 
       {creatorOpen ? (
@@ -262,6 +288,17 @@ export default function RadioStationsPage() {
           onClose={() => setScheduleStation(null)}
           onSaved={() => {
             setScheduleStation(null);
+            void load();
+          }}
+        />
+      ) : null}
+
+      {liveStation ? (
+        <StartBroadcastSheet
+          station={liveStation}
+          onClose={() => setLiveStation(null)}
+          onStarted={() => {
+            setLiveStation(null);
             void load();
           }}
         />
@@ -338,6 +375,7 @@ function StationCard({
   featured = false,
   onChanged,
   onSchedule,
+  onGoLive,
 }: {
   station: Station;
   shows: Show[];
@@ -346,28 +384,10 @@ function StationCard({
   featured?: boolean;
   onChanged: () => void;
   onSchedule: () => void;
+  onGoLive: () => void;
 }) {
   const navigate = useNavigate();
   const nextShow = shows.find((show) => show.station_id === station.id && show.status === "scheduled");
-
-  const goLive = async () => {
-    const { error } = await (supabase as any)
-      .from("radio_stations")
-      .update({
-        is_live: true,
-        live_title: station.live_title || station.name + " Live",
-        live_started_at: new Date().toISOString(),
-      })
-      .eq("id", station.id);
-
-    if (error) {
-      toast({ title: "Could not go live", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    onChanged();
-    navigate("/podcast/live?station=" + encodeURIComponent(station.id));
-  };
 
   const tuneIn = () => {
     if (station.is_live && station.live_session_id) {
@@ -428,7 +448,7 @@ function StationCard({
           {mine ? (
             <>
               <button onClick={onSchedule} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black">Schedule</button>
-              <button onClick={goLive} className="rounded-full bg-violet-600 px-3 py-2.5 text-[10px] font-black">Go Live</button>
+              <button onClick={onGoLive} className="rounded-full bg-violet-600 px-3 py-2.5 text-[10px] font-black">Go Live</button>
             </>
           ) : null}
         </div>
@@ -480,6 +500,131 @@ function Stat({ value, label }: { value: number; label: string }) {
       <p className="text-lg font-black">{value}</p>
       <p className="text-[9px] font-black uppercase tracking-[0.13em] text-white/40">{label}</p>
     </div>
+  );
+}
+
+function StartBroadcastSheet({
+  station,
+  onClose,
+  onStarted,
+}: {
+  station: Station;
+  onClose: () => void;
+  onStarted: () => void;
+}) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [starting, setStarting] = useState(false);
+  const [title, setTitle] = useState(station.live_title || station.name + " Live");
+  const [type, setType] = useState("talk");
+  const [duration, setDuration] = useState(60);
+
+  const start = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!user || !title.trim()) return;
+    setStarting(true);
+
+    const hostName =
+      user.user_metadata?.display_name ||
+      user.user_metadata?.full_name ||
+      user.email?.split("@")[0] ||
+      "Host";
+
+    const session = PodcastSessionStore.create({
+      title: title.trim(),
+      description: type === "podcast" ? "Live podcast on YAJ Radio" : "Live " + type + " broadcast on YAJ Radio",
+      hostId: user.id,
+      hostName,
+      scheduledAt: Date.now(),
+      durationMin: duration,
+      visibility: "public",
+    });
+    PodcastSessionStore.markLive(session.id);
+
+    const { error: stationError } = await (supabase as any)
+      .from("radio_stations")
+      .update({
+        is_live: true,
+        live_title: title.trim(),
+        live_started_at: new Date().toISOString(),
+        live_session_id: session.id,
+      })
+      .eq("id", station.id)
+      .eq("owner_user_id", user.id);
+
+    if (stationError) {
+      setStarting(false);
+      toast({
+        title: "Radio database is not ready",
+        description: "The YAJ Radio station migration still needs to be applied in Supabase before live station syncing can work.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    await (supabase as any).from("radio_station_shows").insert({
+      station_id: station.id,
+      host_user_id: user.id,
+      title: title.trim(),
+      show_type: type,
+      scheduled_at: new Date().toISOString(),
+      duration_minutes: duration,
+      status: "live",
+      live_session_id: session.id,
+    });
+
+    setStarting(false);
+    onStarted();
+    navigate(
+      "/podcast/room/" +
+        encodeURIComponent(session.id) +
+        "?station=" +
+        encodeURIComponent(station.id) +
+        "&source=radio",
+    );
+  };
+
+  return (
+    <ModalShell onClose={onClose}>
+      <form onSubmit={start}>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-300">Start Broadcast · {station.name}</p>
+        <h2 className="mt-1 text-2xl font-black">Go on air</h2>
+        <p className="mt-1 text-xs leading-relaxed text-white/45">
+          Enter the show once here. Starting takes you directly into the broadcast room and publishes the station under On Air Now.
+        </p>
+
+        <div className="mt-5 space-y-3">
+          <Field value={title} onChange={setTitle} placeholder="Broadcast title" />
+          <select
+            value={type}
+            onChange={(event) => setType(event.target.value)}
+            className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 text-sm text-white outline-none"
+          >
+            <option value="talk" className="bg-slate-950">Talk show</option>
+            <option value="podcast" className="bg-slate-950">Live podcast</option>
+            <option value="interview" className="bg-slate-950">Interview</option>
+            <option value="music" className="bg-slate-950">Music show</option>
+            <option value="mix" className="bg-slate-950">DJ / Mix</option>
+          </select>
+          <select
+            value={duration}
+            onChange={(event) => setDuration(Number(event.target.value))}
+            className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 text-sm text-white outline-none"
+          >
+            <option value={30} className="bg-slate-950">30 minutes</option>
+            <option value={60} className="bg-slate-950">1 hour</option>
+            <option value={90} className="bg-slate-950">90 minutes</option>
+            <option value={120} className="bg-slate-950">2 hours</option>
+          </select>
+        </div>
+
+        <ModalActions
+          onClose={onClose}
+          disabled={starting || !title.trim()}
+          label={starting ? "Starting…" : "Go On Air"}
+        />
+      </form>
+    </ModalShell>
   );
 }
 
