@@ -189,7 +189,6 @@ import DealPublishingPolicyPage from "./pages/deals/DealPublishingPolicyPage";
 import DealBecomeBusinessPage from "./pages/deals/DealBecomeBusinessPage";
 
 
-import { SessionProvider } from "./wstudio/session/SessionContext";
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
 import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
@@ -325,7 +324,6 @@ const ProtectedRoutes = () => {
   }
 
   return (
-    <SessionProvider>
     <SafetyBalanceProvider>
     <SafetyRouteShell
       showThemePicker={showThemePicker}
@@ -520,7 +518,6 @@ const ProtectedRoutes = () => {
     </AppLayout>
     </SafetyRouteShell>
     </SafetyBalanceProvider>
-    </SessionProvider>
   );
 };
 
