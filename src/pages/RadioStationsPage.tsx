@@ -50,6 +50,7 @@ type Show = {
   scheduled_at: string | null;
   duration_minutes: number;
   status: string;
+  live_session_id: string | null;
 };
 
 const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
@@ -85,7 +86,7 @@ export default function RadioStationsPage() {
         .order("created_at", { ascending: false }),
       (supabase as any)
         .from("radio_station_shows")
-        .select("id,station_id,title,show_type,scheduled_at,duration_minutes,status")
+        .select("id,station_id,title,show_type,scheduled_at,duration_minutes,status,live_session_id")
         .in("status", ["scheduled", "live"])
         .order("scheduled_at", { ascending: true })
         .limit(40),
@@ -197,18 +198,33 @@ export default function RadioStationsPage() {
     );
   }, [stations, query, hostNames]);
 
+  const liveShowForStation = (station: Station) =>
+    shows.find(
+      (show) =>
+        show.station_id === station.id &&
+        show.status === "live" &&
+        !!show.live_session_id,
+    );
+
   const effectiveLiveSessionId = (station: Station) =>
-    liveSessionByStation[station.id] || station.live_session_id || null;
+    liveSessionByStation[station.id] ||
+    station.live_session_id ||
+    liveShowForStation(station)?.live_session_id ||
+    null;
 
   const isActuallyLive = (station: Station) => {
     const presenceSession = liveSessionByStation[station.id];
     if (presenceSession) return true;
+
+    const liveShow = liveShowForStation(station);
+    if (liveShow?.live_session_id) return true;
+
     if (!station.is_live || !station.live_session_id) return false;
     if (!presenceReady) return true;
     if (liveHostSessions.has(station.live_session_id)) return true;
 
     // The host writes a small heartbeat to live_started_at every few seconds.
-    // This keeps Tune In reliable on a second device even if Realtime presence
+    // This keeps Watch Live reliable on a second device even if Realtime presence
     // briefly misses a host sync on mobile Safari.
     const heartbeatAt = station.live_started_at ? new Date(station.live_started_at).getTime() : 0;
     return heartbeatAt > 0 && Date.now() - heartbeatAt < 20_000;
@@ -591,7 +607,7 @@ function StationCard({
 
         <div className="flex gap-2">
           <button onClick={tuneIn} className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 text-xs font-black text-slate-950">
-            <Headphones className="h-4 w-4" /> {station.is_live ? "Tune In" : "Follow"}
+            <Headphones className="h-4 w-4" /> {station.is_live ? "Watch Live" : "Follow"}
           </button>
           {mine ? (
             <>
