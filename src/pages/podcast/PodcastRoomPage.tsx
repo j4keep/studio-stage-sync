@@ -748,6 +748,13 @@ const PodcastRoomPage = () => {
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
 
+  const handleProcessedLocalTrack = useCallback((track: MediaStreamTrack | null) => {
+    processedLocalVideoTrackRef.current = track;
+    participantsRef.current = stageParticipants.map((participant) =>
+      participant.isLocal && track ? { ...participant, videoTrack: track } : participant,
+    );
+  }, [stageParticipants]);
+
   /* ---------------- Render ---------------- */
   const visible = stageParticipants;
   const stageCount = visible.length;
@@ -848,12 +855,7 @@ const PodcastRoomPage = () => {
               localId={me?.id}
               layout={activeLayout}
               bg={bg}
-              onProcessedLocalTrack={(track) => {
-                processedLocalVideoTrackRef.current = track;
-                participantsRef.current = stageParticipants.map((participant) =>
-                  participant.isLocal && track ? { ...participant, videoTrack: track } : participant,
-                );
-              }}
+              onProcessedLocalTrack={handleProcessedLocalTrack}
             />
           </div>
 
