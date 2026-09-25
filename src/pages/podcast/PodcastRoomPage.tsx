@@ -287,6 +287,13 @@ const PodcastRoomPage = () => {
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
   const [listenerCount, setListenerCount] = useState(0);
   const [activeScreenReqId, setActiveScreenReqId] = useState<string | null>(null);
+  const [callBoardMinimized, setCallBoardMinimized] = useState(false);
+  const [callBoardPos, setCallBoardPos] = useState(() => ({
+    x: typeof window === "undefined" ? 16 : Math.max(12, window.innerWidth - 372),
+    y: 76,
+  }));
+  const callBoardRef = useRef<HTMLDivElement>(null);
+  const callBoardDragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const roomShellRef = useRef<HTMLDivElement>(null);
   const presenceKeyRef = useRef<string>(crypto.randomUUID());
   // A radio viewer needs a device/session identity that is different from the host.
@@ -334,6 +341,24 @@ const PodcastRoomPage = () => {
       .eq("status", "scheduled")
       .lte("scheduled_at", new Date(Date.now() + 15 * 60_000).toISOString());
   }, [isHost, radioStationId, sessionId, scheduled?.title]);
+
+  useEffect(() => {
+    if (!isHost || !radioStationId) return;
+
+    const heartbeat = () => {
+      void (supabase as any)
+        .from("radio_stations")
+        .update({
+          is_live: true,
+          live_session_id: sessionId,
+        })
+        .eq("id", radioStationId);
+    };
+
+    heartbeat();
+    const timer = window.setInterval(heartbeat, 6_000);
+    return () => window.clearInterval(timer);
+  }, [isHost, radioStationId, sessionId]);
 
   useEffect(() => {
     if (!isHost || !radioStationId) return;
@@ -904,6 +929,38 @@ const PodcastRoomPage = () => {
     );
   }, [stageParticipants]);
 
+  const startCallBoardDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest("button")) return;
+    callBoardDragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: callBoardPos.x,
+      originY: callBoardPos.y,
+    };
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const moveCallBoard = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = callBoardDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const rect = callBoardRef.current?.getBoundingClientRect();
+    const width = rect?.width || 340;
+    const height = callBoardMinimized ? 56 : Math.min(rect?.height || 360, window.innerHeight - 90);
+    const nextX = drag.originX + event.clientX - drag.startX;
+    const nextY = drag.originY + event.clientY - drag.startY;
+    setCallBoardPos({
+      x: Math.max(8, Math.min(nextX, Math.max(8, window.innerWidth - width - 8))),
+      y: Math.max(58, Math.min(nextY, Math.max(58, window.innerHeight - height - 78))),
+    });
+  };
+
+  const endCallBoardDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    const drag = callBoardDragRef.current;
+    if (drag?.pointerId === event.pointerId) callBoardDragRef.current = null;
+    try { event.currentTarget.releasePointerCapture?.(event.pointerId); } catch {}
+  };
+
   /* ---------------- Render ---------------- */
   const visible = stageParticipants;
   const stageCount = visible.length;
@@ -1176,18 +1233,48 @@ const PodcastRoomPage = () => {
         />
       )}
 
-      {/* Host radio call switchboard — four numbered hold lines, never auto-accepted. */}
+      {/* Host radio call switchboard — draggable, minimizable, four numbered hold lines. */}
       {isHost && fromRadio && !viewerFullscreen && (
-        <div className="fixed bottom-24 left-3 right-3 z-50 max-h-[46vh] overflow-y-auto rounded-2xl border border-zinc-700 bg-black/95 p-3 shadow-2xl backdrop-blur md:bottom-auto md:left-auto md:right-3 md:top-16 md:w-[22rem]">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">YAJ Radio Call Board</p>
-              <p className="text-sm font-black text-white">Open Line · 1–4</p>
+        <div
+          ref={callBoardRef}
+          className={
+            "fixed z-[120] select-none rounded-2xl border border-zinc-700 bg-black/95 shadow-2xl backdrop-blur " +
+            (callBoardMinimized ? "w-44 p-2" : "w-[min(22rem,calc(100vw-24px))] max-h-[55vh] overflow-y-auto p-3")
+          }
+          style={{ left: callBoardPos.x, top: callBoardPos.y, touchAction: "none" }}
+        >
+          <div
+            className="flex cursor-grab touch-none items-center justify-between gap-2 active:cursor-grabbing"
+            onPointerDown={startCallBoardDrag}
+            onPointerMove={moveCallBoard}
+            onPointerUp={endCallBoardDrag}
+            onPointerCancel={endCallBoardDrag}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.9)]" />
+              <div className="min-w-0">
+                <p className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-red-400">YAJ Radio</p>
+                <p className="truncate text-xs font-black text-white">{callBoardMinimized ? "Call Board" : "Call Controller · 1–4"}</p>
+              </div>
             </div>
-            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1 text-[9px] font-bold text-zinc-400">
-              {doorman.pending.filter((req) => req.requestType === "call-in").length}/4 HOLD
-            </span>
+            <div className="flex items-center gap-1">
+              <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1 text-[9px] font-bold text-zinc-400">
+                {doorman.pending.filter((req) => req.requestType === "call-in").length}/4
+              </span>
+              <button
+                type="button"
+                onClick={() => setCallBoardMinimized((value) => !value)}
+                className="flex h-7 w-7 items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 text-sm font-black text-zinc-200"
+                aria-label={callBoardMinimized ? "Expand call board" : "Minimize call board"}
+              >
+                {callBoardMinimized ? "+" : "−"}
+              </button>
+            </div>
           </div>
+
+          {!callBoardMinimized && (
+            <>
+              <div className="mt-3 h-px bg-gradient-to-r from-red-500/50 via-zinc-700 to-emerald-500/50" />
 
           <div className="grid grid-cols-4 gap-2">
             {[0, 1, 2, 3].map((slot) => {
@@ -1272,6 +1359,8 @@ const PodcastRoomPage = () => {
               </div>
             ))}
           </div>
+            </>
+          )}
         </div>
       )}
 
