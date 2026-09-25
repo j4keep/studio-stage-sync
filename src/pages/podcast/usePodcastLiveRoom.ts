@@ -95,6 +95,7 @@ export function stageParticipantsFromRoom(list: RoomParticipant[]): RoomParticip
 export function usePodcastLiveRoom(opts: {
   roomName: string;
   displayName: string;
+  identity?: string;
   hostIdentity?: string; // identity considered host (defaults to first joiner = self if not set)
   enabled: boolean;
   /** Defaults to true (existing Podcast behavior: everyone publishes). Pass false for a
@@ -176,7 +177,7 @@ export function usePodcastLiveRoom(opts: {
       setError(null);
       try {
         const { data, error: fnErr } = await supabase.functions.invoke("livekit-token", {
-          body: { room: roomName, name: displayName, canPublish },
+          body: { room: roomName, identity: opts.identity, name: displayName, canPublish },
         });
         if (fnErr) throw fnErr;
         if (!data?.token || !data?.url) throw new Error("No token returned");
@@ -247,7 +248,7 @@ export function usePodcastLiveRoom(opts: {
       r?.disconnect().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, roomName, displayName, publish, canPublish]);
+  }, [enabled, roomName, displayName, opts.identity, publish, canPublish]);
 
   const setMic = useCallback(
     async (on: boolean) => {
