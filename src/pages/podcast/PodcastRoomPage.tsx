@@ -4,7 +4,7 @@ import {
   Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Share2, Circle, Square,
   Pause, Play, Users, MessageSquare, FolderDown, Settings as SettingsIcon,
   Download, Trash2, Edit3, Check, ArrowLeft, Wifi, AlertTriangle, RotateCcw,
-  Shield, X, LayoutGrid, Captions, Image as ImageIcon, Wand2, Maximize2, Minimize2,
+  Shield, X, LayoutGrid, Captions, Image as ImageIcon, Wand2, Maximize2, Minimize2, PhoneCall,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,6 +252,7 @@ const PodcastRoomPage = () => {
   const [searchParams] = useSearchParams();
   const isAudience = searchParams.get("audience") === "1";
   const isGuest = searchParams.get("guest") === "1";
+  const isCallIn = searchParams.get("callin") === "1";
   const isHost = !isGuest && !isAudience;
   const linkPassword = searchParams.get("k") || "";
   const radioStationId = searchParams.get("station");
@@ -284,7 +285,9 @@ const PodcastRoomPage = () => {
   const [permError, setPermError] = useState<string | null>(null);
   const [inviteOpen, setInviteOpen] = useState(() => searchParams.get("invite") === "1");
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
+  const [listenerCount, setListenerCount] = useState(0);
   const roomShellRef = useRef<HTMLDivElement>(null);
+  const presenceKeyRef = useRef<string>(crypto.randomUUID());
 
   // Scheduled session metadata (if any)
   const [scheduled, setScheduled] = useState<ScheduledPodcastSession | undefined>(() => PodcastSessionStore.get(sessionId));
@@ -326,6 +329,29 @@ const PodcastRoomPage = () => {
       .eq("status", "scheduled")
       .lte("scheduled_at", new Date(Date.now() + 15 * 60_000).toISOString());
   }, [isHost, radioStationId, sessionId, scheduled?.title]);
+
+  useEffect(() => {
+    if (!isHost || !radioStationId) return;
+
+    return () => {
+      void (supabase as any)
+        .from("radio_stations")
+        .update({
+          is_live: false,
+          live_title: null,
+          live_started_at: null,
+          live_session_id: null,
+        })
+        .eq("id", radioStationId)
+        .eq("live_session_id", sessionId);
+
+      void (supabase as any)
+        .from("radio_station_shows")
+        .update({ status: "ended" })
+        .eq("station_id", radioStationId)
+        .eq("live_session_id", sessionId);
+    };
+  }, [isHost, radioStationId, sessionId]);
 
   // Layout / captions / background sheet state (local to this device, per session)
   const [layoutSheetOpen, setLayoutSheetOpen] = useState(false);
@@ -401,11 +427,11 @@ const PodcastRoomPage = () => {
     if (joinGate.kind !== "open" && joinGate.kind !== "live" && joinGate.kind !== "unscheduled") return;
     if (doorman.policy.requiresPassword) {
       if (linkPassword) {
-        doorman.requestJoin(linkPassword);
+        doorman.requestJoin(linkPassword, isCallIn ? "call-in" : "guest");
       }
       // else: waiting room UI will collect password
     } else {
-      doorman.requestJoin();
+      doorman.requestJoin(undefined, isCallIn ? "call-in" : "guest");
     }
   }, [isHost, doorman, linkPassword, joinGate.kind]);
 
@@ -418,6 +444,44 @@ const PodcastRoomPage = () => {
     canPublish: !isAudience,
     maxParticipants: isAudience ? 24 : 12,
   });
+
+  useEffect(() => {
+    if (!fromRadio || !radioStationId) return;
+
+    const channel = (supabase as any).channel("yaj-radio-live-presence", {
+      config: { presence: { key: presenceKeyRef.current } },
+    });
+
+    const sync = () => {
+      const state = channel.presenceState() as Record<string, any[]>;
+      const metas = Object.values(state).flat();
+      const listeners = metas.filter(
+        (meta: any) => meta?.sessionId === sessionId && meta?.role === "audience",
+      ).length;
+      setListenerCount(listeners);
+    };
+
+    channel.on("presence", { event: "sync" }, sync);
+    channel.on("presence", { event: "join" }, sync);
+    channel.on("presence", { event: "leave" }, sync);
+
+    channel.subscribe(async (status: string) => {
+      if (status !== "SUBSCRIBED") return;
+      await channel.track({
+        sessionId,
+        stationId: radioStationId,
+        role: isHost ? "host" : isAudience ? "audience" : "guest",
+        name: displayName,
+        joinedAt: new Date().toISOString(),
+      });
+      sync();
+    });
+
+    return () => {
+      try { void channel.untrack(); } catch {}
+      void (supabase as any).removeChannel(channel);
+    };
+  }, [fromRadio, radioStationId, sessionId, isHost, isAudience, displayName]);
 
   const stageParticipants = useMemo(
     () =>
@@ -695,6 +759,21 @@ const PodcastRoomPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doorman.forceMuteTick]);
 
+  const requestCallIn = () => {
+    if (!radioStationId) return;
+    if (stageCount >= 4) {
+      toast({ title: "Open line is full", description: "There are already 4 people on the broadcast stage." });
+      return;
+    }
+    const params = new URLSearchParams({
+      guest: "1",
+      callin: "1",
+      station: radioStationId,
+      source: "radio",
+    });
+    navigate(`/podcast/room/${encodeURIComponent(sessionId)}?${params.toString()}`, { replace: true });
+  };
+
   const openInvite = () => setInviteOpen(true);
 
   /* ---------------- Files actions ---------------- */
@@ -770,7 +849,10 @@ const PodcastRoomPage = () => {
       <header className={((isAudience || isHost) && viewerFullscreen ? "hidden " : "") + "flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30"}>
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => {
+              if (isHost) leave();
+              else navigate(-1);
+            }}
             className="p-1.5 rounded hover:bg-zinc-800"
             title="Back"
             aria-label="Back"
@@ -783,6 +865,11 @@ const PodcastRoomPage = () => {
           <span className="hidden md:inline text-xs text-zinc-500">Room</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
           <ConnBadge state={room.connState} count={room.participants.length} />
+          {fromRadio && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-2 py-1 text-[11px] text-zinc-300">
+              <Users className="h-3.5 w-3.5" /> {listenerCount} listening
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {isRecording && (
@@ -948,9 +1035,14 @@ const PodcastRoomPage = () => {
         <div className="sticky bottom-0 z-40 flex items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
           <div>
             <p className="text-xs font-black text-white">Listening to the live broadcast</p>
-            <p className="text-[10px] text-zinc-500">Audience mode · your camera and microphone are off</p>
+            <p className="text-[10px] text-zinc-500">
+              {listenerCount} listening · audience mode · your camera and microphone are off
+            </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" onClick={requestCallIn} className="gap-1.5">
+              <PhoneCall className="h-4 w-4" /> Call In
+            </Button>
             <Button variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
               <Maximize2 className="h-4 w-4" /> Full Screen
             </Button>
@@ -1011,8 +1103,13 @@ const PodcastRoomPage = () => {
             <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-primary/50 shadow-xl shadow-primary/30 p-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1"><Shield className="w-3 h-3" /> Waiting room</div>
-                  <div className="text-sm font-medium truncate">{req.name} wants to join</div>
+                  <div className="text-xs uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
+                    {req.requestType === "call-in" ? <PhoneCall className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
+                    {req.requestType === "call-in" ? "Open line" : "Waiting room"}
+                  </div>
+                  <div className="text-sm font-medium truncate">
+                    {req.name} {req.requestType === "call-in" ? "is calling in" : "wants to join"}
+                  </div>
                   {security.visibility === "password" && (
                     <div className={`text-[11px] mt-0.5 ${doorman.validatePassword(req.password) ? "text-emerald-400" : "text-red-400"}`}>
                       {doorman.validatePassword(req.password) ? "Password OK" : "Wrong password"}
@@ -1065,7 +1162,7 @@ const PodcastRoomPage = () => {
           name={displayName}
           pwdValue={pwdPrompt}
           onPwdChange={setPwdPrompt}
-          onSubmitPwd={() => doorman.requestJoin(pwdPrompt)}
+          onSubmitPwd={() => doorman.requestJoin(pwdPrompt, isCallIn ? "call-in" : "guest")}
           onLeave={returnToSource}
         />
       )}
