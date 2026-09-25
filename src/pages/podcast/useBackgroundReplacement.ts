@@ -77,10 +77,15 @@ export function useBackgroundReplacement(
   const [active, setActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [processedTrack, setProcessedTrack] = useState<MediaStreamTrack | null>(null);
+  const processedStreamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!enabled || !videoTrack || bg.kind === "none") {
       setActive(false); setLoading(false); setError(null);
+      processedStreamRef.current?.getTracks().forEach((track) => track.stop());
+      processedStreamRef.current = null;
+      setProcessedTrack(null);
       return;
     }
 
@@ -108,7 +113,8 @@ export function useBackgroundReplacement(
         const { SS, base } = await withTimeout(loadSelfieSegmentation(), 10000, "Model loader");
         if (cancelled) return;
         seg = new SS({ locateFile: (f: string) => base + f });
-        seg.setOptions({ modelSelection: 1, selfieMode: true });
+        // Model 0 retains more of the upper body/shoulders on close phone framing.
+        seg.setOptions({ modelSelection: 0, selfieMode: true });
         await withTimeout(Promise.resolve(seg.initialize?.()), 10000, "Model init").catch((e) => {
           // Some versions don't expose initialize; first send() bootstraps. Ignore.
           console.warn("[bg] initialize skipped:", e?.message || e);
@@ -125,6 +131,10 @@ export function useBackgroundReplacement(
         const ctx = canvas.getContext("2d");
         if (!ctx) { setError("2D context unavailable"); setLoading(false); return; }
 
+        const maskCanvas = document.createElement("canvas");
+        const maskCtx = maskCanvas.getContext("2d");
+        if (!maskCtx) { setError("Mask context unavailable"); setLoading(false); return; }
+
         seg.onResults((results: any) => {
           if (cancelled) return;
           const w = results.image.width || video.videoWidth || 1280;
@@ -135,7 +145,26 @@ export function useBackgroundReplacement(
           ctx.save();
           ctx.clearRect(0, 0, w, h);
 
-          ctx.drawImage(results.segmentationMask, 0, 0, w, h);
+          if (maskCanvas.width !== w || maskCanvas.height !== h) {
+            maskCanvas.width = w;
+            maskCanvas.height = h;
+          }
+          maskCtx.save();
+          maskCtx.clearRect(0, 0, w, h);
+
+          // Feather and slightly expand the person mask. Drawing a few offset
+          // copies before the blur prevents hair/shoulders from being clipped,
+          // while the blur removes the hard "sticker" edge.
+          maskCtx.filter = "blur(4px)";
+          maskCtx.globalAlpha = 0.96;
+          for (const [dx, dy] of [[0, 0], [-2, 0], [2, 0], [0, -2], [0, 2]]) {
+            maskCtx.drawImage(results.segmentationMask, dx, dy, w, h);
+          }
+          maskCtx.filter = "none";
+          maskCtx.globalAlpha = 1;
+          maskCtx.restore();
+
+          ctx.drawImage(maskCanvas, 0, 0, w, h);
           ctx.globalCompositeOperation = "source-in";
           ctx.drawImage(results.image, 0, 0, w, h);
 
@@ -157,8 +186,14 @@ export function useBackgroundReplacement(
           }
           ctx.restore();
 
-          // First frame received → mark active
+          // First processed frame: expose the composited canvas as a
+          // real MediaStreamTrack so recordings contain the selected background.
           if (!cancelled) {
+            if (!processedStreamRef.current && (canvas as any).captureStream) {
+              const stream = (canvas as any).captureStream(30) as MediaStream;
+              processedStreamRef.current = stream;
+              setProcessedTrack(stream.getVideoTracks()[0] || null);
+            }
             setActive(true);
             setLoading(false);
           }
@@ -195,8 +230,11 @@ export function useBackgroundReplacement(
       if (raf) cancelAnimationFrame(raf);
       try { seg?.close?.(); } catch {}
       try { (video.srcObject as MediaStream | null) = null; } catch {}
+      processedStreamRef.current?.getTracks().forEach((track) => track.stop());
+      processedStreamRef.current = null;
+      setProcessedTrack(null);
     };
   }, [videoTrack, bg.kind, bg.kind === "image" ? bg.url : "", enabled]);
 
-  return { canvasRef, active, loading, error };
+  return { canvasRef, active, loading, error, processedTrack };
 }
