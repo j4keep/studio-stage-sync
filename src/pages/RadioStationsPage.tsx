@@ -71,8 +71,9 @@ export default function RadioStationsPage() {
   const [liveHostSessions, setLiveHostSessions] = useState<Set<string>>(new Set());
   const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
 
+  // Only the very first load shows placeholders; live refreshes swap data silently
+  // so the cards never flash blank.
   const load = async () => {
-    setLoading(true);
     const [stationResult, showResult] = await Promise.all([
       (supabase as any)
         .from("radio_stations")
@@ -136,21 +137,28 @@ export default function RadioStationsPage() {
   useEffect(() => {
     void load();
 
+    let timer: number | undefined;
+    const scheduleLoad = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => void load(), 400);
+    };
+
     const channel = (supabase as any)
       .channel("yaj-radio-directory")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "radio_stations" },
-        () => void load(),
+        scheduleLoad,
       )
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "radio_station_shows" },
-        () => void load(),
+        scheduleLoad,
       )
       .subscribe();
 
     return () => {
+      window.clearTimeout(timer);
       void (supabase as any).removeChannel(channel);
     };
   }, []);
