@@ -366,7 +366,7 @@ const PodcastRoomPage = () => {
   }, [captionsOn]);
 
   // Host-controlled session security (persisted per session, host's device)
-  const SEC_KEY = `wstudio-podcast-security:${sessionId}`;
+  const SEC_KEY = `yaj-podcast-security:${sessionId}`;
   const [security, setSecurity] = useState<PodcastSecurity>(() => {
     if (!isHost) return { visibility: "public", password: "" };
     try {
@@ -585,7 +585,7 @@ const PodcastRoomPage = () => {
       return;
     }
     const url = URL.createObjectURL(res.blob);
-    const name = `wstudio-${safeName(row.sessionId)}-${safeName(row.participantName)}-recovered-${stampStr()}.${row.ext}`;
+    const name = `yaj-podcast-${safeName(row.sessionId)}-${safeName(row.participantName)}-recovered-${stampStr()}.${row.ext}`;
     const dur = Math.max(0, row.lastUpdated - row.startedAt);
     setRecordings((rs) => [{
       id: `rec-${row.id}`,
@@ -714,7 +714,7 @@ const PodcastRoomPage = () => {
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
           <div className="text-sm font-semibold tracking-wider text-primary">
-            {fromRadio ? "YAJ RADIO" : "W.STUDIO"} <span className="text-foreground/80">{fromRadio ? "LIVE" : "PODCAST"}</span>
+            YAJ <span className="text-foreground/80">{fromRadio ? "RADIO LIVE" : "PODCAST"}</span>
           </div>
           <span className="hidden md:inline text-xs text-zinc-500">Room</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
