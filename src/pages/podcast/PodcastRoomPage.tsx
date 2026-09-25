@@ -286,6 +286,7 @@ const PodcastRoomPage = () => {
   const [inviteOpen, setInviteOpen] = useState(() => searchParams.get("invite") === "1");
   const [viewerFullscreen, setViewerFullscreen] = useState(false);
   const [listenerCount, setListenerCount] = useState(0);
+  const [activeScreenReqId, setActiveScreenReqId] = useState<string | null>(null);
   const roomShellRef = useRef<HTMLDivElement>(null);
   const presenceKeyRef = useRef<string>(crypto.randomUUID());
 
@@ -448,10 +449,10 @@ const PodcastRoomPage = () => {
   // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
     roomName: sessionId,
-    displayName,
+    displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${displayName}` : displayName,
     enabled: isAudience || doorman.status === "accepted",
     publish: !isAudience,
-    canPublish: !isAudience,
+    canPublish: fromRadio ? true : !isAudience,
     maxParticipants: isAudience ? 24 : 12,
   });
 
@@ -496,6 +497,7 @@ const PodcastRoomPage = () => {
   const stageParticipants = useMemo(
     () =>
       room.participants
+        .filter((participant) => !participant.name.startsWith("__YAJ_HOLD__:"))
         .filter((participant) => participant.camOn || participant.micOn || !!participant.videoTrack || !!participant.audioTrack)
         .slice(0, 4),
     [room.participants],
@@ -769,18 +771,43 @@ const PodcastRoomPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doorman.forceMuteTick]);
 
-  const requestCallIn = () => {
+  const requestCallIn = async () => {
     if (!radioStationId) return;
     if (stageCount >= 4) {
       toast({ title: "Open line is full", description: "There are already 4 people on the broadcast stage." });
       return;
     }
+    try {
+      await room.prepareAudioOnlyPublishing();
+    } catch (error: any) {
+      toast({
+        title: "Microphone needed to call in",
+        description: error?.message || "Allow microphone access, then tap Call In again.",
+        variant: "destructive",
+      });
+      return;
+    }
     doorman.requestJoin(undefined, "call-in");
     toast({
-      title: "Call-in request sent",
-      description: "You can keep listening while the host decides.",
+      title: "You are on hold",
+      description: "Keep listening. The host can open your line to speak with you before accepting you onto the stage.",
     });
   };
+
+  useEffect(() => {
+    if (!isAudience || !fromRadio) return;
+    if (doorman.screening) {
+      void room.startAudioOnlyPublishing().catch((error: any) => {
+        toast({
+          title: "Could not open your call line",
+          description: error?.message || "Check microphone permission and try again.",
+          variant: "destructive",
+        });
+      });
+    } else {
+      void room.stopAudioOnlyPublishing();
+    }
+  }, [isAudience, fromRadio, doorman.screening, room.startAudioOnlyPublishing, room.stopAudioOnlyPublishing]);
 
   useEffect(() => {
     if (!isAudience || doorman.status !== "accepted" || !radioStationId) return;
@@ -795,11 +822,13 @@ const PodcastRoomPage = () => {
 
   useEffect(() => {
     if (!isAudience || doorman.status !== "rejected") return;
+    void room.stopAudioOnlyPublishing();
+    room.cancelPreparedPublishing();
     toast({
       title: "Call-in not accepted",
       description: doorman.rejectReason || "The host declined the call-in request. You can keep listening.",
     });
-  }, [isAudience, doorman.status, doorman.rejectReason]);
+  }, [isAudience, doorman.status, doorman.rejectReason, room.stopAudioOnlyPublishing, room.cancelPreparedPublishing]);
 
   const openInvite = () => setInviteOpen(true);
 
@@ -1131,38 +1160,126 @@ const PodcastRoomPage = () => {
         />
       )}
 
-      {/* Host: pending join requests */}
-      {isHost && doorman.pending.length > 0 && (
-        <div className="fixed top-16 right-3 z-50 w-80 max-w-[calc(100vw-1.5rem)] space-y-2">
-          {doorman.pending.map((req) => (
-            <div key={req.reqId} className="rounded-xl bg-zinc-900 border border-primary/50 shadow-xl shadow-primary/30 p-3">
+      {/* Host radio call switchboard — four numbered hold lines, never auto-accepted. */}
+      {isHost && fromRadio && doorman.pending.some((req) => req.requestType === "call-in") && (
+        <div className="fixed right-3 top-16 z-50 w-[22rem] max-w-[calc(100vw-1.5rem)] rounded-2xl border border-zinc-700 bg-black/95 p-3 shadow-2xl backdrop-blur">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">YAJ Radio Call Board</p>
+              <p className="text-sm font-black text-white">Open Line · 1–4</p>
+            </div>
+            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-1 text-[9px] font-bold text-zinc-400">
+              {doorman.pending.filter((req) => req.requestType === "call-in").length}/4 HOLD
+            </span>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2">
+            {[0, 1, 2, 3].map((slot) => {
+              const req = doorman.pending.filter((item) => item.requestType === "call-in")[slot];
+              const active = Boolean(req && activeScreenReqId === req.reqId);
+              return (
+                <button
+                  key={slot}
+                  type="button"
+                  disabled={!req}
+                  onClick={() => {
+                    if (!req) return;
+                    if (active) {
+                      doorman.stopScreen(req.reqId);
+                      setActiveScreenReqId(null);
+                      return;
+                    }
+                    if (activeScreenReqId) doorman.stopScreen(activeScreenReqId);
+                    doorman.startScreen(req.reqId);
+                    setActiveScreenReqId(req.reqId);
+                  }}
+                  className={
+                    "relative min-h-20 rounded-xl border p-2 text-center transition " +
+                    (active
+                      ? "border-red-500 bg-red-500/20 shadow-[0_0_22px_rgba(239,68,68,0.35)]"
+                      : req
+                        ? "border-zinc-600 bg-zinc-900 hover:border-zinc-400"
+                        : "border-zinc-800 bg-zinc-950 text-zinc-700")
+                  }
+                >
+                  <span className={"block text-2xl font-black " + (active ? "text-red-400" : req ? "text-white" : "text-zinc-700")}>{slot + 1}</span>
+                  <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wide">
+                    {req ? (active ? "SCREEN" : "HOLD") : "EMPTY"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+            Tap a numbered line to talk with that caller off-stage. Tap it again to close the screening line.
+          </p>
+
+          <div className="mt-3 space-y-2">
+            {doorman.pending.filter((req) => req.requestType === "call-in").slice(0, 4).map((req, index) => (
+              <div key={req.reqId} className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-2">
+                <span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black " + (activeScreenReqId === req.reqId ? "bg-red-500 text-white" : "bg-zinc-800 text-zinc-300")}>
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-white">{req.name}</p>
+                  <p className="text-[9px] uppercase tracking-wider text-zinc-500">
+                    {activeScreenReqId === req.reqId ? "Screening · mic open" : "On hold · listening"}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="h-8 bg-emerald-600 px-2 text-[10px] hover:bg-emerald-500"
+                  disabled={stageCount >= 4}
+                  onClick={() => {
+                    if (stageCount >= 4) {
+                      toast({ title: "Stage full", description: "A maximum of 4 people can be on the broadcast." });
+                      return;
+                    }
+                    if (activeScreenReqId === req.reqId) setActiveScreenReqId(null);
+                    doorman.accept(req.reqId);
+                  }}
+                >
+                  {stageCount >= 4 ? "Full" : "Accept"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-8 px-2 text-[10px]"
+                  onClick={() => {
+                    if (activeScreenReqId === req.reqId) setActiveScreenReqId(null);
+                    doorman.reject(req.reqId, "Declined by host");
+                  }}
+                >
+                  Decline
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Host: normal invited-guest waiting room requests. */}
+      {isHost && doorman.pending.some((req) => req.requestType !== "call-in") && (
+        <div className="fixed left-3 top-16 z-50 w-80 max-w-[calc(100vw-1.5rem)] space-y-2">
+          {doorman.pending.filter((req) => req.requestType !== "call-in").map((req) => (
+            <div key={req.reqId} className="rounded-xl border border-primary/50 bg-zinc-900 p-3 shadow-xl shadow-primary/30">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wider text-primary mb-0.5 flex items-center gap-1">
-                    {req.requestType === "call-in" ? <PhoneCall className="w-3 h-3" /> : <Shield className="w-3 h-3" />}
-                    {req.requestType === "call-in" ? "Open line" : "Waiting room"}
+                  <div className="mb-0.5 flex items-center gap-1 text-xs uppercase tracking-wider text-primary">
+                    <Shield className="h-3 w-3" /> Waiting room
                   </div>
-                  <div className="text-sm font-medium truncate">
-                    {req.name} {req.requestType === "call-in" ? "is calling in" : "wants to join"}
-                  </div>
-                  {security.visibility === "password" && (
-                    <div className={`text-[11px] mt-0.5 ${doorman.validatePassword(req.password) ? "text-emerald-400" : "text-red-400"}`}>
-                      {doorman.validatePassword(req.password) ? "Password OK" : "Wrong password"}
-                    </div>
-                  )}
+                  <div className="truncate text-sm font-medium">{req.name} wants to join</div>
                 </div>
-                <button onClick={() => doorman.reject(req.reqId)} className="p-1 rounded hover:bg-zinc-800" aria-label="Dismiss">
-                  <X className="w-3.5 h-3.5 text-zinc-400" />
+                <button onClick={() => doorman.reject(req.reqId)} className="rounded p-1 hover:bg-zinc-800" aria-label="Dismiss">
+                  <X className="h-3.5 w-3.5 text-zinc-400" />
                 </button>
               </div>
-              <div className="flex gap-2 mt-2">
+              <div className="mt-2 flex gap-2">
                 <Button
                   size="sm"
                   className="flex-1 bg-emerald-600 hover:bg-emerald-500"
-                  disabled={
-                    stageCount >= 4 ||
-                    (security.visibility === "password" && !doorman.validatePassword(req.password))
-                  }
+                  disabled={stageCount >= 4 || (security.visibility === "password" && !doorman.validatePassword(req.password))}
                   onClick={() => {
                     if (stageCount >= 4) {
                       doorman.reject(req.reqId, "The broadcast stage is full");
@@ -1171,7 +1288,9 @@ const PodcastRoomPage = () => {
                     }
                     doorman.accept(req.reqId);
                   }}
-                >{stageCount >= 4 ? "Stage Full" : "Accept"}</Button>
+                >
+                  {stageCount >= 4 ? "Stage Full" : "Accept"}
+                </Button>
                 <Button size="sm" variant="destructive" className="flex-1" onClick={() => doorman.reject(req.reqId, "Declined by host")}>Decline</Button>
               </div>
             </div>
