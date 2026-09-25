@@ -1,4 +1,4 @@
-// W.STUDIO Podcast — Invite Sheet
+// YAJ Podcast — invited speaker sheet
 // Full-featured invite/share modal. Does NOT touch recording, LiveKit, or editor.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
@@ -29,7 +29,7 @@ type Props = {
   onSecurityChange: (s: PodcastSecurity) => void;
 };
 
-const INVITE_MESSAGE = "Join my W.STUDIO Podcast Session";
+const INVITE_MESSAGE = "Join my YAJ live broadcast as an on-stage guest";
 
 function buildInviteLink(sessionId: string, password?: string) {
   const base = `${window.location.origin}/#/podcast/room/${sessionId}?guest=1`;
@@ -66,7 +66,7 @@ export default function PodcastInviteSheet({
   const nativeShare = async () => {
     try {
       await (navigator as any).share({
-        title: "W.STUDIO Podcast",
+        title: "YAJ Live Broadcast",
         text: INVITE_MESSAGE,
         url: inviteLink,
       });
@@ -83,7 +83,7 @@ export default function PodcastInviteSheet({
     if (!canvas) return;
     const url = canvas.toDataURL("image/png");
     const a = document.createElement("a");
-    a.href = url; a.download = `wstudio-podcast-${sessionId}.png`;
+    a.href = url; a.download = `yaj-live-invite-${sessionId}.png`;
     document.body.appendChild(a); a.click(); a.remove();
   };
 
@@ -92,7 +92,7 @@ export default function PodcastInviteSheet({
     if (!v) return;
     // Local-first: record the invite intent. Future: hook into a notifications table.
     try {
-      const key = `wstudio-podcast-invites:${sessionId}`;
+      const key = `yaj-live-invites:${sessionId}`;
       const list = JSON.parse(localStorage.getItem(key) || "[]");
       list.push({ to: v, ts: Date.now(), link: inviteLink });
       localStorage.setItem(key, JSON.stringify(list));
@@ -117,7 +117,10 @@ export default function PodcastInviteSheet({
         <header className="sticky top-0 bg-zinc-950/95 backdrop-blur border-b border-zinc-800 flex items-center justify-between px-4 py-3 z-10">
           <div className="flex items-center gap-2">
             <Share2 className="w-4 h-4 text-purple-300" />
-            <h2 className="text-sm font-semibold">Invite to Podcast</h2>
+            <div>
+              <h2 className="text-sm font-semibold">Invite an on-stage guest</h2>
+              <p className="text-[10px] text-zinc-500">Host + up to 3 invited guests · listeners do not use this link</p>
+            </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded hover:bg-zinc-800" aria-label="Close">
             <X className="w-4 h-4" />
@@ -158,7 +161,7 @@ export default function PodcastInviteSheet({
             <div ref={qrRef} className="flex justify-center bg-white p-3 rounded-lg">
               <QRCodeCanvas value={inviteLink} size={160} includeMargin={false} level="M" />
             </div>
-            <p className="text-[11px] text-zinc-500 text-center mt-2">Scan with phone camera to join instantly</p>
+            <p className="text-[11px] text-zinc-500 text-center mt-2">Speaker invite · scan to join the broadcast stage</p>
           </section>
 
           {/* Social Buttons */}
@@ -177,10 +180,10 @@ export default function PodcastInviteSheet({
               <SocialBtn label="Telegram" color="bg-sky-600" onClick={() => openHref(`https://t.me/share/url?url=${enc(inviteLink)}&text=${enc(INVITE_MESSAGE)}`)}>
                 <Send className="w-4 h-4" />
               </SocialBtn>
-              <SocialBtn label="Gmail" color="bg-red-600" onClick={() => openHref(`https://mail.google.com/mail/?view=cm&su=${enc("W.STUDIO Podcast invite")}&body=${enc(message)}`)}>
+              <SocialBtn label="Gmail" color="bg-red-600" onClick={() => openHref(`https://mail.google.com/mail/?view=cm&su=${enc("YAJ live guest invite")}&body=${enc(message)}`)}>
                 <Mail className="w-4 h-4" />
               </SocialBtn>
-              <SocialBtn label="Email" color="bg-zinc-700" onClick={() => openHref(`mailto:?subject=${enc("W.STUDIO Podcast invite")}&body=${enc(message)}`)}>
+              <SocialBtn label="Email" color="bg-zinc-700" onClick={() => openHref(`mailto:?subject=${enc("YAJ live guest invite")}&body=${enc(message)}`)}>
                 <Mail className="w-4 h-4" />
               </SocialBtn>
               <SocialBtn label="Discord" color="bg-indigo-600" onClick={() => { copy(message); openHref("https://discord.com/channels/@me"); }}>
@@ -249,7 +252,7 @@ export default function PodcastInviteSheet({
                 </p>
               </div>
               <p className="text-[11px] text-zinc-500 mt-2">
-                {security.visibility === "public" && "Anyone with the link can request to join."}
+                {security.visibility === "public" && "Anyone you send this speaker link to can request a stage spot."}
                 {security.visibility === "private" && "Only people you invite can request to join."}
                 {security.visibility === "password" && "Guests must enter the password to request to join."}
               </p>
