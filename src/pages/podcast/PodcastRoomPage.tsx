@@ -1172,7 +1172,7 @@ const PodcastRoomPage = () => {
                     doorman.accept(req.reqId);
                   }}
                 >{stageCount >= 4 ? "Stage Full" : "Accept"}</Button>
-                <Button size="sm" variant="destructive" className="flex-1" onClick={() => doorman.reject(req.reqId, "Declined by host")}>Reject</Button>
+                <Button size="sm" variant="destructive" className="flex-1" onClick={() => doorman.reject(req.reqId, "Declined by host")}>Decline</Button>
               </div>
             </div>
           ))}
