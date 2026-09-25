@@ -449,7 +449,7 @@ const PodcastRoomPage = () => {
   // LiveKit room — only enabled after doorman accepts.
   const room = usePodcastLiveRoom({
     roomName: sessionId,
-    displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${displayName}` : displayName,
+    displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${doorman.requestId}:${displayName}` : displayName,
     enabled: isAudience || doorman.status === "accepted",
     publish: !isAudience,
     canPublish: fromRadio ? true : !isAudience,
@@ -902,6 +902,17 @@ const PodcastRoomPage = () => {
         ((isAudience || isHost) && viewerFullscreen ? "fixed inset-0 z-[200] h-[100dvh] overflow-hidden" : "")
       }
     >
+      {isHost && activeScreenReqId
+        ? room.participants
+            .filter((participant) =>
+              participant.name.startsWith("__YAJ_HOLD__:") &&
+              participant.name.includes(`:${activeScreenReqId}:`) &&
+              !!participant.audioTrack,
+            )
+            .map((participant) => (
+              <ScreeningAudio key={participant.id} track={participant.audioTrack!} />
+            ))
+        : null}
       <header className={((isAudience || isHost) && viewerFullscreen ? "hidden " : "") + "flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30"}>
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -1389,6 +1400,32 @@ const GuestWaitingOverlay = ({
 );
 
 /* ===================== Subcomponents ===================== */
+
+const ScreeningAudio = ({ track }: { track: MediaStreamTrack }) => {
+  const ref = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const audio = ref.current;
+    if (!audio) return;
+    audio.srcObject = new MediaStream([track]);
+    audio.muted = false;
+    audio.volume = 1;
+    void audio.play().catch(() => {});
+
+    const retry = () => {
+      void audio.play().catch(() => {});
+    };
+    window.addEventListener("pointerdown", retry, { passive: true });
+    window.addEventListener("touchend", retry, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", retry);
+      window.removeEventListener("touchend", retry);
+      audio.srcObject = null;
+    };
+  }, [track]);
+
+  return <audio ref={ref} autoPlay playsInline className="hidden" />;
+};
 
 const ConnBadge = ({ state, count }: { state: string; count: number }) => {
   const map: Record<string, { dot: string; label: string }> = {
