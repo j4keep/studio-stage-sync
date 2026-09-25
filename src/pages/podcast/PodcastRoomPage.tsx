@@ -333,7 +333,7 @@ const PodcastRoomPage = () => {
   useEffect(() => {
     if (!isHost || !radioStationId) return;
 
-    return () => {
+    const clearLiveState = () => {
       void (supabase as any)
         .from("radio_stations")
         .update({
@@ -350,6 +350,16 @@ const PodcastRoomPage = () => {
         .update({ status: "ended" })
         .eq("station_id", radioStationId)
         .eq("live_session_id", sessionId);
+    };
+
+    // Normal in-app navigation is handled by cleanup. pagehide covers Safari
+    // tab closes/background page destruction; presence is the public fallback.
+    const handlePageHide = () => clearLiveState();
+    window.addEventListener("pagehide", handlePageHide);
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      clearLiveState();
     };
   }, [isHost, radioStationId, sessionId]);
 
