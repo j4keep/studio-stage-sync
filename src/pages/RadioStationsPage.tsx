@@ -87,6 +87,24 @@ export default function RadioStationsPage() {
 
   useEffect(() => {
     void load();
+
+    const channel = (supabase as any)
+      .channel("yaj-radio-directory")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "radio_stations" },
+        () => void load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "radio_station_shows" },
+        () => void load(),
+      )
+      .subscribe();
+
+    return () => {
+      void (supabase as any).removeChannel(channel);
+    };
   }, []);
 
   const filtered = useMemo(() => {
