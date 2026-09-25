@@ -212,32 +212,6 @@ export default function RadioStationsPage() {
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
   const upcoming = shows.filter((show) => show.status === "scheduled").slice(0, 8);
 
-  useEffect(() => {
-    if (!presenceReady || !user?.id) return;
-
-    const stale = stations.filter((station) => {
-      if (station.owner_user_id !== user.id || !station.is_live || !station.live_session_id) return false;
-      if (liveHostSessions.has(station.live_session_id)) return false;
-      const started = station.live_started_at ? new Date(station.live_started_at).getTime() : 0;
-      return !started || Date.now() - started > 20_000;
-    });
-
-    for (const station of stale) {
-      void (supabase as any)
-        .from("radio_stations")
-        .update({
-          is_live: false,
-          live_title: null,
-          live_started_at: null,
-          live_session_id: null,
-        })
-        .eq("id", station.id)
-        .eq("owner_user_id", user.id);
-    }
-
-    if (stale.length) window.setTimeout(() => void load(), 500);
-  }, [presenceReady, stations, liveHostSessions, user?.id]);
-
   const openCreateStation = () => {
     if (!radioBackendReady) {
       toast({
