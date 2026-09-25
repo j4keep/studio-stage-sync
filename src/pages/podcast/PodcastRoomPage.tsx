@@ -250,8 +250,9 @@ const PodcastRoomPage = () => {
   const { sessionId = "session" } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const isAudience = searchParams.get("audience") === "1";
   const isGuest = searchParams.get("guest") === "1";
-  const isHost = !isGuest;
+  const isHost = !isGuest && !isAudience;
   const linkPassword = searchParams.get("k") || "";
   const radioStationId = searchParams.get("station");
   const fromRadio = searchParams.get("source") === "radio" || Boolean(radioStationId);
@@ -392,7 +393,7 @@ const PodcastRoomPage = () => {
   // Guest auto-request when policy known
   const [pwdPrompt, setPwdPrompt] = useState("");
   useEffect(() => {
-    if (isHost) return;
+    if (isHost || isAudience) return;
     if (doorman.status !== "idle") return;
     // Don't request join until the scheduled window is open
     if (joinGate.kind !== "open" && joinGate.kind !== "live" && joinGate.kind !== "unscheduled") return;
@@ -410,7 +411,10 @@ const PodcastRoomPage = () => {
   const room = usePodcastLiveRoom({
     roomName: sessionId,
     displayName,
-    enabled: doorman.status === "accepted",
+    enabled: isAudience || doorman.status === "accepted",
+    publish: !isAudience,
+    canPublish: !isAudience,
+    maxParticipants: isAudience ? 24 : 12,
   });
 
   useEffect(() => {
@@ -699,7 +703,14 @@ const PodcastRoomPage = () => {
   };
 
   /* ---------------- Render ---------------- */
-  const visible = useMemo(() => room.participants.slice(0, 6), [room.participants]);
+  const visible = useMemo(
+    () =>
+      room.participants
+        .filter((participant) => participant.camOn || participant.micOn || !!participant.videoTrack)
+        .slice(0, 4),
+    [room.participants],
+  );
+  const stageCount = visible.length;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col">
@@ -727,17 +738,26 @@ const PodcastRoomPage = () => {
               REC {fmtTime(elapsed)}
             </span>
           )}
-          <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
-            <Share2 className="w-3.5 h-3.5" /> Invite
-          </Button>
-          <button
-            onClick={() => navigate("/settings")}
-            className="p-1.5 rounded hover:bg-zinc-800"
-            title="App settings"
-            aria-label="App settings"
-          >
-            <SettingsIcon className="w-4 h-4 text-zinc-300" />
-          </button>
+          {!isAudience && (
+            <>
+              <Button size="sm" variant="secondary" onClick={openInvite} className="gap-1.5">
+                <Share2 className="w-3.5 h-3.5" /> Invite
+              </Button>
+              <button
+                onClick={() => navigate("/settings")}
+                className="p-1.5 rounded hover:bg-zinc-800"
+                title="App settings"
+                aria-label="App settings"
+              >
+                <SettingsIcon className="w-4 h-4 text-zinc-300" />
+              </button>
+            </>
+          )}
+          {isAudience && (
+            <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
+              Listening live
+            </span>
+          )}
         </div>
       </header>
 
@@ -809,43 +829,55 @@ const PodcastRoomPage = () => {
           )}
         </main>
 
-        <PodcastSidebar
-          tab={tab} setTab={setTab}
-          participants={visible}
-          chat={chat} chatInput={chatInput} setChatInput={setChatInput} sendChat={sendChat}
-          recordings={recordings}
-          onDownload={downloadRec}
-          onDelete={deleteRec}
-          onRename={renameRec}
-          onEdit={(r: LocalRecording) => setEditing(r)}
-          isHost={isHost}
-          onMuteParticipant={(name: string) => { doorman.forceMute(name); toast({ title: `Muted ${name}` }); }}
-          onKickParticipant={(name: string) => {
-            if (!confirm(`Remove ${name} from the podcast?`)) return;
-            doorman.kick(name, "Removed by host");
-            toast({ title: `Removed ${name}` });
-          }}
-        />
+        {!isAudience && (
+          <PodcastSidebar
+            tab={tab} setTab={setTab}
+            participants={visible}
+            chat={chat} chatInput={chatInput} setChatInput={setChatInput} sendChat={sendChat}
+            recordings={recordings}
+            onDownload={downloadRec}
+            onDelete={deleteRec}
+            onRename={renameRec}
+            onEdit={(r: LocalRecording) => setEditing(r)}
+            isHost={isHost}
+            onMuteParticipant={(name: string) => { doorman.forceMute(name); toast({ title: `Muted ${name}` }); }}
+            onKickParticipant={(name: string) => {
+              if (!confirm(`Remove ${name} from the podcast?`)) return;
+              doorman.kick(name, "Removed by host");
+              toast({ title: `Removed ${name}` });
+            }}
+          />
+        )}
 
       </div>
 
-      <PodcastControlBar
-        isRecording={isRecording}
-        isPaused={isPaused}
-        micOn={me?.micOn ?? false}
-        camOn={me?.camOn ?? false}
-        screenOn={screenOn}
-        canRecord={isHost && room.connState === "connected"}
-        isHost={isHost}
-        onStart={startRecording}
-        onStop={stopRecording}
-        onPause={togglePause}
-        onMic={toggleMic}
-        onCam={toggleCam}
-        onScreen={toggleScreen}
-        onLeave={leave}
-        onLayout={() => setLayoutSheetOpen(true)}
-      />
+      {isAudience ? (
+        <div className="sticky bottom-0 z-40 flex items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
+          <div>
+            <p className="text-xs font-black text-white">Listening to the live broadcast</p>
+            <p className="text-[10px] text-zinc-500">Audience mode · your camera and microphone are off</p>
+          </div>
+          <Button variant="secondary" onClick={leave}>Leave</Button>
+        </div>
+      ) : (
+        <PodcastControlBar
+          isRecording={isRecording}
+          isPaused={isPaused}
+          micOn={me?.micOn ?? false}
+          camOn={me?.camOn ?? false}
+          screenOn={screenOn}
+          canRecord={isHost && room.connState === "connected"}
+          isHost={isHost}
+          onStart={startRecording}
+          onStop={stopRecording}
+          onPause={togglePause}
+          onMic={toggleMic}
+          onCam={toggleCam}
+          onScreen={toggleScreen}
+          onLeave={leave}
+          onLayout={() => setLayoutSheetOpen(true)}
+        />
+      )}
 
       {layoutSheetOpen && (
         <LayoutSheet
@@ -861,14 +893,16 @@ const PodcastRoomPage = () => {
         />
       )}
 
-      <PodcastInviteSheet
-        open={inviteOpen}
-        onClose={() => setInviteOpen(false)}
-        sessionId={sessionId}
-        isHost={isHost}
-        security={security}
-        onSecurityChange={setSecurity}
-      />
+      {!isAudience && (
+        <PodcastInviteSheet
+          open={inviteOpen}
+          onClose={() => setInviteOpen(false)}
+          sessionId={sessionId}
+          isHost={isHost}
+          security={security}
+          onSecurityChange={setSecurity}
+        />
+      )}
 
       {/* Host: pending join requests */}
       {isHost && doorman.pending.length > 0 && (
@@ -893,9 +927,19 @@ const PodcastRoomPage = () => {
                 <Button
                   size="sm"
                   className="flex-1 bg-emerald-600 hover:bg-emerald-500"
-                  disabled={security.visibility === "password" && !doorman.validatePassword(req.password)}
-                  onClick={() => doorman.accept(req.reqId)}
-                >Accept</Button>
+                  disabled={
+                    stageCount >= 4 ||
+                    (security.visibility === "password" && !doorman.validatePassword(req.password))
+                  }
+                  onClick={() => {
+                    if (stageCount >= 4) {
+                      doorman.reject(req.reqId, "The broadcast stage is full");
+                      toast({ title: "Stage full", description: "A maximum of 4 people can be on the broadcast." });
+                      return;
+                    }
+                    doorman.accept(req.reqId);
+                  }}
+                >{stageCount >= 4 ? "Stage Full" : "Accept"}</Button>
                 <Button size="sm" variant="destructive" className="flex-1" onClick={() => doorman.reject(req.reqId, "Declined by host")}>Reject</Button>
               </div>
             </div>
@@ -904,7 +948,7 @@ const PodcastRoomPage = () => {
       )}
 
       {/* Guest: scheduled-time gate */}
-      {!isHost && (joinGate.kind === "too-early" || joinGate.kind === "ended" || joinGate.kind === "cancelled") && (
+      {!isHost && !isAudience && (joinGate.kind === "too-early" || joinGate.kind === "ended" || joinGate.kind === "cancelled") && (
         <ScheduledGateOverlay
           gate={joinGate}
           session={scheduled!}
@@ -913,7 +957,7 @@ const PodcastRoomPage = () => {
       )}
 
       {/* Guest: waiting room overlay (only once join window is open) */}
-      {!isHost && (joinGate.kind === "open" || joinGate.kind === "live" || joinGate.kind === "unscheduled") && doorman.status !== "accepted" && (
+      {!isHost && !isAudience && (joinGate.kind === "open" || joinGate.kind === "live" || joinGate.kind === "unscheduled") && doorman.status !== "accepted" && (
         <GuestWaitingOverlay
           status={doorman.status}
           policy={doorman.policy}
