@@ -253,6 +253,15 @@ const PodcastRoomPage = () => {
   const isGuest = searchParams.get("guest") === "1";
   const isHost = !isGuest;
   const linkPassword = searchParams.get("k") || "";
+  const radioStationId = searchParams.get("station");
+  const fromRadio = searchParams.get("source") === "radio" || Boolean(radioStationId);
+  const returnToSource = () => {
+    if (fromRadio) {
+      navigate("/radio/stations");
+      return;
+    }
+    navigate("/podcast/live");
+  };
 
   // Resolve display name from auth (fallback to "Guest")
   const [displayName, setDisplayName] = useState<string>("Guest");
@@ -294,6 +303,26 @@ const PodcastRoomPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, scheduled?.id]);
+
+  useEffect(() => {
+    if (!isHost || !radioStationId) return;
+    const title = scheduled?.title || "Live Broadcast";
+    void (supabase as any)
+      .from("radio_stations")
+      .update({
+        is_live: true,
+        live_title: title,
+        live_started_at: new Date().toISOString(),
+        live_session_id: sessionId,
+      })
+      .eq("id", radioStationId);
+    void (supabase as any)
+      .from("radio_station_shows")
+      .update({ status: "live", live_session_id: sessionId })
+      .eq("station_id", radioStationId)
+      .eq("status", "scheduled")
+      .lte("scheduled_at", new Date(Date.now() + 15 * 60_000).toISOString());
+  }, [isHost, radioStationId, sessionId, scheduled?.title]);
 
   // Layout / captions / background sheet state (local to this device, per session)
   const [layoutSheetOpen, setLayoutSheetOpen] = useState(false);
@@ -587,22 +616,39 @@ const PodcastRoomPage = () => {
     if (isRecording) stopRecording();
     if (isHost) {
       const isScheduled = scheduled && scheduled.status !== "cancelled";
-      const msg = isScheduled
-        ? "End the podcast session for everyone? This will disconnect all guests."
-        : "End the podcast for everyone? This will disconnect all guests.";
+      const msg = fromRadio
+        ? "End this live radio broadcast for everyone?"
+        : isScheduled
+          ? "End the podcast session for everyone? This will disconnect all guests."
+          : "End the podcast for everyone? This will disconnect all guests.";
       if (confirm(msg)) {
         if (isScheduled) PodcastSessionStore.markEnded(scheduled!.id);
-        // Tell all guests to disconnect — kills their cam/mic on next render.
-        try { doorman.endSession("Host ended the session"); } catch {}
+        try { doorman.endSession(fromRadio ? "Host ended the broadcast" : "Host ended the session"); } catch {}
+
+        if (radioStationId) {
+          void (supabase as any)
+            .from("radio_stations")
+            .update({
+              is_live: false,
+              live_title: null,
+              live_started_at: null,
+              live_session_id: null,
+            })
+            .eq("id", radioStationId);
+          void (supabase as any)
+            .from("radio_station_shows")
+            .update({ status: "ended" })
+            .eq("station_id", radioStationId)
+            .eq("live_session_id", sessionId);
+        }
       } else {
-        return; // host cancelled
+        return;
       }
     }
-    // Stop local cam/mic immediately for everyone leaving.
     try { room.setCam(false); } catch {}
     try { room.setMic(false); } catch {}
     room.disconnect();
-    navigate("/tv/podcast");
+    returnToSource();
   };
 
   // Guest: if host ended, force-disconnect cam/mic and bounce back.
@@ -614,7 +660,7 @@ const PodcastRoomPage = () => {
     try { room.setMic(false); } catch {}
     room.disconnect();
     toast({ title: "Session ended", description: doorman.rejectReason || "The host ended the podcast." });
-    const t = window.setTimeout(() => navigate("/tv/podcast"), 1800);
+    const t = window.setTimeout(() => returnToSource(), 1800);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isHost, doorman.status]);
@@ -660,14 +706,16 @@ const PodcastRoomPage = () => {
       <header className="flex items-center justify-between gap-3 px-3 md:px-5 h-14 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur sticky top-0 z-30">
         <div className="flex items-center gap-3 min-w-0">
           <button
-            onClick={() => navigate("/tv/podcast")}
+            onClick={() => navigate(-1)}
             className="p-1.5 rounded hover:bg-zinc-800"
-            title="Back to Podcast Home (session keeps running until you press Leave)"
-            aria-label="Back to Podcast Home"
+            title="Back"
+            aria-label="Back"
           >
             <ArrowLeft className="w-4 h-4 text-zinc-300" />
           </button>
-          <div className="text-sm font-semibold tracking-wider text-primary">W.STUDIO <span className="text-foreground/80">PODCAST</span></div>
+          <div className="text-sm font-semibold tracking-wider text-primary">
+            {fromRadio ? "YAJ RADIO" : "W.STUDIO"} <span className="text-foreground/80">{fromRadio ? "LIVE" : "PODCAST"}</span>
+          </div>
           <span className="hidden md:inline text-xs text-zinc-500">Room</span>
           <code className="hidden md:inline text-xs px-2 py-1 rounded bg-zinc-900 border border-zinc-800">{sessionId}</code>
           <ConnBadge state={room.connState} count={room.participants.length} />
@@ -860,7 +908,7 @@ const PodcastRoomPage = () => {
         <ScheduledGateOverlay
           gate={joinGate}
           session={scheduled!}
-          onLeave={() => navigate("/tv/podcast")}
+          onLeave={returnToSource}
         />
       )}
 
@@ -874,7 +922,7 @@ const PodcastRoomPage = () => {
           pwdValue={pwdPrompt}
           onPwdChange={setPwdPrompt}
           onSubmitPwd={() => doorman.requestJoin(pwdPrompt)}
-          onLeave={() => navigate("/tv/podcast")}
+          onLeave={returnToSource}
         />
       )}
     </div>
