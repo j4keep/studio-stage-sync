@@ -564,6 +564,7 @@ function StartBroadcastSheet({
   const [title, setTitle] = useState(station.live_title || station.name + " Live");
   const [type, setType] = useState("talk");
   const [duration, setDuration] = useState(60);
+  const [inviteAfterStart, setInviteAfterStart] = useState(false);
 
   const start = async (event: FormEvent) => {
     event.preventDefault();
@@ -626,7 +627,8 @@ function StartBroadcastSheet({
         encodeURIComponent(session.id) +
         "?station=" +
         encodeURIComponent(station.id) +
-        "&source=radio",
+        "&source=radio" +
+        (inviteAfterStart ? "&invite=1" : ""),
     );
   };
 
@@ -662,6 +664,25 @@ function StartBroadcastSheet({
             <option value={90} className="bg-slate-950">90 minutes</option>
             <option value={120} className="bg-slate-950">2 hours</option>
           </select>
+
+          <button
+            type="button"
+            onClick={() => setInviteAfterStart((value) => !value)}
+            className={
+              "flex w-full items-center justify-between rounded-xl border px-3 py-3 text-left transition " +
+              (inviteAfterStart
+                ? "border-violet-400 bg-violet-500/15"
+                : "border-white/10 bg-white/[0.04]")
+            }
+          >
+            <span>
+              <span className="block text-xs font-black">Invite guests after starting</span>
+              <span className="mt-0.5 block text-[10px] text-white/45">Open the speaker invite sheet as soon as you go live.</span>
+            </span>
+            <span className={"h-5 w-9 rounded-full p-0.5 transition " + (inviteAfterStart ? "bg-violet-500" : "bg-white/10")}>
+              <span className={"block h-4 w-4 rounded-full bg-white transition " + (inviteAfterStart ? "translate-x-4" : "")} />
+            </span>
+          </button>
         </div>
 
         <ModalActions
