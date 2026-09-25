@@ -253,6 +253,7 @@ const PodcastRoomPage = () => {
   const isAudience = searchParams.get("audience") === "1";
   const isGuest = searchParams.get("guest") === "1";
   const isCallIn = searchParams.get("callin") === "1";
+  const isAcceptedCallIn = isCallIn && searchParams.get("accepted") === "1";
   const isHost = !isGuest && !isAudience;
   const linkPassword = searchParams.get("k") || "";
   const radioStationId = searchParams.get("station");
@@ -462,7 +463,7 @@ const PodcastRoomPage = () => {
   // Guest auto-request when policy known
   const [pwdPrompt, setPwdPrompt] = useState("");
   useEffect(() => {
-    if (isHost || isAudience) return;
+    if (isHost || isAudience || isAcceptedCallIn) return;
     if (doorman.status !== "idle") return;
     // Don't request join until the scheduled window is open
     if (joinGate.kind !== "open" && joinGate.kind !== "live" && joinGate.kind !== "unscheduled") return;
@@ -481,11 +482,25 @@ const PodcastRoomPage = () => {
     roomName: sessionId,
     identity: fromRadio && !isHost ? radioViewerIdentityRef.current : undefined,
     displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${doorman.requestId}:${displayName}` : displayName,
-    enabled: isAudience || doorman.status === "accepted",
-    publish: !isAudience,
+    enabled: isAudience || isAcceptedCallIn || doorman.status === "accepted",
+    publish: !(isAudience || isAcceptedCallIn),
     canPublish: fromRadio ? true : !isAudience,
     maxParticipants: isAudience ? 24 : 12,
   });
+
+  useEffect(() => {
+    if (!isAcceptedCallIn || room.connState !== "connected") return;
+    void room.startAudioOnlyPublishing().catch((error: any) => {
+      toast({
+        title: "Could not open caller audio",
+        description: error?.message || "Microphone access is required for call-ins.",
+        variant: "destructive",
+      });
+    });
+    return () => {
+      void room.stopAudioOnlyPublishing();
+    };
+  }, [isAcceptedCallIn, room.connState, room.startAudioOnlyPublishing, room.stopAudioOnlyPublishing]);
 
   useEffect(() => {
     if (!fromRadio || !radioStationId) return;
@@ -740,7 +755,7 @@ const PodcastRoomPage = () => {
     catch (e: any) { toast({ title: "Screen share failed", description: e?.message }); }
   };
 
-  const leave = () => {
+  const leave = async () => {
     if (isRecording) stopRecording();
     if (isHost) {
       const isScheduled = scheduled && scheduled.status !== "cancelled";
@@ -754,20 +769,30 @@ const PodcastRoomPage = () => {
         try { doorman.endSession(fromRadio ? "Host ended the broadcast" : "Host ended the session"); } catch {}
 
         if (radioStationId) {
-          void (supabase as any)
-            .from("radio_stations")
-            .update({
-              is_live: false,
-              live_title: null,
-              live_started_at: null,
-              live_session_id: null,
-            })
-            .eq("id", radioStationId);
-          void (supabase as any)
-            .from("radio_station_shows")
-            .update({ status: "ended" })
-            .eq("station_id", radioStationId)
-            .eq("live_session_id", sessionId);
+          const [stationResult, showResult] = await Promise.all([
+            (supabase as any)
+              .from("radio_stations")
+              .update({
+                is_live: false,
+                live_title: null,
+                live_started_at: null,
+                live_session_id: null,
+              })
+              .eq("id", radioStationId)
+              .eq("live_session_id", sessionId),
+            (supabase as any)
+              .from("radio_station_shows")
+              .update({ status: "ended" })
+              .eq("station_id", radioStationId)
+              .eq("live_session_id", sessionId),
+          ]);
+
+          if (stationResult?.error || showResult?.error) {
+            toast({
+              title: "Broadcast ended locally",
+              description: "YAJ is still clearing the station's live status.",
+            });
+          }
         }
       } else {
         return;
@@ -845,6 +870,7 @@ const PodcastRoomPage = () => {
     const params = new URLSearchParams({
       guest: "1",
       callin: "1",
+      accepted: "1",
       station: radioStationId,
       source: "radio",
     });
@@ -1040,9 +1066,9 @@ const PodcastRoomPage = () => {
               </button>
             </>
           )}
-          {isAudience && (
+          {(isAudience || isAcceptedCallIn) && (
             <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
-              Listening live
+              {isAcceptedCallIn ? "Audio caller" : "Listening live"}
             </span>
           )}
         </div>
@@ -1156,7 +1182,7 @@ const PodcastRoomPage = () => {
         >
           <Minimize2 className="h-5 w-5" />
         </button>
-      ) : isAudience ? (
+      ) : (isAudience || isAcceptedCallIn) ? (
         viewerFullscreen ? (
           <button
             type="button"
@@ -1169,22 +1195,26 @@ const PodcastRoomPage = () => {
         ) : (
         <div className="sticky bottom-0 z-40 flex items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-950/95 px-4 py-3 backdrop-blur">
           <div>
-            <p className="text-xs font-black text-white">Listening to the live broadcast</p>
+            <p className="text-xs font-black text-white">{isAcceptedCallIn ? "On air by phone" : "Listening to the live broadcast"}</p>
             <p className="text-[10px] text-zinc-500">
-              {listenerCount} listening · audience mode · your camera and microphone are off
+              {isAcceptedCallIn
+                ? "Audio caller · microphone on · camera disabled"
+                : `${listenerCount} listening · audience mode · your camera and microphone are off`}
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              variant="secondary"
-              onClick={requestCallIn}
-              disabled={doorman.status === "requesting" || stageCount >= 4}
-              className="gap-1.5"
-            >
-              <PhoneCall className="h-4 w-4" />
-              {stageCount >= 4 ? "Line Full" : doorman.status === "requesting" ? "On Hold…" : "Call In"}
-            </Button>
-            <Button variant="secondary" onClick={leave}>Leave</Button>
+            {!isAcceptedCallIn && (
+              <Button
+                variant="secondary"
+                onClick={requestCallIn}
+                disabled={doorman.status === "requesting" || stageCount >= 4}
+                className="gap-1.5"
+              >
+                <PhoneCall className="h-4 w-4" />
+                {stageCount >= 4 ? "Line Full" : doorman.status === "requesting" ? "On Hold…" : "Call In"}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={() => void leave()}>Leave</Button>
           </div>
         </div>
         )
