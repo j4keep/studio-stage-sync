@@ -263,6 +263,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
 
   return useMemo(() => ({
     status,
+    requestId: reqIdRef.current,
     pending,
     policy,
     rejectReason,
