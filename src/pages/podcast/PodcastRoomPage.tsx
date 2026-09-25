@@ -351,6 +351,7 @@ const PodcastRoomPage = () => {
         .update({
           is_live: true,
           live_session_id: sessionId,
+          live_started_at: new Date().toISOString(),
         })
         .eq("id", radioStationId);
     };
@@ -1299,13 +1300,13 @@ const PodcastRoomPage = () => {
                   className={
                     "relative min-h-20 rounded-xl border p-2 text-center transition " +
                     (active
-                      ? "border-red-500 bg-red-500/20 shadow-[0_0_22px_rgba(239,68,68,0.35)]"
+                      ? "border-emerald-400 bg-emerald-500/20 shadow-[0_0_22px_rgba(16,185,129,0.35)]"
                       : req
-                        ? "border-zinc-600 bg-zinc-900 hover:border-zinc-400"
+                        ? "border-amber-400/70 bg-amber-500/10 hover:border-amber-300"
                         : "border-zinc-800 bg-zinc-950 text-zinc-700")
                   }
                 >
-                  <span className={"block text-2xl font-black " + (active ? "text-red-400" : req ? "text-white" : "text-zinc-700")}>{slot + 1}</span>
+                  <span className={"block text-2xl font-black " + (active ? "text-emerald-300" : req ? "text-amber-300" : "text-zinc-700")}>{slot + 1}</span>
                   <span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-wide">
                     {req ? (active ? "SCREEN" : "HOLD") : "EMPTY"}
                   </span>
@@ -1321,7 +1322,7 @@ const PodcastRoomPage = () => {
           <div className="mt-3 space-y-2">
             {doorman.pending.filter((req) => req.requestType === "call-in").slice(0, 4).map((req, index) => (
               <div key={req.reqId} className="flex items-center gap-2 rounded-xl border border-zinc-800 bg-zinc-900/80 p-2">
-                <span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black " + (activeScreenReqId === req.reqId ? "bg-red-500 text-white" : "bg-zinc-800 text-zinc-300")}>
+                <span className={"flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-black " + (activeScreenReqId === req.reqId ? "bg-emerald-500 text-white" : "bg-amber-500/20 text-amber-300")}>
                   {index + 1}
                 </span>
                 <div className="min-w-0 flex-1">
