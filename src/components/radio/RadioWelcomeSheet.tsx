@@ -31,8 +31,8 @@ export default function RadioWelcomeSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end bg-black/70 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
-      <div className="relative w-full overflow-hidden rounded-t-[32px] border border-white/10 bg-[#0a0d16] text-white shadow-2xl sm:max-w-2xl sm:rounded-[32px]">
+    <div className="fixed inset-0 z-[300] flex items-end bg-black/70 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
+      <div className="relative max-h-[calc(100dvh-0.5rem)] w-full overflow-y-auto overscroll-contain rounded-t-[32px] border border-white/10 bg-[#0a0d16] text-white shadow-2xl [-webkit-overflow-scrolling:touch] sm:max-h-[calc(100dvh-2.5rem)] sm:max-w-2xl sm:rounded-[32px]">
         <button
           type="button"
           onClick={() => close()}
@@ -42,7 +42,7 @@ export default function RadioWelcomeSheet({
           <X className="h-5 w-5" />
         </button>
 
-        <div className="relative h-[290px] overflow-hidden sm:h-[330px]">
+        <div className="relative h-[220px] overflow-hidden sm:h-[330px]">
           <img src={radioHostImage} alt="" className="absolute inset-0 h-full w-full object-cover" />
           <img
             src={podcastImage}
@@ -58,7 +58,7 @@ export default function RadioWelcomeSheet({
           </div>
         </div>
 
-        <div className="px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 sm:px-7 sm:pb-7">
+        <div className="px-5 pb-[max(6rem,calc(env(safe-area-inset-bottom)+1.5rem))] pt-4 sm:px-7 sm:pb-7">
           <p className="max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
             Build your own station, host live shows, broadcast podcasts, program music, and let listeners tune in from anywhere.
           </p>
