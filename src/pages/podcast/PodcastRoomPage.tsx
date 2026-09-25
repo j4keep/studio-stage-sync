@@ -821,6 +821,15 @@ const PodcastRoomPage = () => {
   }, [isAudience, doorman.status, radioStationId, sessionId, navigate]);
 
   useEffect(() => {
+    if (!isHost || !fromRadio) return;
+    const callIns = doorman.pending.filter((req) => req.requestType === "call-in");
+    if (callIns.length <= 4) return;
+    callIns.slice(4).forEach((req) => {
+      doorman.reject(req.reqId, "All four call lines are busy. Please try again.");
+    });
+  }, [isHost, fromRadio, doorman.pending, doorman.reject]);
+
+  useEffect(() => {
     if (!isAudience || doorman.status !== "rejected") return;
     void room.stopAudioOnlyPublishing();
     room.cancelPreparedPublishing();
