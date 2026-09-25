@@ -323,6 +323,24 @@ export function usePodcastLiveRoom(opts: {
     });
   }, []);
 
+  /** Radio call screening: publish microphone only while staying off-stage. */
+  const startAudioOnlyPublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) throw new Error("Not connected to the live room yet");
+    await lp.setCameraEnabled(false);
+    await lp.setMicrophoneEnabled(true);
+    refresh();
+  }, [refresh]);
+
+  /** Close a radio screening line and return to listener-only mode. */
+  const stopAudioOnlyPublishing = useCallback(async () => {
+    const lp = roomRef.current?.localParticipant;
+    if (!lp) return;
+    await lp.setMicrophoneEnabled(false);
+    await lp.setCameraEnabled(false);
+    refresh();
+  }, [refresh]);
+
   /** Guest joins the motor stage after host acceptance. */
   const startPublishing = useCallback(async () => {
     const lp = roomRef.current?.localParticipant;
@@ -400,6 +418,8 @@ export function usePodcastLiveRoom(opts: {
     setScreen,
     preparePublishing,
     cancelPreparedPublishing,
+    startAudioOnlyPublishing,
+    stopAudioOnlyPublishing,
     startPublishing,
     stopPublishing,
     replaceVideoTrack,
