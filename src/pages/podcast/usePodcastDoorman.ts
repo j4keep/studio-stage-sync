@@ -1,4 +1,4 @@
-// W.STUDIO Podcast — Waiting-room "doorman".
+// YAJ live broadcast — waiting-room "doorman".
 // Lightweight Supabase realtime channel that gates LiveKit room entry.
 // Does NOT touch LiveKit, recording, editor, or export.
 //
@@ -16,6 +16,7 @@ export type PendingRequest = {
   reqId: string;
   name: string;
   password?: string;
+  requestType?: "guest" | "call-in";
   ts: number;
 };
 
@@ -94,7 +95,13 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
         if (data.type === "request") {
           setPending((p) => {
             if (p.some((x) => x.reqId === data.reqId)) return p;
-            return [...p, { reqId: data.reqId, name: data.name || "Guest", password: data.password, ts: Date.now() }];
+            return [...p, {
+              reqId: data.reqId,
+              name: data.name || "Guest",
+              password: data.password,
+              requestType: data.requestType === "call-in" ? "call-in" : "guest",
+              ts: Date.now(),
+            }];
           });
           // Acknowledge with current policy so guests in a stale state can recover.
           const sec = secRef.current;
@@ -171,11 +178,17 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
   }, [isHost, security?.visibility, security?.password, send]);
 
   /* ---------- guest actions ---------- */
-  const requestJoin = useCallback((password?: string) => {
+  const requestJoin = useCallback((password?: string, requestType: "guest" | "call-in" = "guest") => {
     if (isHost) return;
     setStatus("requesting");
     setRejectReason(null);
-    send({ type: "request", reqId: reqIdRef.current, name: displayName, password });
+    send({
+      type: "request",
+      reqId: reqIdRef.current,
+      name: displayName,
+      password,
+      requestType,
+    });
   }, [isHost, displayName, send]);
 
   /* ---------- host actions ---------- */
@@ -216,6 +229,7 @@ export function usePodcastDoorman({ sessionId, isHost, displayName, security }: 
     if (admission !== "auto") return;
     if (pending.length === 0) return;
     pending.forEach((p) => {
+      if (p.requestType === "call-in") return;
       if (sec?.visibility === "password" && !validatePassword(p.password)) {
         decide(p.reqId, false, "Wrong password");
       } else {
