@@ -152,16 +152,13 @@ export function useBackgroundReplacement(
           maskCtx.save();
           maskCtx.clearRect(0, 0, w, h);
 
-          // Feather and slightly expand the person mask. Drawing a few offset
-          // copies before the blur prevents hair/shoulders from being clipped,
-          // while the blur removes the hard "sticker" edge.
-          maskCtx.filter = "blur(4px)";
-          maskCtx.globalAlpha = 0.96;
-          for (const [dx, dy] of [[0, 0], [-2, 0], [2, 0], [0, -2], [0, 2]]) {
-            maskCtx.drawImage(results.segmentationMask, dx, dy, w, h);
-          }
-          maskCtx.filter = "none";
+          // Keep the segmentation matte tight. A very small feather softens
+          // hair/shoulder edges without expanding the mask into the real room
+          // behind the person (which creates the obvious "bleeding" halo).
+          maskCtx.filter = "blur(1.25px)";
           maskCtx.globalAlpha = 1;
+          maskCtx.drawImage(results.segmentationMask, 0, 0, w, h);
+          maskCtx.filter = "none";
           maskCtx.restore();
 
           ctx.drawImage(maskCanvas, 0, 0, w, h);
