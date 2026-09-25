@@ -296,6 +296,7 @@ const PodcastRoomPage = () => {
   const callBoardRef = useRef<HTMLDivElement>(null);
   const callBoardDragRef = useRef<{ pointerId: number; startX: number; startY: number; originX: number; originY: number } | null>(null);
   const roomShellRef = useRef<HTMLDivElement>(null);
+  const endingBroadcastRef = useRef(false);
   const presenceKeyRef = useRef<string>(crypto.randomUUID());
   // A radio viewer needs a device/session identity that is different from the host.
   // This also allows the station owner to test Tune In from a second phone while
@@ -347,6 +348,7 @@ const PodcastRoomPage = () => {
     if (!isHost || !radioStationId) return;
 
     const heartbeat = () => {
+      if (endingBroadcastRef.current) return;
       void (supabase as any)
         .from("radio_stations")
         .update({
@@ -765,6 +767,7 @@ const PodcastRoomPage = () => {
           ? "End the podcast session for everyone? This will disconnect all guests."
           : "End the podcast for everyone? This will disconnect all guests.";
       if (confirm(msg)) {
+        endingBroadcastRef.current = true;
         if (isScheduled) PodcastSessionStore.markEnded(scheduled!.id);
         try { doorman.endSession(fromRadio ? "Host ended the broadcast" : "Host ended the session"); } catch {}
 
