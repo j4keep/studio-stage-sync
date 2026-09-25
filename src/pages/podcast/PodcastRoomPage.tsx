@@ -983,15 +983,9 @@ const PodcastRoomPage = () => {
             </>
           )}
           {isAudience && (
-            <>
-              <span className="hidden sm:inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
-                Listening live
-              </span>
-              <Button size="sm" variant="secondary" onClick={toggleViewerFullscreen} className="gap-1.5">
-                {viewerFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-                {viewerFullscreen ? "Exit" : "Full Screen"}
-              </Button>
-            </>
+            <span className="inline-flex rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-emerald-300">
+              Listening live
+            </span>
           )}
         </div>
       </header>
