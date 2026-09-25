@@ -9,6 +9,8 @@ import {
   Music2,
   Plus,
   Radio,
+  Image as ImageIcon,
+  Pencil,
   Search,
   TowerControl,
   Waves,
@@ -18,6 +20,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { PodcastSessionStore } from "@/pages/podcast/podcastSessionStore";
+import { uploadToR2 } from "@/lib/r2-storage";
 import radioHost from "@/assets/wstudio-orbit-headphones.jpg";
 import studioMic from "@/assets/wstudio-orbit-mic.jpg";
 import studioMixer from "@/assets/wstudio-orbit-mixer.jpg";
@@ -36,6 +39,8 @@ type Station = {
   live_title: string | null;
   live_started_at: string | null;
   live_session_id: string | null;
+  logo_url: string | null;
+  banner_url: string | null;
 };
 
 type Show = {
@@ -60,6 +65,7 @@ export default function RadioStationsPage() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [scheduleStation, setScheduleStation] = useState<Station | null>(null);
   const [liveStation, setLiveStation] = useState<Station | null>(null);
+  const [editStation, setEditStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
   const [radioBackendReady, setRadioBackendReady] = useState(true);
 
@@ -68,7 +74,7 @@ export default function RadioStationsPage() {
     const [stationResult, showResult] = await Promise.all([
       (supabase as any)
         .from("radio_stations")
-        .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,is_live,live_title,live_started_at,live_session_id")
+        .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,is_live,live_title,live_started_at,live_session_id,logo_url,banner_url")
         .eq("is_public", true)
         .order("is_live", { ascending: false })
         .order("created_at", { ascending: false }),
@@ -223,6 +229,7 @@ export default function RadioStationsPage() {
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
                   onGoLive={() => setLiveStation(station)}
+                  onEdit={() => setEditStation(station)}
                 />
               ))}
             </div>
@@ -272,6 +279,7 @@ export default function RadioStationsPage() {
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
                   onGoLive={() => setLiveStation(station)}
+                  onEdit={() => setEditStation(station)}
                 />
               ))}
             </div>
@@ -298,6 +306,7 @@ export default function RadioStationsPage() {
                   onChanged={load}
                   onSchedule={() => setScheduleStation(station)}
                   onGoLive={() => setLiveStation(station)}
+                  onEdit={() => setEditStation(station)}
                 />
               ))}
             </div>
@@ -322,6 +331,17 @@ export default function RadioStationsPage() {
           onClose={() => setScheduleStation(null)}
           onSaved={() => {
             setScheduleStation(null);
+            void load();
+          }}
+        />
+      ) : null}
+
+      {editStation ? (
+        <EditStationSheet
+          station={editStation}
+          onClose={() => setEditStation(null)}
+          onSaved={() => {
+            setEditStation(null);
             void load();
           }}
         />
@@ -410,6 +430,7 @@ function StationCard({
   onChanged,
   onSchedule,
   onGoLive,
+  onEdit,
 }: {
   station: Station;
   shows: Show[];
@@ -419,13 +440,20 @@ function StationCard({
   onChanged: () => void;
   onSchedule: () => void;
   onGoLive: () => void;
+  onEdit: () => void;
 }) {
   const navigate = useNavigate();
   const nextShow = shows.find((show) => show.station_id === station.id && show.status === "scheduled");
 
   const tuneIn = () => {
     if (station.is_live && station.live_session_id) {
-      navigate("/podcast/room/" + encodeURIComponent(station.live_session_id) + "?guest=1");
+      navigate(
+        "/podcast/room/" +
+          encodeURIComponent(station.live_session_id) +
+          "?audience=1&station=" +
+          encodeURIComponent(station.id) +
+          "&source=radio",
+      );
       return;
     }
     toast({
@@ -439,7 +467,7 @@ function StationCard({
   return (
     <article className={"group overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.045] shadow-xl transition hover:-translate-y-0.5 hover:bg-white/[0.065] " + (featured ? "min-w-[82vw] sm:min-w-[360px] lg:min-w-0" : "")}>
       <div className="relative h-44 overflow-hidden">
-        <img src={art} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+        <img src={station.banner_url || station.logo_url || art} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16] via-black/20 to-transparent" />
         <div className="absolute left-3 top-3 flex items-center gap-2">
           <span className={"rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] " + (station.is_live ? "bg-red-500 text-white" : "bg-black/55 text-white/75 backdrop-blur")}>
@@ -481,6 +509,9 @@ function StationCard({
           </button>
           {mine ? (
             <>
+              <button onClick={onEdit} className="flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black">
+                <Pencil className="h-3 w-3" /> Edit
+              </button>
               <button onClick={onSchedule} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black">Schedule</button>
               <button onClick={onGoLive} className="rounded-full bg-violet-600 px-3 py-2.5 text-[10px] font-black">Go Live</button>
             </>
@@ -706,6 +737,125 @@ function ScheduleShowSheet({ station, onClose, onSaved }: { station: Station; on
   );
 }
 
+function EditStationSheet({
+  station,
+  onClose,
+  onSaved,
+}: {
+  station: Station;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { user } = useAuth();
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(station.name);
+  const [networkName, setNetworkName] = useState(station.network_name || "");
+  const [tagline, setTagline] = useState(station.tagline || "");
+  const [genre, setGenre] = useState(station.genre || "");
+  const [mode, setMode] = useState<Station["programming_mode"]>(station.programming_mode);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(station.banner_url || station.logo_url);
+
+  const save = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!user || !name.trim()) return;
+    setSaving(true);
+
+    let bannerUrl = station.banner_url || station.logo_url || null;
+    if (coverFile) {
+      const upload = await uploadToR2(coverFile, {
+        folder: `radio-stations/${user.id}`,
+        fileName: `station-cover-${Date.now()}-${coverFile.name}`,
+      });
+      if (!upload.success || !upload.data?.url) {
+        setSaving(false);
+        toast({ title: "Cover upload failed", description: upload.error || "Please try another image.", variant: "destructive" });
+        return;
+      }
+      bannerUrl = upload.data.url;
+    }
+
+    const { error } = await (supabase as any)
+      .from("radio_stations")
+      .update({
+        name: name.trim(),
+        network_name: networkName.trim() || null,
+        tagline: tagline.trim() || null,
+        genre: genre.trim() || null,
+        programming_mode: mode,
+        banner_url: bannerUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", station.id)
+      .eq("owner_user_id", user.id);
+
+    setSaving(false);
+    if (error) {
+      toast({ title: "Could not update station", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Station updated" });
+    onSaved();
+  };
+
+  return (
+    <ModalShell onClose={onClose}>
+      <form onSubmit={save}>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Station Manager</p>
+        <h2 className="mt-1 text-2xl font-black">Edit your station</h2>
+        <p className="mt-1 text-xs leading-relaxed text-white/45">
+          Update the station identity, format and cover image whenever you want.
+        </p>
+
+        <div className="mt-5 space-y-3">
+          <label className="block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.04]">
+            {coverPreview ? (
+              <img src={coverPreview} alt="" className="h-36 w-full object-cover" />
+            ) : (
+              <div className="flex h-28 flex-col items-center justify-center gap-2 text-white/45">
+                <ImageIcon className="h-6 w-6" />
+                <span className="text-xs font-black">Upload station cover</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setCoverFile(file);
+                if (coverPreview?.startsWith("blob:")) URL.revokeObjectURL(coverPreview);
+                setCoverPreview(file ? URL.createObjectURL(file) : coverPreview);
+              }}
+            />
+          </label>
+
+          <Field value={name} onChange={setName} placeholder="Station name" />
+          <Field value={networkName} onChange={setNetworkName} placeholder="Network name (optional)" />
+          <Field value={tagline} onChange={setTagline} placeholder="Tagline" />
+          <Field value={genre} onChange={setGenre} placeholder="Format — Hip-Hop, Talk, News, Gospel…" />
+
+          <div className="grid grid-cols-4 gap-1.5">
+            {(["mixed", "live", "music", "podcast"] as const).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setMode(item)}
+                className={"min-h-11 rounded-xl border text-[10px] font-black capitalize transition " + (mode === item ? "border-violet-400 bg-violet-500 text-white" : "border-white/10 bg-white/[0.04] text-white/60")}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <ModalActions onClose={onClose} disabled={saving || !name.trim()} label={saving ? "Saving…" : "Save Changes"} />
+      </form>
+    </ModalShell>
+  );
+}
+
 function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -714,11 +864,28 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
   const [tagline, setTagline] = useState("");
   const [genre, setGenre] = useState("");
   const [mode, setMode] = useState<Station["programming_mode"]>("mixed");
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
     if (!user || !name.trim()) return;
     setSaving(true);
+
+    let bannerUrl: string | null = null;
+    if (coverFile) {
+      const upload = await uploadToR2(coverFile, {
+        folder: `radio-stations/${user.id}`,
+        fileName: `station-cover-${Date.now()}-${coverFile.name}`,
+      });
+      if (!upload.success || !upload.data?.url) {
+        setSaving(false);
+        toast({ title: "Cover upload failed", description: upload.error || "Please try another image.", variant: "destructive" });
+        return;
+      }
+      bannerUrl = upload.data.url;
+    }
+
     const { error } = await (supabase as any).from("radio_stations").insert({
       owner_user_id: user.id,
       name: name.trim(),
@@ -726,6 +893,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
       tagline: tagline.trim() || null,
       genre: genre.trim() || null,
       programming_mode: mode,
+      banner_url: bannerUrl,
       is_public: true,
     });
     setSaving(false);
@@ -754,6 +922,28 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
         <p className="mt-1 text-xs leading-relaxed text-white/45">Build a real broadcast identity for live talk, podcasts, interviews, DJ sets and 24/7 music.</p>
 
         <div className="mt-5 space-y-3">
+          <label className="block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.04]">
+            {coverPreview ? (
+              <img src={coverPreview} alt="" className="h-36 w-full object-cover" />
+            ) : (
+              <div className="flex h-28 flex-col items-center justify-center gap-2 text-white/45">
+                <ImageIcon className="h-6 w-6" />
+                <span className="text-xs font-black">Upload station cover</span>
+                <span className="text-[10px]">Photo or artwork from your device</span>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0] || null;
+                setCoverFile(file);
+                if (coverPreview) URL.revokeObjectURL(coverPreview);
+                setCoverPreview(file ? URL.createObjectURL(file) : null);
+              }}
+            />
+          </label>
           <Field value={name} onChange={setName} placeholder="Station name" />
           <Field value={networkName} onChange={setNetworkName} placeholder="Network name (optional)" />
           <Field value={tagline} onChange={setTagline} placeholder="Tagline" />
