@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Headphones, Mic2, RadioTower, Sparkles, X } from "lucide-react";
+import { Headphones, Music, RadioTower, Sparkles, X } from "lucide-react";
 import radioHostImage from "@/assets/wstudio-orbit-headphones.jpg";
 import podcastImage from "@/assets/podcast-1.jpg";
 
-const WELCOME_KEY = "yaj-radio-welcome-v2";
+const WELCOME_KEY = "yaj-radio-welcome-v3";
 
 export default function RadioWelcomeSheet({
   onCreateStation,
@@ -51,8 +51,8 @@ export default function RadioWelcomeSheet({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16] via-black/15 to-black/15" />
           <div className="absolute bottom-5 left-5 right-36 sm:right-44">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> Broadcast. Live.
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/90 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em]">
+              <RadioTower className="h-3.5 w-3.5" /> Creator Radio
             </span>
             <h1 className="mt-3 text-3xl font-black leading-[0.95] tracking-tight sm:text-4xl">Welcome to YAJ Radio</h1>
           </div>
@@ -60,13 +60,13 @@ export default function RadioWelcomeSheet({
 
         <div className="px-5 pb-[max(6rem,calc(env(safe-area-inset-bottom)+1.5rem))] pt-4 sm:px-7 sm:pb-7">
           <p className="max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
-            Build your own station, host live shows, broadcast podcasts, program music, and let listeners tune in from anywhere.
+            Create your own station, share your music and audio podcasts, and let listeners discover your sound from anywhere.
           </p>
 
           <div className="mt-5 grid grid-cols-3 gap-2">
             <Feature icon={<RadioTower className="h-4 w-4" />} title="Own a station" />
-            <Feature icon={<Mic2 className="h-4 w-4" />} title="Go live" />
-            <Feature icon={<Headphones className="h-4 w-4" />} title="Tune in" />
+            <Feature icon={<Music className="h-4 w-4" />} title="Music & podcasts" />
+            <Feature icon={<Headphones className="h-4 w-4" />} title="Listen" />
           </div>
 
           <div className="mt-5 grid grid-cols-2 gap-2">
