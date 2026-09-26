@@ -46,6 +46,8 @@ interface RadioContextType {
   songPlayCount: number;
   /** Reset the song play counter (called after ad is shown) */
   resetSongPlayCount: () => void;
+  activeStationId: string | null;
+  playStation: (stationId: string) => Promise<boolean>;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -79,6 +81,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [volume, setVolumeState] = useState(1);
   const [shuffled, setShuffled] = useState(false);
   const [shuffleOrder, setShuffleOrder] = useState<number[]>([]);
+  const [activeStationId, setActiveStationId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
 
@@ -191,6 +194,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchRadioSongs = useCallback(async () => {
     setLoading(true);
+    setActiveStationId(null);
     const [{ data, error }, podcastsRes] = await Promise.all([
       (supabase as any)
       .from("songs")
@@ -249,6 +253,90 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       ]);
     }
     setLoading(false);
+  }, []);
+
+  const playStation = useCallback(async (stationId: string) => {
+    setLoading(true);
+
+    const { data: station, error: stationError } = await (supabase as any)
+      .from("radio_stations")
+      .select("id,owner_user_id,name,programming_mode")
+      .eq("id", stationId)
+      .eq("is_public", true)
+      .single();
+
+    if (stationError || !station?.owner_user_id) {
+      setLoading(false);
+      return false;
+    }
+
+    const includeSongs = station.programming_mode !== "podcast";
+    const includePodcasts = station.programming_mode !== "music";
+
+    const [songsRes, podcastsRes, profileRes] = await Promise.all([
+      includeSongs
+        ? (supabase as any)
+            .from("songs")
+            .select("id,title,cover_url,audio_url,plays,genre,user_id,likes_count,album")
+            .eq("on_radio", true)
+            .eq("user_id", station.owner_user_id)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      includePodcasts
+        ? (supabase as any)
+            .from("podcasts")
+            .select("id,title,cover_url,media_url,plays,user_id,likes_count,episode,duration,is_video,on_radio")
+            .eq("is_video", false)
+            .eq("on_radio", true)
+            .eq("user_id", station.owner_user_id)
+            .order("created_at", { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      (supabase as any)
+        .from("profiles")
+        .select("display_name")
+        .eq("user_id", station.owner_user_id)
+        .maybeSingle(),
+    ]);
+
+    const creatorName = profileRes?.data?.display_name || station.name || "YAJ creator";
+    const nextTracks: RadioTrack[] = [
+      ...(songsRes.data || []).map((song: any) => ({
+        id: song.id,
+        source: "song" as const,
+        title: song.title,
+        artist_name: creatorName,
+        album: song.album || station.name,
+        genre: song.genre || "All Music",
+        cover_url: song.cover_url || album1,
+        audio_url: song.audio_url ? getR2DownloadUrl(song.audio_url) : undefined,
+        plays: song.plays || "0",
+        likes_count: song.likes_count || 0,
+        user_id: song.user_id,
+      })),
+      ...(podcastsRes.data || []).map((podcast: any) => ({
+        id: podcast.id,
+        source: "podcast" as const,
+        title: podcast.title,
+        artist_name: creatorName,
+        album: podcast.episode || station.name,
+        genre: "Podcasts",
+        cover_url: podcast.cover_url || podcast1,
+        audio_url: podcast.media_url ? getR2DownloadUrl(podcast.media_url) : undefined,
+        plays: podcast.plays || "0",
+        likes_count: podcast.likes_count || 0,
+        user_id: podcast.user_id,
+      })),
+    ];
+
+    setSongs(nextTracks);
+    setCurrentIndex(0);
+    setActiveGenre("All");
+    setShuffled(false);
+    setShuffleOrder([]);
+    setActiveStationId(stationId);
+    setIsPlaying(nextTracks.length > 0);
+    setLoading(false);
+    return nextTracks.length > 0;
   }, []);
 
   useEffect(() => {
@@ -317,6 +405,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       currentTime, duration, seek,
       volume, setVolume, shuffled, toggleShuffle,
       songPlayCount, resetSongPlayCount: () => setSongPlayCount(0),
+      activeStationId, playStation,
     }}>
       {children}
     </RadioContext.Provider>
