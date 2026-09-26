@@ -618,7 +618,7 @@ const RadioPage = () => {
               <Search className="h-4 w-4 text-foreground" />
             </button>
             <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-primary">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" /> LIVE
+              RADIO
             </span>
           </div>
         </div>
@@ -659,10 +659,10 @@ const RadioPage = () => {
               <RadioTower className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block text-[12px] font-black text-foreground">Stations & Live Shows</span>
-              <span className="block text-[10px] text-muted-foreground">Morning shows, podcasts, music stations & networks</span>
+              <span className="block text-[12px] font-black text-foreground">Radio Stations</span>
+              <span className="block text-[10px] text-muted-foreground">Music, audio podcasts and creator stations</span>
             </span>
-            <span className="rounded-full bg-red-500/10 px-2 py-1 text-[9px] font-black text-red-500">LIVE</span>
+            <span className="rounded-full bg-primary/10 px-2 py-1 text-[9px] font-black text-primary">STATIONS</span>
           </button>
         </div>
 
@@ -705,15 +705,17 @@ const RadioPage = () => {
           </div>
         )}
 
-        <div className="mb-4">
-          <RadioBroadcastHero
-            liveCount={liveStationCount}
-            upcomingCount={upcomingShowCount}
-            onBrowse={() => navigate("/radio/stations")}
-            onCreate={() => navigate("/radio/stations")}
-            onGoLive={() => navigate("/radio/stations?start=live")}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/radio/stations")}
+          className="mb-4 flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4 text-left"
+        >
+          <span>
+            <span className="block text-sm font-black text-foreground">Browse YAJ Radio Stations</span>
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">Choose a creator station or create your own.</span>
+          </span>
+          <RadioTower className="h-5 w-5 text-primary" />
+        </button>
 
         <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
