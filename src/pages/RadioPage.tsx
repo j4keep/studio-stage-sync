@@ -20,7 +20,7 @@ import {
   Upload,
   RadioTower,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/contexts/RadioContext";
@@ -33,7 +33,6 @@ import YajRadioWordmark from "@/components/YajRadioWordmark";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
 import RadioWelcomeSheet from "@/components/radio/RadioWelcomeSheet";
-import RadioBroadcastHero from "@/components/radio/RadioBroadcastHero";
 
 const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter((g) => g !== "Beats")];
 
@@ -60,6 +59,8 @@ interface RadioComment {
 
 const RadioPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const stationId = searchParams.get("station");
   const { user } = useAuth();
   const {
     isPlaying,
@@ -83,11 +84,39 @@ const RadioPage = () => {
     toggleShuffle,
     songPlayCount,
     resetSongPlayCount,
+    activeStationId,
+    playStation,
   } = useRadio();
 
+  const [stationName, setStationName] = useState<string | null>(null);
+
   useEffect(() => {
-    if (allTracks.length === 0) void fetchRadioSongs();
-  }, [allTracks.length, fetchRadioSongs]);
+    if (stationId) {
+      void (async () => {
+        const { data } = await (supabase as any)
+          .from("radio_stations")
+          .select("name")
+          .eq("id", stationId)
+          .eq("is_public", true)
+          .maybeSingle();
+        setStationName(data?.name || "Radio Station");
+
+        if (activeStationId !== stationId) {
+          const hasContent = await playStation(stationId);
+          if (!hasContent) {
+            toast({
+              title: "Station is ready",
+              description: "This station does not have any YAJ Radio songs or audio podcasts yet.",
+            });
+          }
+        }
+      })();
+      return;
+    }
+
+    setStationName(null);
+    if (activeStationId || allTracks.length === 0) void fetchRadioSongs();
+  }, [stationId, activeStationId, allTracks.length, fetchRadioSongs, playStation]);
 
   const songIds = allTracks.filter((s) => s.source !== "podcast").map((s) => s.id);
   const podcastIds = allTracks.filter((s) => s.source === "podcast").map((s) => s.id);
@@ -104,25 +133,12 @@ const RadioPage = () => {
   const [commentText, setCommentText] = useState("");
   const [comments, setComments] = useState<Record<string, RadioComment[]>>({});
   const [commentsLoading, setCommentsLoading] = useState(false);
-  const [liveStationCount, setLiveStationCount] = useState(0);
-  const [upcomingShowCount, setUpcomingShowCount] = useState(0);
   const commentInputRef = useRef<HTMLInputElement>(null);
   const swipeStartX = useRef<number | null>(null);
   const swipeStartY = useRef<number | null>(null);
   const seekGestureLockRef = useRef(false);
 
   const trackComments = currentTrack ? comments[currentTrack.id] || [] : [];
-
-  useEffect(() => {
-    void (async () => {
-      const [{ count: liveCount }, { count: showCount }] = await Promise.all([
-        (supabase as any).from("radio_stations").select("id", { count: "exact", head: true }).eq("is_public", true).eq("is_live", true),
-        (supabase as any).from("radio_station_shows").select("id", { count: "exact", head: true }).eq("status", "scheduled"),
-      ]);
-      setLiveStationCount(Number(liveCount || 0));
-      setUpcomingShowCount(Number(showCount || 0));
-    })();
-  }, []);
 
   useEffect(() => {
     if (!currentTrack) return;
@@ -324,20 +340,22 @@ const RadioPage = () => {
               <RadioTower className="h-4 w-4" />
             </span>
             <span className="min-w-0">
-              <span className="block text-[12px] font-black">Stations & Live Shows</span>
-              <span className="block text-[10px] text-muted-foreground">Listen live or create your own station/network</span>
+              <span className="block text-[12px] font-black">Radio Stations</span>
+              <span className="block text-[10px] text-muted-foreground">Browse stations or create your own</span>
             </span>
           </button>
         </div>
-        <div className="mb-5">
-          <RadioBroadcastHero
-            liveCount={liveStationCount}
-            upcomingCount={upcomingShowCount}
-            onBrowse={() => navigate("/radio/stations")}
-            onCreate={() => navigate("/radio/stations")}
-            onGoLive={() => navigate("/radio/stations?start=live")}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => navigate("/radio/stations")}
+          className="mb-5 flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4 text-left"
+        >
+          <span>
+            <span className="block text-sm font-black">Browse YAJ Radio Stations</span>
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">Choose a creator station to listen to or create your own.</span>
+          </span>
+          <RadioTower className="h-5 w-5 text-primary" />
+        </button>
         <div className="mb-6 flex w-full gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
             <button
@@ -357,7 +375,9 @@ const RadioPage = () => {
         <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
           <Music className="mb-3 h-10 w-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet
+            {stationId
+              ? `${stationName || "This station"} has no YAJ Radio audio yet`
+              : `No songs on radio${activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet`}
           </p>
           <button
             type="button"
