@@ -20,7 +20,7 @@ import {
   Upload,
   RadioTower,
 } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useRadio } from "@/contexts/RadioContext";
@@ -59,8 +59,6 @@ interface RadioComment {
 
 const RadioPage = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const stationId = searchParams.get("station");
   const { user } = useAuth();
   const {
     isPlaying,
@@ -84,39 +82,11 @@ const RadioPage = () => {
     toggleShuffle,
     songPlayCount,
     resetSongPlayCount,
-    activeStationId,
-    playStation,
   } = useRadio();
 
-  const [stationName, setStationName] = useState<string | null>(null);
-
   useEffect(() => {
-    if (stationId) {
-      void (async () => {
-        const { data } = await (supabase as any)
-          .from("radio_stations")
-          .select("name")
-          .eq("id", stationId)
-          .eq("is_public", true)
-          .maybeSingle();
-        setStationName(data?.name || "Radio Station");
-
-        if (activeStationId !== stationId) {
-          const hasContent = await playStation(stationId);
-          if (!hasContent) {
-            toast({
-              title: "Station is ready",
-              description: "This station does not have any YAJ Radio songs or audio podcasts yet.",
-            });
-          }
-        }
-      })();
-      return;
-    }
-
-    setStationName(null);
-    if (activeStationId || allTracks.length === 0) void fetchRadioSongs();
-  }, [stationId, activeStationId, allTracks.length, fetchRadioSongs, playStation]);
+    if (allTracks.length === 0) void fetchRadioSongs();
+  }, [allTracks.length, fetchRadioSongs]);
 
   const songIds = allTracks.filter((s) => s.source !== "podcast").map((s) => s.id);
   const podcastIds = allTracks.filter((s) => s.source === "podcast").map((s) => s.id);
@@ -352,7 +322,7 @@ const RadioPage = () => {
         >
           <span>
             <span className="block text-sm font-black">Browse YAJ Radio Stations</span>
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">Choose a creator station to listen to or create your own.</span>
+            <span className="mt-0.5 block text-[11px] text-muted-foreground">Choose a creator station or create your own.</span>
           </span>
           <RadioTower className="h-5 w-5 text-primary" />
         </button>
@@ -375,9 +345,7 @@ const RadioPage = () => {
         <div className="flex flex-1 flex-col items-center justify-center py-16 text-center">
           <Music className="mb-3 h-10 w-10 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            {stationId
-              ? `${stationName || "This station"} has no YAJ Radio audio yet`
-              : `No songs on radio${activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet`}
+            No songs on radio{activeGenre !== "All" ? ` for ${activeGenre}` : ""} yet
           </p>
           <button
             type="button"
