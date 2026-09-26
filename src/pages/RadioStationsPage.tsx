@@ -123,8 +123,8 @@ export default function RadioStationsPage() {
 
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
 
-  const listen = (station: Station) => {
-    navigate(`/radio?station=${encodeURIComponent(station.id)}`);
+  const listen = (_station: Station) => {
+    navigate("/radio");
   };
 
   return (
