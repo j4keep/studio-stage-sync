@@ -258,6 +258,8 @@ const PodcastRoomPage = () => {
   const linkPassword = searchParams.get("k") || "";
   const radioStationId = searchParams.get("station");
   const fromRadio = searchParams.get("source") === "radio" || Boolean(radioStationId);
+  const radioAudioMode = fromRadio && searchParams.get("radioaudio") === "1";
+  const callInsEnabled = searchParams.get("callins") === "1";
   const returnToSource = () => {
     if (fromRadio) {
       navigate("/radio/stations");
@@ -486,6 +488,7 @@ const PodcastRoomPage = () => {
     displayName: isAudience && fromRadio ? `__YAJ_HOLD__:${doorman.requestId}:${displayName}` : displayName,
     enabled: isAudience || isAcceptedCallIn || doorman.status === "accepted",
     publish: !(isAudience || isAcceptedCallIn),
+    audioOnly: radioAudioMode,
     canPublish: fromRadio ? true : !isAudience,
     maxParticipants: isAudience ? 24 : 12,
   });
@@ -876,18 +879,20 @@ const PodcastRoomPage = () => {
       accepted: "1",
       station: radioStationId,
       source: "radio",
+      radioaudio: "1",
+      callins: callInsEnabled ? "1" : "0",
     });
     navigate(`/podcast/room/${encodeURIComponent(sessionId)}?${params.toString()}`, { replace: true });
   }, [isAudience, doorman.status, radioStationId, sessionId, navigate]);
 
   useEffect(() => {
-    if (!isHost || !fromRadio) return;
+    if (!isHost || !fromRadio || !callInsEnabled) return;
     const callIns = doorman.pending.filter((req) => req.requestType === "call-in");
     if (callIns.length <= 4) return;
     callIns.slice(4).forEach((req) => {
       doorman.reject(req.reqId, "All four call lines are busy. Please try again.");
     });
-  }, [isHost, fromRadio, doorman.pending, doorman.reject]);
+  }, [isHost, fromRadio, callInsEnabled, doorman.pending, doorman.reject]);
 
   useEffect(() => {
     if (!isAudience || doorman.status !== "rejected") return;
@@ -1214,7 +1219,7 @@ const PodcastRoomPage = () => {
             </p>
           </div>
           <div className="flex flex-wrap justify-end gap-2">
-            {!isAcceptedCallIn && (
+            {!isAcceptedCallIn && callInsEnabled && (
               <Button
                 variant="secondary"
                 onClick={requestCallIn}
@@ -1246,6 +1251,7 @@ const PodcastRoomPage = () => {
           onScreen={toggleScreen}
           onLeave={leave}
           onLayout={() => setLayoutSheetOpen(true)}
+          audioOnly={radioAudioMode}
         />
       )}
 
@@ -1276,7 +1282,7 @@ const PodcastRoomPage = () => {
       )}
 
       {/* Host radio call switchboard — draggable, minimizable, four numbered hold lines. */}
-      {isHost && fromRadio && (
+      {isHost && fromRadio && callInsEnabled && (
         <div
           ref={callBoardRef}
           className={
@@ -1808,19 +1814,23 @@ const ParticipantTile = ({
 
 const PodcastControlBar = ({
   isRecording, isPaused, micOn, camOn, screenOn, canRecord, isHost,
-  onStart, onStop, onPause, onMic, onCam, onScreen, onLeave, onLayout,
+  onStart, onStop, onPause, onMic, onCam, onScreen, onLeave, onLayout, audioOnly,
 }: any) => (
   <footer className="sticky bottom-0 z-30 border-t border-zinc-800 bg-zinc-950/95 backdrop-blur px-3 py-3">
     <div className="flex items-center justify-center gap-2 md:gap-3 flex-wrap">
       <CtrlBtn onClick={onMic} active={!micOn} label={micOn ? "Mute" : "Unmute"}>
         {micOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
       </CtrlBtn>
-      <CtrlBtn onClick={onCam} active={!camOn} label={camOn ? "Camera off" : "Camera on"}>
-        {camOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
-      </CtrlBtn>
-      <CtrlBtn onClick={onScreen} active={screenOn} label="Share">
-        <MonitorUp className="w-5 h-5" />
-      </CtrlBtn>
+      {!audioOnly && (
+        <>
+          <CtrlBtn onClick={onCam} active={!camOn} label={camOn ? "Camera off" : "Camera on"}>
+            {camOn ? <Video className="w-5 h-5" /> : <VideoOff className="w-5 h-5" />}
+          </CtrlBtn>
+          <CtrlBtn onClick={onScreen} active={screenOn} label="Share">
+            <MonitorUp className="w-5 h-5" />
+          </CtrlBtn>
+        </>
+      )}
 
       {isHost ? (
         !isRecording ? (
