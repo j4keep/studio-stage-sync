@@ -266,7 +266,14 @@ export default function RadioStationsPage() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        toast({ title: "Could not play station", description: error.message, variant: "destructive" });
+        const missingStationPlaylist = error.message?.includes("radio_station_audio") || error.message?.includes("schema cache");
+        toast({
+          title: missingStationPlaylist ? "Station playlist setup is not finished" : "Could not play station",
+          description: missingStationPlaylist
+            ? "The station playlist database update still needs to be applied in Supabase."
+            : error.message,
+          variant: "destructive",
+        });
         return;
       }
 
@@ -650,6 +657,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
   const [trimStart, setTrimStart] = useState("0");
   const [trimEnd, setTrimEnd] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const previewTrackRef = useRef<StationAudioItem | null>(null);
 
   const isMissingStationAudioTable = (message?: string) =>
     Boolean(message && (message.includes("radio_station_audio") || message.includes("schema cache")));
@@ -688,7 +696,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
 
     const onTime = () => {
       setPreviewTime(audio.currentTime || 0);
-      const track = tracks.find((item) => item.id === previewingId);
+      const track = previewTrackRef.current;
       const end = Number(track?.trim_end_seconds);
       if (track && Number.isFinite(end) && end > 0 && audio.currentTime >= end) {
         audio.pause();
@@ -708,11 +716,12 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
       audio.removeEventListener("loadedmetadata", onMeta);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [previewingId, tracks]);
+  }, []);
 
   const stopPreview = () => {
     const audio = audioRef.current;
     if (audio) audio.pause();
+    previewTrackRef.current = null;
     setPreviewingId(null);
   };
 
@@ -724,6 +733,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
       return;
     }
 
+    previewTrackRef.current = track;
     const url = getR2DownloadUrl(track.audio_url);
     if (audio.src !== url) audio.src = url;
     const startAt = Math.max(0, Number(track.trim_start_seconds || 0));
