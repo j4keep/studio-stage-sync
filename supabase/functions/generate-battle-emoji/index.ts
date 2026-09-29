@@ -1,3 +1,4 @@
+import { requireAiUser } from "../_shared/ai-guard.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -7,6 +8,8 @@ const corsHeaders = {
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const guard = await requireAiUser(req, "generate-battle-emoji", corsHeaders);
+  if (guard instanceof Response) return guard;
 
   try {
     const { prompt } = await req.json();
