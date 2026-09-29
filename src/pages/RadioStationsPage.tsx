@@ -433,6 +433,119 @@ function StationCard({
 }
 
 
+function GoLiveAudioSheet({
+  station,
+  onClose,
+}: {
+  station: Station;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const [allowCallIns, setAllowCallIns] = useState(Boolean(station.call_in_enabled));
+  const [starting, setStarting] = useState(false);
+
+  const start = async () => {
+    if (starting) return;
+    setStarting(true);
+
+    const sessionId = station.is_live && station.live_session_id
+      ? station.live_session_id
+      : `radio-${station.id}-${crypto.randomUUID()}`;
+
+    const { error } = await (supabase as any)
+      .from("radio_stations")
+      .update({
+        call_in_enabled: allowCallIns,
+        live_title: station.programming_mode === "podcast"
+          ? `${station.name} Live Podcast`
+          : `${station.name} Live Radio`,
+      })
+      .eq("id", station.id);
+
+    if (error) {
+      setStarting(false);
+      toast({ title: "Could not start live radio", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      station: station.id,
+      source: "radio",
+      radioaudio: "1",
+      callins: allowCallIns ? "1" : "0",
+    });
+    navigate(`/podcast/room/${encodeURIComponent(sessionId)}?${params.toString()}`);
+  };
+
+  return (
+    <ModalShell onClose={onClose}>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">YAJ Radio Live Audio</p>
+        <h2 className="mt-1 text-2xl font-black">Go live on {station.name}</h2>
+        <p className="mt-2 text-xs leading-relaxed text-white/50">
+          This is audio-only. Your microphone goes live; your camera stays off.
+          {station.programming_mode === "music"
+            ? " Your station music library remains available for your show."
+            : " Listeners can hear your live podcast in real time."}
+        </p>
+
+        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-black">Allow listener call-ins</p>
+              <p className="mt-1 text-[10px] leading-relaxed text-white/40">
+                Callers stay audio-only and must be accepted by you before they join.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAllowCallIns((value) => !value)}
+              className={
+                "relative h-7 w-12 rounded-full transition " +
+                (allowCallIns ? "bg-emerald-500" : "bg-zinc-700")
+              }
+              aria-label="Toggle listener call-ins"
+            >
+              <span
+                className={
+                  "absolute top-1 h-5 w-5 rounded-full bg-white transition " +
+                  (allowCallIns ? "left-6" : "left-1")
+                }
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-300">Live format</p>
+          <p className="mt-1 text-sm font-black">
+            {station.programming_mode === "podcast" ? "Live Audio Podcast" : "Live Music Radio"}
+          </p>
+          <p className="mt-1 text-[10px] text-white/40">No video is published from YAJ Radio live rooms.</p>
+        </div>
+
+        <div className="mt-6 flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3 text-xs font-black"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => void start()}
+            disabled={starting}
+            className="flex-1 rounded-full bg-red-600 px-4 py-3 text-xs font-black text-white disabled:opacity-50"
+          >
+            {starting ? "Starting…" : station.is_live ? "Return Live" : "Go Live"}
+          </button>
+        </div>
+      </div>
+    </ModalShell>
+  );
+}
+
 function StationAudioPlayer({
   station,
   hostName,
