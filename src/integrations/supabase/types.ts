@@ -4290,6 +4290,56 @@ export type Database = {
           },
         ]
       }
+      radio_station_audio: {
+        Row: {
+          audio_url: string
+          created_at: string
+          enabled: boolean
+          id: string
+          owner_user_id: string
+          position: number
+          station_id: string
+          title: string
+          trim_end_seconds: number | null
+          trim_start_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          audio_url: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_user_id: string
+          position?: number
+          station_id: string
+          title: string
+          trim_end_seconds?: number | null
+          trim_start_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          audio_url?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          owner_user_id?: string
+          position?: number
+          station_id?: string
+          title?: string
+          trim_end_seconds?: number | null
+          trim_start_seconds?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "radio_station_audio_station_id_fkey"
+            columns: ["station_id"]
+            isOneToOne: false
+            referencedRelation: "radio_stations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       radio_station_programming: {
         Row: {
           created_at: string
