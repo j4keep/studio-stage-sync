@@ -103,7 +103,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
   const getFilteredFromRef = () => {
     if (stationQueueRef.current) return stationQueueRef.current;
-    return songsRef.current.filter(s => activeGenreRef.current === "All" || s.genre === activeGenreRef.current);
+    return songsRef.current.filter(
+      s => s.source === "song" && (activeGenreRef.current === "All" || s.genre === activeGenreRef.current),
+    );
   };
 
   // Create audio element once
@@ -148,7 +150,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
   const getFiltered = useCallback(() => {
     if (stationQueue) return stationQueue;
-    const filtered = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    const filtered = songs.filter(
+      s => s.source === "song" && (activeGenre === "All" || s.genre === activeGenre),
+    );
     if (!shuffled || shuffleOrder.length !== filtered.length) return filtered;
     return shuffleOrder.map(i => filtered[i]).filter(Boolean);
   }, [songs, activeGenre, shuffled, shuffleOrder, stationQueue]);
@@ -194,7 +198,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     setCurrentIndex(0);
     setIsPlaying(false);
-    const filtered = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    const filtered = songs.filter(
+      s => s.source === "song" && (activeGenre === "All" || s.genre === activeGenre),
+    );
     if (shuffled && filtered.length > 0) regenerateShuffle(filtered.length);
   }, [activeGenre, songs, shuffled, regenerateShuffle]);
 
@@ -285,7 +291,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const playTrack = useCallback((track: RadioTrack) => {
     setStationQueue(null);
     setStationName(null);
-    const general = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    const general = songs.filter(
+      s => s.source === "song" && (activeGenre === "All" || s.genre === activeGenre),
+    );
     const idx = general.findIndex(s => s.id === track.id);
     if (idx >= 0) {
       setCurrentIndex(idx);
@@ -315,7 +323,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     setShuffled(prev => {
       const next = !prev;
       if (next) {
-        const filtered = songsRef.current.filter(s => activeGenreRef.current === "All" || s.genre === activeGenreRef.current);
+        const filtered = songsRef.current.filter(
+          s => s.source === "song" && (activeGenreRef.current === "All" || s.genre === activeGenreRef.current),
+        );
         regenerateShuffle(filtered.length);
       }
       setCurrentIndex(0);
