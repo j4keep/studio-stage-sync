@@ -256,81 +256,46 @@ export default function RadioStationsPage() {
     const mode: AudioStationMode = station.programming_mode === "podcast" ? "podcast" : "music";
     let tracks: RadioTrack[] = [];
 
-    if (mode === "podcast") {
-      const { data, error } = await (supabase as any)
-        .from("podcasts")
-        .select("id,title,cover_url,media_url,episode,user_id,is_video,on_radio,plays,likes_count")
-        .eq("user_id", station.owner_user_id)
-        .eq("is_video", false)
-        .eq("on_radio", true)
-        .order("created_at", { ascending: false });
+    const { data, error } = await (supabase as any)
+      .from("radio_station_audio")
+      .select("id,title,audio_url,position,owner_user_id,trim_start_seconds,trim_end_seconds")
+      .eq("station_id", station.id)
+      .eq("enabled", true)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
 
-      if (error) {
-        const missingStationPlaylist = error.message?.includes("radio_station_audio") || error.message?.includes("schema cache");
-        toast({
-          title: missingStationPlaylist ? "Station playlist setup is not finished" : "Could not play station",
-          description: missingStationPlaylist
-            ? "The station playlist database update still needs to be applied in Supabase."
-            : error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      tracks = (data || [])
-        .filter((item: any) => !!item.media_url)
-        .map((item: any) => ({
-          id: item.id,
-          source: "podcast" as const,
-          title: item.title,
-          artist_name: hostNames[station.owner_user_id] || station.name,
-          album: item.episode || station.name,
-          genre: "Podcasts",
-          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, podcastHost),
-          audio_url: getR2DownloadUrl(item.media_url),
-          plays: String(item.plays || "0"),
-          likes_count: Number(item.likes_count || 0),
-          user_id: item.user_id,
-        }));
-    } else {
-      const { data, error } = await (supabase as any)
-        .from("radio_station_audio")
-        .select("id,title,audio_url,position,owner_user_id,trim_start_seconds,trim_end_seconds")
-        .eq("station_id", station.id)
-        .eq("enabled", true)
-        .order("position", { ascending: true })
-        .order("created_at", { ascending: true });
-
-      if (error) {
-        const missingStationPlaylist = error.message?.includes("radio_station_audio") || error.message?.includes("schema cache");
-        toast({
-          title: missingStationPlaylist ? "Station playlist setup is not finished" : "Could not play station",
-          description: missingStationPlaylist
-            ? "The station playlist database update still needs to be applied in Supabase."
-            : error.message,
-          variant: "destructive",
-        });
-        return;
-      }
-
-      tracks = (data || [])
-        .filter((item: any) => !!item.audio_url)
-        .map((item: any) => ({
-          id: item.id,
-          source: "station" as const,
-          title: item.title,
-          artist_name: hostNames[station.owner_user_id] || station.name,
-          album: station.name,
-          genre: station.genre || "Music",
-          cover_url: stationCoverSrc(station.banner_url || station.logo_url, albumArt),
-          audio_url: getR2DownloadUrl(item.audio_url),
-          plays: "0",
-          likes_count: 0,
-          user_id: item.owner_user_id,
-          trim_start_seconds: Number(item.trim_start_seconds || 0),
-          trim_end_seconds: item.trim_end_seconds == null ? null : Number(item.trim_end_seconds),
-        }));
+    if (error) {
+      const missingStationPlaylist = error.message?.includes("radio_station_audio") || error.message?.includes("schema cache");
+      toast({
+        title: missingStationPlaylist ? "Station playlist setup is not finished" : "Could not play station",
+        description: missingStationPlaylist
+          ? "The station playlist database update still needs to be applied in Supabase."
+          : error.message,
+        variant: "destructive",
+      });
+      return;
     }
+
+    tracks = (data || [])
+      .filter((item: any) => !!item.audio_url)
+      .map((item: any) => ({
+        id: item.id,
+        source: "station" as const,
+        title: item.title,
+        artist_name: hostNames[station.owner_user_id] || station.name,
+        album: station.name,
+        genre: station.genre || (mode === "podcast" ? "Podcast" : "Music"),
+        cover_url: stationCoverSrc(
+          station.banner_url || station.logo_url,
+          mode === "podcast" ? podcastHost : albumArt,
+        ),
+        audio_url: getR2DownloadUrl(item.audio_url),
+        plays: "0",
+        likes_count: 0,
+        user_id: item.owner_user_id,
+        trim_start_seconds: Number(item.trim_start_seconds || 0),
+        trim_end_seconds: item.trim_end_seconds == null ? null : Number(item.trim_end_seconds),
+      }));
 
     if (!tracks.length) {
       toast({
@@ -344,11 +309,6 @@ export default function RadioStationsPage() {
   };
 
   const manageAudio = (station: Station) => {
-    if (station.programming_mode === "podcast") {
-      const returnTo = encodeURIComponent("/radio/stations");
-      navigate(`/my-podcasts?upload=1&returnTo=${returnTo}`);
-      return;
-    }
     setPlaylistStation(station);
   };
 
@@ -1244,6 +1204,156 @@ function EditStationSheet({
   );
 }
 
+type PendingStationAudio = {
+  id: string;
+  file: File;
+  previewUrl: string;
+  trim_start_seconds: number;
+  trim_end_seconds: number | null;
+};
+
+function PendingStationTrackRow({
+  track,
+  index,
+  onChange,
+  onRemove,
+}: {
+  track: PendingStationAudio;
+  index: number;
+  onChange: (next: PendingStationAudio) => void;
+  onRemove: () => void;
+}) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const onTime = () => {
+      setCurrentTime(audio.currentTime || 0);
+      const end = track.trim_end_seconds;
+      if (end != null && end > track.trim_start_seconds && audio.currentTime >= end) {
+        audio.pause();
+        setPlaying(false);
+      }
+    };
+    const onMeta = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const onEnded = () => setPlaying(false);
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.pause();
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [track.trim_end_seconds, track.trim_start_seconds]);
+
+  const togglePlay = async () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (!audio.paused) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+    if (
+      audio.currentTime < track.trim_start_seconds ||
+      (track.trim_end_seconds != null && audio.currentTime >= track.trim_end_seconds)
+    ) {
+      audio.currentTime = Math.max(0, track.trim_start_seconds);
+    }
+    try {
+      await audio.play();
+      setPlaying(true);
+    } catch {
+      toast({ title: "Could not preview this audio file", variant: "destructive" });
+    }
+  };
+
+  const fastForward = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const end = track.trim_end_seconds ?? (Number.isFinite(audio.duration) ? audio.duration : audio.currentTime + 15);
+    audio.currentTime = Math.min(audio.currentTime + 15, Math.max(track.trim_start_seconds, end - 0.1));
+  };
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = String(Math.floor(seconds % 60)).padStart(2, "0");
+    return `${mins}:${secs}`;
+  };
+
+  return (
+    <div className="rounded-2xl border border-border bg-background/70 p-3">
+      <audio ref={audioRef} src={track.previewUrl} preload="metadata" />
+      <div className="flex items-start gap-2">
+        <Music2 className="mt-0.5 h-4 w-4 shrink-0 text-violet-400" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-black">{track.file.name}</p>
+          <p className="mt-0.5 text-[9px] text-muted-foreground">
+            Track {index + 1} · {formatTime(currentTime)}{duration > 0 ? ` / ${formatTime(duration)}` : ""}
+          </p>
+        </div>
+        <button type="button" onClick={onRemove}
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10 text-red-400"
+          aria-label="Delete selected track">
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => void togglePlay()}
+          className="flex h-9 items-center gap-1.5 rounded-full bg-violet-600 px-3 text-[10px] font-black text-white">
+          {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+          {playing ? "Pause" : "Play"}
+        </button>
+        <button type="button" onClick={fastForward}
+          className="flex h-9 items-center gap-1.5 rounded-full bg-muted px-3 text-[10px] font-black">
+          <FastForward className="h-3.5 w-3.5" /> +15s
+        </button>
+        <div className="flex min-w-[210px] flex-1 items-center gap-2 rounded-xl bg-muted/60 p-2">
+          <Scissors className="h-3.5 w-3.5 shrink-0 text-violet-400" />
+          <label className="min-w-0 flex-1 text-[9px] font-bold text-muted-foreground">
+            Start
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              value={track.trim_start_seconds}
+              onChange={(event) => {
+                const value = Math.max(0, Number(event.target.value) || 0);
+                onChange({ ...track, trim_start_seconds: value });
+              }}
+              className="mt-1 h-8 w-full rounded-lg border border-border bg-background px-2 text-[10px] text-foreground"
+            />
+          </label>
+          <label className="min-w-0 flex-1 text-[9px] font-bold text-muted-foreground">
+            End
+            <input
+              type="number"
+              min="0"
+              step="0.1"
+              placeholder="End"
+              value={track.trim_end_seconds == null ? "" : track.trim_end_seconds}
+              onChange={(event) => {
+                const raw = event.target.value.trim();
+                const value = raw === "" ? null : Math.max(0, Number(raw) || 0);
+                onChange({ ...track, trim_end_seconds: value });
+              }}
+              className="mt-1 h-8 w-full rounded-lg border border-border bg-background px-2 text-[10px] text-foreground"
+            />
+          </label>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
@@ -1254,7 +1364,13 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
   const [mode, setMode] = useState<AudioStationMode>("music");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [audioFiles, setAudioFiles] = useState<File[]>([]);
+  const [audioFiles, setAudioFiles] = useState<PendingStationAudio[]>([]);
+
+  useEffect(() => {
+    return () => {
+      audioFiles.forEach((track) => URL.revokeObjectURL(track.previewUrl));
+    };
+  }, []);
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
@@ -1298,8 +1414,14 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
 
     let uploadedCount = 0;
     let failedCount = 0;
-    if (mode === "music" && audioFiles.length) {
-      for (const [index, file] of audioFiles.entries()) {
+    if (audioFiles.length) {
+      for (const [index, track] of audioFiles.entries()) {
+        const file = track.file;
+        const trimEnd = track.trim_end_seconds;
+        if (trimEnd != null && trimEnd <= track.trim_start_seconds) {
+          failedCount += 1;
+          continue;
+        }
         const upload = await uploadToR2(file, {
           folder: `radio-stations/${user.id}/${createdStation.id}/audio`,
           fileName: `${Date.now()}-${index}-${file.name}`,
@@ -1312,6 +1434,8 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
           audio_url: upload.data.key,
           position: index,
           enabled: true,
+          trim_start_seconds: track.trim_start_seconds,
+          trim_end_seconds: trimEnd,
         });
         if (audioError) {
           failedCount += 1;
@@ -1357,26 +1481,69 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
           setCoverFile={setCoverFile}
         />
 
-        {mode === "music" && (
-          <label className="mt-4 block cursor-pointer rounded-2xl border border-dashed border-violet-400/50 bg-violet-500/10 p-4">
+        <div className="mt-4 rounded-2xl border border-dashed border-violet-400/50 bg-violet-500/10 p-4">
+          <label className="block cursor-pointer">
             <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/15 text-violet-300"><Upload className="h-5 w-5" /></span>
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/15 text-violet-300">
+                <Upload className="h-5 w-5" />
+              </span>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-black">Upload station MP3s</p>
+                <p className="text-sm font-black">
+                  {mode === "podcast" ? "Upload podcast MP3s" : "Upload station MP3s"}
+                </p>
                 <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
-                  These tracks belong to this station only and play continuously in the order selected.
+                  {mode === "podcast"
+                    ? "Add podcast episodes or other audio that belongs to this podcast station."
+                    : "These tracks belong to this station only and play continuously in the order selected."}
                 </p>
               </div>
             </div>
-            {audioFiles.length > 0 && (
-              <p className="mt-3 rounded-xl bg-background/70 px-3 py-2 text-[10px] font-bold text-foreground">
-                {audioFiles.length} audio file{audioFiles.length === 1 ? "" : "s"} selected
-              </p>
-            )}
-            <input type="file" accept="audio/mpeg,audio/mp3,audio/*" multiple className="hidden"
-              onChange={(event) => setAudioFiles(Array.from(event.target.files || []))} />
+            <input
+              type="file"
+              accept="audio/mpeg,audio/mp3,audio/*"
+              multiple
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files || []);
+                if (!files.length) return;
+                const next = files.map((file) => ({
+                  id: crypto.randomUUID(),
+                  file,
+                  previewUrl: URL.createObjectURL(file),
+                  trim_start_seconds: 0,
+                  trim_end_seconds: null,
+                }));
+                setAudioFiles((current) => [...current, ...next]);
+                event.currentTarget.value = "";
+              }}
+            />
           </label>
-        )}
+
+          {audioFiles.length > 0 && (
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-violet-300">
+                  {audioFiles.length} selected track{audioFiles.length === 1 ? "" : "s"}
+                </p>
+                <p className="text-[9px] text-muted-foreground">Preview and trim before creating</p>
+              </div>
+              {audioFiles.map((track, index) => (
+                <PendingStationTrackRow
+                  key={track.id}
+                  track={track}
+                  index={index}
+                  onChange={(next) => setAudioFiles((current) =>
+                    current.map((item) => item.id === track.id ? next : item)
+                  )}
+                  onRemove={() => {
+                    URL.revokeObjectURL(track.previewUrl);
+                    setAudioFiles((current) => current.filter((item) => item.id !== track.id));
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
         <ModalActions onClose={onClose} disabled={saving || !name.trim()} label={saving ? "Creating…" : "Create Station"} />
       </form>
