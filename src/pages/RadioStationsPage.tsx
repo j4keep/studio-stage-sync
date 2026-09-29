@@ -157,7 +157,12 @@ export default function RadioStationsPage() {
   };
 
   const manageAudio = (station: Station) => {
-    navigate(station.programming_mode === "podcast" ? "/my-podcasts?upload=1" : "/my-songs?upload=1");
+    const returnTo = encodeURIComponent("/radio/stations");
+    navigate(
+      station.programming_mode === "podcast"
+        ? `/my-podcasts?upload=1&returnTo=${returnTo}`
+        : `/my-songs?upload=1&returnTo=${returnTo}`,
+    );
   };
 
   return (
