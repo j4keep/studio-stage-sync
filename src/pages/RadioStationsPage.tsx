@@ -48,7 +48,6 @@ type Station = {
   is_live: boolean;
   live_session_id: string | null;
   live_title: string | null;
-  call_in_enabled: boolean;
 };
 
 const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
@@ -68,7 +67,7 @@ export default function RadioStationsPage() {
   const load = async () => {
     const { data, error } = await (supabase as any)
       .from("radio_stations")
-      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title,call_in_enabled")
+      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title")
       .eq("is_public", true)
       .order("created_at", { ascending: false });
 
@@ -150,7 +149,6 @@ export default function RadioStationsPage() {
         station: station.id,
         source: "radio",
         radioaudio: "1",
-        callins: station.call_in_enabled ? "1" : "0",
       });
       navigate(`/podcast/room/${encodeURIComponent(station.live_session_id)}?${params.toString()}`);
       return;
@@ -441,7 +439,7 @@ function GoLiveAudioSheet({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
-  const [allowCallIns, setAllowCallIns] = useState(Boolean(station.call_in_enabled));
+  const [allowCallIns, setAllowCallIns] = useState(false);
   const [starting, setStarting] = useState(false);
 
   const start = async () => {
@@ -455,7 +453,6 @@ function GoLiveAudioSheet({
     const { error } = await (supabase as any)
       .from("radio_stations")
       .update({
-        call_in_enabled: allowCallIns,
         live_title: station.programming_mode === "podcast"
           ? `${station.name} Live Podcast`
           : `${station.name} Live Radio`,
