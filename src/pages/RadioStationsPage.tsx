@@ -23,14 +23,6 @@ import djHost from "@/assets/artist-dj-onyx.jpg";
 type StationMode = "mixed" | "music" | "podcast" | "live";
 type AudioStationMode = "music" | "podcast";
 
-type StationTrack = {
-  id: string;
-  title: string;
-  subtitle: string;
-  cover_url: string | null;
-  audio_url: string;
-};
-
 type Station = {
   id: string;
   owner_user_id: string;
