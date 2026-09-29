@@ -9,8 +9,6 @@ import {
   Plus,
   RadioTower,
   Search,
-  SkipBack,
-  SkipForward,
   X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -141,6 +139,9 @@ export default function RadioStationsPage() {
   }, [stations, query, hostNames]);
 
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
+  const liveStations = filtered.filter((station) => station.is_live);
+  const musicStations = filtered.filter((station) => !station.is_live && station.programming_mode !== "podcast");
+  const podcastStations = filtered.filter((station) => !station.is_live && station.programming_mode === "podcast");
 
   const listen = (station: Station) => {
     if (station.is_live && station.live_session_id) {
@@ -166,116 +167,147 @@ export default function RadioStationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080b12] pb-[calc(10rem+env(safe-area-inset-bottom))] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#080b12]/92 px-4 pb-3 pt-3 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#080b12] pb-[calc(9rem+env(safe-area-inset-bottom))] text-white">
+      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#080b12]/94 px-4 pb-4 pt-3 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
           <button
             type="button"
             onClick={() => navigate("/radio")}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/[0.06]"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
             aria-label="Back to YAJ Radio"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300">YAJ Radio</p>
-            <h1 className="truncate text-xl font-black tracking-tight sm:text-2xl">Radio Stations</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">YAJ</p>
+            <h1 className="text-3xl font-black tracking-tight">Radio</h1>
           </div>
           <button
             type="button"
             onClick={() => setCreatorOpen(true)}
-            className="flex h-11 items-center gap-2 rounded-full bg-violet-600 px-4 text-xs font-black"
+            className="flex h-10 items-center gap-2 rounded-full bg-violet-600 px-4 text-[11px] font-black"
           >
             <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create Station</span>
+            Create
           </button>
         </div>
 
-        <div className="mx-auto mt-3 flex w-full max-w-6xl items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.06] px-4">
-          <Search className="h-4 w-4 text-white/45" />
+        <div className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-2 rounded-2xl bg-white/[0.07] px-4">
+          <Search className="h-4 w-4 text-white/40" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search stations, networks, genres, hosts…"
-            className="h-12 min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-white/35"
+            placeholder="Search stations, genres, networks, hosts"
+            className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/35"
           />
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-6xl space-y-9 px-4 pt-5">
-        <section className="relative overflow-hidden rounded-[30px] border border-white/10 shadow-2xl">
-          <img src={radioHost} alt="" className="absolute inset-0 h-full w-full object-cover object-center opacity-55" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#080b12] via-[#080b12]/92 to-[#080b12]/55" />
-          <div className="relative z-10 max-w-2xl px-5 py-8 sm:px-8 sm:py-10">
-            <span className="inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/15 px-3 py-1 text-[10px] font-black uppercase tracking-[0.17em] text-violet-200">
-              <RadioTower className="h-3.5 w-3.5" /> Your station. Your sound.
-            </span>
-            <h2 className="mt-4 text-4xl font-black leading-[0.95] tracking-tight sm:text-5xl">Create a radio station people can listen to.</h2>
-            <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/65 sm:text-base">
-              Build a station around your music, audio podcasts, genre, or network. YAJ Radio stays focused on listening—no extra live-broadcast system.
-            </p>
-            <button
-              type="button"
-              onClick={() => setCreatorOpen(true)}
-              className="mt-5 flex items-center gap-2 rounded-full bg-white px-5 py-3 text-xs font-black text-slate-950"
-            >
-              <Plus className="h-4 w-4" /> Create Radio Station
-            </button>
-          </div>
-        </section>
-
-        <section>
-          <SectionTitle eyebrow="Discover" title="Stations & networks" count={filtered.length ? String(filtered.length) : undefined} />
-          {loading ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {[0, 1, 2].map((item) => (
-                <div key={item} className="h-72 animate-pulse rounded-[26px] bg-white/[0.05]" />
-              ))}
-            </div>
-          ) : filtered.length ? (
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {filtered.map((station, index) => (
-                <StationCard
-                  key={station.id}
-                  station={station}
-                  hostName={hostNames[station.owner_user_id]}
-                  mine={station.owner_user_id === user?.id}
-                  art={STATION_ART[index % STATION_ART.length]}
-                  onListen={() => listen(station)}
-                  onEdit={() => setEditStation(station)}
-                  onManage={() => manageAudio(station)}
-                  onGoLive={() => setLiveStation(station)}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-8 text-center">
-              <RadioTower className="mx-auto h-8 w-8 text-white/35" />
-              <p className="mt-3 text-sm font-black">No stations found.</p>
-              <p className="mt-1 text-xs text-white/45">Create the first one or try another search.</p>
-            </div>
-          )}
-        </section>
-
-        {mine.length > 0 && (
+      <main className="mx-auto w-full max-w-6xl space-y-9 px-4 pt-6">
+        {loading ? (
           <section>
-            <SectionTitle eyebrow="My Radio" title="My stations" count={String(mine.length)} />
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {mine.map((station, index) => (
-                <StationCard
-                  key={station.id}
-                  station={station}
-                  hostName={hostNames[station.owner_user_id]}
-                  mine
-                  art={STATION_ART[(index + 2) % STATION_ART.length]}
-                  onListen={() => listen(station)}
-                  onEdit={() => setEditStation(station)}
-                  onManage={() => manageAudio(station)}
-                  onGoLive={() => setLiveStation(station)}
-                />
+            <SectionTitle eyebrow="" title="Radio Stations" />
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              {[0, 1, 2, 3, 4].map((item) => (
+                <div key={item}>
+                  <div className="aspect-square animate-pulse rounded-3xl bg-white/[0.06]" />
+                  <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-white/[0.06]" />
+                </div>
               ))}
             </div>
           </section>
+        ) : filtered.length === 0 ? (
+          <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-12 text-center">
+            <RadioTower className="mx-auto h-8 w-8 text-white/30" />
+            <p className="mt-3 text-base font-black">No radio stations found</p>
+            <p className="mt-1 text-xs text-white/45">Try another search or create a station.</p>
+          </div>
+        ) : (
+          <>
+            {liveStations.length > 0 && (
+              <section>
+                <SectionTitle eyebrow="Live now" title="Listen to Live Radio" />
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {liveStations.map((station, index) => (
+                    <StationCard
+                      key={station.id}
+                      station={station}
+                      hostName={hostNames[station.owner_user_id]}
+                      mine={station.owner_user_id === user?.id}
+                      art={STATION_ART[index % STATION_ART.length]}
+                      onListen={() => listen(station)}
+                      onEdit={() => setEditStation(station)}
+                      onManage={() => manageAudio(station)}
+                      onGoLive={() => setLiveStation(station)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {musicStations.length > 0 && (
+              <section>
+                <SectionTitle eyebrow="Music" title="Music Stations" />
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {musicStations.map((station, index) => (
+                    <StationCard
+                      key={station.id}
+                      station={station}
+                      hostName={hostNames[station.owner_user_id]}
+                      mine={station.owner_user_id === user?.id}
+                      art={STATION_ART[(index + 1) % STATION_ART.length]}
+                      onListen={() => listen(station)}
+                      onEdit={() => setEditStation(station)}
+                      onManage={() => manageAudio(station)}
+                      onGoLive={() => setLiveStation(station)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {podcastStations.length > 0 && (
+              <section>
+                <SectionTitle eyebrow="Talk & Podcast" title="Podcast Stations" />
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {podcastStations.map((station, index) => (
+                    <StationCard
+                      key={station.id}
+                      station={station}
+                      hostName={hostNames[station.owner_user_id]}
+                      mine={station.owner_user_id === user?.id}
+                      art={STATION_ART[(index + 3) % STATION_ART.length]}
+                      onListen={() => listen(station)}
+                      onEdit={() => setEditStation(station)}
+                      onManage={() => manageAudio(station)}
+                      onGoLive={() => setLiveStation(station)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {mine.length > 0 && (
+              <section>
+                <SectionTitle eyebrow="Your Radio" title="My Stations" />
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                  {mine.map((station, index) => (
+                    <StationCard
+                      key={station.id}
+                      station={station}
+                      hostName={hostNames[station.owner_user_id]}
+                      mine
+                      art={STATION_ART[(index + 2) % STATION_ART.length]}
+                      onListen={() => listen(station)}
+                      onEdit={() => setEditStation(station)}
+                      onManage={() => manageAudio(station)}
+                      onGoLive={() => setLiveStation(station)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </main>
 
