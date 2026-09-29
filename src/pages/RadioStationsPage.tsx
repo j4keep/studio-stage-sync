@@ -666,11 +666,6 @@ function StationAudioPlayer({
     else audio.pause();
   }, [playing, current?.id]);
 
-  const previous = () => {
-    if (!tracks.length) return;
-    setIndex((value) => (value - 1 + tracks.length) % tracks.length);
-  };
-
   const next = () => {
     if (!tracks.length) return;
     setIndex((value) => (value + 1) % tracks.length);
@@ -733,15 +728,7 @@ function StationAudioPlayer({
               className="hidden"
             />
 
-            <div className="mt-5 flex items-center justify-center gap-5">
-              <button
-                type="button"
-                onClick={previous}
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
-                aria-label="Previous"
-              >
-                <SkipBack className="h-5 w-5" />
-              </button>
+            <div className="mt-5 flex flex-col items-center">
               <button
                 type="button"
                 onClick={() => setPlaying((value) => !value)}
@@ -750,50 +737,22 @@ function StationAudioPlayer({
               >
                 {playing ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
               </button>
-              <button
-                type="button"
-                onClick={next}
-                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
-                aria-label="Next"
-              >
-                <SkipForward className="h-5 w-5" />
-              </button>
+              <p className="mt-3 text-center text-[10px] font-semibold text-white/40">
+                Programmed by the station · listeners cannot skip tracks
+              </p>
             </div>
 
-            <div className="mt-5">
-              <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-white/35">
-                {mode === "podcast" ? "Episodes" : "Station Queue"} · {tracks.length}
-              </p>
-              <div className="max-h-52 space-y-2 overflow-y-auto">
-                {tracks.map((track, trackIndex) => (
-                  <button
-                    key={track.id}
-                    type="button"
-                    onClick={() => {
-                      setIndex(trackIndex);
-                      setPlaying(true);
-                    }}
-                    className={
-                      "flex w-full items-center gap-3 rounded-xl border p-2 text-left " +
-                      (trackIndex === index
-                        ? "border-violet-400/50 bg-violet-500/10"
-                        : "border-white/8 bg-white/[0.03]")
-                    }
-                  >
-                    <img
-                      src={track.cover_url || station.banner_url || station.logo_url || radioHost}
-                      alt=""
-                      className="h-11 w-11 rounded-lg object-cover"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-black">{track.title}</p>
-                      <p className="truncate text-[10px] text-white/40">{track.subtitle}</p>
-                    </div>
-                    {trackIndex === index && playing ? (
-                      <span className="text-[9px] font-black uppercase tracking-wider text-violet-300">Playing</span>
-                    ) : null}
-                  </button>
-                ))}
+            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/35">
+                    {mode === "podcast" ? "Station Episodes" : "Station Playlist"}
+                  </p>
+                  <p className="mt-1 text-xs text-white/55">
+                    {tracks.length} item{tracks.length === 1 ? "" : "s"} · next item starts automatically
+                  </p>
+                </div>
+                <Headphones className="h-5 w-5 text-violet-300" />
               </div>
             </div>
           </>
