@@ -376,6 +376,249 @@ function StationCard({
   );
 }
 
+
+function StationAudioPlayer({
+  station,
+  hostName,
+  onClose,
+}: {
+  station: Station;
+  hostName?: string;
+  onClose: () => void;
+}) {
+  const mode: AudioStationMode = station.programming_mode === "podcast" ? "podcast" : "music";
+  const [tracks, setTracks] = useState<StationTrack[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      setLoading(true);
+
+      if (mode === "podcast") {
+        const { data, error } = await (supabase as any)
+          .from("podcasts")
+          .select("id,title,cover_url,media_url,episode,user_id,is_video,on_radio")
+          .eq("user_id", station.owner_user_id)
+          .eq("is_video", false)
+          .eq("on_radio", true)
+          .order("created_at", { ascending: false });
+
+        if (!active) return;
+        if (error) {
+          setTracks([]);
+          setLoading(false);
+          return;
+        }
+
+        setTracks(
+          (data || [])
+            .filter((item: any) => !!item.media_url)
+            .map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              subtitle: item.episode || "Podcast episode",
+              cover_url: item.cover_url || station.banner_url || station.logo_url,
+              audio_url: getR2DownloadUrl(item.media_url),
+            })),
+        );
+      } else {
+        const { data, error } = await (supabase as any)
+          .from("songs")
+          .select("id,title,cover_url,audio_url,album,user_id,on_radio")
+          .eq("user_id", station.owner_user_id)
+          .eq("on_radio", true)
+          .order("created_at", { ascending: false });
+
+        if (!active) return;
+        if (error) {
+          setTracks([]);
+          setLoading(false);
+          return;
+        }
+
+        setTracks(
+          (data || [])
+            .filter((item: any) => !!item.audio_url)
+            .map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              subtitle: item.album || "Music",
+              cover_url: item.cover_url || station.banner_url || station.logo_url,
+              audio_url: getR2DownloadUrl(item.audio_url),
+            })),
+        );
+      }
+
+      setIndex(0);
+      setPlaying(false);
+      setLoading(false);
+    })();
+
+    return () => {
+      active = false;
+      audioRef.current?.pause();
+    };
+  }, [station.id, station.owner_user_id, mode]);
+
+  const current = tracks[index] || null;
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !current) return;
+    audio.src = current.audio_url;
+    audio.currentTime = 0;
+    if (playing) void audio.play().catch(() => setPlaying(false));
+  }, [current?.id]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio || !current) return;
+    if (playing) void audio.play().catch(() => setPlaying(false));
+    else audio.pause();
+  }, [playing, current?.id]);
+
+  const previous = () => {
+    if (!tracks.length) return;
+    setIndex((value) => (value - 1 + tracks.length) % tracks.length);
+  };
+
+  const next = () => {
+    if (!tracks.length) return;
+    setIndex((value) => (value + 1) % tracks.length);
+  };
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-end bg-black/80 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
+      <div className="relative max-h-[94dvh] w-full overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#0d111b] p-5 shadow-2xl sm:max-w-lg sm:rounded-[30px]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white"
+          aria-label="Close station player"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
+        <div className="pr-12">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">YAJ Radio · {mode}</p>
+          <h2 className="mt-1 text-2xl font-black">{station.name}</h2>
+          <p className="mt-1 text-xs text-white/45">
+            {hostName ? `By ${hostName} · ` : ""}{mode === "podcast" ? "Audio Podcast Station" : "Music Station"}
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="flex min-h-72 items-center justify-center">
+            <p className="text-sm text-white/45">Loading station…</p>
+          </div>
+        ) : !current ? (
+          <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
+            <Headphones className="mx-auto h-8 w-8 text-white/30" />
+            <p className="mt-3 text-sm font-black">No audio has been added yet.</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/45">
+              {mode === "podcast"
+                ? "This creator needs to add an audio podcast to YAJ Radio."
+                : "This creator needs to add music to YAJ Radio."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
+              <img
+                src={current.cover_url || station.banner_url || station.logo_url || radioHost}
+                alt=""
+                className="aspect-square w-full object-cover"
+              />
+              <div className="p-4">
+                <p className="truncate text-lg font-black">{current.title}</p>
+                <p className="mt-1 truncate text-xs text-white/45">{current.subtitle}</p>
+              </div>
+            </div>
+
+            <audio
+              ref={audioRef}
+              preload="metadata"
+              onEnded={next}
+              onPlay={() => setPlaying(true)}
+              onPause={() => setPlaying(false)}
+              className="hidden"
+            />
+
+            <div className="mt-5 flex items-center justify-center gap-5">
+              <button
+                type="button"
+                onClick={previous}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
+                aria-label="Previous"
+              >
+                <SkipBack className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPlaying((value) => !value)}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-950/40"
+                aria-label={playing ? "Pause" : "Play"}
+              >
+                {playing ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
+              </button>
+              <button
+                type="button"
+                onClick={next}
+                className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
+                aria-label="Next"
+              >
+                <SkipForward className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-white/35">
+                {mode === "podcast" ? "Episodes" : "Station Queue"} · {tracks.length}
+              </p>
+              <div className="max-h-52 space-y-2 overflow-y-auto">
+                {tracks.map((track, trackIndex) => (
+                  <button
+                    key={track.id}
+                    type="button"
+                    onClick={() => {
+                      setIndex(trackIndex);
+                      setPlaying(true);
+                    }}
+                    className={
+                      "flex w-full items-center gap-3 rounded-xl border p-2 text-left " +
+                      (trackIndex === index
+                        ? "border-violet-400/50 bg-violet-500/10"
+                        : "border-white/8 bg-white/[0.03]")
+                    }
+                  >
+                    <img
+                      src={track.cover_url || station.banner_url || station.logo_url || radioHost}
+                      alt=""
+                      className="h-11 w-11 rounded-lg object-cover"
+                    />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-black">{track.title}</p>
+                      <p className="truncate text-[10px] text-white/40">{track.subtitle}</p>
+                    </div>
+                    {trackIndex === index && playing ? (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-violet-300">Playing</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EditStationSheet({
   station,
   onClose,
