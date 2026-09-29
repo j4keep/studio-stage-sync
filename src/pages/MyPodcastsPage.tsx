@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Mic2, Play, Pause, Plus, Trash2, Upload, Image, Video, Headphones, Loader2, Heart, Eye, Radio } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,10 +30,11 @@ const formatDuration = (seconds: number) => {
 
 const MyPodcastsPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showUpload, setShowUpload] = useState(false);
+  const [showUpload, setShowUpload] = useState(() => searchParams.get("upload") === "1");
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [playMode, setPlayMode] = useState<Record<string, "video" | "audio">>({});
   const [pendingFile, setPendingFile] = useState<File | null>(null);
