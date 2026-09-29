@@ -5,7 +5,7 @@ import { incrementPodcastPlays, incrementSongPlays } from "@/hooks/use-likes";
 import album1 from "@/assets/album-1.jpg";
 import podcast1 from "@/assets/podcast-1.jpg";
 
-interface RadioTrack {
+export interface RadioTrack {
   id: string;
   source: "song" | "podcast";
   title: string;
@@ -46,6 +46,10 @@ interface RadioContextType {
   songPlayCount: number;
   /** Reset the song play counter (called after ad is shown) */
   resetSongPlayCount: () => void;
+  stationMode: boolean;
+  stationName: string | null;
+  playStationQueue: (tracks: RadioTrack[], stationName: string) => void;
+  clearStationQueue: () => void;
 }
 
 const RadioContext = createContext<RadioContextType | null>(null);
@@ -79,21 +83,26 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [volume, setVolumeState] = useState(1);
   const [shuffled, setShuffled] = useState(false);
   const [shuffleOrder, setShuffleOrder] = useState<number[]>([]);
+  const [stationQueue, setStationQueue] = useState<RadioTrack[] | null>(null);
+  const [stationName, setStationName] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
 
   // Use refs so the ended handler always has fresh state
   const songsRef = useRef(songs);
+  const stationQueueRef = useRef<RadioTrack[] | null>(null);
   const activeGenreRef = useRef(activeGenre);
   const shuffledRef = useRef(shuffled);
   const shuffleOrderRef = useRef(shuffleOrder);
 
   useEffect(() => { songsRef.current = songs; }, [songs]);
+  useEffect(() => { stationQueueRef.current = stationQueue; }, [stationQueue]);
   useEffect(() => { activeGenreRef.current = activeGenre; }, [activeGenre]);
   useEffect(() => { shuffledRef.current = shuffled; }, [shuffled]);
   useEffect(() => { shuffleOrderRef.current = shuffleOrder; }, [shuffleOrder]);
 
   const getFilteredFromRef = () => {
+    if (stationQueueRef.current) return stationQueueRef.current;
     return songsRef.current.filter(s => activeGenreRef.current === "All" || s.genre === activeGenreRef.current);
   };
 
@@ -138,11 +147,11 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const getFiltered = useCallback(() => {
+    if (stationQueue) return stationQueue;
     const filtered = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
     if (!shuffled || shuffleOrder.length !== filtered.length) return filtered;
-    // Return in shuffle order
     return shuffleOrder.map(i => filtered[i]).filter(Boolean);
-  }, [songs, activeGenre, shuffled, shuffleOrder]);
+  }, [songs, activeGenre, shuffled, shuffleOrder, stationQueue]);
 
   const filteredSongs = getFiltered();
   const safeIndex = filteredSongs.length > 0 ? currentIndex % filteredSongs.length : 0;
@@ -274,14 +283,19 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   }, [filteredSongs.length]);
 
   const playTrack = useCallback((track: RadioTrack) => {
-    const idx = filteredSongs.findIndex(s => s.id === track.id);
+    setStationQueue(null);
+    setStationName(null);
+    const general = songs.filter(s => activeGenre === "All" || s.genre === activeGenre);
+    const idx = general.findIndex(s => s.id === track.id);
     if (idx >= 0) {
       setCurrentIndex(idx);
       setIsPlaying(true);
     }
-  }, [filteredSongs]);
+  }, [songs, activeGenre]);
 
   const setGenreFilter = useCallback((genre: string) => {
+    setStationQueue(null);
+    setStationName(null);
     setActiveGenre(genre);
   }, []);
 
@@ -309,6 +323,25 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     });
   }, [regenerateShuffle]);
 
+  const playStationQueue = useCallback((tracks: RadioTrack[], name: string) => {
+    if (!tracks.length) return;
+    setShuffled(false);
+    setShuffleOrder([]);
+    setStationQueue(tracks);
+    setStationName(name);
+    setCurrentIndex(0);
+    setCurrentTime(0);
+    setDuration(0);
+    setIsPlaying(true);
+  }, []);
+
+  const clearStationQueue = useCallback(() => {
+    setStationQueue(null);
+    setStationName(null);
+    setCurrentIndex(0);
+    setIsPlaying(false);
+  }, []);
+
   return (
     <RadioContext.Provider value={{
       isPlaying, currentTrack, queue, allTracks: filteredSongs,
@@ -317,6 +350,10 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       currentTime, duration, seek,
       volume, setVolume, shuffled, toggleShuffle,
       songPlayCount, resetSongPlayCount: () => setSongPlayCount(0),
+      stationMode: Boolean(stationQueue),
+      stationName,
+      playStationQueue,
+      clearStationQueue,
     }}>
       {children}
     </RadioContext.Provider>
