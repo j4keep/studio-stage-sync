@@ -167,13 +167,13 @@ export default function RadioStationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#080b12] pb-[calc(9rem+env(safe-area-inset-bottom))] text-white">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#080b12]/94 px-4 pb-4 pt-3 backdrop-blur-xl">
+    <div className="min-h-screen bg-background pb-[calc(9rem+env(safe-area-inset-bottom))] text-foreground">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 px-4 pb-4 pt-3 backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3">
           <button
             type="button"
             onClick={() => navigate("/radio")}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted"
             aria-label="Back to YAJ Radio"
           >
             <ArrowLeft className="h-5 w-5" />
@@ -185,20 +185,20 @@ export default function RadioStationsPage() {
           <button
             type="button"
             onClick={() => setCreatorOpen(true)}
-            className="flex h-10 items-center gap-2 rounded-full bg-violet-600 px-4 text-[11px] font-black"
+            className="flex h-10 items-center gap-2 rounded-full bg-violet-600 px-4 text-[11px] font-black text-white"
           >
             <Plus className="h-4 w-4" />
             Create
           </button>
         </div>
 
-        <div className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-2 rounded-2xl bg-white/[0.07] px-4">
-          <Search className="h-4 w-4 text-white/40" />
+        <div className="mx-auto mt-4 flex w-full max-w-6xl items-center gap-2 rounded-2xl border border-border bg-muted/70 px-4">
+          <Search className="h-4 w-4 text-muted-foreground" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search stations, genres, networks, hosts"
-            className="h-11 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/35"
+            className="h-11 min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
         </div>
       </header>
@@ -210,17 +210,17 @@ export default function RadioStationsPage() {
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
               {[0, 1, 2, 3, 4].map((item) => (
                 <div key={item}>
-                  <div className="aspect-square animate-pulse rounded-3xl bg-white/[0.06]" />
-                  <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-white/[0.06]" />
+                  <div className="aspect-square animate-pulse rounded-3xl bg-muted" />
+                  <div className="mt-2 h-3 w-2/3 animate-pulse rounded bg-muted" />
                 </div>
               ))}
             </div>
           </section>
         ) : filtered.length === 0 ? (
-          <div className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-12 text-center">
-            <RadioTower className="mx-auto h-8 w-8 text-white/30" />
+          <div className="rounded-3xl border border-border bg-card px-6 py-12 text-center shadow-sm">
+            <RadioTower className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-3 text-base font-black">No radio stations found</p>
-            <p className="mt-1 text-xs text-white/45">Try another search or create a station.</p>
+            <p className="mt-1 text-xs text-muted-foreground">Try another search or create a station.</p>
           </div>
         ) : (
           <>
@@ -358,7 +358,7 @@ function SectionTitle({ eyebrow, title, count }: { eyebrow: string; title: strin
         <h2 className="mt-0.5 text-xl font-black tracking-tight sm:text-2xl">{title}</h2>
       </div>
       {count ? (
-        <span className="rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-[10px] font-black text-white/60">
+        <span className="rounded-full border border-border bg-muted px-3 py-1 text-[10px] font-black text-muted-foreground">
           {count}
         </span>
       ) : null}
@@ -391,7 +391,7 @@ function StationCard({
   return (
     <article className="min-w-0">
       <button type="button" onClick={onListen} className="block w-full text-left">
-        <div className="relative aspect-square overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-lg">
+        <div className="relative aspect-square overflow-hidden rounded-[26px] border border-border bg-card shadow-lg">
           <img
             src={station.banner_url || station.logo_url || art}
             alt=""
@@ -412,7 +412,7 @@ function StationCard({
           </span>
         </div>
         <p className="mt-2 truncate text-[15px] font-black">{station.name}</p>
-        <p className="truncate text-[11px] text-white/45">{subtitle}</p>
+        <p className="truncate text-[11px] text-muted-foreground">{subtitle}</p>
       </button>
 
       {mine && (
@@ -420,7 +420,7 @@ function StationCard({
           <button
             type="button"
             onClick={onManage}
-            className="rounded-full bg-white/[0.07] px-2.5 py-1.5 text-[9px] font-black text-white/75"
+            className="rounded-full bg-muted px-2.5 py-1.5 text-[9px] font-black text-foreground"
           >
             Add Audio
           </button>
@@ -437,7 +437,7 @@ function StationCard({
           <button
             type="button"
             onClick={onEdit}
-            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.07] text-white/70"
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground"
             aria-label="Edit station"
           >
             <Pencil className="h-3 w-3" />
@@ -497,18 +497,18 @@ function GoLiveAudioSheet({
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">YAJ Radio Live Audio</p>
         <h2 className="mt-1 text-2xl font-black">Go live on {station.name}</h2>
-        <p className="mt-2 text-xs leading-relaxed text-white/50">
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
           This is audio-only. Your microphone goes live; your camera stays off.
           {station.programming_mode === "music"
             ? " Your station music library remains available for your show."
             : " Listeners can hear your live podcast in real time."}
         </p>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <div className="mt-5 rounded-2xl border border-border bg-muted/50 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-black">Allow listener call-ins</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-white/40">
+              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                 Callers stay audio-only and must be accepted by you before they join.
               </p>
             </div>
@@ -531,19 +531,19 @@ function GoLiveAudioSheet({
           </div>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+        <div className="mt-5 rounded-2xl border border-border bg-muted/40 p-4">
           <p className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-300">Live format</p>
           <p className="mt-1 text-sm font-black">
             {station.programming_mode === "podcast" ? "Live Audio Podcast" : "Live Music Radio"}
           </p>
-          <p className="mt-1 text-[10px] text-white/40">No video is published from YAJ Radio live rooms.</p>
+          <p className="mt-1 text-[10px] text-muted-foreground">No video is published from YAJ Radio live rooms.</p>
         </div>
 
         <div className="mt-6 flex gap-2">
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3 text-xs font-black"
+            className="flex-1 rounded-full border border-border bg-muted px-4 py-3 text-xs font-black text-foreground"
           >
             Cancel
           </button>
@@ -672,12 +672,12 @@ function StationAudioPlayer({
   };
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-end bg-black/80 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
-      <div className="relative max-h-[94dvh] w-full overflow-y-auto rounded-t-[30px] border border-white/10 bg-[#0d111b] p-5 shadow-2xl sm:max-w-lg sm:rounded-[30px]">
+    <div className="fixed inset-0 z-[150] flex items-end bg-black/55 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
+      <div className="relative max-h-[94dvh] w-full overflow-y-auto rounded-t-[30px] border border-border bg-card p-5 text-foreground shadow-2xl sm:max-w-lg sm:rounded-[30px]">
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-black/45 text-white"
+          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-foreground"
           aria-label="Close station player"
         >
           <X className="h-5 w-5" />
@@ -686,20 +686,20 @@ function StationAudioPlayer({
         <div className="pr-12">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">YAJ Radio · {mode}</p>
           <h2 className="mt-1 text-2xl font-black">{station.name}</h2>
-          <p className="mt-1 text-xs text-white/45">
+          <p className="mt-1 text-xs text-muted-foreground">
             {hostName ? `By ${hostName} · ` : ""}{mode === "podcast" ? "Audio Podcast Station" : "Music Station"}
           </p>
         </div>
 
         {loading ? (
           <div className="flex min-h-72 items-center justify-center">
-            <p className="text-sm text-white/45">Loading station…</p>
+            <p className="text-sm text-muted-foreground">Loading station…</p>
           </div>
         ) : !current ? (
-          <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.04] p-8 text-center">
-            <Headphones className="mx-auto h-8 w-8 text-white/30" />
+          <div className="mt-6 rounded-3xl border border-border bg-muted/40 p-8 text-center">
+            <Headphones className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-3 text-sm font-black">No audio has been added yet.</p>
-            <p className="mt-1 text-xs leading-relaxed text-white/45">
+            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
               {mode === "podcast"
                 ? "This creator needs to add an audio podcast to YAJ Radio."
                 : "This creator needs to add music to YAJ Radio."}
@@ -707,7 +707,7 @@ function StationAudioPlayer({
           </div>
         ) : (
           <>
-            <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04]">
+            <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-muted/30">
               <img
                 src={current.cover_url || station.banner_url || station.logo_url || radioHost}
                 alt=""
@@ -715,7 +715,7 @@ function StationAudioPlayer({
               />
               <div className="p-4">
                 <p className="truncate text-lg font-black">{current.title}</p>
-                <p className="mt-1 truncate text-xs text-white/45">{current.subtitle}</p>
+                <p className="mt-1 truncate text-xs text-muted-foreground">{current.subtitle}</p>
               </div>
             </div>
 
@@ -737,18 +737,18 @@ function StationAudioPlayer({
               >
                 {playing ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
               </button>
-              <p className="mt-3 text-center text-[10px] font-semibold text-white/40">
+              <p className="mt-3 text-center text-[10px] font-semibold text-muted-foreground">
                 Programmed by the station · listeners cannot skip tracks
               </p>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+            <div className="mt-5 rounded-2xl border border-border bg-muted/30 p-3">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-white/35">
+                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-muted-foreground">
                     {mode === "podcast" ? "Station Episodes" : "Station Playlist"}
                   </p>
-                  <p className="mt-1 text-xs text-white/55">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     {tracks.length} item{tracks.length === 1 ? "" : "s"} · next item starts automatically
                   </p>
                 </div>
@@ -836,7 +836,7 @@ function EditStationSheet({
       <form onSubmit={save}>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Station Manager</p>
         <h2 className="mt-1 text-2xl font-black">Edit your station</h2>
-        <p className="mt-1 text-xs leading-relaxed text-white/45">
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Update the station identity and choose whether it plays Music or Podcasts.
         </p>
 
@@ -926,7 +926,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
       <form onSubmit={create}>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Create on YAJ Radio</p>
         <h2 className="mt-1 text-2xl font-black">Start a radio station</h2>
-        <p className="mt-1 text-xs leading-relaxed text-white/45">
+        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Choose Music or Podcast. Every YAJ Radio station is audio-only—no video.
         </p>
 
@@ -983,11 +983,11 @@ function StationFields({
 }) {
   return (
     <div className="mt-5 space-y-3">
-      <label className="block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-white/15 bg-white/[0.04]">
+      <label className="block cursor-pointer overflow-hidden rounded-2xl border border-dashed border-border bg-muted/30">
         {coverPreview ? (
           <img src={coverPreview} alt="" className="h-36 w-full object-cover" />
         ) : (
-          <div className="flex h-28 flex-col items-center justify-center gap-2 text-white/45">
+          <div className="flex h-28 flex-col items-center justify-center gap-2 text-muted-foreground">
             <ImageIcon className="h-6 w-6" />
             <span className="text-xs font-black">Upload station cover</span>
             <span className="text-[10px]">Photo or artwork from your device</span>
@@ -1012,7 +1012,7 @@ function StationFields({
       <Field value={genre} onChange={setGenre} placeholder="Genre / format — Hip-Hop, Gospel, Talk…" />
 
       <div>
-        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-white/35">Station format</p>
+        <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-muted-foreground">Station format</p>
         <div className="grid grid-cols-2 gap-2">
           {(["music", "podcast"] as const).map((item) => (
             <button
@@ -1023,7 +1023,7 @@ function StationFields({
                 "min-h-11 rounded-xl border text-[10px] font-black capitalize transition " +
                 (mode === item
                   ? "border-violet-400 bg-violet-500 text-white"
-                  : "border-white/10 bg-white/[0.04] text-white/60")
+                  : "border-border bg-muted text-muted-foreground")
               }
             >
               {item}
@@ -1038,11 +1038,11 @@ function StationFields({
 function ModalShell({ children, onClose }: { children: ReactNode; onClose: () => void }) {
   return (
     <div
-      className="fixed inset-0 z-[120] flex items-end bg-black/75 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5"
+      className="fixed inset-0 z-[120] flex items-end bg-black/45 backdrop-blur-sm sm:items-center sm:justify-center sm:p-5"
       onClick={onClose}
     >
       <div
-        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] border border-white/10 bg-[#0d111b] p-5 shadow-2xl sm:max-w-lg sm:rounded-[28px]"
+        className="max-h-[92dvh] w-full overflow-y-auto rounded-t-[28px] border border-border bg-card p-5 text-foreground shadow-2xl sm:max-w-lg sm:rounded-[28px]"
         onClick={(event) => event.stopPropagation()}
       >
         {children}
@@ -1065,7 +1065,7 @@ function ModalActions({
       <button
         type="button"
         onClick={onClose}
-        className="flex-1 rounded-full border border-white/15 bg-white/[0.04] px-4 py-3 text-xs font-black"
+        className="flex-1 rounded-full border border-border bg-muted px-4 py-3 text-xs font-black text-foreground"
       >
         Cancel
       </button>
@@ -1094,7 +1094,7 @@ function Field({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
-      className="h-12 w-full rounded-xl border border-white/10 bg-white/[0.06] px-3 text-sm text-white outline-none placeholder:text-white/30"
+      className="h-12 w-full rounded-xl border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
     />
   );
 }
