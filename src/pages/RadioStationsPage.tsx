@@ -1,18 +1,23 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   Headphones,
   Image as ImageIcon,
+  Pause,
   Pencil,
+  Play,
   Plus,
   RadioTower,
   Search,
+  SkipBack,
+  SkipForward,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { uploadToR2 } from "@/lib/r2-storage";
+import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import radioHost from "@/assets/wstudio-orbit-headphones.jpg";
 import studioMic from "@/assets/wstudio-orbit-mic.jpg";
 import studioMixer from "@/assets/wstudio-orbit-mixer.jpg";
@@ -20,6 +25,15 @@ import podcastHost from "@/assets/podcast-1.jpg";
 import djHost from "@/assets/artist-dj-onyx.jpg";
 
 type StationMode = "mixed" | "music" | "podcast" | "live";
+type AudioStationMode = "music" | "podcast";
+
+type StationTrack = {
+  id: string;
+  title: string;
+  subtitle: string;
+  cover_url: string | null;
+  audio_url: string;
+};
 
 type Station = {
   id: string;
@@ -43,6 +57,7 @@ export default function RadioStationsPage() {
   const [loading, setLoading] = useState(true);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editStation, setEditStation] = useState<Station | null>(null);
+  const [playerStation, setPlayerStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
 
   const load = async () => {
@@ -123,8 +138,8 @@ export default function RadioStationsPage() {
 
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
 
-  const listen = (_station: Station) => {
-    navigate("/radio");
+  const listen = (station: Station) => {
+    setPlayerStation(station);
   };
 
   return (
@@ -247,6 +262,14 @@ export default function RadioStationsPage() {
         />
       )}
 
+      {playerStation && (
+        <StationAudioPlayer
+          station={playerStation}
+          hostName={hostNames[playerStation.owner_user_id]}
+          onClose={() => setPlayerStation(null)}
+        />
+      )}
+
       {editStation && (
         <EditStationSheet
           station={editStation}
@@ -292,7 +315,7 @@ function StationCard({
   onListen: () => void;
   onEdit: () => void;
 }) {
-  const mode = station.programming_mode === "live" ? "mixed" : station.programming_mode;
+  const mode = station.programming_mode === "podcast" ? "podcast" : "music";
 
   return (
     <article className="group overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.045] shadow-xl transition hover:-translate-y-0.5 hover:bg-white/[0.065]">
@@ -336,7 +359,7 @@ function StationCard({
             onClick={onListen}
             className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 text-xs font-black text-slate-950"
           >
-            <Headphones className="h-4 w-4" /> Listen
+            <Headphones className="h-4 w-4" /> Tune In
           </button>
           {mine ? (
             <button
@@ -368,8 +391,8 @@ function EditStationSheet({
   const [networkName, setNetworkName] = useState(station.network_name || "");
   const [tagline, setTagline] = useState(station.tagline || "");
   const [genre, setGenre] = useState(station.genre || "");
-  const [mode, setMode] = useState<Exclude<StationMode, "live">>(
-    station.programming_mode === "live" ? "mixed" : station.programming_mode,
+  const [mode, setMode] = useState<AudioStationMode>(
+    station.programming_mode === "podcast" ? "podcast" : "music",
   );
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(station.banner_url || station.logo_url);
@@ -428,7 +451,7 @@ function EditStationSheet({
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Station Manager</p>
         <h2 className="mt-1 text-2xl font-black">Edit your station</h2>
         <p className="mt-1 text-xs leading-relaxed text-white/45">
-          Update the station name, format, network and cover.
+          Update the station identity and choose whether it plays Music or Podcasts.
         </p>
 
         <StationFields
@@ -460,7 +483,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
   const [networkName, setNetworkName] = useState("");
   const [tagline, setTagline] = useState("");
   const [genre, setGenre] = useState("");
-  const [mode, setMode] = useState<Exclude<StationMode, "live">>("mixed");
+  const [mode, setMode] = useState<AudioStationMode>("music");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
 
@@ -518,7 +541,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Create on YAJ Radio</p>
         <h2 className="mt-1 text-2xl font-black">Start a radio station</h2>
         <p className="mt-1 text-xs leading-relaxed text-white/45">
-          Create your station identity and let listeners tune into your YAJ Radio content.
+          Choose Music or Podcast. Every YAJ Radio station is audio-only—no video.
         </p>
 
         <StationFields
@@ -566,8 +589,8 @@ function StationFields({
   setTagline: (value: string) => void;
   genre: string;
   setGenre: (value: string) => void;
-  mode: Exclude<StationMode, "live">;
-  setMode: (value: Exclude<StationMode, "live">) => void;
+  mode: AudioStationMode;
+  setMode: (value: AudioStationMode) => void;
   coverPreview: string | null;
   setCoverPreview: (value: string | null) => void;
   setCoverFile: (file: File | null) => void;
@@ -604,8 +627,8 @@ function StationFields({
 
       <div>
         <p className="mb-2 text-[9px] font-black uppercase tracking-[0.16em] text-white/35">Station format</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {(["mixed", "music", "podcast"] as const).map((item) => (
+        <div className="grid grid-cols-2 gap-2">
+          {(["music", "podcast"] as const).map((item) => (
             <button
               key={item}
               type="button"
