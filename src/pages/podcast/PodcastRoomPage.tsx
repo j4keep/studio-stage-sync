@@ -259,7 +259,8 @@ const PodcastRoomPage = () => {
   const radioStationId = searchParams.get("station");
   const fromRadio = searchParams.get("source") === "radio" || Boolean(radioStationId);
   const radioAudioMode = fromRadio && searchParams.get("radioaudio") === "1";
-  const callInsEnabled = searchParams.get("callins") === "1";
+  const initialCallInsEnabled = searchParams.get("callins") === "1";
+  const [callInsEnabled, setCallInsEnabled] = useState(initialCallInsEnabled);
   const returnToSource = () => {
     if (fromRadio) {
       navigate("/radio/stations");
@@ -521,6 +522,15 @@ const PodcastRoomPage = () => {
         (meta: any) => meta?.sessionId === sessionId && meta?.role === "audience",
       ).length;
       setListenerCount(listeners);
+
+      if (!isHost) {
+        const hostMeta = metas.find(
+          (meta: any) => meta?.sessionId === sessionId && meta?.role === "host",
+        );
+        if (hostMeta && typeof hostMeta.callInsEnabled === "boolean") {
+          setCallInsEnabled(Boolean(hostMeta.callInsEnabled));
+        }
+      }
     };
 
     channel.on("presence", { event: "sync" }, sync);
@@ -534,6 +544,7 @@ const PodcastRoomPage = () => {
         stationId: radioStationId,
         role: isHost ? "host" : isAudience ? "audience" : "guest",
         name: displayName,
+        callInsEnabled: isHost ? callInsEnabled : undefined,
         joinedAt: new Date().toISOString(),
       });
       sync();
@@ -543,7 +554,7 @@ const PodcastRoomPage = () => {
       try { void channel.untrack(); } catch {}
       void (supabase as any).removeChannel(channel);
     };
-  }, [fromRadio, radioStationId, sessionId, isHost, isAudience, displayName]);
+  }, [fromRadio, radioStationId, sessionId, isHost, isAudience, displayName, callInsEnabled]);
 
   const stageParticipants = useMemo(
     () =>
