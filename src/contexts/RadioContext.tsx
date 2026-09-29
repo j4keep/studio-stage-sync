@@ -105,10 +105,6 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { activeGenreRef.current = activeGenre; }, [activeGenre]);
   useEffect(() => { shuffledRef.current = shuffled; }, [shuffled]);
   useEffect(() => { shuffleOrderRef.current = shuffleOrder; }, [shuffleOrder]);
-  useEffect(() => {
-    currentTrackRef.current = currentTrack;
-    trimAdvancingRef.current = false;
-  }, [currentTrack?.id]);
 
   const getFilteredFromRef = () => {
     if (stationQueueRef.current) return stationQueueRef.current;
@@ -201,6 +197,11 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const safeIndex = filteredSongs.length > 0 ? currentIndex % filteredSongs.length : 0;
   const currentTrack = filteredSongs[safeIndex] || null;
   const queue = filteredSongs.filter((_, i) => i !== safeIndex);
+
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+    trimAdvancingRef.current = false;
+  }, [currentTrack?.id]);
 
   // Generate shuffle order when needed
   const regenerateShuffle = useCallback((len: number) => {
