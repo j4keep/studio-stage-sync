@@ -10,12 +10,13 @@ const GlobalRadioPlayer = () => {
     skip,
     currentTime,
     duration,
-    seek,
     stationMode,
     stationName,
   } = useRadio();
 
-  if (!currentTrack) return null;
+  // This compact player belongs to creator Radio Stations only.
+  // Main YAJ Radio uses its own full player with seek/skip/search controls.
+  if (!currentTrack || !stationMode) return null;
 
   const progress = duration > 0 ? Math.min(1, Math.max(0, currentTime / duration)) : 0;
 
@@ -28,22 +29,15 @@ const GlobalRadioPlayer = () => {
         className="fixed bottom-[4.55rem] left-0 right-0 z-[70] mx-auto w-full max-w-2xl px-3"
       >
         <div className="overflow-hidden rounded-[22px] border border-border/70 bg-background/92 shadow-2xl backdrop-blur-2xl">
-          <button
-            type="button"
-            aria-label="Seek radio playback"
-            onClick={(event) => {
-              if (!duration) return;
-              const rect = event.currentTarget.getBoundingClientRect();
-              const ratio = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
-              seek(ratio * duration);
-            }}
+          <div
+            aria-label="Station playback progress"
             className="block h-1.5 w-full bg-muted/80"
           >
             <span
               className="block h-full rounded-r-full bg-primary transition-[width] duration-150"
               style={{ width: `${progress * 100}%` }}
             />
-          </button>
+          </div>
 
           <div className="flex min-h-[62px] items-center gap-3 px-3 py-2">
             <div className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-muted">
