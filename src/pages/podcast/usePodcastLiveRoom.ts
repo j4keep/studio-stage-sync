@@ -1,4 +1,4 @@
-// LiveKit room hook for the W.STUDIO Podcast Room + Circle / public lives.
+// LiveKit room hook for YAJ Podcast / Radio rooms + Circle / public lives.
 // - Connects to a LiveKit room using a token from the `livekit-token` edge function.
 // - Exposes participants (local + remote), with mic/cam state,
 //   audio level (0..1), and connection quality (Excellent/Good/Weak/Poor/Unknown).
