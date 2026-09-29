@@ -4300,6 +4300,8 @@ export type Database = {
           position: number
           station_id: string
           title: string
+          trim_end_seconds: number | null
+          trim_start_seconds: number
           updated_at: string
         }
         Insert: {
@@ -4311,6 +4313,8 @@ export type Database = {
           position?: number
           station_id: string
           title: string
+          trim_end_seconds?: number | null
+          trim_start_seconds?: number
           updated_at?: string
         }
         Update: {
@@ -4322,6 +4326,8 @@ export type Database = {
           position?: number
           station_id?: string
           title?: string
+          trim_end_seconds?: number | null
+          trim_start_seconds?: number
           updated_at?: string
         }
         Relationships: [
