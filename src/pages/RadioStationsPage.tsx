@@ -36,7 +36,7 @@ type Station = {
   live_session_id: string | null;
   live_title: string | null;
   live_started_at: string | null;
-  live_heartbeat_at: string | null;
+  updated_at: string;
 };
 
 const LIVE_HEARTBEAT_TTL_MS = 20_000;
@@ -44,7 +44,7 @@ const STATION_ART = [albumArt, podcastHost, djHost, albumArt, podcastHost];
 
 function stationIsTrulyLive(station: Station) {
   if (!station.is_live || !station.live_session_id) return false;
-  const stamp = station.live_heartbeat_at || station.live_started_at;
+  const stamp = station.updated_at || station.live_started_at;
   if (!stamp) return false;
   const age = Date.now() - new Date(stamp).getTime();
   return Number.isFinite(age) && age >= 0 && age <= LIVE_HEARTBEAT_TTL_MS;
@@ -98,7 +98,7 @@ export default function RadioStationsPage() {
 
     const { data, error } = await (supabase as any)
       .from("radio_stations")
-      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title,live_started_at,live_heartbeat_at")
+      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title,live_started_at,updated_at")
       .eq("is_public", true)
       .order("created_at", { ascending: false });
 
@@ -187,7 +187,7 @@ export default function RadioStationsPage() {
       setStations((current) =>
         current.map((station) =>
           hosts.some((meta: any) => meta?.stationId === station.id && meta?.sessionId === station.live_session_id)
-            ? { ...station, is_live: false, live_session_id: null, live_title: null, live_started_at: null, live_heartbeat_at: null }
+            ? { ...station, is_live: false, live_session_id: null, live_title: null, live_started_at: null }
             : station,
         ),
       );
@@ -236,7 +236,7 @@ export default function RadioStationsPage() {
       setStations((current) =>
         current.map((item) =>
           item.id === station.id
-            ? { ...item, is_live: false, live_session_id: null, live_title: null, live_started_at: null, live_heartbeat_at: null }
+            ? { ...item, is_live: false, live_session_id: null, live_title: null, live_started_at: null }
             : item,
         ),
       );
