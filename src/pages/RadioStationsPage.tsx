@@ -1,21 +1,19 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
-  Headphones,
   Image as ImageIcon,
-  Pause,
   Pencil,
   Play,
   Plus,
   RadioTower,
   Search,
-  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
+import { useRadio, type RadioTrack } from "@/contexts/RadioContext";
 import radioHost from "@/assets/wstudio-orbit-headphones.jpg";
 import studioMic from "@/assets/wstudio-orbit-mic.jpg";
 import studioMixer from "@/assets/wstudio-orbit-mixer.jpg";
@@ -58,9 +56,9 @@ export default function RadioStationsPage() {
   const [loading, setLoading] = useState(true);
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editStation, setEditStation] = useState<Station | null>(null);
-  const [playerStation, setPlayerStation] = useState<Station | null>(null);
   const [liveStation, setLiveStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
+  const { playStationQueue } = useRadio();
 
   const load = async () => {
     const { data, error } = await (supabase as any)
@@ -143,7 +141,7 @@ export default function RadioStationsPage() {
   const musicStations = filtered.filter((station) => !station.is_live && station.programming_mode !== "podcast");
   const podcastStations = filtered.filter((station) => !station.is_live && station.programming_mode === "podcast");
 
-  const listen = (station: Station) => {
+  const listen = async (station: Station) => {
     if (station.is_live && station.live_session_id) {
       const params = new URLSearchParams({
         audience: "1",
@@ -154,7 +152,78 @@ export default function RadioStationsPage() {
       navigate(`/podcast/room/${encodeURIComponent(station.live_session_id)}?${params.toString()}`);
       return;
     }
-    setPlayerStation(station);
+
+    const mode: AudioStationMode = station.programming_mode === "podcast" ? "podcast" : "music";
+    let tracks: RadioTrack[] = [];
+
+    if (mode === "podcast") {
+      const { data, error } = await (supabase as any)
+        .from("podcasts")
+        .select("id,title,cover_url,media_url,episode,user_id,is_video,on_radio,plays,likes_count")
+        .eq("user_id", station.owner_user_id)
+        .eq("is_video", false)
+        .eq("on_radio", true)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast({ title: "Could not play station", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      tracks = (data || [])
+        .filter((item: any) => !!item.media_url)
+        .map((item: any) => ({
+          id: item.id,
+          source: "podcast" as const,
+          title: item.title,
+          artist_name: hostNames[station.owner_user_id] || station.name,
+          album: item.episode || station.name,
+          genre: "Podcasts",
+          cover_url: item.cover_url || station.banner_url || station.logo_url || podcastHost,
+          audio_url: getR2DownloadUrl(item.media_url),
+          plays: String(item.plays || "0"),
+          likes_count: Number(item.likes_count || 0),
+          user_id: item.user_id,
+        }));
+    } else {
+      const { data, error } = await (supabase as any)
+        .from("songs")
+        .select("id,title,cover_url,audio_url,album,user_id,on_radio,genre,plays,likes_count")
+        .eq("user_id", station.owner_user_id)
+        .eq("on_radio", true)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        toast({ title: "Could not play station", description: error.message, variant: "destructive" });
+        return;
+      }
+
+      tracks = (data || [])
+        .filter((item: any) => !!item.audio_url)
+        .map((item: any) => ({
+          id: item.id,
+          source: "song" as const,
+          title: item.title,
+          artist_name: hostNames[station.owner_user_id] || station.name,
+          album: item.album || station.name,
+          genre: item.genre || station.genre || "Music",
+          cover_url: item.cover_url || station.banner_url || station.logo_url || radioHost,
+          audio_url: getR2DownloadUrl(item.audio_url),
+          plays: String(item.plays || "0"),
+          likes_count: Number(item.likes_count || 0),
+          user_id: item.user_id,
+        }));
+    }
+
+    if (!tracks.length) {
+      toast({
+        title: "No station audio yet",
+        description: "This station has not added any playable audio.",
+      });
+      return;
+    }
+
+    playStationQueue(tracks, station.name);
   };
 
   const manageAudio = (station: Station) => {
@@ -325,14 +394,6 @@ export default function RadioStationsPage() {
         <GoLiveAudioSheet
           station={liveStation}
           onClose={() => setLiveStation(null)}
-        />
-      )}
-
-      {playerStation && (
-        <StationAudioPlayer
-          station={playerStation}
-          hostName={hostNames[playerStation.owner_user_id]}
-          onClose={() => setPlayerStation(null)}
         />
       )}
 
@@ -558,207 +619,6 @@ function GoLiveAudioSheet({
         </div>
       </div>
     </ModalShell>
-  );
-}
-
-function StationAudioPlayer({
-  station,
-  hostName,
-  onClose,
-}: {
-  station: Station;
-  hostName?: string;
-  onClose: () => void;
-}) {
-  const mode: AudioStationMode = station.programming_mode === "podcast" ? "podcast" : "music";
-  const [tracks, setTracks] = useState<StationTrack[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [index, setIndex] = useState(0);
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  useEffect(() => {
-    let active = true;
-
-    void (async () => {
-      setLoading(true);
-
-      if (mode === "podcast") {
-        const { data, error } = await (supabase as any)
-          .from("podcasts")
-          .select("id,title,cover_url,media_url,episode,user_id,is_video,on_radio")
-          .eq("user_id", station.owner_user_id)
-          .eq("is_video", false)
-          .eq("on_radio", true)
-          .order("created_at", { ascending: false });
-
-        if (!active) return;
-        if (error) {
-          setTracks([]);
-          setLoading(false);
-          return;
-        }
-
-        setTracks(
-          (data || [])
-            .filter((item: any) => !!item.media_url)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              subtitle: item.episode || "Podcast episode",
-              cover_url: item.cover_url || station.banner_url || station.logo_url,
-              audio_url: getR2DownloadUrl(item.media_url),
-            })),
-        );
-      } else {
-        const { data, error } = await (supabase as any)
-          .from("songs")
-          .select("id,title,cover_url,audio_url,album,user_id,on_radio")
-          .eq("user_id", station.owner_user_id)
-          .eq("on_radio", true)
-          .order("created_at", { ascending: false });
-
-        if (!active) return;
-        if (error) {
-          setTracks([]);
-          setLoading(false);
-          return;
-        }
-
-        setTracks(
-          (data || [])
-            .filter((item: any) => !!item.audio_url)
-            .map((item: any) => ({
-              id: item.id,
-              title: item.title,
-              subtitle: item.album || "Music",
-              cover_url: item.cover_url || station.banner_url || station.logo_url,
-              audio_url: getR2DownloadUrl(item.audio_url),
-            })),
-        );
-      }
-
-      setIndex(0);
-      setPlaying(false);
-      setLoading(false);
-    })();
-
-    return () => {
-      active = false;
-      audioRef.current?.pause();
-    };
-  }, [station.id, station.owner_user_id, mode]);
-
-  const current = tracks[index] || null;
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !current) return;
-    audio.src = current.audio_url;
-    audio.currentTime = 0;
-    if (playing) void audio.play().catch(() => setPlaying(false));
-  }, [current?.id]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !current) return;
-    if (playing) void audio.play().catch(() => setPlaying(false));
-    else audio.pause();
-  }, [playing, current?.id]);
-
-  const next = () => {
-    if (!tracks.length) return;
-    setIndex((value) => (value + 1) % tracks.length);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[150] flex items-end bg-black/55 backdrop-blur-md sm:items-center sm:justify-center sm:p-5">
-      <div className="relative max-h-[94dvh] w-full overflow-y-auto rounded-t-[30px] border border-border bg-card p-5 text-foreground shadow-2xl sm:max-w-lg sm:rounded-[30px]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-foreground"
-          aria-label="Close station player"
-        >
-          <X className="h-5 w-5" />
-        </button>
-
-        <div className="pr-12">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">YAJ Radio · {mode}</p>
-          <h2 className="mt-1 text-2xl font-black">{station.name}</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {hostName ? `By ${hostName} · ` : ""}{mode === "podcast" ? "Audio Podcast Station" : "Music Station"}
-          </p>
-        </div>
-
-        {loading ? (
-          <div className="flex min-h-72 items-center justify-center">
-            <p className="text-sm text-muted-foreground">Loading station…</p>
-          </div>
-        ) : !current ? (
-          <div className="mt-6 rounded-3xl border border-border bg-muted/40 p-8 text-center">
-            <Headphones className="mx-auto h-8 w-8 text-muted-foreground" />
-            <p className="mt-3 text-sm font-black">No audio has been added yet.</p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-              {mode === "podcast"
-                ? "This creator needs to add an audio podcast to YAJ Radio."
-                : "This creator needs to add music to YAJ Radio."}
-            </p>
-          </div>
-        ) : (
-          <>
-            <div className="mt-6 overflow-hidden rounded-3xl border border-border bg-muted/30">
-              <img
-                src={current.cover_url || station.banner_url || station.logo_url || radioHost}
-                alt=""
-                className="aspect-square w-full object-cover"
-              />
-              <div className="p-4">
-                <p className="truncate text-lg font-black">{current.title}</p>
-                <p className="mt-1 truncate text-xs text-muted-foreground">{current.subtitle}</p>
-              </div>
-            </div>
-
-            <audio
-              ref={audioRef}
-              preload="metadata"
-              onEnded={next}
-              onPlay={() => setPlaying(true)}
-              onPause={() => setPlaying(false)}
-              className="hidden"
-            />
-
-            <div className="mt-5 flex flex-col items-center">
-              <button
-                type="button"
-                onClick={() => setPlaying((value) => !value)}
-                className="flex h-16 w-16 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-950/40"
-                aria-label={playing ? "Pause" : "Play"}
-              >
-                {playing ? <Pause className="h-7 w-7" /> : <Play className="ml-1 h-7 w-7" />}
-              </button>
-              <p className="mt-3 text-center text-[10px] font-semibold text-muted-foreground">
-                Programmed by the station · listeners cannot skip tracks
-              </p>
-            </div>
-
-            <div className="mt-5 rounded-2xl border border-border bg-muted/30 p-3">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.16em] text-muted-foreground">
-                    {mode === "podcast" ? "Station Episodes" : "Station Playlist"}
-                  </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {tracks.length} item{tracks.length === 1 ? "" : "s"} · next item starts automatically
-                  </p>
-                </div>
-                <Headphones className="h-5 w-5 text-violet-300" />
-              </div>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
   );
 }
 
