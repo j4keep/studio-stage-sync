@@ -101,13 +101,15 @@ export function usePodcastLiveRoom(opts: {
   /** Defaults to true (existing Podcast behavior: everyone publishes). Pass false for a
    *  view-only participant (e.g. a Circle-live viewer) — skips auto-enabling camera/mic. */
   publish?: boolean;
+  /** Publish microphone only, never camera. Used by YAJ Radio live audio. */
+  audioOnly?: boolean;
   /** Token permission to publish. Defaults to `publish`. Multi guests use
    *  `canPublish: true` + `publish: false` so they can join the motor stage later. */
   canPublish?: boolean;
   /** Cap on tracked LiveKit participants (room presence). Defaults to 6. */
   maxParticipants?: number;
 }) {
-  const { roomName, displayName, enabled, publish = true } = opts;
+  const { roomName, displayName, enabled, publish = true, audioOnly = false } = opts;
   const canPublish = opts.canPublish ?? publish;
   const maxParticipants = opts.maxParticipants ?? DEFAULT_MAX_PARTICIPANTS;
   const roomRef = useRef<Room | null>(null);
@@ -207,13 +209,16 @@ export function usePodcastLiveRoom(opts: {
 
         await room.connect(data.url, data.token);
         if (publish) {
-          await room.localParticipant.enableCameraAndMicrophone();
-          // Belt-and-suspenders: mic/cam must default to ON the moment you go live —
-          // explicit here rather than trusting enableCameraAndMicrophone alone left it.
-          await Promise.all([
-            room.localParticipant.setMicrophoneEnabled(true),
-            room.localParticipant.setCameraEnabled(true),
-          ]);
+          if (audioOnly) {
+            await room.localParticipant.setCameraEnabled(false);
+            await room.localParticipant.setMicrophoneEnabled(true);
+          } else {
+            await room.localParticipant.enableCameraAndMicrophone();
+            await Promise.all([
+              room.localParticipant.setMicrophoneEnabled(true),
+              room.localParticipant.setCameraEnabled(true),
+            ]);
+          }
         }
         if (cancelled) {
           room.disconnect();
@@ -248,7 +253,7 @@ export function usePodcastLiveRoom(opts: {
       r?.disconnect().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, roomName, displayName, opts.identity, publish, canPublish]);
+  }, [enabled, roomName, displayName, opts.identity, publish, audioOnly, canPublish]);
 
   const setMic = useCallback(
     async (on: boolean) => {
