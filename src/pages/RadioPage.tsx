@@ -34,7 +34,7 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import BoostAdOverlay from "@/components/BoostAdOverlay";
 import RadioWelcomeSheet from "@/components/radio/RadioWelcomeSheet";
 
-const RADIO_GENRE_FILTERS = ["All", "Podcasts", ...GENRES.filter((g) => g !== "Beats")];
+const RADIO_GENRE_FILTERS = ["All", ...GENRES.filter((g) => g !== "Beats")];
 
 const SEEK_WAVE_BARS = Array.from({ length: 88 }, (_, index) => {
   const seed = (index * 17 + 23) % 100;
@@ -705,18 +705,6 @@ const RadioPage = () => {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => navigate("/radio/stations")}
-          className="mb-4 flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 px-4 py-4 text-left"
-        >
-          <span>
-            <span className="block text-sm font-black text-foreground">Browse YAJ Radio Stations</span>
-            <span className="mt-0.5 block text-[11px] text-muted-foreground">Choose a creator station or create your own.</span>
-          </span>
-          <RadioTower className="h-5 w-5 text-primary" />
-        </button>
-
         <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
           {RADIO_GENRE_FILTERS.map((g) => (
             <button
@@ -735,40 +723,14 @@ const RadioPage = () => {
         </div>
       </div>
 
-      {/* Keep Radio as a browsing surface. Playback stays in the compact
-          global mini-player above the bottom navigation. */}
-      <div className="px-4 pb-40 pt-4 lg:px-5 lg:pb-24 lg:pt-5">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">Listen Now</p>
-            <h2 className="mt-0.5 text-xl font-black text-foreground">Music & podcasts</h2>
-          </div>
-          <span className="text-[11px] font-semibold text-muted-foreground">{allTracks.length} available</span>
+      {/* Main YAJ Radio keeps the full interactive player:
+          seek, previous/next, shuffle, search, comments and playlist-style playback. */}
+      <div className="grid gap-5 px-4 pb-28 pt-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(320px,0.95fr)] lg:items-start lg:px-5 lg:pb-10">
+        <div className="min-w-0">
+          {coverBlock}
         </div>
-
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {allTracks.map((item) => {
-            const active = currentTrack?.id === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => playTrack(item)}
-                className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm transition active:scale-[0.98]"
-              >
-                <div className="relative aspect-square overflow-hidden bg-muted">
-                  <img src={item.cover_url} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
-                  <span className="absolute bottom-2 right-2 flex h-9 w-9 items-center justify-center rounded-full bg-background/90 text-foreground shadow-lg backdrop-blur">
-                    {active && isPlaying ? <Pause className="h-4 w-4 fill-current" /> : <Play className="ml-0.5 h-4 w-4 fill-current" />}
-                  </span>
-                </div>
-                <div className="p-2.5">
-                  <p className="truncate text-sm font-black text-foreground">{item.title}</p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{item.artist_name}</p>
-                </div>
-              </button>
-            );
-          })}
+        <div className="min-w-0">
+          {controlsBlock}
         </div>
       </div>
 
