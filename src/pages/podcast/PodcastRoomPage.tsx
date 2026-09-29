@@ -337,7 +337,7 @@ const PodcastRoomPage = () => {
         is_live: true,
         live_title: title,
         live_started_at: new Date().toISOString(),
-        live_heartbeat_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         live_session_id: sessionId,
       })
       .eq("id", radioStationId);
@@ -359,7 +359,7 @@ const PodcastRoomPage = () => {
         .update({
           is_live: true,
           live_session_id: sessionId,
-          live_heartbeat_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         })
         .eq("id", radioStationId);
     };
@@ -379,7 +379,6 @@ const PodcastRoomPage = () => {
           is_live: false,
           live_title: null,
           live_started_at: null,
-          live_heartbeat_at: null,
           live_session_id: null,
         })
         .eq("id", radioStationId)
@@ -803,8 +802,7 @@ const PodcastRoomPage = () => {
                 is_live: false,
                 live_title: null,
                 live_started_at: null,
-                live_heartbeat_at: null,
-                live_session_id: null,
+                      live_session_id: null,
               })
               .eq("id", radioStationId)
               .eq("live_session_id", sessionId),
