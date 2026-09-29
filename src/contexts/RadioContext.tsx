@@ -17,6 +17,9 @@ export interface RadioTrack {
   plays: string;
   likes_count: number;
   user_id?: string;
+  /** Optional station-programmed in/out points, in seconds. */
+  trim_start_seconds?: number;
+  trim_end_seconds?: number | null;
 }
 
 interface RadioContextType {
@@ -87,6 +90,8 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   const [stationName, setStationName] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const playTracked = useRef<Set<string>>(new Set());
+  const currentTrackRef = useRef<RadioTrack | null>(null);
+  const trimAdvancingRef = useRef(false);
 
   // Use refs so the ended handler always has fresh state
   const songsRef = useRef(songs);
@@ -100,6 +105,10 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => { activeGenreRef.current = activeGenre; }, [activeGenre]);
   useEffect(() => { shuffledRef.current = shuffled; }, [shuffled]);
   useEffect(() => { shuffleOrderRef.current = shuffleOrder; }, [shuffleOrder]);
+  useEffect(() => {
+    currentTrackRef.current = currentTrack;
+    trimAdvancingRef.current = false;
+  }, [currentTrack?.id]);
 
   const getFilteredFromRef = () => {
     if (stationQueueRef.current) return stationQueueRef.current;
@@ -119,7 +128,8 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       if (filtered.length === 0) return;
 
       if (filtered.length === 1) {
-        audio.currentTime = 0;
+        const start = Number(currentTrackRef.current?.trim_start_seconds || 0);
+        audio.currentTime = Number.isFinite(start) && start > 0 ? start : 0;
         audio.play().catch(() => {});
         return;
       }
@@ -132,10 +142,40 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
     audio.addEventListener("timeupdate", () => {
       setCurrentTime(audio.currentTime);
+
+      const track = currentTrackRef.current;
+      const end = Number(track?.trim_end_seconds);
+      if (
+        track?.source === "station" &&
+        Number.isFinite(end) &&
+        end > 0 &&
+        audio.currentTime >= end - 0.05 &&
+        !trimAdvancingRef.current
+      ) {
+        trimAdvancingRef.current = true;
+        const filtered = getFilteredFromRef();
+        if (!filtered.length) return;
+        if (filtered.length === 1) {
+          const start = Number(track.trim_start_seconds || 0);
+          audio.currentTime = Number.isFinite(start) && start > 0 ? start : 0;
+          trimAdvancingRef.current = false;
+          audio.play().catch(() => {});
+          return;
+        }
+        setCurrentIndex(prev => (prev + 1) % filtered.length);
+        setSongPlayCount(prev => prev + 1);
+        setIsPlaying(true);
+      }
     });
 
     audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
+      const start = Number(currentTrackRef.current?.trim_start_seconds || 0);
+      if (Number.isFinite(start) && start > 0 && start < audio.duration) {
+        audio.currentTime = start;
+        setCurrentTime(start);
+      }
+      const end = Number(currentTrackRef.current?.trim_end_seconds);
+      setDuration(Number.isFinite(end) && end > start ? Math.min(end, audio.duration) : audio.duration);
     });
 
     audio.addEventListener("durationchange", () => {
@@ -175,6 +215,15 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
 
     if (audio.src !== currentTrack.audio_url) {
       audio.src = currentTrack.audio_url;
+      trimAdvancingRef.current = false;
+    }
+
+    if (audio.readyState >= 1 && currentTrack.source === "station") {
+      const start = Number(currentTrack.trim_start_seconds || 0);
+      if (Number.isFinite(start) && start >= 0 && audio.currentTime < start) {
+        audio.currentTime = start;
+        setCurrentTime(start);
+      }
     }
 
     if (isPlaying) {
