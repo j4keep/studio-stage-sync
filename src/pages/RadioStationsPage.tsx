@@ -1,12 +1,17 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Image as ImageIcon,
+  Music2,
   Pencil,
   Play,
   Plus,
   RadioTower,
   Search,
+  Trash2,
+  Upload,
   Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -86,6 +91,7 @@ export default function RadioStationsPage() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editStation, setEditStation] = useState<Station | null>(null);
   const [liveStation, setLiveStation] = useState<Station | null>(null);
+  const [playlistStation, setPlaylistStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
   const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
   const { playStationQueue } = useRadio();
@@ -278,11 +284,12 @@ export default function RadioStationsPage() {
         }));
     } else {
       const { data, error } = await (supabase as any)
-        .from("songs")
-        .select("id,title,cover_url,audio_url,album,user_id,on_radio,genre,plays,likes_count")
-        .eq("user_id", station.owner_user_id)
-        .eq("on_radio", true)
-        .order("created_at", { ascending: false });
+        .from("radio_station_audio")
+        .select("id,title,audio_url,position,owner_user_id")
+        .eq("station_id", station.id)
+        .eq("enabled", true)
+        .order("position", { ascending: true })
+        .order("created_at", { ascending: true });
 
       if (error) {
         toast({ title: "Could not play station", description: error.message, variant: "destructive" });
@@ -293,16 +300,16 @@ export default function RadioStationsPage() {
         .filter((item: any) => !!item.audio_url)
         .map((item: any) => ({
           id: item.id,
-          source: "song" as const,
+          source: "station" as const,
           title: item.title,
           artist_name: hostNames[station.owner_user_id] || station.name,
-          album: item.album || station.name,
-          genre: item.genre || station.genre || "Music",
-          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, albumArt),
+          album: station.name,
+          genre: station.genre || "Music",
+          cover_url: stationCoverSrc(station.banner_url || station.logo_url, albumArt),
           audio_url: getR2DownloadUrl(item.audio_url),
-          plays: String(item.plays || "0"),
-          likes_count: Number(item.likes_count || 0),
-          user_id: item.user_id,
+          plays: "0",
+          likes_count: 0,
+          user_id: item.owner_user_id,
         }));
     }
 
@@ -318,12 +325,12 @@ export default function RadioStationsPage() {
   };
 
   const manageAudio = (station: Station) => {
-    const returnTo = encodeURIComponent("/radio/stations");
-    navigate(
-      station.programming_mode === "podcast"
-        ? `/my-podcasts?upload=1&returnTo=${returnTo}`
-        : `/my-songs?upload=1&returnTo=${returnTo}`,
-    );
+    if (station.programming_mode === "podcast") {
+      const returnTo = encodeURIComponent("/radio/stations");
+      navigate(`/my-podcasts?upload=1&returnTo=${returnTo}`);
+      return;
+    }
+    setPlaylistStation(station);
   };
 
   return (
@@ -485,6 +492,10 @@ export default function RadioStationsPage() {
         />
       )}
 
+      {playlistStation && (
+        <StationPlaylistSheet station={playlistStation} onClose={() => setPlaylistStation(null)} />
+      )}
+
       {liveStation && (
         <GoLiveAudioSheet
           station={liveStation}
@@ -586,7 +597,7 @@ function StationCard({
             onClick={onManage}
             className="rounded-full bg-muted px-2.5 py-1.5 text-[9px] font-black text-foreground"
           >
-            Add Audio
+            {station.programming_mode === "podcast" ? "Add Episode" : "Playlist"}
           </button>
           <button
             type="button"
@@ -609,6 +620,153 @@ function StationCard({
         </div>
       )}
     </article>
+  );
+}
+
+
+type StationAudioItem = { id: string; title: string; audio_url: string; position: number };
+
+function StationPlaylistSheet({ station, onClose }: { station: Station; onClose: () => void }) {
+  const { user } = useAuth();
+  const [tracks, setTracks] = useState<StationAudioItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  const loadTracks = async () => {
+    const { data, error } = await (supabase as any)
+      .from("radio_station_audio")
+      .select("id,title,audio_url,position")
+      .eq("station_id", station.id)
+      .order("position", { ascending: true })
+      .order("created_at", { ascending: true });
+    setLoading(false);
+    if (error) {
+      toast({ title: "Could not load station playlist", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTracks((data || []) as StationAudioItem[]);
+  };
+
+  useEffect(() => { void loadTracks(); }, [station.id]);
+
+  const uploadFiles = async (files: File[]) => {
+    if (!user || !files.length || uploading) return;
+    setUploading(true);
+    let nextPosition = tracks.length ? Math.max(...tracks.map((t) => Number(t.position) || 0)) + 1 : 0;
+    let added = 0;
+    let failed = 0;
+
+    for (const [index, file] of files.entries()) {
+      const upload = await uploadToR2(file, {
+        folder: `radio-stations/${user.id}/${station.id}/audio`,
+        fileName: `${Date.now()}-${index}-${file.name}`,
+      });
+      if (!upload.success || !upload.data?.key) { failed += 1; continue; }
+
+      const { error } = await (supabase as any).from("radio_station_audio").insert({
+        station_id: station.id,
+        owner_user_id: user.id,
+        title: file.name.replace(/\.[^.]+$/, "").trim() || "Untitled",
+        audio_url: upload.data.key,
+        position: nextPosition++,
+        enabled: true,
+      });
+      if (error) failed += 1;
+      else added += 1;
+    }
+
+    setUploading(false);
+    await loadTracks();
+    if (added) toast({ title: added === 1 ? "1 track added" : `${added} tracks added`, description: "These tracks belong to this station only." });
+    if (failed) toast({ title: failed === 1 ? "1 track could not be added" : `${failed} tracks could not be added`, variant: "destructive" });
+  };
+
+  const removeTrack = async (track: StationAudioItem) => {
+    if (!user) return;
+    const { error } = await (supabase as any).from("radio_station_audio").delete().eq("id", track.id).eq("owner_user_id", user.id);
+    if (error) {
+      toast({ title: "Could not remove track", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTracks((items) => items.filter((item) => item.id !== track.id));
+  };
+
+  const moveTrack = async (index: number, direction: -1 | 1) => {
+    const otherIndex = index + direction;
+    if (otherIndex < 0 || otherIndex >= tracks.length) return;
+    const current = tracks[index];
+    const other = tracks[otherIndex];
+    const next = [...tracks];
+    next[index] = { ...other, position: current.position };
+    next[otherIndex] = { ...current, position: other.position };
+    setTracks(next);
+    const [a, b] = await Promise.all([
+      (supabase as any).from("radio_station_audio").update({ position: other.position }).eq("id", current.id),
+      (supabase as any).from("radio_station_audio").update({ position: current.position }).eq("id", other.id),
+    ]);
+    if (a.error || b.error) {
+      toast({ title: "Could not reorder playlist", variant: "destructive" });
+      await loadTracks();
+    }
+  };
+
+  return (
+    <ModalShell onClose={onClose}>
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Station Playlist</p>
+        <h2 className="mt-1 text-2xl font-black">{station.name}</h2>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Upload MP3/audio files for this station only. They play top to bottom and continue automatically.
+          Listeners can play or pause, but they cannot skip tracks.
+        </p>
+
+        <label className="mt-5 flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-dashed border-violet-400/50 bg-violet-500/10 px-4 py-5 text-sm font-black text-violet-200">
+          <Upload className="h-5 w-5" />
+          {uploading ? "Uploading…" : "Upload MP3s"}
+          <input type="file" accept="audio/mpeg,audio/mp3,audio/*" multiple disabled={uploading} className="hidden"
+            onChange={(event) => {
+              const files = Array.from(event.target.files || []);
+              event.currentTarget.value = "";
+              void uploadFiles(files);
+            }}
+          />
+        </label>
+
+        <div className="mt-5 space-y-2">
+          {loading ? (
+            <div className="rounded-2xl bg-muted p-4 text-xs text-muted-foreground">Loading playlist…</div>
+          ) : tracks.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-muted/40 p-5 text-center">
+              <Music2 className="mx-auto h-6 w-6 text-muted-foreground" />
+              <p className="mt-2 text-sm font-black">No station tracks yet</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Upload the first MP3 above.</p>
+            </div>
+          ) : tracks.map((track, index) => (
+            <div key={track.id} className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 p-3">
+              <Music2 className="h-4 w-4 shrink-0 text-violet-300" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-black">{track.title}</p>
+                <p className="text-[10px] text-muted-foreground">Track {index + 1}</p>
+              </div>
+              <button type="button" onClick={() => void moveTrack(index, -1)} disabled={index === 0}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track up">
+                <ChevronUp className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => void moveTrack(index, 1)} disabled={index === tracks.length - 1}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track down">
+                <ChevronDown className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => void removeTrack(track)}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-400" aria-label="Remove track">
+                <Trash2 className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <button type="button" onClick={onClose} className="mt-6 w-full rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white">Done</button>
+      </div>
+    </ModalShell>
   );
 }
 
@@ -839,6 +997,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
   const [mode, setMode] = useState<AudioStationMode>("music");
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [audioFiles, setAudioFiles] = useState<File[]>([]);
 
   const create = async (event: FormEvent) => {
     event.preventDefault();
@@ -859,7 +1018,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
       bannerUrl = upload.data.key;
     }
 
-    const { error } = await (supabase as any).from("radio_stations").insert({
+    const { data: createdStation, error } = await (supabase as any).from("radio_stations").insert({
       owner_user_id: user.id,
       name: name.trim(),
       network_name: networkName.trim() || null,
@@ -872,18 +1031,44 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
       live_title: null,
       live_started_at: null,
       live_session_id: null,
-    });
+    }).select("id").single();
 
-    setSaving(false);
-
-    if (error) {
-      toast({ title: "Could not create station", description: error.message, variant: "destructive" });
+    if (error || !createdStation?.id) {
+      setSaving(false);
+      toast({ title: "Could not create station", description: error?.message || "Please try again.", variant: "destructive" });
       return;
     }
 
+    let uploadedCount = 0;
+    let failedCount = 0;
+    if (mode === "music" && audioFiles.length) {
+      for (const [index, file] of audioFiles.entries()) {
+        const upload = await uploadToR2(file, {
+          folder: `radio-stations/${user.id}/${createdStation.id}/audio`,
+          fileName: `${Date.now()}-${index}-${file.name}`,
+        });
+        if (!upload.success || !upload.data?.key) { failedCount += 1; continue; }
+        const { error: audioError } = await (supabase as any).from("radio_station_audio").insert({
+          station_id: createdStation.id,
+          owner_user_id: user.id,
+          title: file.name.replace(/\.[^.]+$/, "").trim() || "Untitled",
+          audio_url: upload.data.key,
+          position: index,
+          enabled: true,
+        });
+        if (audioError) failedCount += 1;
+        else uploadedCount += 1;
+      }
+    }
+
+    setSaving(false);
     toast({
       title: "Station created",
-      description: "Listeners can now find your station on YAJ Radio.",
+      description: uploadedCount
+        ? `${uploadedCount} station track${uploadedCount === 1 ? "" : "s"} added.${failedCount ? ` ${failedCount} could not be added.` : ""}`
+        : failedCount
+          ? "The station was created, but its audio could not be added yet."
+          : "Listeners can now find your station on YAJ Radio.",
     });
     onCreated();
   };
@@ -912,6 +1097,27 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
           setCoverPreview={setCoverPreview}
           setCoverFile={setCoverFile}
         />
+
+        {mode === "music" && (
+          <label className="mt-4 block cursor-pointer rounded-2xl border border-dashed border-violet-400/50 bg-violet-500/10 p-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-violet-500/15 text-violet-300"><Upload className="h-5 w-5" /></span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black">Upload station MP3s</p>
+                <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
+                  These tracks belong to this station only and play continuously in the order selected.
+                </p>
+              </div>
+            </div>
+            {audioFiles.length > 0 && (
+              <p className="mt-3 rounded-xl bg-background/70 px-3 py-2 text-[10px] font-bold text-foreground">
+                {audioFiles.length} audio file{audioFiles.length === 1 ? "" : "s"} selected
+              </p>
+            )}
+            <input type="file" accept="audio/mpeg,audio/mp3,audio/*" multiple className="hidden"
+              onChange={(event) => setAudioFiles(Array.from(event.target.files || []))} />
+          </label>
+        )}
 
         <ModalActions onClose={onClose} disabled={saving || !name.trim()} label={saving ? "Creating…" : "Create Station"} />
       </form>
