@@ -37,6 +37,7 @@ const MySongsPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
+  const returnTo = searchParams.get("returnTo") || "/radio";
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(false);
@@ -226,7 +227,7 @@ const MySongsPage = () => {
       <div className="mb-5 flex items-center gap-3">
         <button
           type="button"
-          onClick={() => navigate("/radio")}
+          onClick={() => navigate(returnTo)}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card"
         >
           <ArrowLeft className="h-4 w-4 text-foreground" />
