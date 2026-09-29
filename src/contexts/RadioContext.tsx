@@ -7,7 +7,7 @@ import podcast1 from "@/assets/podcast-1.jpg";
 
 export interface RadioTrack {
   id: string;
-  source: "song" | "podcast";
+  source: "song" | "podcast" | "station";
   title: string;
   artist_name: string;
   album: string;
@@ -182,7 +182,7 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
       if (!playTracked.current.has(currentTrack.id)) {
         playTracked.current.add(currentTrack.id);
         if (currentTrack.source === "podcast") incrementPodcastPlays(currentTrack.id);
-        else incrementSongPlays(currentTrack.id);
+        else if (currentTrack.source === "song") incrementSongPlays(currentTrack.id);
       }
     } else {
       audio.pause();
