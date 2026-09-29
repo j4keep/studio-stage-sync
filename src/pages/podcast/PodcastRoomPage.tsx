@@ -337,6 +337,7 @@ const PodcastRoomPage = () => {
         is_live: true,
         live_title: title,
         live_started_at: new Date().toISOString(),
+        live_heartbeat_at: new Date().toISOString(),
         live_session_id: sessionId,
       })
       .eq("id", radioStationId);
@@ -358,7 +359,7 @@ const PodcastRoomPage = () => {
         .update({
           is_live: true,
           live_session_id: sessionId,
-          live_started_at: new Date().toISOString(),
+          live_heartbeat_at: new Date().toISOString(),
         })
         .eq("id", radioStationId);
     };
@@ -378,6 +379,7 @@ const PodcastRoomPage = () => {
           is_live: false,
           live_title: null,
           live_started_at: null,
+          live_heartbeat_at: null,
           live_session_id: null,
         })
         .eq("id", radioStationId)
@@ -393,10 +395,13 @@ const PodcastRoomPage = () => {
     // Normal in-app navigation is handled by cleanup. pagehide covers Safari
     // tab closes/background page destruction; presence is the public fallback.
     const handlePageHide = () => clearLiveState();
+    const handleBeforeUnload = () => clearLiveState();
     window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
 
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
       clearLiveState();
     };
   }, [isHost, radioStationId, sessionId]);
@@ -459,11 +464,15 @@ const PodcastRoomPage = () => {
   }, [isHost, SEC_KEY, security]);
 
   // Doorman: realtime waiting-room gate (does not touch LiveKit/recording).
+  const effectiveSecurity: PodcastSecurity = isHost && fromRadio
+    ? { ...security, admission: "approval" }
+    : security;
+
   const doorman = usePodcastDoorman({
     sessionId,
     isHost,
     displayName,
-    security: isHost ? security : undefined,
+    security: isHost ? effectiveSecurity : undefined,
   });
 
   // Guest auto-request when policy known
@@ -794,6 +803,7 @@ const PodcastRoomPage = () => {
                 is_live: false,
                 live_title: null,
                 live_started_at: null,
+                live_heartbeat_at: null,
                 live_session_id: null,
               })
               .eq("id", radioStationId)
@@ -1291,8 +1301,8 @@ const PodcastRoomPage = () => {
           onClose={() => setInviteOpen(false)}
           sessionId={sessionId}
           isHost={isHost}
-          security={security}
-          onSecurityChange={setSecurity}
+          security={effectiveSecurity}
+          onSecurityChange={(next) => setSecurity(fromRadio ? { ...next, admission: "approval" } : next)}
           radioStationId={radioStationId}
         />
       )}
