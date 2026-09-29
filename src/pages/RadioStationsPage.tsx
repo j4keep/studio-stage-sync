@@ -40,6 +40,32 @@ type Station = {
 
 const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
 
+function stationCoverSrc(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback;
+
+  // Current uploads should store the R2 object key. Serve it through YAJ's
+  // authenticated download proxy rather than the private R2 S3 endpoint.
+  if (!/^https?:\/\//i.test(value)) return getR2DownloadUrl(value);
+
+  // Repair older station rows that saved the private R2 URL returned by the
+  // upload function. Those URLs cannot be displayed directly in browsers.
+  try {
+    const url = new URL(value);
+    if (url.hostname.endsWith(".r2.cloudflarestorage.com")) {
+      const marker = "/wheuat-media/";
+      const index = url.pathname.indexOf(marker);
+      if (index >= 0) {
+        const key = decodeURIComponent(url.pathname.slice(index + marker.length));
+        return getR2DownloadUrl(key);
+      }
+    }
+  } catch {
+    // Fall through to the original URL for normal public image providers.
+  }
+
+  return value;
+}
+
 export default function RadioStationsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -171,7 +197,7 @@ export default function RadioStationsPage() {
           artist_name: hostNames[station.owner_user_id] || station.name,
           album: item.episode || station.name,
           genre: "Podcasts",
-          cover_url: item.cover_url || station.banner_url || station.logo_url || podcastHost,
+          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, podcastHost),
           audio_url: getR2DownloadUrl(item.media_url),
           plays: String(item.plays || "0"),
           likes_count: Number(item.likes_count || 0),
@@ -199,7 +225,7 @@ export default function RadioStationsPage() {
           artist_name: hostNames[station.owner_user_id] || station.name,
           album: item.album || station.name,
           genre: item.genre || station.genre || "Music",
-          cover_url: item.cover_url || station.banner_url || station.logo_url || radioHost,
+          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, radioHost),
           audio_url: getR2DownloadUrl(item.audio_url),
           plays: String(item.plays || "0"),
           likes_count: Number(item.likes_count || 0),
@@ -446,7 +472,7 @@ function StationCard({
       <button type="button" onClick={onListen} className="block w-full text-left">
         <div className="relative aspect-square overflow-hidden rounded-[26px] border border-border bg-card shadow-lg">
           <img
-            src={station.banner_url || station.logo_url || art}
+            src={stationCoverSrc(station.banner_url || station.logo_url, art)}
             alt=""
             className="h-full w-full object-cover"
           />
@@ -633,7 +659,11 @@ function EditStationSheet({
     station.programming_mode === "podcast" ? "podcast" : "music",
   );
   const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(station.banner_url || station.logo_url);
+  const [coverPreview, setCoverPreview] = useState<string | null>(
+    station.banner_url || station.logo_url
+      ? stationCoverSrc(station.banner_url || station.logo_url, radioHost)
+      : null,
+  );
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -651,7 +681,7 @@ function EditStationSheet({
         toast({ title: "Cover upload failed", description: upload.error || "Please try another image.", variant: "destructive" });
         return;
       }
-      bannerUrl = upload.data.url;
+      bannerUrl = upload.data.key;
     }
 
     const { error } = await (supabase as any)
@@ -741,7 +771,7 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
         toast({ title: "Cover upload failed", description: upload.error || "Please try another image.", variant: "destructive" });
         return;
       }
-      bannerUrl = upload.data.url;
+      bannerUrl = upload.data.key;
     }
 
     const { error } = await (supabase as any).from("radio_stations").insert({
