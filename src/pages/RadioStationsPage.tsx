@@ -47,7 +47,8 @@ function stationIsTrulyLive(station: Station) {
   const stamp = station.updated_at || station.live_started_at;
   if (!stamp) return false;
   const age = Date.now() - new Date(stamp).getTime();
-  return Number.isFinite(age) && age >= 0 && age <= LIVE_HEARTBEAT_TTL_MS;
+  // Allow modest device-clock skew while still expiring a silent host quickly.
+  return Number.isFinite(age) && age >= -60_000 && age <= LIVE_HEARTBEAT_TTL_MS;
 }
 
 function stationCoverSrc(value: string | null | undefined, fallback: string) {
