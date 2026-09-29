@@ -2,12 +2,6 @@
 -- Keeps public station cards truthful even when a host closes the app/tab before
 -- the normal room cleanup request finishes.
 
-alter table public.radio_stations
-  add column if not exists live_heartbeat_at timestamptz;
-
-create index if not exists radio_stations_live_heartbeat_idx
-  on public.radio_stations (is_live, live_heartbeat_at);
-
 create or replace function public.cleanup_stale_radio_broadcasts()
 returns integer
 language plpgsql
@@ -22,8 +16,8 @@ begin
     from public.radio_stations
     where is_live = true
       and (
-        coalesce(live_heartbeat_at, live_started_at) is null
-        or coalesce(live_heartbeat_at, live_started_at) < now() - interval '20 seconds'
+        coalesce(updated_at, live_started_at) is null
+        or coalesce(updated_at, live_started_at) < now() - interval '20 seconds'
       )
   ),
   ended_shows as (
@@ -41,7 +35,6 @@ begin
       is_live = false,
       live_title = null,
       live_started_at = null,
-      live_heartbeat_at = null,
       live_session_id = null,
       updated_at = now()
     from stale
