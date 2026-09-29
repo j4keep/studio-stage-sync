@@ -20,6 +20,7 @@ import { PodcastSessionStore, evaluateJoinGate, type ScheduledPodcastSession } f
 import { PodcastBackgrounds, type PodcastBg } from "./podcastBackgrounds";
 import { useBackgroundReplacement } from "./useBackgroundReplacement";
 import PodcastBackgroundPicker from "./PodcastBackgroundPicker";
+import { getR2DownloadUrl } from "@/lib/r2-storage";
 
 type LocalRecording = {
   id: string;
@@ -1200,6 +1201,10 @@ const PodcastRoomPage = () => {
 
       </div>
 
+      {isHost && radioAudioMode && radioStationId && (
+        <RadioMusicDeck stationId={radioStationId} room={room} />
+      )}
+
       {isHost && viewerFullscreen ? (
         <button
           type="button"
@@ -1588,6 +1593,208 @@ const GuestWaitingOverlay = ({
 );
 
 /* ===================== Subcomponents ===================== */
+
+const RadioMusicDeck = ({ stationId, room }: { stationId: string; room: any }) => {
+  const [stationMode, setStationMode] = useState<"music" | "podcast">("music");
+  const [tracks, setTracks] = useState<{ id: string; title: string; audioUrl: string }[]>([]);
+  const [index, setIndex] = useState(0);
+  const [playing, setPlaying] = useState(false);
+  const [mixReady, setMixReady] = useState(false);
+  const [micLevel, setMicLevel] = useState(1);
+  const [musicLevel, setMusicLevel] = useState(0.75);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const mixRef = useRef<{
+    ctx: AudioContext;
+    micStream: MediaStream;
+    micGain: GainNode;
+    musicGain: GainNode;
+  } | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      const { data: station } = await (supabase as any)
+        .from("radio_stations")
+        .select("owner_user_id,programming_mode")
+        .eq("id", stationId)
+        .maybeSingle();
+      if (!active || !station) return;
+      const mode = station.programming_mode === "podcast" ? "podcast" : "music";
+      setStationMode(mode);
+      if (mode !== "music") return;
+
+      const { data } = await (supabase as any)
+        .from("songs")
+        .select("id,title,audio_url,on_radio")
+        .eq("user_id", station.owner_user_id)
+        .eq("on_radio", true)
+        .order("created_at", { ascending: false });
+      if (!active) return;
+      setTracks(
+        (data || [])
+          .filter((item: any) => !!item.audio_url)
+          .map((item: any) => ({
+            id: item.id,
+            title: item.title,
+            audioUrl: getR2DownloadUrl(item.audio_url),
+          })),
+      );
+    })();
+    return () => { active = false; };
+  }, [stationId]);
+
+  useEffect(() => {
+    if (mixRef.current) {
+      mixRef.current.micGain.gain.value = micLevel;
+      mixRef.current.musicGain.gain.value = musicLevel;
+    }
+  }, [micLevel, musicLevel]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    const current = tracks[index];
+    if (!audio || !current) return;
+    audio.src = current.audioUrl;
+    audio.currentTime = 0;
+    if (playing) void audio.play().catch(() => setPlaying(false));
+  }, [index, tracks]);
+
+  useEffect(() => () => {
+    try { audioRef.current?.pause(); } catch {}
+    const mix = mixRef.current;
+    mixRef.current = null;
+    mix?.micStream.getTracks().forEach((track) => {
+      try { track.stop(); } catch {}
+    });
+    try { void mix?.ctx.close(); } catch {}
+  }, []);
+
+  if (stationMode !== "music") return null;
+
+  const setupMix = async () => {
+    if (mixRef.current) return true;
+    const audio = audioRef.current;
+    if (!audio || !navigator.mediaDevices?.getUserMedia) return false;
+
+    try {
+      const micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      const ctx: AudioContext = new AudioContextCtor();
+      await ctx.resume();
+
+      const destination = ctx.createMediaStreamDestination();
+      const micSource = ctx.createMediaStreamSource(micStream);
+      const musicSource = ctx.createMediaElementSource(audio);
+      const micGain = ctx.createGain();
+      const musicGain = ctx.createGain();
+      micGain.gain.value = micLevel;
+      musicGain.gain.value = musicLevel;
+
+      micSource.connect(micGain).connect(destination);
+      musicSource.connect(musicGain).connect(destination);
+      musicSource.connect(ctx.destination);
+
+      const mixedTrack = destination.stream.getAudioTracks()[0];
+      await room.replaceAudioTrack(mixedTrack);
+      mixRef.current = { ctx, micStream, micGain, musicGain };
+      setMixReady(true);
+      return true;
+    } catch (error: any) {
+      toast({
+        title: "Could not start music mixer",
+        description: error?.message || "Microphone access is required to talk over station music.",
+        variant: "destructive",
+      });
+      return false;
+    }
+  };
+
+  const toggle = async () => {
+    const audio = audioRef.current;
+    if (!audio || !tracks.length) return;
+    if (playing) {
+      audio.pause();
+      setPlaying(false);
+      return;
+    }
+    if (!(await setupMix())) return;
+    void audio.play().then(() => setPlaying(true)).catch(() => setPlaying(false));
+  };
+
+  const next = () => {
+    if (!tracks.length) return;
+    setIndex((value) => (value + 1) % tracks.length);
+  };
+
+  return (
+    <div className="border-b border-zinc-800 bg-zinc-950/95 px-3 py-3">
+      <audio
+        ref={audioRef}
+        crossOrigin="anonymous"
+        preload="metadata"
+        onEnded={next}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        className="hidden"
+      />
+      <div className="mx-auto flex max-w-4xl items-center gap-3 rounded-2xl border border-violet-500/25 bg-violet-500/[0.07] p-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-[9px] font-black uppercase tracking-[0.16em] text-violet-300">Live Music Deck</p>
+          <p className="truncate text-sm font-black text-white">
+            {tracks[index]?.title || "Add songs to YAJ Radio to build your live playlist"}
+          </p>
+          <p className="mt-0.5 text-[10px] text-zinc-500">
+            {mixReady ? "Mic + music are mixed into the live station feed" : "Press Play to enable mic + music mixing"}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void toggle()}
+          disabled={!tracks.length}
+          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-violet-600 text-white disabled:opacity-40"
+        >
+          {playing ? <Pause className="h-5 w-5" /> : <Play className="ml-0.5 h-5 w-5" />}
+        </button>
+        <button
+          type="button"
+          onClick={next}
+          disabled={!tracks.length}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-zinc-700 bg-zinc-900 disabled:opacity-40"
+        >
+          <RotateCcw className="h-4 w-4" />
+        </button>
+      </div>
+      {tracks.length > 0 && (
+        <div className="mx-auto mt-2 grid max-w-4xl grid-cols-2 gap-3">
+          <label className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">
+            Mic
+            <input
+              type="range"
+              min={0}
+              max={1.25}
+              step={0.05}
+              value={micLevel}
+              onChange={(event) => setMicLevel(Number(event.target.value))}
+              className="mt-1 w-full accent-violet-500"
+            />
+          </label>
+          <label className="text-[9px] font-bold uppercase tracking-wide text-zinc-500">
+            Music
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={musicLevel}
+              onChange={(event) => setMusicLevel(Number(event.target.value))}
+              className="mt-1 w-full accent-violet-500"
+            />
+          </label>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const ScreeningAudio = ({ track }: { track: MediaStreamTrack }) => {
   const ref = useRef<HTMLAudioElement>(null);
