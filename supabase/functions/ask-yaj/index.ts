@@ -1,3 +1,4 @@
+import { requireAiUser } from "../_shared/ai-guard.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -34,6 +35,8 @@ const SYSTEM_PROMPT = `You are YAJ, the AI companion for the YAJ app. You are wa
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  const guard = await requireAiUser(req, "ask-yaj", corsHeaders);
+  if (guard instanceof Response) return guard;
 
   try {
     const { messages } = await req.json();

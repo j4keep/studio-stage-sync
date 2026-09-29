@@ -1,3 +1,4 @@
+import AdminAiUsagePage from "./pages/AdminAiUsagePage";
 import { useState, useEffect, useCallback } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import ImageLightbox from "@/components/ImageLightbox";
@@ -509,6 +510,7 @@ const ProtectedRoutes = () => {
         <Route path="/admin/content" element={<AdminContentPage />} />
         <Route path="/admin/deals-verification" element={<AdminDealsVerificationPage />} />
         <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
+        <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
         <Route path="/battles" element={<BattlesPage />} />
         <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
