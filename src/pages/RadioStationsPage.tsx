@@ -1,14 +1,17 @@
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ChevronDown,
   ChevronUp,
+  FastForward,
   Image as ImageIcon,
   Music2,
+  Pause,
   Pencil,
   Play,
   Plus,
   RadioTower,
+  Scissors,
   Search,
   Trash2,
   Upload,
@@ -285,7 +288,7 @@ export default function RadioStationsPage() {
     } else {
       const { data, error } = await (supabase as any)
         .from("radio_station_audio")
-        .select("id,title,audio_url,position,owner_user_id")
+        .select("id,title,audio_url,position,owner_user_id,trim_start_seconds,trim_end_seconds")
         .eq("station_id", station.id)
         .eq("enabled", true)
         .order("position", { ascending: true })
@@ -310,6 +313,8 @@ export default function RadioStationsPage() {
           plays: "0",
           likes_count: 0,
           user_id: item.owner_user_id,
+          trim_start_seconds: Number(item.trim_start_seconds || 0),
+          trim_end_seconds: item.trim_end_seconds == null ? null : Number(item.trim_end_seconds),
         }));
     }
 
@@ -624,30 +629,163 @@ function StationCard({
 }
 
 
-type StationAudioItem = { id: string; title: string; audio_url: string; position: number };
+type StationAudioItem = {
+  id: string;
+  title: string;
+  audio_url: string;
+  position: number;
+  trim_start_seconds: number;
+  trim_end_seconds: number | null;
+};
 
 function StationPlaylistSheet({ station, onClose }: { station: Station; onClose: () => void }) {
   const { user } = useAuth();
   const [tracks, setTracks] = useState<StationAudioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [previewingId, setPreviewingId] = useState<string | null>(null);
+  const [previewTime, setPreviewTime] = useState(0);
+  const [previewDuration, setPreviewDuration] = useState(0);
+  const [trimmingId, setTrimmingId] = useState<string | null>(null);
+  const [trimStart, setTrimStart] = useState("0");
+  const [trimEnd, setTrimEnd] = useState("");
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const isMissingStationAudioTable = (message?: string) =>
+    Boolean(message && (message.includes("radio_station_audio") || message.includes("schema cache")));
 
   const loadTracks = async () => {
     const { data, error } = await (supabase as any)
       .from("radio_station_audio")
-      .select("id,title,audio_url,position")
+      .select("id,title,audio_url,position,trim_start_seconds,trim_end_seconds")
       .eq("station_id", station.id)
       .order("position", { ascending: true })
       .order("created_at", { ascending: true });
     setLoading(false);
     if (error) {
-      toast({ title: "Could not load station playlist", description: error.message, variant: "destructive" });
+      toast({
+        title: isMissingStationAudioTable(error.message) ? "Station playlist setup is not finished" : "Could not load station playlist",
+        description: isMissingStationAudioTable(error.message)
+          ? "The station playlist database update still needs to be applied in Supabase."
+          : error.message,
+        variant: "destructive",
+      });
       return;
     }
-    setTracks((data || []) as StationAudioItem[]);
+    setTracks((data || []).map((item: any) => ({
+      ...item,
+      trim_start_seconds: Number(item.trim_start_seconds || 0),
+      trim_end_seconds: item.trim_end_seconds == null ? null : Number(item.trim_end_seconds),
+    })));
   };
 
   useEffect(() => { void loadTracks(); }, [station.id]);
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.preload = "metadata";
+    audioRef.current = audio;
+
+    const onTime = () => {
+      setPreviewTime(audio.currentTime || 0);
+      const track = tracks.find((item) => item.id === previewingId);
+      const end = Number(track?.trim_end_seconds);
+      if (track && Number.isFinite(end) && end > 0 && audio.currentTime >= end) {
+        audio.pause();
+        setPreviewingId(null);
+      }
+    };
+    const onMeta = () => setPreviewDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const onEnded = () => setPreviewingId(null);
+
+    audio.addEventListener("timeupdate", onTime);
+    audio.addEventListener("loadedmetadata", onMeta);
+    audio.addEventListener("ended", onEnded);
+    return () => {
+      audio.pause();
+      audio.src = "";
+      audio.removeEventListener("timeupdate", onTime);
+      audio.removeEventListener("loadedmetadata", onMeta);
+      audio.removeEventListener("ended", onEnded);
+    };
+  }, [previewingId, tracks]);
+
+  const stopPreview = () => {
+    const audio = audioRef.current;
+    if (audio) audio.pause();
+    setPreviewingId(null);
+  };
+
+  const playPreview = (track: StationAudioItem) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (previewingId === track.id && !audio.paused) {
+      stopPreview();
+      return;
+    }
+
+    const url = getR2DownloadUrl(track.audio_url);
+    if (audio.src !== url) audio.src = url;
+    const startAt = Math.max(0, Number(track.trim_start_seconds || 0));
+    const begin = () => {
+      audio.currentTime = startAt;
+      setPreviewTime(startAt);
+      void audio.play().then(() => setPreviewingId(track.id)).catch(() => {
+        toast({ title: "Could not preview this track", variant: "destructive" });
+      });
+    };
+    if (audio.readyState >= 1) begin();
+    else audio.addEventListener("loadedmetadata", begin, { once: true });
+  };
+
+  const fastForwardPreview = (track: StationAudioItem) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (previewingId !== track.id) {
+      playPreview(track);
+      return;
+    }
+    const trimEndValue = Number(track.trim_end_seconds);
+    const hardEnd = Number.isFinite(trimEndValue) && trimEndValue > 0
+      ? trimEndValue
+      : (Number.isFinite(audio.duration) ? audio.duration : audio.currentTime + 15);
+    audio.currentTime = Math.min(audio.currentTime + 15, Math.max(0, hardEnd - 0.1));
+  };
+
+  const openTrim = (track: StationAudioItem) => {
+    stopPreview();
+    setTrimmingId(track.id);
+    setTrimStart(String(Number(track.trim_start_seconds || 0)));
+    setTrimEnd(track.trim_end_seconds == null ? "" : String(track.trim_end_seconds));
+  };
+
+  const saveTrim = async (track: StationAudioItem) => {
+    const startValue = Math.max(0, Number(trimStart) || 0);
+    const parsedEnd = trimEnd.trim() === "" ? null : Number(trimEnd);
+    if (parsedEnd != null && (!Number.isFinite(parsedEnd) || parsedEnd <= startValue)) {
+      toast({ title: "Trim end must be after trim start", variant: "destructive" });
+      return;
+    }
+
+    const { error } = await (supabase as any)
+      .from("radio_station_audio")
+      .update({
+        trim_start_seconds: startValue,
+        trim_end_seconds: parsedEnd,
+      })
+      .eq("id", track.id)
+      .eq("owner_user_id", user?.id);
+
+    if (error) {
+      toast({ title: "Could not save trim", description: error.message, variant: "destructive" });
+      return;
+    }
+    setTracks((items) => items.map((item) => item.id === track.id
+      ? { ...item, trim_start_seconds: startValue, trim_end_seconds: parsedEnd }
+      : item));
+    setTrimmingId(null);
+    toast({ title: "Track trim saved" });
+  };
 
   const uploadFiles = async (files: File[]) => {
     if (!user || !files.length || uploading) return;
@@ -670,21 +808,32 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
         audio_url: upload.data.key,
         position: nextPosition++,
         enabled: true,
+        trim_start_seconds: 0,
+        trim_end_seconds: null,
       });
       if (error) {
         failed += 1;
         void deleteFromR2(upload.data.key);
+        if (isMissingStationAudioTable(error.message)) {
+          toast({
+            title: "Station playlist database update required",
+            description: "The MP3 was not kept because the Supabase station-audio table has not been applied yet.",
+            variant: "destructive",
+          });
+          break;
+        }
       } else added += 1;
     }
 
     setUploading(false);
     await loadTracks();
     if (added) toast({ title: added === 1 ? "1 track added" : `${added} tracks added`, description: "These tracks belong to this station only." });
-    if (failed) toast({ title: failed === 1 ? "1 track could not be added" : `${failed} tracks could not be added`, variant: "destructive" });
+    if (failed && added) toast({ title: failed === 1 ? "1 track could not be added" : `${failed} tracks could not be added`, variant: "destructive" });
   };
 
   const removeTrack = async (track: StationAudioItem) => {
     if (!user) return;
+    if (previewingId === track.id) stopPreview();
     const { error } = await (supabase as any).from("radio_station_audio").delete().eq("id", track.id).eq("owner_user_id", user.id);
     if (error) {
       toast({ title: "Could not remove track", description: error.message, variant: "destructive" });
@@ -714,7 +863,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
   };
 
   return (
-    <ModalShell onClose={onClose}>
+    <ModalShell onClose={() => { stopPreview(); onClose(); }}>
       <div>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Station Playlist</p>
         <h2 className="mt-1 text-2xl font-black">{station.name}</h2>
@@ -735,7 +884,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
           />
         </label>
 
-        <div className="mt-5 space-y-2">
+        <div className="mt-5 space-y-3">
           {loading ? (
             <div className="rounded-2xl bg-muted p-4 text-xs text-muted-foreground">Loading playlist…</div>
           ) : tracks.length === 0 ? (
@@ -745,34 +894,89 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
               <p className="mt-1 text-[10px] text-muted-foreground">Upload the first MP3 above.</p>
             </div>
           ) : tracks.map((track, index) => (
-            <div key={track.id} className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 p-3">
-              <Music2 className="h-4 w-4 shrink-0 text-violet-300" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-black">{track.title}</p>
-                <p className="text-[10px] text-muted-foreground">Track {index + 1}</p>
+            <div key={track.id} className="rounded-2xl border border-border bg-muted/40 p-3">
+              <div className="flex items-center gap-2">
+                <Music2 className="h-4 w-4 shrink-0 text-violet-300" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black">{track.title}</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Track {index + 1}
+                    {track.trim_start_seconds > 0 || track.trim_end_seconds != null
+                      ? ` · Trim ${track.trim_start_seconds.toFixed(1)}s–${track.trim_end_seconds == null ? "end" : `${track.trim_end_seconds.toFixed(1)}s`}`
+                      : ""}
+                  </p>
+                </div>
+                <button type="button" onClick={() => void removeTrack(track)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-red-500/10 text-red-400" aria-label="Delete track">
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
-              <button type="button" onClick={() => void moveTrack(index, -1)} disabled={index === 0}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track up">
-                <ChevronUp className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => void moveTrack(index, 1)} disabled={index === tracks.length - 1}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track down">
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              <button type="button" onClick={() => void removeTrack(track)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500/10 text-red-400" aria-label="Remove track">
-                <Trash2 className="h-4 w-4" />
-              </button>
+
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button type="button" onClick={() => playPreview(track)}
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-violet-600 px-3 text-[10px] font-black text-white">
+                  {previewingId === track.id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                  {previewingId === track.id ? "Pause" : "Play"}
+                </button>
+                <button type="button" onClick={() => fastForwardPreview(track)}
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-background px-3 text-[10px] font-black">
+                  <FastForward className="h-3.5 w-3.5" /> +15s
+                </button>
+                <button type="button" onClick={() => openTrim(track)}
+                  className="flex h-9 items-center gap-1.5 rounded-full bg-background px-3 text-[10px] font-black">
+                  <Scissors className="h-3.5 w-3.5" /> Trim
+                </button>
+                <button type="button" onClick={() => void moveTrack(index, -1)} disabled={index === 0}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track up">
+                  <ChevronUp className="h-4 w-4" />
+                </button>
+                <button type="button" onClick={() => void moveTrack(index, 1)} disabled={index === tracks.length - 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-background disabled:opacity-30" aria-label="Move track down">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </div>
+
+              {previewingId === track.id && (
+                <div className="mt-2 text-[9px] font-bold text-muted-foreground">
+                  Preview {Math.floor(previewTime / 60)}:{String(Math.floor(previewTime % 60)).padStart(2, "0")}
+                  {previewDuration > 0 ? ` / ${Math.floor(previewDuration / 60)}:${String(Math.floor(previewDuration % 60)).padStart(2, "0")}` : ""}
+                </div>
+              )}
+
+              {trimmingId === track.id && (
+                <div className="mt-3 rounded-xl border border-border bg-background p-3">
+                  <p className="text-[10px] font-black">Trim this track</p>
+                  <p className="mt-1 text-[9px] text-muted-foreground">Set where station playback starts and ends. Leave End blank to play to the end.</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <label className="text-[9px] font-bold text-muted-foreground">
+                      Start seconds
+                      <input type="number" min="0" step="0.1" value={trimStart} onChange={(e) => setTrimStart(e.target.value)}
+                        className="mt-1 h-10 w-full rounded-lg border border-border bg-muted px-2 text-xs text-foreground" />
+                    </label>
+                    <label className="text-[9px] font-bold text-muted-foreground">
+                      End seconds
+                      <input type="number" min="0" step="0.1" value={trimEnd} onChange={(e) => setTrimEnd(e.target.value)}
+                        placeholder="End"
+                        className="mt-1 h-10 w-full rounded-lg border border-border bg-muted px-2 text-xs text-foreground" />
+                    </label>
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <button type="button" onClick={() => setTrimmingId(null)}
+                      className="flex-1 rounded-full border border-border px-3 py-2 text-[10px] font-black">Cancel</button>
+                    <button type="button" onClick={() => void saveTrim(track)}
+                      className="flex-1 rounded-full bg-violet-600 px-3 py-2 text-[10px] font-black text-white">Save Trim</button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
 
-        <button type="button" onClick={onClose} className="mt-6 w-full rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white">Done</button>
+        <button type="button" onClick={() => { stopPreview(); onClose(); }} className="mt-6 w-full rounded-full bg-violet-600 px-4 py-3 text-xs font-black text-white">Done</button>
       </div>
     </ModalShell>
   );
 }
-
 
 function GoLiveAudioSheet({
   station,
@@ -897,6 +1101,7 @@ function EditStationSheet({
 }) {
   const { user } = useAuth();
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState(station.name);
   const [networkName, setNetworkName] = useState(station.network_name || "");
   const [tagline, setTagline] = useState(station.tagline || "");
@@ -959,6 +1164,30 @@ function EditStationSheet({
     onSaved();
   };
 
+  const deleteStation = async () => {
+    if (!user || deleting) return;
+    const confirmed = window.confirm(`Delete "${station.name}"? This removes the station and its station playlist. This cannot be undone.`);
+    if (!confirmed) return;
+
+    setDeleting(true);
+    const { error } = await (supabase as any)
+      .from("radio_stations")
+      .delete()
+      .eq("id", station.id)
+      .eq("owner_user_id", user.id);
+
+    if (error) {
+      setDeleting(false);
+      toast({ title: "Could not delete station", description: error.message, variant: "destructive" });
+      return;
+    }
+
+    const coverKey = station.banner_url || station.logo_url;
+    if (coverKey && !/^https?:\/\//i.test(coverKey)) void deleteFromR2(coverKey);
+    toast({ title: "Station deleted" });
+    onSaved();
+  };
+
   return (
     <ModalShell onClose={onClose}>
       <form onSubmit={save}>
@@ -984,7 +1213,15 @@ function EditStationSheet({
           setCoverFile={setCoverFile}
         />
 
-        <ModalActions onClose={onClose} disabled={saving || !name.trim()} label={saving ? "Saving…" : "Save Changes"} />
+        <ModalActions onClose={onClose} disabled={saving || deleting || !name.trim()} label={saving ? "Saving…" : "Save Changes"} />
+        <button
+          type="button"
+          onClick={() => void deleteStation()}
+          disabled={saving || deleting}
+          className="mt-3 w-full rounded-full border border-red-500/40 bg-red-500/10 px-4 py-3 text-xs font-black text-red-400 disabled:opacity-50"
+        >
+          {deleting ? "Deleting Station…" : "Delete Station"}
+        </button>
       </form>
     </ModalShell>
   );
