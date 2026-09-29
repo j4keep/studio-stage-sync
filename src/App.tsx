@@ -54,6 +54,7 @@ import AuthPage from "./pages/AuthPage";
 import OAuthConsent from "./pages/OAuthConsent";
 import NotFound from "./pages/NotFound";
 import MySongsPage from "./pages/MySongsPage";
+import MyPodcastsPage from "./pages/MyPodcastsPage";
 import MyVideosPage from "./pages/MyVideosPage";
 
 import MyProjectsPage from "./pages/MyProjectsPage";
@@ -353,6 +354,7 @@ const ProtectedRoutes = () => {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/settings/balance" element={<DigitalBalancePage />} />
         <Route path="/my-songs" element={<MySongsPage />} />
+        <Route path="/my-podcasts" element={<MyPodcastsPage />} />
         <Route path="/my-videos" element={<MyVideosPage />} />
 
         <Route path="/my-projects" element={<MyProjectsPage />} />
