@@ -32,6 +32,7 @@ const MyPodcastsPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const returnTo = searchParams.get("returnTo") || "/profile";
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpload, setShowUpload] = useState(() => searchParams.get("upload") === "1");
@@ -198,7 +199,7 @@ const MyPodcastsPage = () => {
     <div className="px-4 pt-4 pb-4">
       <audio ref={audioRef} onEnded={() => setPlayingId(null)} playsInline />
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={() => navigate("/profile")} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
+        <button onClick={() => navigate(returnTo)} className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center">
           <ArrowLeft className="w-4 h-4 text-foreground" />
         </button>
         <div className="flex-1">
