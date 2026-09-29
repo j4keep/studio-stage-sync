@@ -11,6 +11,8 @@ const GlobalRadioPlayer = () => {
     currentTime,
     duration,
     seek,
+    stationMode,
+    stationName,
   } = useRadio();
 
   if (!currentTrack) return null;
@@ -50,7 +52,9 @@ const GlobalRadioPlayer = () => {
 
             <div className="min-w-0 flex-1 text-left">
               <p className="truncate text-[13px] font-black text-foreground">{currentTrack.title}</p>
-              <p className="truncate text-[11px] font-medium text-muted-foreground">{currentTrack.artist_name}</p>
+              <p className="truncate text-[11px] font-medium text-muted-foreground">
+                {stationMode && stationName ? stationName : currentTrack.artist_name}
+              </p>
             </div>
 
             <button
@@ -62,14 +66,16 @@ const GlobalRadioPlayer = () => {
               {isPlaying ? <Pause className="h-5 w-5 fill-current" /> : <Play className="ml-0.5 h-5 w-5 fill-current" />}
             </button>
 
-            <button
-              type="button"
-              onClick={skip}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground active:scale-95"
-              aria-label="Next"
-            >
-              <SkipForward className="h-5 w-5 fill-current" />
-            </button>
+            {!stationMode && (
+              <button
+                type="button"
+                onClick={skip}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-foreground active:scale-95"
+                aria-label="Next"
+              >
+                <SkipForward className="h-5 w-5 fill-current" />
+              </button>
+            )}
           </div>
         </div>
       </motion.div>
