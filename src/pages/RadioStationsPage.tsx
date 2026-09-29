@@ -7,6 +7,7 @@ import {
   Plus,
   RadioTower,
   Search,
+  Users,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,9 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import { useRadio, type RadioTrack } from "@/contexts/RadioContext";
-import radioHost from "@/assets/wstudio-orbit-headphones.jpg";
-import studioMic from "@/assets/wstudio-orbit-mic.jpg";
-import studioMixer from "@/assets/wstudio-orbit-mixer.jpg";
+import albumArt from "@/assets/album-1.jpg";
 import podcastHost from "@/assets/podcast-1.jpg";
 import djHost from "@/assets/artist-dj-onyx.jpg";
 
@@ -36,9 +35,20 @@ type Station = {
   is_live: boolean;
   live_session_id: string | null;
   live_title: string | null;
+  live_started_at: string | null;
+  live_heartbeat_at: string | null;
 };
 
-const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
+const LIVE_HEARTBEAT_TTL_MS = 20_000;
+const STATION_ART = [albumArt, podcastHost, djHost, albumArt, podcastHost];
+
+function stationIsTrulyLive(station: Station) {
+  if (!station.is_live || !station.live_session_id) return false;
+  const stamp = station.live_heartbeat_at || station.live_started_at;
+  if (!stamp) return false;
+  const age = Date.now() - new Date(stamp).getTime();
+  return Number.isFinite(age) && age >= 0 && age <= LIVE_HEARTBEAT_TTL_MS;
+}
 
 function stationCoverSrc(value: string | null | undefined, fallback: string) {
   if (!value) return fallback;
@@ -76,12 +86,19 @@ export default function RadioStationsPage() {
   const [editStation, setEditStation] = useState<Station | null>(null);
   const [liveStation, setLiveStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
+  const [listenerCounts, setListenerCounts] = useState<Record<string, number>>({});
   const { playStationQueue } = useRadio();
 
   const load = async () => {
+    try {
+      await (supabase as any).rpc("cleanup_stale_radio_broadcasts");
+    } catch {
+      // The directory still applies the heartbeat freshness check locally.
+    }
+
     const { data, error } = await (supabase as any)
       .from("radio_stations")
-      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title")
+      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title,live_started_at,live_heartbeat_at")
       .eq("is_public", true)
       .order("created_at", { ascending: false });
 
@@ -132,9 +149,53 @@ export default function RadioStationsPage() {
       )
       .subscribe();
 
+    const staleTimer = window.setInterval(async () => {
+      try {
+        const { data } = await (supabase as any).rpc("cleanup_stale_radio_broadcasts");
+        if (Number(data || 0) > 0) void load();
+      } catch {
+        // Older deployments can still rely on the local freshness filter.
+      }
+    }, 10_000);
+
     return () => {
       window.clearTimeout(timer);
+      window.clearInterval(staleTimer);
       void (supabase as any).removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    const presence = (supabase as any).channel("yaj-radio-live-presence");
+
+    const syncCounts = () => {
+      const state = presence.presenceState() as Record<string, any[]>;
+      const next: Record<string, number> = {};
+      Object.values(state).flat().forEach((meta: any) => {
+        if (meta?.role !== "audience" || !meta?.stationId || !meta?.sessionId) return;
+        next[meta.stationId] = (next[meta.stationId] || 0) + 1;
+      });
+      setListenerCounts(next);
+    };
+
+    presence.on("presence", { event: "sync" }, syncCounts);
+    presence.on("presence", { event: "join" }, syncCounts);
+    presence.on("presence", { event: "leave" }, (payload: any) => {
+      syncCounts();
+      const hosts = (payload?.leftPresences || []).filter((meta: any) => meta?.role === "host");
+      if (!hosts.length) return;
+      setStations((current) =>
+        current.map((station) =>
+          hosts.some((meta: any) => meta?.stationId === station.id && meta?.sessionId === station.live_session_id)
+            ? { ...station, is_live: false, live_session_id: null, live_title: null, live_started_at: null, live_heartbeat_at: null }
+            : station,
+        ),
+      );
+    });
+    presence.subscribe();
+
+    return () => {
+      void (supabase as any).removeChannel(presence);
     };
   }, []);
 
@@ -155,12 +216,12 @@ export default function RadioStationsPage() {
   }, [stations, query, hostNames]);
 
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
-  const liveStations = filtered.filter((station) => station.is_live);
-  const musicStations = filtered.filter((station) => !station.is_live && station.programming_mode !== "podcast");
-  const podcastStations = filtered.filter((station) => !station.is_live && station.programming_mode === "podcast");
+  const liveStations = filtered.filter((station) => stationIsTrulyLive(station));
+  const musicStations = filtered.filter((station) => !stationIsTrulyLive(station) && station.programming_mode !== "podcast");
+  const podcastStations = filtered.filter((station) => !stationIsTrulyLive(station) && station.programming_mode === "podcast");
 
   const listen = async (station: Station) => {
-    if (station.is_live && station.live_session_id) {
+    if (stationIsTrulyLive(station) && station.live_session_id) {
       const params = new URLSearchParams({
         audience: "1",
         station: station.id,
@@ -169,6 +230,17 @@ export default function RadioStationsPage() {
       });
       navigate(`/podcast/room/${encodeURIComponent(station.live_session_id)}?${params.toString()}`);
       return;
+    }
+
+    if (station.is_live) {
+      setStations((current) =>
+        current.map((item) =>
+          item.id === station.id
+            ? { ...item, is_live: false, live_session_id: null, live_title: null, live_started_at: null, live_heartbeat_at: null }
+            : item,
+        ),
+      );
+      try { await (supabase as any).rpc("cleanup_stale_radio_broadcasts"); } catch {}
     }
 
     const mode: AudioStationMode = station.programming_mode === "podcast" ? "podcast" : "music";
@@ -225,7 +297,7 @@ export default function RadioStationsPage() {
           artist_name: hostNames[station.owner_user_id] || station.name,
           album: item.album || station.name,
           genre: item.genre || station.genre || "Music",
-          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, radioHost),
+          cover_url: item.cover_url || stationCoverSrc(station.banner_url || station.logo_url, albumArt),
           audio_url: getR2DownloadUrl(item.audio_url),
           plays: String(item.plays || "0"),
           likes_count: Number(item.likes_count || 0),
@@ -326,6 +398,7 @@ export default function RadioStationsPage() {
                       onEdit={() => setEditStation(station)}
                       onManage={() => manageAudio(station)}
                       onGoLive={() => setLiveStation(station)}
+                      listenerCount={listenerCounts[station.id] || 0}
                     />
                   ))}
                 </div>
@@ -347,6 +420,7 @@ export default function RadioStationsPage() {
                       onEdit={() => setEditStation(station)}
                       onManage={() => manageAudio(station)}
                       onGoLive={() => setLiveStation(station)}
+                      listenerCount={listenerCounts[station.id] || 0}
                     />
                   ))}
                 </div>
@@ -368,6 +442,7 @@ export default function RadioStationsPage() {
                       onEdit={() => setEditStation(station)}
                       onManage={() => manageAudio(station)}
                       onGoLive={() => setLiveStation(station)}
+                      listenerCount={listenerCounts[station.id] || 0}
                     />
                   ))}
                 </div>
@@ -389,6 +464,7 @@ export default function RadioStationsPage() {
                       onEdit={() => setEditStation(station)}
                       onManage={() => manageAudio(station)}
                       onGoLive={() => setLiveStation(station)}
+                      listenerCount={listenerCounts[station.id] || 0}
                     />
                   ))}
                 </div>
@@ -454,6 +530,7 @@ function StationCard({
   onEdit,
   onManage,
   onGoLive,
+  listenerCount,
 }: {
   station: Station;
   hostName?: string;
@@ -463,6 +540,7 @@ function StationCard({
   onEdit: () => void;
   onManage: () => void;
   onGoLive: () => void;
+  listenerCount: number;
 }) {
   const mode = station.programming_mode === "podcast" ? "Podcast" : "Music";
   const subtitle = station.genre || station.network_name || hostName || mode;
@@ -477,10 +555,16 @@ function StationCard({
             className="h-full w-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
-          {station.is_live ? (
-            <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white">
-              Live
-            </span>
+          {stationIsTrulyLive(station) ? (
+            <>
+              <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white">
+                Live
+              </span>
+              <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[9px] font-black text-white backdrop-blur">
+                <Users className="h-3 w-3" />
+                {listenerCount}
+              </span>
+            </>
           ) : (
             <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/80 backdrop-blur">
               {mode}
@@ -508,10 +592,10 @@ function StationCard({
             onClick={onGoLive}
             className={
               "rounded-full px-2.5 py-1.5 text-[9px] font-black text-white " +
-              (station.is_live ? "bg-red-500" : "bg-violet-600")
+              (stationIsTrulyLive(station) ? "bg-red-500" : "bg-violet-600")
             }
           >
-            {station.is_live ? "Live" : "Go Live"}
+            {stationIsTrulyLive(station) ? "Live" : "Go Live"}
           </button>
           <button
             type="button"
@@ -543,7 +627,7 @@ function GoLiveAudioSheet({
     if (starting) return;
     setStarting(true);
 
-    const sessionId = station.is_live && station.live_session_id
+    const sessionId = stationIsTrulyLive(station) && station.live_session_id
       ? station.live_session_id
       : `radio-${station.id}-${crypto.randomUUID()}`;
 
@@ -632,7 +716,7 @@ function GoLiveAudioSheet({
             disabled={starting}
             className="flex-1 rounded-full bg-red-600 px-4 py-3 text-xs font-black text-white disabled:opacity-50"
           >
-            {starting ? "Starting…" : station.is_live ? "Return Live" : "Go Live"}
+            {starting ? "Starting…" : stationIsTrulyLive(station) ? "Return Live" : "Go Live"}
           </button>
         </div>
       </div>
@@ -661,7 +745,7 @@ function EditStationSheet({
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(
     station.banner_url || station.logo_url
-      ? stationCoverSrc(station.banner_url || station.logo_url, radioHost)
+      ? stationCoverSrc(station.banner_url || station.logo_url, albumArt)
       : null,
   );
 
