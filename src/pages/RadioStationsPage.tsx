@@ -45,6 +45,10 @@ type Station = {
   programming_mode: StationMode;
   logo_url: string | null;
   banner_url: string | null;
+  is_live: boolean;
+  live_session_id: string | null;
+  live_title: string | null;
+  call_in_enabled: boolean;
 };
 
 const STATION_ART = [radioHost, podcastHost, studioMic, djHost, studioMixer];
@@ -58,12 +62,13 @@ export default function RadioStationsPage() {
   const [creatorOpen, setCreatorOpen] = useState(false);
   const [editStation, setEditStation] = useState<Station | null>(null);
   const [playerStation, setPlayerStation] = useState<Station | null>(null);
+  const [liveStation, setLiveStation] = useState<Station | null>(null);
   const [query, setQuery] = useState("");
 
   const load = async () => {
     const { data, error } = await (supabase as any)
       .from("radio_stations")
-      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url")
+      .select("id,owner_user_id,name,tagline,genre,network_name,programming_mode,logo_url,banner_url,is_live,live_session_id,live_title,call_in_enabled")
       .eq("is_public", true)
       .order("created_at", { ascending: false });
 
@@ -139,7 +144,22 @@ export default function RadioStationsPage() {
   const mine = filtered.filter((station) => station.owner_user_id === user?.id);
 
   const listen = (station: Station) => {
+    if (station.is_live && station.live_session_id) {
+      const params = new URLSearchParams({
+        audience: "1",
+        station: station.id,
+        source: "radio",
+        radioaudio: "1",
+        callins: station.call_in_enabled ? "1" : "0",
+      });
+      navigate(`/podcast/room/${encodeURIComponent(station.live_session_id)}?${params.toString()}`);
+      return;
+    }
     setPlayerStation(station);
+  };
+
+  const manageAudio = (station: Station) => {
+    navigate(station.programming_mode === "podcast" ? "/my-podcasts?upload=1" : "/my-songs?upload=1");
   };
 
   return (
@@ -220,6 +240,8 @@ export default function RadioStationsPage() {
                   art={STATION_ART[index % STATION_ART.length]}
                   onListen={() => listen(station)}
                   onEdit={() => setEditStation(station)}
+                  onManage={() => manageAudio(station)}
+                  onGoLive={() => setLiveStation(station)}
                 />
               ))}
             </div>
@@ -245,6 +267,8 @@ export default function RadioStationsPage() {
                   art={STATION_ART[(index + 2) % STATION_ART.length]}
                   onListen={() => listen(station)}
                   onEdit={() => setEditStation(station)}
+                  onManage={() => manageAudio(station)}
+                  onGoLive={() => setLiveStation(station)}
                 />
               ))}
             </div>
@@ -259,6 +283,13 @@ export default function RadioStationsPage() {
             setCreatorOpen(false);
             void load();
           }}
+        />
+      )}
+
+      {liveStation && (
+        <GoLiveAudioSheet
+          station={liveStation}
+          onClose={() => setLiveStation(null)}
         />
       )}
 
@@ -307,6 +338,8 @@ function StationCard({
   art,
   onListen,
   onEdit,
+  onManage,
+  onGoLive,
 }: {
   station: Station;
   hostName?: string;
@@ -314,6 +347,8 @@ function StationCard({
   art: string;
   onListen: () => void;
   onEdit: () => void;
+  onManage: () => void;
+  onGoLive: () => void;
 }) {
   const mode = station.programming_mode === "podcast" ? "podcast" : "music";
 
@@ -330,6 +365,11 @@ function StationCard({
           <span className="rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-white/80 backdrop-blur">
             {mode}
           </span>
+          {station.is_live ? (
+            <span className="rounded-full bg-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-white">
+              LIVE
+            </span>
+          ) : null}
           {station.genre ? (
             <span className="rounded-full bg-black/45 px-2.5 py-1 text-[9px] font-bold text-white/70 backdrop-blur">
               {station.genre}
@@ -359,16 +399,32 @@ function StationCard({
             onClick={onListen}
             className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 text-xs font-black text-slate-950"
           >
-            <Headphones className="h-4 w-4" /> Tune In
+            <Headphones className="h-4 w-4" /> {station.is_live ? "Listen Live" : "Tune In"}
           </button>
           {mine ? (
-            <button
-              type="button"
-              onClick={onEdit}
-              className="flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black"
-            >
-              <Pencil className="h-3 w-3" /> Edit
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onManage}
+                className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black"
+              >
+                Add Audio
+              </button>
+              <button
+                type="button"
+                onClick={onGoLive}
+                className="rounded-full bg-red-600 px-3 py-2.5 text-[10px] font-black text-white"
+              >
+                {station.is_live ? "Live" : "Go Live"}
+              </button>
+              <button
+                type="button"
+                onClick={onEdit}
+                className="flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+            </>
           ) : null}
         </div>
       </div>
