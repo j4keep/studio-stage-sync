@@ -385,84 +385,65 @@ function StationCard({
   onManage: () => void;
   onGoLive: () => void;
 }) {
-  const mode = station.programming_mode === "podcast" ? "podcast" : "music";
+  const mode = station.programming_mode === "podcast" ? "Podcast" : "Music";
+  const subtitle = station.genre || station.network_name || hostName || mode;
 
   return (
-    <article className="group overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.045] shadow-xl transition hover:-translate-y-0.5 hover:bg-white/[0.065]">
-      <div className="relative h-48 overflow-hidden">
-        <img
-          src={station.banner_url || station.logo_url || art}
-          alt=""
-          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0d16] via-black/20 to-transparent" />
-        <div className="absolute left-3 top-3 flex items-center gap-2">
-          <span className="rounded-full bg-black/60 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-white/80 backdrop-blur">
-            {mode}
-          </span>
+    <article className="min-w-0">
+      <button type="button" onClick={onListen} className="block w-full text-left">
+        <div className="relative aspect-square overflow-hidden rounded-[26px] border border-white/10 bg-white/[0.04] shadow-lg">
+          <img
+            src={station.banner_url || station.logo_url || art}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/10" />
           {station.is_live ? (
-            <span className="rounded-full bg-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.15em] text-white">
-              LIVE
+            <span className="absolute left-3 top-3 rounded-full bg-red-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white">
+              Live
             </span>
-          ) : null}
-          {station.genre ? (
-            <span className="rounded-full bg-black/45 px-2.5 py-1 text-[9px] font-bold text-white/70 backdrop-blur">
-              {station.genre}
+          ) : (
+            <span className="absolute left-3 top-3 rounded-full bg-black/55 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-white/80 backdrop-blur">
+              {mode}
             </span>
-          ) : null}
+          )}
+          <span className="absolute bottom-3 right-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-950 shadow-xl">
+            <Play className="ml-0.5 h-4 w-4" />
+          </span>
         </div>
-        <div className="absolute bottom-3 left-3 right-3">
-          <p className="truncate text-xl font-black">{station.name}</p>
-          <p className="truncate text-[11px] text-white/60">
-            {station.network_name || station.tagline || hostName || "Independent YAJ station"}
-          </p>
-        </div>
-      </div>
+        <p className="mt-2 truncate text-[15px] font-black">{station.name}</p>
+        <p className="truncate text-[11px] text-white/45">{subtitle}</p>
+      </button>
 
-      <div className="space-y-3 p-3.5">
-        <div className="rounded-2xl bg-white/[0.04] p-3">
-          <p className="text-[9px] font-black uppercase tracking-[0.15em] text-violet-300">Radio Station</p>
-          <p className="mt-1 text-xs leading-relaxed text-white/55">
-            {station.tagline || `Listen to ${station.name} on YAJ Radio.`}
-          </p>
-          {hostName ? <p className="mt-2 text-[10px] text-white/35">By {hostName}</p> : null}
-        </div>
-
-        <div className="flex gap-2">
+      {mine && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
           <button
             type="button"
-            onClick={onListen}
-            className="flex flex-1 items-center justify-center gap-2 rounded-full bg-white px-3 py-2.5 text-xs font-black text-slate-950"
+            onClick={onManage}
+            className="rounded-full bg-white/[0.07] px-2.5 py-1.5 text-[9px] font-black text-white/75"
           >
-            <Headphones className="h-4 w-4" /> {station.is_live ? "Listen Live" : "Tune In"}
+            Add Audio
           </button>
-          {mine ? (
-            <>
-              <button
-                type="button"
-                onClick={onManage}
-                className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black"
-              >
-                Add Audio
-              </button>
-              <button
-                type="button"
-                onClick={onGoLive}
-                className="rounded-full bg-red-600 px-3 py-2.5 text-[10px] font-black text-white"
-              >
-                {station.is_live ? "Live" : "Go Live"}
-              </button>
-              <button
-                type="button"
-                onClick={onEdit}
-                className="flex items-center gap-1 rounded-full border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[10px] font-black"
-              >
-                <Pencil className="h-3 w-3" />
-              </button>
-            </>
-          ) : null}
+          <button
+            type="button"
+            onClick={onGoLive}
+            className={
+              "rounded-full px-2.5 py-1.5 text-[9px] font-black text-white " +
+              (station.is_live ? "bg-red-500" : "bg-violet-600")
+            }
+          >
+            {station.is_live ? "Live" : "Go Live"}
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.07] text-white/70"
+            aria-label="Edit station"
+          >
+            <Pencil className="h-3 w-3" />
+          </button>
         </div>
-      </div>
+      )}
     </article>
   );
 }
