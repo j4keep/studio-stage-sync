@@ -14,6 +14,7 @@ import {
   Track,
   ConnectionQuality,
   LocalParticipant,
+  LocalAudioTrack,
   LocalVideoTrack,
   RemoteParticipant,
   Participant,
@@ -434,6 +435,22 @@ export function usePodcastLiveRoom(opts: {
     refresh();
   }, [refresh]);
 
+  /** Replace the published microphone track with a mixed program track.
+   * Used by YAJ Radio music stations to combine host mic + station music. */
+  const replaceAudioTrack = useCallback(
+    async (track: MediaStreamTrack) => {
+      const room = roomRef.current;
+      if (!room) throw new Error("Not connected to the live room yet");
+      const pub = Array.from(room.localParticipant.audioTrackPublications.values())
+        .find((item) => item.source === Track.Source.Microphone);
+      const localTrack = pub?.track as LocalAudioTrack | undefined;
+      if (!localTrack) throw new Error("No microphone track published yet");
+      await localTrack.replaceTrack(track);
+      refresh();
+    },
+    [refresh],
+  );
+
   /** Swaps the published camera track's underlying pixels without unpublish/republish
    *  (no renegotiation flicker for remote viewers) — used to switch a Circle live host
    *  between their raw camera and a face-filter canvas mid-broadcast. */
@@ -468,6 +485,7 @@ export function usePodcastLiveRoom(opts: {
     stopAudioOnlyPublishing,
     startPublishing,
     stopPublishing,
+    replaceAudioTrack,
     replaceVideoTrack,
     disconnect: () => roomRef.current?.disconnect(),
   };
