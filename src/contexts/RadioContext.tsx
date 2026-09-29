@@ -175,7 +175,9 @@ export const RadioProvider = ({ children }: { children: ReactNode }) => {
     });
 
     audio.addEventListener("durationchange", () => {
-      setDuration(audio.duration);
+      const start = Number(currentTrackRef.current?.trim_start_seconds || 0);
+      const end = Number(currentTrackRef.current?.trim_end_seconds);
+      setDuration(Number.isFinite(end) && end > start ? Math.min(end, audio.duration) : audio.duration);
     });
 
     return () => {
