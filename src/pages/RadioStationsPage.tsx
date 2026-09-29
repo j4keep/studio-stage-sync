@@ -302,7 +302,14 @@ export default function RadioStationsPage() {
         .order("created_at", { ascending: true });
 
       if (error) {
-        toast({ title: "Could not play station", description: error.message, variant: "destructive" });
+        const missingStationPlaylist = error.message?.includes("radio_station_audio") || error.message?.includes("schema cache");
+        toast({
+          title: missingStationPlaylist ? "Station playlist setup is not finished" : "Could not play station",
+          description: missingStationPlaylist
+            ? "The station playlist database update still needs to be applied in Supabase."
+            : error.message,
+          variant: "destructive",
+        });
         return;
       }
 
