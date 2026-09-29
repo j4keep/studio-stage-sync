@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
+import { deleteFromR2, getR2DownloadUrl, uploadToR2 } from "@/lib/r2-storage";
 import { useRadio, type RadioTrack } from "@/contexts/RadioContext";
 import albumArt from "@/assets/album-1.jpg";
 import podcastHost from "@/assets/podcast-1.jpg";
@@ -671,8 +671,10 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
         position: nextPosition++,
         enabled: true,
       });
-      if (error) failed += 1;
-      else added += 1;
+      if (error) {
+        failed += 1;
+        void deleteFromR2(upload.data.key);
+      } else added += 1;
     }
 
     setUploading(false);
@@ -689,6 +691,7 @@ function StationPlaylistSheet({ station, onClose }: { station: Station; onClose:
       return;
     }
     setTracks((items) => items.filter((item) => item.id !== track.id));
+    void deleteFromR2(track.audio_url);
   };
 
   const moveTrack = async (index: number, direction: -1 | 1) => {
@@ -1056,8 +1059,10 @@ function CreateStationSheet({ onClose, onCreated }: { onClose: () => void; onCre
           position: index,
           enabled: true,
         });
-        if (audioError) failedCount += 1;
-        else uploadedCount += 1;
+        if (audioError) {
+          failedCount += 1;
+          void deleteFromR2(upload.data.key);
+        } else uploadedCount += 1;
       }
     }
 
