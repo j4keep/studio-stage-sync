@@ -9,8 +9,6 @@ import {
   Radio,
   Search,
   ShoppingBag,
-  Swords,
-  Tv,
   UsersRound,
   Wrench,
   X,
@@ -29,6 +27,18 @@ type ExploreItem = {
   iconColor: string;
   keywords?: string[];
   adultsOnly?: boolean;
+};
+
+const FEATURED_DEAL_ITEM: ExploreItem = {
+  id: "deals",
+  label: "Deals",
+  subtitle: "Local savings & limited offers",
+  route: "/deals",
+  icon: BadgePercent,
+  surface: "bg-amber-50 dark:bg-amber-950/30",
+  iconSurface: "bg-amber-100 dark:bg-amber-900/60",
+  iconColor: "text-amber-700 dark:text-amber-300",
+  keywords: ["deal", "coupon", "discount", "offer", "local", "savings"],
 };
 
 const EXPLORE_ITEMS: ExploreItem[] = [
@@ -55,15 +65,15 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["career", "careers", "opportunity", "opportunities", "jobs", "internship", "work"],
   },
   {
-    id: "deals",
-    label: "Deals",
-    subtitle: "Local savings & limited offers",
-    route: "/deals",
-    icon: BadgePercent,
-    surface: "bg-amber-50 dark:bg-amber-950/30",
-    iconSurface: "bg-amber-100 dark:bg-amber-900/60",
-    iconColor: "text-amber-700 dark:text-amber-300",
-    keywords: ["deal", "coupon", "discount", "offer", "local"],
+    id: "local-help",
+    label: "Local Help",
+    subtitle: "Find trusted people and services near you",
+    route: "/local-help",
+    icon: Wrench,
+    surface: "bg-cyan-50 dark:bg-cyan-950/30",
+    iconSurface: "bg-cyan-100 dark:bg-cyan-900/60",
+    iconColor: "text-cyan-700 dark:text-cyan-300",
+    keywords: ["local", "help", "services", "trusted", "people", "repair", "pro"],
   },
   {
     id: "marketplace",
@@ -75,28 +85,6 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     iconSurface: "bg-emerald-100 dark:bg-emerald-900/60",
     iconColor: "text-emerald-700 dark:text-emerald-300",
     keywords: ["market", "marketplace", "buy", "sell", "items", "shopping"],
-  },
-  {
-    id: "battles",
-    label: "Battles",
-    subtitle: "Compete, rank & win",
-    route: "/battles",
-    icon: Swords,
-    surface: "bg-rose-50 dark:bg-rose-950/30",
-    iconSurface: "bg-rose-100 dark:bg-rose-900/60",
-    iconColor: "text-rose-700 dark:text-rose-300",
-    keywords: ["battle", "creator", "music", "competition", "vote"],
-  },
-  {
-    id: "tv",
-    label: "YAJ TV",
-    subtitle: "Watch creators & original content",
-    route: "/tv",
-    icon: Tv,
-    surface: "bg-indigo-50 dark:bg-indigo-950/30",
-    iconSurface: "bg-indigo-100 dark:bg-indigo-900/60",
-    iconColor: "text-indigo-700 dark:text-indigo-300",
-    keywords: ["tv", "video", "live", "watch", "stream"],
   },
   {
     id: "radio",
@@ -143,8 +131,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["circle", "community", "friends", "groups", "people", "network"],
   },
 ];
-
-const ORDER_KEY = "yaj.explore.card-order.v9";
+const ORDER_KEY = "yaj.explore.card-order.v10";
 
 function loadOrder(): string[] {
   try {
@@ -191,7 +178,7 @@ export default function ExplorePage() {
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return orderedItems;
-    return orderedItems.filter((item) => {
+    return [FEATURED_DEAL_ITEM, ...orderedItems].filter((item) => {
       const text = [item.label, item.subtitle, ...(item.keywords ?? [])].join(" ").toLowerCase();
       return text.includes(needle);
     });
@@ -285,17 +272,17 @@ export default function ExplorePage() {
           <section className="mb-5">
             <button
               type="button"
-              onClick={() => navigate("/local-help")}
+              onClick={() => navigate("/deals")}
               className="flex w-full items-center gap-4 rounded-[22px] border border-border/70 bg-card px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.99]"
-              aria-label="Open Local Help"
+              aria-label="Open Deals"
             >
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-100 text-cyan-700 shadow-inner dark:bg-cyan-900/60 dark:text-cyan-300">
-                <Wrench className="h-7 w-7" strokeWidth={2.15} />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-inner dark:bg-amber-900/60 dark:text-amber-300">
+                <BadgePercent className="h-7 w-7" strokeWidth={2.15} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[16px] font-bold tracking-tight text-foreground">Local Help</p>
+                <p className="text-[16px] font-bold tracking-tight text-foreground">Deals</p>
                 <p className="mt-0.5 text-[12px] font-medium leading-relaxed text-muted-foreground">
-                  Find trusted people and services near you.
+                  Local savings & limited offers near you.
                 </p>
               </div>
               <span className="text-lg font-semibold text-muted-foreground">›</span>
@@ -357,7 +344,7 @@ export default function ExplorePage() {
             <div className="rounded-3xl border border-dashed border-border bg-muted/30 px-6 py-14 text-center">
               <p className="text-[15px] font-bold text-foreground">Nothing matched that search.</p>
               <p className="mx-auto mt-1 max-w-xs text-[13px] leading-relaxed text-muted-foreground">
-                Try books, jobs, deals, marketplace, battles, wellness, games, or My Circle.
+                Try books, jobs, deals, Local Help, marketplace, radio, wellness, games, or My Circle.
               </p>
             </div>
           )}
