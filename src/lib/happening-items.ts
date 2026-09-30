@@ -2,14 +2,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { listMarketplaceListings, listingCoverUrl } from "@/lib/marketplace-api";
 import { parsePostCaption } from "@/lib/post-editor";
 import { isPurgedFeedVideoPost } from "@/lib/clear-feed-videos";
-import { WheuatTv } from "@/pages/wheuat-tv/wheuatTvStore";
 
 export type HappeningKind =
   | "post"
   | "marketplace"
   | "job"
   | "gig"
-  | "tv"
   | "service"
   | "event";
 
@@ -35,7 +33,6 @@ const KIND_LABEL: Record<HappeningKind, string> = {
   marketplace: "Marketplace",
   job: "Job",
   gig: "Gig",
-  tv: "YAJ TV",
   service: "Service",
   event: "Event",
 };
@@ -166,27 +163,6 @@ export async function fetchHappeningItems(opts: {
       route: `/gigs/${gig.id}`,
       sourceId: gig.id,
     });
-  }
-
-  // TV — in-memory/API list; ignore failures.
-  try {
-    const tvItems = await WheuatTv.list();
-    for (const tv of (tvItems || []).slice(0, limit)) {
-      items.push({
-        id: `tv-${tv.id}`,
-        kind: "tv",
-        title: safeTitle(tv.title, "YAJ TV"),
-        subtitle: "YAJ TV",
-        coverUrl: tv.thumbUrl || tv.posterUrl || null,
-        previewVideoUrl: tv.hasMedia ? tv.videoUrl : null,
-        mediaType: "video",
-        createdAt: new Date(tv.createdAt).toISOString(),
-        route: `/tv/title/${tv.id}`,
-        sourceId: tv.id,
-      });
-    }
-  } catch {
-    /* optional */
   }
 
   // Services / Events — tables may not be applied yet.
