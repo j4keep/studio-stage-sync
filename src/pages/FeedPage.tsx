@@ -15,7 +15,6 @@ import LiveNowCard from "@/components/feed/LiveNowCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
-import BattleCard from "@/components/BattleCard";
 import LiveGamesRail from "@/components/games/live/LiveGamesRail";
 import FlagBackground from "@/components/FlagBackground";
 import NotificationBell from "@/components/NotificationBell";
@@ -37,9 +36,7 @@ const FeedPage = () => {
   const { user } = useAuth();
   const isDesktop = useIsDesktop();
   const [viewer, setViewer] = useState<ViewerState>(null);
-  const openBattleId = searchParams.get("battle");
   const openPostId = searchParams.get("post");
-  const openedBattleDeepLinkRef = useRef<string | null>(null);
   const openedPostDeepLinkRef = useRef<string | null>(null);
   const mobileFeedScrollRef = useRef<HTMLDivElement>(null);
   const desktopFeedScrollRef = useRef<HTMLElement>(null);
@@ -85,7 +82,7 @@ const FeedPage = () => {
   const posts = useMemo(() => {
     const nextPosts: any[] = [];
     items.forEach((it: any) => {
-      if (it.itemType === "battle" || it.itemType === "post") nextPosts.push(it);
+      if (it.itemType === "post") nextPosts.push(it);
     });
     return nextPosts;
   }, [items]);
@@ -118,7 +115,6 @@ const FeedPage = () => {
 
   const closeViewer = () => {
     stopAllPageMedia({ detachStreams: true });
-    openedBattleDeepLinkRef.current = null;
     openedPostDeepLinkRef.current = null;
     setViewer(null);
   };
@@ -139,25 +135,6 @@ const FeedPage = () => {
     }
     if (item.route) navigate(item.route);
   };
-
-  useEffect(() => {
-    if (!openBattleId || isLoading) return;
-    if (openedBattleDeepLinkRef.current === openBattleId) {
-      const next = new URLSearchParams(searchParams);
-      if (next.has("battle")) {
-        next.delete("battle");
-        setSearchParams(next, { replace: true });
-      }
-      return;
-    }
-    const idx = posts.findIndex((p: any) => p.itemType === "battle" && p.id === openBattleId);
-    if (idx < 0) return;
-    openedBattleDeepLinkRef.current = openBattleId;
-    openPostItem(idx);
-    const next = new URLSearchParams(searchParams);
-    next.delete("battle");
-    setSearchParams(next, { replace: true });
-  }, [openBattleId, isLoading, posts, searchParams, setSearchParams]);
 
   useEffect(() => {
     if (!openPostId || isLoading) return;
@@ -279,19 +256,15 @@ const FeedPage = () => {
           </button>
         </div>
       ) : (
-        posts.map((item: any, i: number) =>
-          item.itemType === "battle" ? (
-            <BattleCard key={`battle-${item.id}`} battle={item} onOpen={() => openPostItem(i)} />
-          ) : (
-            <FeedThumbCard
-              key={item.id}
-              post={item}
-              onOpen={() => openPostItem(i)}
-              autoPlayMuted
-              pressHoldMs={isDesktop ? 350 : undefined}
-            />
-          ),
-        )
+        posts.map((item: any, i: number) => (
+          <FeedThumbCard
+            key={item.id}
+            post={item}
+            onOpen={() => openPostItem(i)}
+            autoPlayMuted
+            pressHoldMs={isDesktop ? 350 : undefined}
+          />
+        ))
       )}
     </>
   );
