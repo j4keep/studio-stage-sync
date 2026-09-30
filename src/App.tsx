@@ -27,8 +27,6 @@ import BookReaderPage from "./pages/books/BookReaderPage";
 import BookUploadPage from "./pages/books/BookUploadPage";
 import MyBooksPage from "./pages/books/MyBooksPage";
 import BooksMyListPage from "./pages/books/BooksMyListPage";
-import BattlesPage from "./pages/BattlesPage";
-import MusicBattlePlayerPage from "./pages/MusicBattlePlayerPage";
 import ArtistProfilePage from "./pages/ArtistProfilePage";
 import RadioPage from "./pages/RadioPage";
 import RadioStationsPage from "./pages/RadioStationsPage";
@@ -145,13 +143,6 @@ import JobInterviewPage from "./pages/JobInterviewPage";
 import ChatCallPage from "./pages/ChatCallPage";
 import IncomingCallListener from "./components/call/IncomingCallListener";
 
-import YajTvHomePage from "./pages/wheuat-tv/YajTvHomePage";
-import YajTvDetailPage from "./pages/wheuat-tv/YajTvDetailPage";
-import YajTvLiveRoomPage from "./pages/wheuat-tv/YajTvLiveRoomPage";
-import YajTvSearchPage from "./pages/wheuat-tv/YajTvSearchPage";
-import YajTvMyListPage from "./pages/wheuat-tv/YajTvMyListPage";
-import WheuatTvPage from "./pages/wheuat-tv/WheuatTvPage";
-import TvWatchRedirect from "./pages/wheuat-tv/TvWatchRedirect";
 import ServicesPage from "./pages/ServicesPage";
 import ServiceDetailPage from "./pages/ServiceDetailPage";
 import EventsPage from "./pages/EventsPage";
@@ -442,14 +433,8 @@ const ProtectedRoutes = () => {
         <Route path="/pro/opportunities" element={<ProOpportunitiesDashboardPage />} />
         <Route path="/pro/events" element={<ProEventsDashboardPage />} />
         <Route path="/communities" element={<Navigate to="/circle" replace />} />
-        <Route path="/tv" element={<YajTvHomePage />} />
-        <Route path="/tv/title/:id" element={<YajTvDetailPage />} />
-        <Route path="/tv/live/:sessionId" element={<YajTvLiveRoomPage />} />
-        <Route path="/tv/search" element={<YajTvSearchPage />} />
-        <Route path="/tv/list" element={<YajTvMyListPage />} />
-        <Route path="/tv/manage" element={<WheuatTvPage />} />
-        <Route path="/tv/watch" element={<TvWatchRedirect />} />
-        <Route path="/tv/*" element={<Navigate to="/tv" replace />} />
+        <Route path="/tv" element={<Navigate to="/explore" replace />} />
+        <Route path="/tv/*" element={<Navigate to="/explore" replace />} />
         <Route path="/services" element={<ServicesPage />} />
         <Route path="/services/:id" element={<ServiceDetailPage />} />
         <Route path="/events" element={<EventsPage />} />
@@ -512,8 +497,8 @@ const ProtectedRoutes = () => {
         <Route path="/community-timeout" element={<CommunityTimeoutPage />} />
         <Route path="/admin/ai-usage" element={<AdminAiUsagePage />} />
         <Route path="/admin/sounds" element={<AdminSoundLibraryPage />} />
-        <Route path="/battles" element={<BattlesPage />} />
-        <Route path="/battle/:battleId" element={<MusicBattlePlayerPage />} />
+        <Route path="/battles" element={<Navigate to="/explore" replace />} />
+        <Route path="/battle/:battleId" element={<Navigate to="/explore" replace />} />
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/artist/:userId" element={<ArtistProfilePage />} />
         <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
