@@ -1147,6 +1147,23 @@ function EditStationSheet({
     if (!confirmed) return;
 
     setDeleting(true);
+
+    // Capture station-owned audio keys before the database cascade removes
+    // radio_station_audio rows, so deleting a station does not orphan MP3s in R2.
+    let audioKeys: string[] = [];
+    try {
+      const { data: audioRows } = await (supabase as any)
+        .from("radio_station_audio")
+        .select("audio_url")
+        .eq("station_id", station.id)
+        .eq("owner_user_id", user.id);
+      audioKeys = (audioRows || [])
+        .map((row: any) => row.audio_url)
+        .filter((value: any) => typeof value === "string" && value && !/^https?:\/\//i.test(value));
+    } catch {
+      // Database deletion remains authoritative; storage cleanup is best-effort.
+    }
+
     const { error } = await (supabase as any)
       .from("radio_stations")
       .delete()
@@ -1159,8 +1176,10 @@ function EditStationSheet({
       return;
     }
 
+    audioKeys.forEach((key) => { void deleteFromR2(key); });
     const coverKey = station.banner_url || station.logo_url;
     if (coverKey && !/^https?:\/\//i.test(coverKey)) void deleteFromR2(coverKey);
+
     toast({ title: "Station deleted" });
     onSaved();
   };
