@@ -5,7 +5,6 @@ import {
   Handshake,
   ShoppingBag,
   Sparkles,
-  Tv,
   Wrench,
 } from "lucide-react";
 import type { HappeningItem, HappeningKind } from "@/lib/happening-items";
@@ -21,7 +20,6 @@ export const HAPPENING_BALLOON_CATEGORIES: Array<{ kind: HappeningKind; label: s
   { kind: "gig", label: "Gigs" },
   { kind: "service", label: "Services" },
   { kind: "event", label: "Events" },
-  { kind: "tv", label: "YAJ TV" },
   { kind: "post", label: "Posts" },
 ];
 
@@ -32,7 +30,6 @@ const ICONS: Record<HappeningKind, typeof Sparkles> = {
   marketplace: ShoppingBag,
   job: BriefcaseBusiness,
   gig: Handshake,
-  tv: Tv,
   service: Wrench,
   event: CalendarDays,
 };
@@ -42,7 +39,6 @@ const ACCENTS: Record<HappeningKind, string> = {
   marketplace: "from-emerald-400 to-teal-500",
   job: "from-blue-500 to-cyan-400",
   gig: "from-orange-400 to-rose-500",
-  tv: "from-fuchsia-500 to-violet-600",
   service: "from-amber-400 to-orange-500",
   event: "from-rose-500 to-red-500",
 };
