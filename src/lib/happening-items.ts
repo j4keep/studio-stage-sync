@@ -112,8 +112,6 @@ export async function fetchHappeningItems(opts: {
     });
   }
 
-  // Battles stay on the Posts rail only (same as a regular video post).
-
   for (const listing of marketResult || []) {
     // $1–$5 finds live in the store product page; everything else in the listing page.
     const isDollarStore = String((listing as any).listing_type) === "five_under";
@@ -189,8 +187,8 @@ export async function fetchHappeningItems(opts: {
         kind: "event",
         title: safeTitle(row.title, "Event"),
         subtitle: "Event",
-        coverUrl: row.media_url || null,
-        previewVideoUrl: row.media_type === "video" ? row.media_url || null : null,
+        coverUrl: row.media_type === "video" ? null : row.media_url || null,
+        previewVideoUrl: null,
         mediaType: row.media_type === "video" ? "video" : "image",
         createdAt: row.created_at,
         route: `/events/${row.id}`,
