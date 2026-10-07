@@ -293,6 +293,8 @@ export default function BoxingPage() {
           cooldowns={live.cooldowns}
           guardCooldown={live.guardCooldown}
           secondsLeft={live.secondsLeft}
+          round={live.round}
+          maxRounds={live.maxRounds}
           message={live.message}
           interactive={seated && live.phase === "fighting"}
           finished={finished}
@@ -342,7 +344,7 @@ export default function BoxingPage() {
           artUrl={boxingIntroArt}
 
           title="Boxing"
-          subtitle={game.mode === "solo" ? "Solo vs Computer — real-time" : `You vs ${opponentName} — real-time`}
+          subtitle={game.mode === "solo" ? "Solo vs Computer — 5-round real-time fight" : `You vs ${opponentName} — 5-round real-time fight`}
           me={{ name: myName, avatarUrl: myAvatar }}
           them={{ name: oppLabel, avatarUrl: game.mode === "solo" ? null : opponentAvatar, isComputer: game.mode === "solo" }}
           stats={stats}
