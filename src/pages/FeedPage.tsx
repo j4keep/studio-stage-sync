@@ -49,7 +49,8 @@ const FeedPage = () => {
   const { data: happening = [], isLoading: happeningLoading } = useQuery({
     queryKey: ["happening-feed"],
     queryFn: () => fetchHappeningItems({ currentUserId: user?.id }),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
+    refetchIntervalInBackground: false,
   });
 
   const { data: trending = [] } = useQuery<TrendingCreator[]>({
@@ -261,7 +262,6 @@ const FeedPage = () => {
             key={item.id}
             post={item}
             onOpen={() => openPostItem(i)}
-            autoPlayMuted
             pressHoldMs={isDesktop ? 350 : undefined}
           />
         ))
