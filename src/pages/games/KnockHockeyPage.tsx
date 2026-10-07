@@ -10,7 +10,6 @@ import PendingChallengeGate from "@/components/games/PendingChallengeGate";
 import WaitingForOpponentGate from "@/components/games/WaitingForOpponentGate";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import GameResultCard from "@/components/games/pro/GameResultCard";
-import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import KnockHockeyRink from "@/components/games/knock-hockey/KnockHockeyRink";
 import { knockHockeySfx } from "@/lib/knock-hockey-sfx";
@@ -195,7 +194,7 @@ export default function KnockHockeyPage() {
   };
 
   return (
-    <LandscapeStage auto title="Knock Hockey" onExit={() => navigate("/games")}>
+    <div className="fixed inset-0 z-[100] overflow-hidden bg-black">
       <div className="relative h-full w-full">
         {seated && !finished && (myTurn || computersTurn) && (
           <KnockHockeyRink
@@ -306,6 +305,6 @@ export default function KnockHockeyPage() {
         }}
         title="Challenge to Knock Hockey"
       />
-    </LandscapeStage>
+    </div>
   );
 }
