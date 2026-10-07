@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Play, Volume2, VolumeX, X, MonitorPlay, Zap, Trophy, Gamepad2 } from "lucide-react";
+import { ArrowLeft, Play, Volume2, VolumeX, X, MonitorPlay, Zap, Trophy } from "lucide-react";
 import art from "@/assets/games/yaj-billiards-intro.png.asset.json";
 
 export type PoolMatchup = {
@@ -46,7 +46,7 @@ export default function PoolIntro({
   const [sheet, setSheet] = useState(false);
   if (!open) return null;
 
-  const purple = "hsl(275 85% 68%)";
+  const accent = "hsl(196 92% 62%)";
 
   return (
     <div className="absolute inset-0 z-50 overflow-hidden animate-fade-in bg-[#07070c]">
@@ -68,18 +68,17 @@ export default function PoolIntro({
         onClick={onBack}
         aria-label="Leave table"
         className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black text-white active:scale-95"
-        style={{ borderColor: purple, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${purple}55` }}
+        style={{ borderColor: accent, background: "rgba(8,12,18,0.82)", boxShadow: `0 0 14px ${accent}55` }}
       >
-        <Gamepad2 className="h-3.5 w-3.5" style={{ color: purple }} /> YAJ Game
-        <X className="ml-1 h-3 w-3 opacity-70" />
+        <ArrowLeft className="h-3.5 w-3.5" /> Exit
       </button>
 
       <div className="absolute right-3 top-3 flex items-center gap-2">
         <div
           className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-white"
-          style={{ borderColor: purple, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${purple}55` }}
+          style={{ borderColor: accent, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${accent}55` }}
         >
-          <Trophy className="h-3.5 w-3.5" style={{ color: purple }} />
+          <Trophy className="h-3.5 w-3.5" style={{ color: accent }} />
           <span className="text-[9px] font-black leading-tight">
             High Score
             <br />
@@ -103,29 +102,29 @@ export default function PoolIntro({
           onClick={onStart}
           className="flex w-full max-w-sm items-center justify-center gap-3 rounded-full px-7 py-3.5 text-white active:scale-95"
           style={{
-            background: "linear-gradient(135deg, hsl(275 75% 52%), hsl(255 80% 46%))",
-            border: `2px solid ${purple}`,
-            boxShadow: `0 0 30px ${purple}99, 0 6px 14px rgba(0,0,0,0.55)`,
+            background: "linear-gradient(135deg, hsl(200 88% 52%), hsl(218 82% 54%))",
+            border: `2px solid ${accent}`,
+            boxShadow: `0 0 30px ${accent}99, 0 6px 14px rgba(0,0,0,0.55)`,
           }}
         >
           <Play className="h-5 w-5" fill="currentColor" />
           <span className="text-left leading-tight">
-            <span className="block text-lg font-black">Tap to Break</span>
-            <span className="block text-[11px] font-semibold opacity-90">and Start the Game</span>
+            <span className="block text-lg font-black">Start Game</span>
+            <span className="block text-[11px] font-semibold opacity-90">Break and begin</span>
           </span>
         </button>
 
         <div
           className="grid w-full max-w-sm grid-cols-3 divide-x rounded-2xl border"
-          style={{ borderColor: `${purple}88`, background: "rgba(10,6,22,0.75)", borderRightColor: `${purple}88` }}
+          style={{ borderColor: `${accent}88`, background: "rgba(8,12,18,0.88)", borderRightColor: `${accent}88` }}
         >
           <button
             type="button"
             onClick={() => onPlaySolo?.()}
             className="flex items-center justify-center gap-1.5 px-2 py-3 text-left text-white active:scale-95"
-            style={{ borderColor: `${purple}44` }}
+            style={{ borderColor: `${accent}44` }}
           >
-            <MonitorPlay className="h-4 w-4 shrink-0" style={{ color: purple }} />
+            <MonitorPlay className="h-4 w-4 shrink-0" style={{ color: accent }} />
             <span className="text-[10px] font-black leading-tight">
               Play Solo
               <br />
@@ -136,9 +135,9 @@ export default function PoolIntro({
             type="button"
             onClick={() => onQuickMatch?.()}
             className="flex items-center justify-center gap-1.5 px-2 py-3 text-left text-white active:scale-95"
-            style={{ borderColor: `${purple}44` }}
+            style={{ borderColor: `${accent}44` }}
           >
-            <Zap className="h-4 w-4 shrink-0" style={{ color: purple }} />
+            <Zap className="h-4 w-4 shrink-0" style={{ color: accent }} />
             <span className="text-[10px] font-black leading-tight">
               Quick
               <br />
@@ -149,9 +148,9 @@ export default function PoolIntro({
             type="button"
             onClick={() => setSheet(true)}
             className="flex items-center justify-center gap-1.5 px-2 py-3 text-left text-white active:scale-95"
-            style={{ borderColor: `${purple}44` }}
+            style={{ borderColor: `${accent}44` }}
           >
-            <Trophy className="h-4 w-4 shrink-0" style={{ color: purple }} />
+            <Trophy className="h-4 w-4 shrink-0" style={{ color: accent }} />
             <span className="text-[10px] font-black leading-tight">
               Track Your
               <br />
@@ -165,7 +164,7 @@ export default function PoolIntro({
         <div className="absolute inset-0 z-10 flex items-end bg-black/70 animate-fade-in" onClick={() => setSheet(false)}>
           <div
             className="max-h-[80%] w-full overflow-y-auto rounded-t-3xl border-t p-5 text-white animate-slide-in-right"
-            style={{ borderColor: purple, background: "#0c0718" }}
+            style={{ borderColor: accent, background: "#091019" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -181,14 +180,14 @@ export default function PoolIntro({
                 ["Losses", stats?.losses ?? 0],
                 ["Best run", stats?.bestStreak ?? 0],
               ].map(([label, value]) => (
-                <div key={String(label)} className="rounded-xl border p-2 text-center" style={{ borderColor: `${purple}55` }}>
+                <div key={String(label)} className="rounded-xl border p-2 text-center" style={{ borderColor: `${accent}55` }}>
                   <p className="text-lg font-black">{value as number}</p>
                   <p className="text-[9px] font-bold uppercase tracking-wide text-white/60">{label}</p>
                 </div>
               ))}
             </div>
 
-            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: purple }}>
+            <p className="mt-5 text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: accent }}>
               Your matchups
             </p>
             <div className="mt-2 space-y-2 pb-2">
@@ -209,7 +208,7 @@ export default function PoolIntro({
                     className="rounded-full px-2 py-0.5 text-[9px] font-black uppercase"
                     style={{
                       background:
-                        m.outcome === "win" ? "hsl(145 70% 40%)" : m.outcome === "loss" ? "hsl(0 70% 45%)" : `${purple}66`,
+                        m.outcome === "win" ? "hsl(145 70% 40%)" : m.outcome === "loss" ? "hsl(0 70% 45%)" : `${accent}66`,
                     }}
                   >
                     {m.outcome === "open" ? "In play" : m.outcome}
