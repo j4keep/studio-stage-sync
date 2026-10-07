@@ -286,7 +286,9 @@ async function uploadViaPresignedPut(
 }
 
 /**
- * Get a download URL for a file stored in R2.
+ * Get a playback URL for a file stored in R2.
+ * The r2-download edge function returns a signed redirect, so large media bytes
+ * travel directly from R2 instead of through Supabase/Lovable backend egress.
  */
 export function getR2DownloadUrl(key: string): string {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -298,7 +300,7 @@ export function getR2DownloadUrl(key: string): string {
  */
 export async function downloadFromR2(key: string): Promise<R2Response<Blob>> {
   try {
-    const url = getR2DownloadUrl(key);
+    const url = `${getR2DownloadUrl(key)}&proxy=1`;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
     const response = await fetch(url, {
