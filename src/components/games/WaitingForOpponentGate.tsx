@@ -18,7 +18,7 @@ export default function WaitingForOpponentGate({ show, opponentName, onCancel }:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-[340px] rounded-3xl border border-white/15 bg-[hsl(234_45%_10%)] p-5 text-center text-white shadow-2xl">
+      <div className="w-full max-w-[340px] rounded-3xl border border-white/15 bg-[#091019] p-5 text-center text-white shadow-2xl">
         <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
         <p className="mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Challenge Sent</p>
         <h2 className="mt-1 text-lg font-black">Waiting for {opponentName} to join</h2>
