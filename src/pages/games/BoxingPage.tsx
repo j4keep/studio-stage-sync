@@ -269,7 +269,7 @@ export default function BoxingPage() {
   const resultDetail = finished ? `Final health — you ${Math.round(live.me.health)} · ${oppLabel} ${Math.round(live.opp.health)}` : undefined;
 
   return (
-    <LandscapeStage auto>
+    <LandscapeStage auto title="Boxing" onExit={() => navigate("/games")}>
       <div className="relative h-full w-full">
         <BoxingRing
           myName={myName}
