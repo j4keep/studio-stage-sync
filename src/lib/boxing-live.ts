@@ -18,7 +18,7 @@ export const MAX_HEALTH = 100;
 export const MAX_STAMINA = 100;
 /** Five substantial rounds. Health carries between rounds; energy recovers at the bell. */
 export const MAX_ROUNDS = 5;
-export const ROUND_SECONDS = 90;
+export const ROUND_SECONDS = 120;
 export const MATCH_SECONDS = MAX_ROUNDS * ROUND_SECONDS;
 
 /** Movement: each fighter travels 0 (own corner) → MAX_ADVANCE (center of the ring). */
