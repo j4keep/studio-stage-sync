@@ -34,7 +34,7 @@ export default function BoxingRoundCard({
           0%,100% { transform: translateY(0) rotate(-1deg); }
           50% { transform: translateY(-5px) rotate(1deg); }
         }
-        .yaj-ringwalker { animation: yaj-ringwalk 4.6s ease-in-out both; }
+        .yaj-ringwalker { animation: yaj-ringwalk 3.8s ease-in-out both; }
         .yaj-ring-leg-left { transform-origin: 50% 0%; animation: yaj-step-left .55s ease-in-out infinite; }
         .yaj-ring-leg-right { transform-origin: 50% 0%; animation: yaj-step-right .55s ease-in-out infinite; }
         .yaj-round-card { animation: yaj-card-bob .8s ease-in-out infinite; }
