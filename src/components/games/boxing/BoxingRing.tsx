@@ -127,6 +127,7 @@ export default function BoxingRing({
   secondsLeft,
   round,
   maxRounds,
+  roundWins,
   message,
   interactive,
   finished,
@@ -166,6 +167,7 @@ export default function BoxingRing({
   secondsLeft: number;
   round: number;
   maxRounds: number;
+  roundWins: { me: number; opp: number };
   message: string | null;
   interactive: boolean;
   finished: boolean;
@@ -376,6 +378,9 @@ export default function BoxingRing({
               {myName}
             </p>
 
+            <div className="mb-1 flex items-center justify-between text-[8px] font-black uppercase tracking-wide text-white/55">
+              <span>Rounds</span><span className="text-amber-200">{roundWins.me}</span>
+            </div>
             <StatBar label="Health" value={myHealth} max={100} tone="health" />
             <div className="mt-1">
               <StatBar label="Energy" value={myStamina} max={100} tone="stamina" />
@@ -396,6 +401,9 @@ export default function BoxingRing({
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: oppAccent }} />
 
             </p>
+            <div className="mb-1 flex items-center justify-between text-[8px] font-black uppercase tracking-wide text-white/55">
+              <span>Rounds</span><span className="text-amber-200">{roundWins.opp}</span>
+            </div>
             <StatBar label="Health" value={oppHealth} max={100} tone="health" />
             <div className="mt-1">
               <StatBar label="Energy" value={oppStamina} max={100} tone="stamina" />
