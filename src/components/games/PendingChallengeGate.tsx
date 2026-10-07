@@ -45,7 +45,7 @@ export default function PendingChallengeGate({ gameId, userId, waiting, challeng
     try {
       await respondToInvite(inviteId, accept);
       if (accept) {
-        toast({ title: "Challenge accepted — good luck!" });
+        toast({ title: "Game joined — good luck!" });
         onAccepted();
       } else {
         toast({ title: "Challenge declined" });
@@ -60,7 +60,7 @@ export default function PendingChallengeGate({ gameId, userId, waiting, challeng
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm">
-      <div className="w-full max-w-[340px] rounded-3xl border border-white/15 bg-[hsl(234_45%_10%)] p-5 text-center text-white shadow-2xl">
+      <div className="w-full max-w-[340px] rounded-3xl border border-white/15 bg-[#091019] p-5 text-center text-white shadow-2xl">
         <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white/50">Challenge</p>
         <h2 className="mt-2 text-lg font-black">{challengerName} challenged you</h2>
         <p className="mt-1 text-xs text-white/60">Accept to start playing right now.</p>
@@ -71,7 +71,7 @@ export default function PendingChallengeGate({ gameId, userId, waiting, challeng
             onClick={() => void answer(true)}
             className="flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-black text-primary-foreground transition active:scale-[0.98] disabled:opacity-60"
           >
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Accept & Play
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Join Game
           </button>
           <button
             type="button"
