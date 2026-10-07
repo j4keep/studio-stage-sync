@@ -195,7 +195,7 @@ export default function PopShotPage() {
   };
 
   return (
-    <LandscapeStage auto>
+    <LandscapeStage auto title="Pop Shot" onExit={() => navigate("/games")}>
       <div className="relative h-full w-full">
         {seated && !finished && (myTurn || computersTurn) && (
           <PopShotCourt
