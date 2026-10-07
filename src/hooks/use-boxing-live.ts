@@ -232,7 +232,7 @@ export function useBoxingLive({
 
     nextRoundTimerRef.current = window.setTimeout(() => {
       resetForRound(currentRound + 1);
-    }, 4800);
+    }, 4000);
     bump();
   }, [finish, resetForRound]);
 
@@ -343,11 +343,12 @@ export function useBoxingLive({
             if (oppRef.current.stamina >= stats.cost) {
               oppRef.current = { ...oppRef.current, stamina: clamp(oppRef.current.stamina - stats.cost, 0, 100), guard: null, guardUntil: 0, advance: clamp(oppRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE) };
               const outcome = resolvePunch(intent.punch, oppRef.current, meRef.current, now);
+              const punchRound = roundRef.current;
               setAnim("opp", intent.punch, stats.cooldownMs * 0.6);
               boxingSfx.punchThrow();
               oppPunchCdRef.current = now + stats.cooldownMs + 120 + Math.random() * 320;
               window.setTimeout(() => {
-                if (finishedRef.current) return;
+                if (finishedRef.current || phaseRef.current !== "fighting" || roundRef.current !== punchRound) return;
                 if (outcome.hit) {
                   meRef.current = { ...meRef.current, health: clamp(meRef.current.health - outcome.damage, 0, 100) };
                   setAnim("me", "hit", 400);
@@ -434,13 +435,14 @@ export function useBoxingLive({
         advance: clamp(meRef.current.advance + PUNCH_STEP, 0, MAX_ADVANCE),
       };
       const outcome = resolvePunch(p, meRef.current, oppRef.current, now);
+      const punchRound = roundRef.current;
 
       setAnim("me", p, stats.cooldownMs * 0.6);
       boxingSfx.punchThrow();
       bump();
 
       window.setTimeout(() => {
-        if (finishedRef.current) return;
+        if (finishedRef.current || phaseRef.current !== "fighting" || roundRef.current !== punchRound) return;
         if (outcome.hit) {
           oppRef.current = { ...oppRef.current, health: clamp(oppRef.current.health - outcome.damage, 0, 100) };
           setAnim("opp", "hit", 400);
