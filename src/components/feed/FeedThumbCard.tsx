@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
-import { VideoPoster } from "@/components/VideoPoster";
 import { parsePostCaption } from "@/lib/post-editor";
 import { unlockFeedAudioSession, forceIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 
