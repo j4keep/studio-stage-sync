@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from "react";
-import { RotateCw, Smartphone } from "lucide-react";
+import { ArrowLeft, RotateCw, Smartphone } from "lucide-react";
 
 type Props = {
   /** Rendered inside a full-screen landscape stage. */
@@ -67,25 +67,38 @@ export default function LandscapeStage({ children, title = "Widescreen table", o
     }
   };
 
-  if (auto && portrait) {
-    // Best-effort: try for real fullscreen + lock in the background (silently a no-op
-    // without a user gesture on most browsers), but never fall back to CSS-rotating
-    // content the user hasn't physically turned to match yet.
-    void (async () => {
-      try {
-        const el = document.documentElement as any;
-        if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
-        await (screen as any).orientation?.lock?.("landscape");
-      } catch {
-        /* ignore — the resize/orientationchange listener above handles the real rotation */
-      }
-    })();
+  if (auto && portrait && !rotated) {
     return (
-      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 overflow-hidden bg-black px-8 text-center">
-        <RotateCw className="h-10 w-10 animate-spin text-primary" style={{ animationDuration: "2.2s" }} />
-        <div>
-          <p className="text-sm font-black text-white">Turn your phone sideways</p>
-          <p className="mt-1 text-xs text-white/55">8-Ball Pool plays in widescreen only.</p>
+      <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center overflow-hidden bg-black px-8 text-center">
+        {onExit && (
+          <button
+            type="button"
+            onClick={onExit}
+            className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] flex h-10 items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 text-xs font-black text-white active:scale-95"
+          >
+            <ArrowLeft className="h-4 w-4" /> Exit
+          </button>
+        )}
+
+        <div className="flex max-w-xs flex-col items-center">
+          <RotateCw className="h-10 w-10 text-primary" />
+          <p className="mt-5 text-lg font-black text-white">Play in widescreen</p>
+          <p className="mt-1 text-sm leading-relaxed text-white/55">
+            {title} is designed for landscape play.
+          </p>
+
+          <button
+            type="button"
+            onClick={goWide}
+            className="mt-6 flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-black text-primary-foreground shadow-lg active:scale-95"
+          >
+            <Smartphone className="h-4 w-4 rotate-90" />
+            Play Widescreen
+          </button>
+
+          <p className="mt-3 text-[11px] leading-relaxed text-white/40">
+            If your phone does not rotate automatically, turn it sideways after tapping.
+          </p>
         </div>
       </div>
     );
