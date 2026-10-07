@@ -156,7 +156,6 @@ import YajDashPage from "./pages/games/YajDashPage";
 import PoolPage from "./pages/games/PoolPage";
 import BoxingPage from "./pages/games/BoxingPage";
 import BattleshipPage from "./pages/games/BattleshipPage";
-import DrivingPage from "./pages/games/DrivingPage";
 import PokerPage from "./pages/games/PokerPage";
 import PopShotPage from "./pages/games/PopShotPage";
 import KnockHockeyPage from "./pages/games/KnockHockeyPage";
@@ -450,7 +449,7 @@ const ProtectedRoutes = () => {
         <Route path="/games/pool/:id" element={<PoolPage />} />
         <Route path="/games/boxing/:id" element={<BoxingPage />} />
         <Route path="/games/battleship/:id" element={<BattleshipPage />} />
-        <Route path="/games/driving/:id" element={<DrivingPage />} />
+        <Route path="/games/driving/:id" element={<Navigate to="/games" replace />} />
         <Route path="/games/poker/:id" element={<PokerPage />} />
         <Route path="/games/pop-shot/:id" element={<PopShotPage />} />
         <Route path="/games/knock-hockey/:id" element={<KnockHockeyPage />} />
