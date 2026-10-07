@@ -38,10 +38,32 @@ Deno.serve(async (req) => {
     }
 
     const requestUrl = `${r2Url}/${BUCKET}/${key}`;
+    const urlObjProxy = new URL(req.url);
+    const proxyBody = urlObjProxy.searchParams.get('proxy') === '1';
+
+    // Normal playback should NOT stream the whole file through Supabase/Lovable.
+    // Return a short-lived signed R2 redirect so audio/video bytes travel directly
+    // from Cloudflare R2 to the listener. Keep proxy=1 for code paths that
+    // explicitly need a same-origin blob response.
+    if (!proxyBody) {
+      const method = req.method === 'HEAD' ? 'HEAD' : 'GET';
+      const signed = await client.sign(new Request(requestUrl, { method }), {
+        aws: { signQuery: true },
+      });
+      return new Response(null, {
+        status: 307,
+        headers: {
+          ...corsHeaders,
+          'Location': signed.url,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
     const range = req.headers.get('range') || req.headers.get('Range');
     const forwardHeaders: Record<string, string> = {};
     if (range) forwardHeaders['range'] = range;
-    const r2Response = await client.fetch(requestUrl, { method: 'GET', headers: forwardHeaders });
+    const r2Response = await client.fetch(requestUrl, { method: req.method === 'HEAD' ? 'HEAD' : 'GET', headers: forwardHeaders });
 
     if (!r2Response.ok && r2Response.status !== 206) {
       const errorText = await r2Response.text();
