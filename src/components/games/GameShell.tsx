@@ -136,6 +136,14 @@ export default function GameShell({
     >
       <header className="sticky top-0 z-20 border-b border-white/10 bg-[hsl(234_45%_7%_/_0.85)] px-4 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => navigate("/games")}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-3 text-[11px] font-black text-white/90 transition active:scale-95"
+            aria-label="Exit game"
+          >
+            <ArrowLeft className="h-4 w-4" /> Exit
+          </button>
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-black tracking-tight">{title}</h1>
             <p className="truncate text-[11px] text-white/55">{subtitle}</p>
@@ -143,7 +151,6 @@ export default function GameShell({
           <GameMenu
             triggerClassName="flex items-center gap-1 rounded-full p-1.5 text-white/80 transition hover:bg-white/10 active:scale-95"
             actions={[
-              { key: "back", label: "Back to Games", icon: ArrowLeft, onClick: () => navigate("/games") },
               ...(gameId && !finished ? [{ key: "quit", label: "Quit Game", icon: LogOut, onClick: () => confirmQuitGame(quitGame), destructive: true }] : []),
             ]}
           />
