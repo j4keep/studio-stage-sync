@@ -84,7 +84,7 @@ export default function GameQuickActions({
   onQuickMatch,
   soloLabel = "Play Solo\nvs Computer",
   recordLabel = "Track Your Record",
-  accent = "hsl(275 85% 68%)",
+  accent = "hsl(196 92% 62%)",
 }: Props) {
   const [sheet, setSheet] = useState(false);
   const [soloA, soloB] = soloLabel.split("\n");
@@ -94,7 +94,7 @@ export default function GameQuickActions({
     <>
       <div
         className={onQuickMatch ? "grid w-full max-w-sm grid-cols-3 divide-x rounded-2xl border" : "grid w-full max-w-sm grid-cols-2 divide-x rounded-2xl border"}
-        style={{ borderColor: `${accent}88`, background: "rgba(10,6,22,0.75)", borderRightColor: `${accent}88` }}
+        style={{ borderColor: `${accent}88`, background: "rgba(8,12,18,0.88)", borderRightColor: `${accent}88` }}
       >
         <button
           type="button"
@@ -140,7 +140,7 @@ export default function GameQuickActions({
         <div className="absolute inset-0 z-20 flex items-end bg-black/70 animate-fade-in" onClick={() => setSheet(false)}>
           <div
             className="max-h-[80%] w-full overflow-y-auto rounded-t-3xl border-t p-5 text-left text-white"
-            style={{ borderColor: accent, background: "#0c0718" }}
+            style={{ borderColor: accent, background: "#091019" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
