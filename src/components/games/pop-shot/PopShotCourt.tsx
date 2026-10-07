@@ -9,15 +9,15 @@ import { popShotSfx } from "@/lib/pop-shot-sfx";
 const VIEW_W = 900;
 const VIEW_H = 420;
 const FLOOR_Y = 372;
-const HOOP_X = 700;
-const HOOP_Y = 128;
+const HOOP_X = 716;
+const HOOP_Y = 146;
 const RIM_R = 34;
 const RIM_TUBE_R = 4;
-const BACKBOARD_X = HOOP_X + RIM_R + 16;
-const BACKBOARD_TOP = 62;
-const BACKBOARD_BOTTOM = 172;
-const SHOOTER_X = 168;
-const SHOOTER_Y = 296;
+const BACKBOARD_X = HOOP_X + RIM_R + 18;
+const BACKBOARD_TOP = 74;
+const BACKBOARD_BOTTOM = 190;
+const SHOOTER_X = 170;
+const SHOOTER_Y = 300;
 const BALL_R = 15;
 const GRAVITY = 1650;
 const TICK_MS = 16;
@@ -101,12 +101,12 @@ function PowerSlider({ disabled, onChange, onRelease }: { disabled: boolean; onC
       <div
         ref={trackRef}
         onPointerDown={handleDown}
-        className="relative w-7 flex-1 touch-none overflow-hidden rounded-full border border-black/40"
+        className="relative w-10 flex-1 touch-none overflow-hidden rounded-[20px] border-2 border-white/20"
         style={{
           touchAction: "none",
           opacity: disabled ? 0.45 : 1,
-          background: "linear-gradient(180deg, #3a2414 0%, #241608 100%)",
-          boxShadow: "inset 0 0 6px rgba(0,0,0,0.6), 0 2px 6px rgba(0,0,0,0.4)",
+          background: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+          boxShadow: "inset 0 0 12px rgba(0,0,0,0.85), 0 8px 20px rgba(0,0,0,0.35)",
         }}
       >
         {/* Sweet-spot band */}
@@ -426,7 +426,7 @@ export default function PopShotCourt({
     <div
       className="relative h-full w-full touch-none select-none overflow-hidden"
       style={{
-        background: "linear-gradient(180deg, hsl(24 55% 20%) 0%, hsl(20 50% 11%) 45%, hsl(18 45% 7%) 100%)",
+        background: "radial-gradient(120% 90% at 50% 10%, #1d2735 0%, #111827 42%, #070b12 100%)",
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
@@ -442,58 +442,129 @@ export default function PopShotCourt({
           <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid slice" className="block h-full w-full">
             <defs>
               <linearGradient id="ps-floor" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="hsl(28 45% 32%)" />
-                <stop offset="100%" stopColor="hsl(26 40% 20%)" />
+                <stop offset="0%" stopColor="#d7a66a" />
+                <stop offset="52%" stopColor="#b9783f" />
+                <stop offset="100%" stopColor="#8c532b" />
               </linearGradient>
+              <linearGradient id="ps-board" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#f8fbff" stopOpacity="0.97" />
+                <stop offset="55%" stopColor="#dce7f3" stopOpacity="0.94" />
+                <stop offset="100%" stopColor="#aebdce" stopOpacity="0.92" />
+              </linearGradient>
+              <linearGradient id="ps-rim" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#ff6a3d" />
+                <stop offset="60%" stopColor="#e33b24" />
+                <stop offset="100%" stopColor="#9b1e14" />
+              </linearGradient>
+              <linearGradient id="ps-jersey" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#2563eb" />
+                <stop offset="55%" stopColor="#1d4ed8" />
+                <stop offset="100%" stopColor="#0f2a6b" />
+              </linearGradient>
+              <radialGradient id="ps-skin" cx="35%" cy="30%" r="70%">
+                <stop offset="0%" stopColor="#f0c2a0" />
+                <stop offset="65%" stopColor="#c98761" />
+                <stop offset="100%" stopColor="#8f543b" />
+              </radialGradient>
+              <radialGradient id="ps-ball" cx="35%" cy="28%" r="70%">
+                <stop offset="0%" stopColor="#ffb05a" />
+                <stop offset="55%" stopColor="#e77b2d" />
+                <stop offset="100%" stopColor="#9c4314" />
+              </radialGradient>
+              <filter id="ps-shadow" x="-40%" y="-40%" width="180%" height="180%">
+                <feDropShadow dx="0" dy="8" stdDeviation="8" floodColor="#000" floodOpacity=".35" />
+              </filter>
             </defs>
 
-            {/* Crowd bleachers */}
-            <rect x="0" y="0" width={VIEW_W} height="54" fill="hsl(20 40% 12%)" />
-            {Array.from({ length: 30 }).map((_, i) => (
-              <circle key={i} cx={(i * 31 + 12) % VIEW_W} cy={14 + ((i * 17) % 26)} r="6" fill={i % 3 === 0 ? "#c96b3a" : i % 3 === 1 ? "#3a6bd6" : "#d6b23a"} opacity="0.55" />
-            ))}
-
-            {/* Floor */}
-            <rect x="0" y={FLOOR_Y} width={VIEW_W} height={VIEW_H - FLOOR_Y} fill="url(#ps-floor)" />
-            <path d={`M 380,${VIEW_H} A 320,220 0 0 1 900,${FLOOR_Y - 40}`} fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="3" />
-            {Array.from({ length: 16 }).map((_, i) => (
-              <line key={i} x1={i * 60} y1={FLOOR_Y} x2={i * 60} y2={VIEW_H} stroke="rgba(0,0,0,0.15)" strokeWidth="1.5" />
-            ))}
-
-            {/* Backboard */}
-            <rect x={BACKBOARD_X} y={BACKBOARD_TOP} width="10" height={BACKBOARD_BOTTOM - BACKBOARD_TOP} fill="#e9e4d8" stroke="#111" strokeWidth="2" />
-            <rect x={BACKBOARD_X + 1} y={BACKBOARD_TOP + 26} width="7" height="22" fill="none" stroke="#e0453f" strokeWidth="2" />
-            <rect x={BACKBOARD_X - 4} y={BACKBOARD_TOP - 8} width="18" height="8" fill="#3a3a3a" />
-
-            {/* Rim + net */}
-            <ellipse cx={HOOP_X} cy={HOOP_Y} rx={RIM_R} ry="7" fill="none" stroke="#e0453f" strokeWidth="5" />
-            {Array.from({ length: 8 }).map((_, i) => {
-              const t = i / 7;
-              const x1 = HOOP_X - RIM_R + t * RIM_R * 2;
-              const x2 = HOOP_X - RIM_R * 0.35 + t * RIM_R * 0.7;
-              return <line key={i} x1={x1} y1={HOOP_Y + 2} x2={x2} y2={HOOP_Y + 34} stroke="rgba(255,255,255,0.55)" strokeWidth="1.4" />;
+            {/* Arena wall, lights, crowd */}
+            <rect x="0" y="0" width={VIEW_W} height="118" fill="#0a0f18" />
+            <rect x="0" y="54" width={VIEW_W} height="64" fill="#121c29" />
+            {Array.from({ length: 46 }).map((_, i) => {
+              const x = 10 + ((i * 47) % 880);
+              const y = 68 + ((i * 23) % 38);
+              const c = ["#f59e0b", "#60a5fa", "#ef4444", "#34d399", "#a78bfa"][i % 5];
+              return (
+                <g key={i} opacity={0.72}>
+                  <circle cx={x} cy={y} r="4.2" fill="#1c2430" />
+                  <circle cx={x} cy={y - 5} r="2.6" fill="#b98b6a" />
+                  <rect x={x - 4.5} y={y + 3} width="9" height="5" rx="2" fill={c} />
+                </g>
+              );
             })}
-            <path d={`M ${HOOP_X - RIM_R * 0.35},${HOOP_Y + 34} Q ${HOOP_X},${HOOP_Y + 44} ${HOOP_X + RIM_R * 0.35},${HOOP_Y + 34}`} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.2" />
+            {Array.from({ length: 9 }).map((_, i) => (
+              <g key={`light-${i}`} opacity="0.9">
+                <rect x={42 + i * 102} y="18" width="54" height="8" rx="4" fill="#e8f1ff" opacity="0.18" />
+                <rect x={50 + i * 102} y="20" width="38" height="4" rx="2" fill="#ffffff" opacity="0.85" />
+              </g>
+            ))}
+
+            {/* Hardwood court with depth */}
+            <path d={`M 0 118 L ${VIEW_W} 118 L ${VIEW_W} ${VIEW_H} L 0 ${VIEW_H} Z`} fill="url(#ps-floor)" />
+            {Array.from({ length: 16 }).map((_, i) => (
+              <line
+                key={`plank-${i}`}
+                x1={i * 64 - 40}
+                y1="118"
+                x2={i * 86 - 120}
+                y2={VIEW_H}
+                stroke={i % 2 === 0 ? "rgba(110,55,20,.24)" : "rgba(255,255,255,.09)"}
+                strokeWidth="2"
+              />
+            ))}
+            <line x1="0" y1={FLOOR_Y} x2={VIEW_W} y2={FLOOR_Y} stroke="rgba(255,255,255,.24)" strokeWidth="2" />
+            <path d={`M 330,${VIEW_H} A 390,250 0 0 1 880,155`} fill="none" stroke="rgba(255,255,255,0.72)" strokeWidth="4" />
+            <path d="M 610 118 L 610 360 L 865 360 L 865 118" fill="rgba(37,99,235,.09)" stroke="rgba(255,255,255,.62)" strokeWidth="3" />
+            <circle cx="735" cy="258" r="54" fill="none" stroke="rgba(255,255,255,.52)" strokeWidth="3" />
+            <text x="450" y="404" textAnchor="middle" fontFamily="system-ui,sans-serif" fontWeight="900" fontSize="24" letterSpacing="8" fill="rgba(255,255,255,.14)">
+              YAJ POP SHOT
+            </text>
+
+            {/* Regulation-style backboard, support, rim and net */}
+            <g filter="url(#ps-shadow)">
+              <rect x={BACKBOARD_X - 28} y={BACKBOARD_TOP} width="132" height="84" rx="7" fill="url(#ps-board)" stroke="#d7e0ea" strokeWidth="5" />
+              <rect x={BACKBOARD_X + 8} y={BACKBOARD_TOP + 34} width="58" height="38" fill="none" stroke="#ef4444" strokeWidth="4" />
+              <rect x={BACKBOARD_X + 102} y={BACKBOARD_TOP + 34} width="14" height="138" rx="6" fill="#2d3748" />
+              <path d={`M ${BACKBOARD_X + 108} ${BACKBOARD_TOP + 165} L 840 355`} stroke="#4b5563" strokeWidth="16" strokeLinecap="round" />
+              <path d={`M ${BACKBOARD_X + 108} ${BACKBOARD_TOP + 165} L 840 355`} stroke="#111827" strokeWidth="6" strokeLinecap="round" />
+            </g>
+
+            <ellipse cx={HOOP_X} cy={HOOP_Y} rx={RIM_R} ry="8" fill="none" stroke="url(#ps-rim)" strokeWidth="7" filter="url(#ps-shadow)" />
+            {Array.from({ length: 11 }).map((_, i) => {
+              const t = i / 10;
+              const x1 = HOOP_X - RIM_R + t * RIM_R * 2;
+              const x2 = HOOP_X - RIM_R * 0.42 + t * RIM_R * 0.84;
+              return <line key={i} x1={x1} y1={HOOP_Y + 5} x2={x2} y2={HOOP_Y + 48} stroke="rgba(255,255,255,0.9)" strokeWidth="1.7" />;
+            })}
+            {[12, 23, 34, 45].map((dy) => (
+              <ellipse key={dy} cx={HOOP_X} cy={HOOP_Y + dy} rx={RIM_R * (1 - dy / 90)} ry="5" fill="none" stroke="rgba(255,255,255,.72)" strokeWidth="1.35" />
+            ))}
 
             {/* Trajectory preview while charging power */}
             {trajectory.map((p, i) => (
               <circle key={i} cx={p.x} cy={p.y} r={2.2} fill="rgba(255,255,255,0.55)" />
             ))}
 
-            {/* Shooter silhouette */}
-            <g transform={`translate(${SHOOTER_X - 46} ${SHOOTER_Y - 10})`} opacity="0.9">
-              <ellipse cx="46" cy="96" rx="26" ry="7" fill="rgba(0,0,0,0.35)" />
-              <rect x="34" y="20" width="24" height="50" rx="10" fill="#e0453f" />
-              <circle cx="46" cy="10" r="12" fill="#8a5a2e" />
-              <rect x="20" y="26" width="14" height="34" rx="6" fill="#e0453f" />
+            {/* Stylized 3-D shooter */}
+            <g transform={`translate(${SHOOTER_X - 58} ${SHOOTER_Y - 88})`} filter="url(#ps-shadow)">
+              <ellipse cx="58" cy="167" rx="34" ry="8" fill="rgba(0,0,0,.30)" />
+              <circle cx="58" cy="28" r="18" fill="url(#ps-skin)" stroke="#7a4936" strokeWidth="1.6" />
+              <path d="M42 20 Q58 2 75 18 Q70 10 61 8 Q47 7 42 20Z" fill="#171717" />
+              <rect x="35" y="48" width="48" height="70" rx="20" fill="url(#ps-jersey)" />
+              <path d="M39 58 L20 85" stroke="url(#ps-skin)" strokeWidth="14" strokeLinecap="round" />
+              <path d="M78 58 L94 90" stroke="url(#ps-skin)" strokeWidth="14" strokeLinecap="round" />
+              <path d="M46 116 L38 157" stroke="#172554" strokeWidth="16" strokeLinecap="round" />
+              <path d="M70 116 L80 157" stroke="#172554" strokeWidth="16" strokeLinecap="round" />
+              <path d="M28 158 L46 158" stroke="#f8fafc" strokeWidth="9" strokeLinecap="round" />
+              <path d="M72 158 L91 158" stroke="#f8fafc" strokeWidth="9" strokeLinecap="round" />
+              <text x="59" y="89" textAnchor="middle" fontSize="22" fontWeight="900" fill="#fff">7</text>
             </g>
 
             {/* Ball */}
             <g transform={`translate(${b.x} ${b.y})`}>
               <ellipse cx="0" cy={FLOOR_Y - b.y + 6} rx={BALL_R * (1 - Math.min(0.7, (FLOOR_Y - b.y) / 500))} ry="3" fill="rgba(0,0,0,0.3)" opacity={Math.max(0.1, 1 - (FLOOR_Y - b.y) / 400)} />
-              <circle r={BALL_R} fill="#e0803a" stroke="#7a3d10" strokeWidth="1.4" />
-              <path d={`M ${-BALL_R},0 A ${BALL_R},${BALL_R} 0 0 1 ${BALL_R},0`} fill="none" stroke="#3a1e08" strokeWidth="1.2" />
-              <line x1="0" y1={-BALL_R} x2="0" y2={BALL_R} stroke="#3a1e08" strokeWidth="1.2" />
+              <circle r={BALL_R} fill="url(#ps-ball)" stroke="#6b2f0f" strokeWidth="1.8" filter="url(#ps-shadow)" />
+              <path d={`M ${-BALL_R},0 A ${BALL_R},${BALL_R} 0 0 1 ${BALL_R},0`} fill="none" stroke="#3a1e08" strokeWidth="1.6" />
+              <line x1="0" y1={-BALL_R} x2="0" y2={BALL_R} stroke="#3a1e08" strokeWidth="1.6" />
               <path d={`M ${-BALL_R * 0.7},${-BALL_R * 0.6} Q 0,0 ${-BALL_R * 0.7},${BALL_R * 0.6}`} fill="none" stroke="#3a1e08" strokeWidth="1" />
               <path d={`M ${BALL_R * 0.7},${-BALL_R * 0.6} Q 0,0 ${BALL_R * 0.7},${BALL_R * 0.6}`} fill="none" stroke="#3a1e08" strokeWidth="1" />
             </g>
@@ -538,7 +609,7 @@ export default function PopShotCourt({
 
           {!auto && phaseRef.current === "ready" && !help && (
             <p className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] font-bold text-white/40">
-              Drag the power bar up, release in the green zone to shoot
+              Pull the shot meter up • release inside the green zone
             </p>
           )}
         </div>
@@ -559,8 +630,8 @@ export default function PopShotCourt({
       {/* Scoreboard HUD */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-start justify-between px-2 pt-2">
                 <div
-          className="flex items-center rounded-2xl border-2 px-1 py-1"
-          style={{ borderColor: "rgba(240,216,76,0.35)", background: "rgba(10,6,4,0.88)", boxShadow: "0 4px 14px rgba(0,0,0,0.5)" }}
+          className="flex items-center rounded-2xl border border-white/15 px-1.5 py-1.5"
+          style={{ background: "linear-gradient(180deg, rgba(5,10,18,.94), rgba(9,18,31,.92))", boxShadow: "0 8px 24px rgba(0,0,0,.48)" }}
         >
           <div className="flex flex-col items-center px-2.5">
             <span className="text-[8px] font-black uppercase tracking-wide text-blue-300">You</span>
@@ -575,7 +646,7 @@ export default function PopShotCourt({
             >
               0:{String(timeLeft).padStart(2, "0")}
             </span>
-            <span className="text-[7px] font-bold uppercase tracking-widest text-white/40">Shot Clock</span>
+            <span className="text-[7px] font-bold uppercase tracking-widest text-white/40">Round Clock</span>
           </div>
           <div className="flex flex-col items-center px-2.5">
             <span className="text-[8px] font-black uppercase tracking-wide text-red-300">Rival</span>
@@ -597,7 +668,12 @@ export default function PopShotCourt({
           />
         </div>
       </div>
-      <p className="pointer-events-none absolute left-1/2 top-[3.1rem] z-30 -translate-x-1/2 text-[8px] font-bold text-white/35">{roundLabel}</p>
+      <div className="pointer-events-none absolute left-1/2 top-[3.15rem] z-30 -translate-x-1/2 text-center">
+        <p className="text-[9px] font-black uppercase tracking-[0.18em] text-white/60">{roundLabel}</p>
+        <p className="mt-0.5 text-[8px] font-bold text-white/35">
+          Makes {makesRef.current} · Attempts {attemptsRef.current} · Best streak {bestStreakRef.current}
+        </p>
+      </div>
     </div>
   );
 }
