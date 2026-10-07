@@ -16,8 +16,10 @@ export type MoveDir = "in" | "out";
 
 export const MAX_HEALTH = 100;
 export const MAX_STAMINA = 100;
-/** Match length in seconds before it goes to a decision. */
-export const ROUND_SECONDS = 150;
+/** Five substantial rounds. Health carries between rounds; energy recovers at the bell. */
+export const MAX_ROUNDS = 5;
+export const ROUND_SECONDS = 90;
+export const MATCH_SECONDS = MAX_ROUNDS * ROUND_SECONDS;
 
 /** Movement: each fighter travels 0 (own corner) → MAX_ADVANCE (center of the ring). */
 export const MAX_ADVANCE = 100;
@@ -32,17 +34,17 @@ export const PUNCH_STEP = 16;
 
 
 export const PUNCHES: Record<Punch, { min: number; max: number; cost: number; accuracy: number; reach: number; cooldownMs: number; windupMs: number }> = {
-  jab: { min: 3, max: 8, cost: 6, accuracy: 0.92, reach: 96, cooldownMs: 330, windupMs: 110 },
-  hook: { min: 9, max: 16, cost: 14, accuracy: 0.78, reach: 82, cooldownMs: 620, windupMs: 170 },
-  uppercut: { min: 16, max: 26, cost: 22, accuracy: 0.62, reach: 70, cooldownMs: 900, windupMs: 220 },
+  jab: { min: 2, max: 5, cost: 7, accuracy: 0.92, reach: 96, cooldownMs: 360, windupMs: 110 },
+  hook: { min: 5, max: 10, cost: 16, accuracy: 0.78, reach: 82, cooldownMs: 680, windupMs: 170 },
+  uppercut: { min: 9, max: 15, cost: 24, accuracy: 0.62, reach: 70, cooldownMs: 980, windupMs: 220 },
 };
 
 export const GUARD_MS: Record<Guard, number> = { block: 1200, dodge: 700 };
 export const GUARD_COOLDOWN_MS = 380;
 /** Stamina gained per second. */
-export const REGEN_IDLE = 7;
-export const REGEN_BLOCK = 20;
-export const REGEN_DODGE = 11;
+export const REGEN_IDLE = 5;
+export const REGEN_BLOCK = 16;
+export const REGEN_DODGE = 9;
 
 export const ACTION_LABELS: Record<LiveAction, string> = {
   jab: "Jab",
