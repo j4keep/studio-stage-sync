@@ -106,7 +106,8 @@ export default function GamesHubPage() {
   const [stats, setStats] = useState<GameStatsRow[]>([]);
   const [board, setBoard] = useState<GameStatsRow[]>([]);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
+  const [openingType, setOpeningType] = useState<GameType | null>(null);
+  const [respondingInviteId, setRespondingInviteId] = useState<string | null>(null);
   const [filter, setFilter] = useState<Category | "All">("All");
   const [activeGamesOpen, setActiveGamesOpen] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
@@ -130,27 +131,39 @@ export default function GamesHubPage() {
       setLoading(false);
       return;
     }
-    const [inv, games, st, lb] = await Promise.all([
-      listMyInvites(user.id),
-      listMyGames(user.id),
-      getMyStats(user.id),
-      leaderboard(undefined, 10),
-    ]);
-    setInvites(inv);
-    setMyGames(games);
-    setStats(st);
-    setBoard(lb);
-    setLoading(false);
 
-    const ids = Array.from(new Set([...inv.map((i) => i.from_user_id), ...lb.map((r) => r.user_id)]));
-    if (ids.length) {
-      const { data } = await (supabase as any)
-        .from("profiles")
-        .select("user_id, display_name")
-        .in("user_id", ids);
-      const map: Record<string, string> = {};
-      (data || []).forEach((r: any) => (map[r.user_id] = r.display_name || "YAJ user"));
-      setInviteNames(map);
+    try {
+      const [inv, games, st, lb] = await Promise.all([
+        listMyInvites(user.id),
+        listMyGames(user.id),
+        getMyStats(user.id),
+        leaderboard(undefined, 10),
+      ]);
+      setInvites(inv);
+      setMyGames(games);
+      setStats(st);
+      setBoard(lb);
+
+      const ids = Array.from(new Set([...inv.map((i) => i.from_user_id), ...lb.map((r) => r.user_id)]));
+      if (ids.length) {
+        const { data } = await (supabase as any)
+          .from("profiles")
+          .select("user_id, display_name")
+          .in("user_id", ids);
+        const map: Record<string, string> = {};
+        (data || []).forEach((r: any) => (map[r.user_id] = r.display_name || "YAJ user"));
+        setInviteNames(map);
+      } else {
+        setInviteNames({});
+      }
+    } catch (e: any) {
+      toast({
+        title: "Games could not refresh",
+        description: e?.message || "Check your connection and try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -161,11 +174,22 @@ export default function GamesHubPage() {
   useEffect(() => {
     if (!user) return;
     const channel = supabase
-      .channel("games-hub")
-      .on("postgres_changes", { event: "*", schema: "public", table: "game_invites" }, () => void refresh())
+      .channel(`games-hub-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "game_invites", filter: `to_user_id=eq.${user.id}` },
+        () => void refresh(),
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "games" }, () => void refresh())
       .subscribe();
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
     return () => {
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
       void supabase.removeChannel(channel);
     };
   }, [user?.id]);
@@ -201,7 +225,7 @@ export default function GamesHubPage() {
       navigate(gameRoute("yaj_dash"));
       return;
     }
-    setBusy(true);
+    setOpeningType(card.type);
     try {
       const game =
         card.type === "driving"
@@ -211,17 +235,22 @@ export default function GamesHubPage() {
     } catch (e: any) {
       toast({ title: "Could not open the game", description: e.message, variant: "destructive" });
     } finally {
-      setBusy(false);
+      setOpeningType(null);
     }
   };
 
   const answerInvite = async (invite: GameInviteRow, accept: boolean) => {
+    if (respondingInviteId) return;
+    setRespondingInviteId(invite.id);
     try {
-      await respondToInvite(invite.id, accept);
+      const updated = await respondToInvite(invite.id, accept);
       await refresh();
-      if (accept && invite.game_id) navigate(gameRoute(invite.game_type, invite.game_id));
+      const gameId = updated?.game_id || invite.game_id;
+      if (accept && gameId) navigate(gameRoute(invite.game_type, gameId));
     } catch (e: any) {
       toast({ title: "Could not respond", description: e.message, variant: "destructive" });
+    } finally {
+      setRespondingInviteId(null);
     }
   };
 
@@ -232,11 +261,12 @@ export default function GamesHubPage() {
 
   const renderCard = (card: CardDef) => {
     const inProgress = activeGames.find((g) => g.game_type === card.type);
+    const isOpening = openingType === card.type;
     return (
       <button
         key={card.type}
         type="button"
-        disabled={busy}
+        disabled={openingType !== null}
         onClick={() => void openCard(card)}
         className="group relative aspect-[3/4] overflow-hidden rounded-2xl border border-white/10 text-left shadow-[0_10px_28px_rgba(0,0,0,0.35)] transition active:scale-[0.97] disabled:opacity-60"
       >
@@ -247,6 +277,14 @@ export default function GamesHubPage() {
           className="absolute inset-0 h-full w-full object-cover transition duration-300 group-active:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/25 to-black/10" />
+
+        {isOpening && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45 backdrop-blur-[1px]">
+            <span className="flex items-center gap-2 rounded-full bg-black/70 px-3 py-2 text-xs font-black text-white">
+              <Loader2 className="h-4 w-4 animate-spin" /> Opening
+            </span>
+          </div>
+        )}
 
         {card.isNew && (
           <span className="absolute left-[-34px] top-3 w-[130px] -rotate-45 bg-primary py-0.5 text-center text-[9px] font-black uppercase tracking-widest text-primary-foreground shadow">
@@ -331,14 +369,16 @@ export default function GamesHubPage() {
                         <button
                           type="button"
                           onClick={() => answerInvite(inv, true)}
-                          className="flex-1 rounded-full bg-primary px-3 py-2 text-sm font-black text-primary-foreground"
+                          disabled={respondingInviteId === inv.id}
+                          className="flex-1 rounded-full bg-primary px-3 py-2 text-sm font-black text-primary-foreground disabled:opacity-60"
                         >
                           Accept
                         </button>
                         <button
                           type="button"
                           onClick={() => answerInvite(inv, false)}
-                          className="flex-1 rounded-full border border-border px-3 py-2 text-sm font-black"
+                          disabled={respondingInviteId === inv.id}
+                          className="flex-1 rounded-full border border-border px-3 py-2 text-sm font-black disabled:opacity-60"
                         >
                           Decline
                         </button>
