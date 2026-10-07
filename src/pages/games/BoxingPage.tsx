@@ -13,6 +13,7 @@ import LandscapeStage from "@/components/games/pro/LandscapeStage";
 import GameResultCard from "@/components/games/pro/GameResultCard";
 import OpponentPickerSheet from "@/components/games/OpponentPickerSheet";
 import BoxingRing, { SKIN_TONES, CHARACTERS } from "@/components/games/boxing/BoxingRing";
+import BoxingRoundCard from "@/components/games/boxing/BoxingRoundCard";
 import { useTurnGame } from "@/hooks/use-turn-game";
 import { useBoxingLive } from "@/hooks/use-boxing-live";
 import { boxingSfx } from "@/lib/boxing-sfx";
@@ -295,6 +296,7 @@ export default function BoxingPage() {
           secondsLeft={live.secondsLeft}
           round={live.round}
           maxRounds={live.maxRounds}
+          roundWins={live.roundWins}
           message={live.message}
           interactive={seated && live.phase === "fighting"}
           finished={finished}
@@ -313,6 +315,18 @@ export default function BoxingPage() {
           onPunch={live.punch}
           onGuard={live.guard}
           onMove={live.move}
+        />
+
+        <BoxingRoundCard
+          show={
+            (countdown != null && countdown >= 3) ||
+            (live.phase === "between" &&
+              live.round < live.maxRounds &&
+              live.roundWins.me < 3 &&
+              live.roundWins.opp < 3)
+          }
+          round={live.phase === "between" ? Math.min(live.maxRounds, live.round + 1) : 1}
+          maxRounds={live.maxRounds}
         />
 
         <PendingChallengeGate
