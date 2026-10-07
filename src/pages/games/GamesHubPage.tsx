@@ -8,7 +8,6 @@ import {
   GameRow,
   GameStatsRow,
   GameType,
-  createDriveRaceGame,
   createSoloGame,
   endGame,
   getMyStats,
@@ -31,7 +30,6 @@ const poolArt = poolArtAsset.url;
 import boxingArt from "@/assets/games/yaj-boxing-cover.webp";
 import battleshipArtAsset from "@/assets/games/adventures/fleet-clash.png.asset.json";
 const battleshipArt = battleshipArtAsset.url;
-import drivingArt from "@/assets/games/driving.svg";
 import pokerArt from "@/assets/games/poker.svg";
 import popShotArt from "@/assets/games/pop-shot.svg";
 import knockHockeyArt from "@/assets/games/knock-hockey.svg";
@@ -64,7 +62,6 @@ const CARDS: CardDef[] = [
   { type: "pool", title: "8-Ball Pool", players: "2 players", image: poolArt, category: "Sports" },
   { type: "boxing", title: "Boxing", players: "2 players", image: boxingArt, category: "Action" },
   { type: "battleship", title: "YAJ Fleet Clash", players: "1–4 players", image: battleshipArt, category: "Strategy", isNew: true },
-  { type: "driving", title: "Drive", players: "1–4 players", image: drivingArt, category: "Arcade", isNew: true },
   { type: "poker", title: "Texas Hold'em", players: "2 players", image: pokerArt, category: "Card", isNew: true },
   { type: "pop_shot", title: "Pop Shot", players: "2 players", image: popShotArt, category: "Arcade", isNew: true },
   { type: "knock_hockey", title: "Knock Hockey", players: "2 players", image: knockHockeyArt, category: "Arcade", isNew: true },
@@ -227,10 +224,7 @@ export default function GamesHubPage() {
     }
     setOpeningType(card.type);
     try {
-      const game =
-        card.type === "driving"
-          ? await createDriveRaceGame(user.id, [], 1, "gt")
-          : await createSoloGame(card.type, user.id, initialStateFor(card.type));
+      const game = await createSoloGame(card.type, user.id, initialStateFor(card.type));
       navigate(gameRoute(card.type, game.id));
     } catch (e: any) {
       toast({ title: "Could not open the game", description: e.message, variant: "destructive" });
