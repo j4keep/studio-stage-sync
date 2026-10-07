@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { ArrowLeft, Bot, Play, Trophy, UserRound } from "lucide-react";
+import { ArrowLeft, Bot, Play, Trophy, UserRound, X } from "lucide-react";
 import GameQuickActions, { GameMatchup, GameRecordStats } from "@/components/games/GameQuickActions";
 import CharacterSkinPickerSheet from "@/components/CharacterSkinPickerSheet";
 
