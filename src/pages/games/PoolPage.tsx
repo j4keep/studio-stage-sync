@@ -365,7 +365,7 @@ export default function PoolPage() {
       : undefined;
 
   return (
-    <LandscapeStage auto>
+    <LandscapeStage auto title="8-Ball Pool" onExit={() => navigate("/games")}>
       <div className="relative h-full w-full">
         <PoolTable
           balls={pool.balls}
