@@ -261,13 +261,13 @@ export default function BoxingPage() {
             : "Get ready";
 
   const resultTitle = draw
-    ? "Goes the distance"
+    ? "Match drawn"
     : iWon
-      ? live.decision
-        ? "Victory by decision!"
-        : "Victory by knockout!"
-      : `${oppLabel} wins`;
-  const resultDetail = finished ? `Final health — you ${Math.round(live.me.health)} · ${oppLabel} ${Math.round(live.opp.health)}` : undefined;
+      ? "You win the match!"
+      : `${oppLabel} wins the match`;
+  const resultDetail = finished
+    ? `Final rounds — you ${live.roundWins.me} · ${oppLabel} ${live.roundWins.opp}`
+    : undefined;
 
   return (
     <LandscapeStage auto title="Boxing" onExit={() => navigate("/games")}>
@@ -319,7 +319,7 @@ export default function BoxingPage() {
 
         <BoxingRoundCard
           show={
-            (countdown != null && countdown >= 3) ||
+            (countdown != null && countdown >= 2) ||
             (live.phase === "between" &&
               live.round < live.maxRounds &&
               live.roundWins.me < 3 &&
