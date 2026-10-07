@@ -5,7 +5,6 @@ import {
   Guard,
   LUNGE,
   MAX_ADVANCE,
-  MATCH_SECONDS,
   MAX_ROUNDS,
   MOVE_COOLDOWN_MS,
   MoveDir,
@@ -29,7 +28,7 @@ import type { FighterAnim } from "@/components/games/boxing/FighterArt";
 import { boxingSfx } from "@/lib/boxing-sfx";
 
 export type LiveSide = "me" | "opp";
-export type LivePhase = "idle" | "fighting" | "over";
+export type LivePhase = "idle" | "fighting" | "between" | "over";
 
 type AnimState = { anim: FighterAnim; until: number };
 
@@ -42,6 +41,8 @@ export type BoxingLive = {
   secondsLeft: number;
   round: number;
   maxRounds: number;
+  roundWins: { me: number; opp: number };
+  roundWinner: LiveSide | null;
   message: string | null;
   myAnim: FighterAnim;
   oppAnim: FighterAnim;
@@ -91,11 +92,15 @@ export function useBoxingLive({
   const finishedRef = useRef(false);
   const nonceRef = useRef(0);
   const roundRef = useRef(1);
+  const roundWinsRef = useRef<{ me: number; opp: number }>({ me: 0, opp: 0 });
+  const roundEndingRef = useRef(false);
+  const nextRoundTimerRef = useRef<number | null>(null);
 
   const [snapshot, setSnapshot] = useState(0);
   const [phase, setPhase] = useState<LivePhase>("idle");
   const [winner, setWinner] = useState<LiveSide | null>(null);
   const [decision, setDecision] = useState(false);
+  const [roundWinner, setRoundWinner] = useState<LiveSide | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [impact, setImpact] = useState<{ side: LiveSide; nonce: number } | null>(null);
   const finishRef = useRef(onFinish);
@@ -146,16 +151,21 @@ export function useBoxingLive({
   const finish = useCallback((w: LiveSide | null, byDecision: boolean) => {
     if (finishedRef.current) return;
     finishedRef.current = true;
+    if (nextRoundTimerRef.current) {
+      window.clearTimeout(nextRoundTimerRef.current);
+      nextRoundTimerRef.current = null;
+    }
     phaseRef.current = "over";
     setPhase("over");
     setWinner(w);
     setDecision(byDecision);
+    setRoundWinner(null);
     if (w) setAnim(w === "me" ? "opp" : "me", "ko", 60_000);
     const { myName: mn, oppName: on } = namesRef.current;
     const winnerName = w === "me" ? (mn || "You") : w === "opp" ? (on || "Your opponent") : null;
     boxingSfx.koRoar();
     boxingSfx.announce(
-      winnerName ? (byDecision ? `It's over — ${winnerName} takes it on the scorecards!` : `It's over! ${winnerName} wins by knockout!`) : "It's over — a draw!",
+      winnerName ? (byDecision ? `It\'s over — ${winnerName} takes the match!` : `It\'s over! ${winnerName} wins the match!`) : "It\'s over — a draw!",
     );
     window.setTimeout(() => boxingSfx.stopCrowd(), 2200);
     finishRef.current?.(w, meRef.current.health, oppRef.current.health);
@@ -163,8 +173,74 @@ export function useBoxingLive({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const resetForRound = useCallback((nextRound: number) => {
+    const now = Date.now();
+    meRef.current = newFighter();
+    oppRef.current = newFighter();
+    myAnimRef.current = { anim: "idle", until: 0 };
+    oppAnimRef.current = { anim: "idle", until: 0 };
+    punchCdRef.current = { jab: 0, hook: 0, uppercut: 0 };
+    guardCdRef.current = 0;
+    moveCdRef.current = 0;
+    oppPunchCdRef.current = now + 1100;
+    streakRef.current = { me: 0, opp: 0 };
+    roundRef.current = nextRound;
+    startedAtRef.current = now;
+    roundEndingRef.current = false;
+    setRoundWinner(null);
+    setMessage(`Round ${nextRound} — fight!`);
+    phaseRef.current = "fighting";
+    setPhase("fighting");
+    boxingSfx.fightBell();
+    boxingSfx.announce(nextRound === MAX_ROUNDS ? "Final round!" : `Round ${nextRound}!`);
+    send({ t: "round_start", round: nextRound });
+    bump();
+  }, []);
+
+  const endRound = useCallback((w: LiveSide | null, reason: "ko" | "decision") => {
+    if (finishedRef.current || roundEndingRef.current || phaseRef.current !== "fighting") return;
+    roundEndingRef.current = true;
+
+    const currentRound = roundRef.current;
+    const nextWins = { ...roundWinsRef.current };
+    if (w) nextWins[w] += 1;
+    roundWinsRef.current = nextWins;
+    setRoundWinner(w);
+    phaseRef.current = "between";
+    setPhase("between");
+
+    if (w) setAnim(w === "me" ? "opp" : "me", "ko", 2200);
+    const { myName: mn, oppName: on } = namesRef.current;
+    const winnerName = w === "me" ? (mn || "You") : w === "opp" ? (on || "Your opponent") : null;
+    boxingSfx.fightBell();
+    boxingSfx.announce(
+      w
+        ? `${winnerName} wins round ${currentRound}${reason === "ko" ? " by knockout" : ""}!`
+        : `Round ${currentRound} is even!`,
+    );
+
+    const clinched = nextWins.me >= 3 || nextWins.opp >= 3;
+    const lastRound = currentRound >= MAX_ROUNDS;
+
+    if (clinched || lastRound) {
+      const matchWinner: LiveSide | null =
+        nextWins.me === nextWins.opp ? null : nextWins.me > nextWins.opp ? "me" : "opp";
+      nextRoundTimerRef.current = window.setTimeout(() => finish(matchWinner, reason !== "ko"), 2600);
+      bump();
+      return;
+    }
+
+    nextRoundTimerRef.current = window.setTimeout(() => {
+      resetForRound(currentRound + 1);
+    }, 4800);
+    bump();
+  }, [finish, resetForRound]);
+
   // Crowd murmur runs only while the fight is actually live, and stops for good on unmount.
-  useEffect(() => () => boxingSfx.stopCrowd(), []);
+  useEffect(() => () => {
+    boxingSfx.stopCrowd();
+    if (nextRoundTimerRef.current) window.clearTimeout(nextRoundTimerRef.current);
+  }, []);
 
   const send = (payload: any) => {
     if (mode !== "multiplayer") return;
@@ -195,8 +271,8 @@ export function useBoxingLive({
         setMessage(o.message);
         bump();
         if (meRef.current.health <= 0) {
-          send({ t: "ko", loser: "sender" });
-          finish("opp", false);
+          send({ t: "round_ko", loser: "sender", round: roundRef.current });
+          endRound("opp", "ko");
         }
       } else if (payload.t === "g") {
         oppRef.current = { ...oppRef.current, guard: payload.guard, guardUntil: now + GUARD_MS[payload.guard as Guard] };
@@ -221,9 +297,10 @@ export function useBoxingLive({
       } else if (payload.t === "hi") {
         // A late joiner asked for a full picture of my fighter.
         send({ t: "s", health: meRef.current.health, stamina: meRef.current.stamina, advance: meRef.current.advance, anim: myAnimRef.current.anim });
-      } else if (payload.t === "ko") {
-        // Sender says they were knocked out.
-        finish("me", false);
+      } else if (payload.t === "round_ko") {
+        if (payload.round === roundRef.current) endRound("me", "ko");
+      } else if (payload.t === "round_start") {
+        if (payload.round > roundRef.current && phaseRef.current !== "over") resetForRound(payload.round);
       }
     });
 
@@ -280,7 +357,7 @@ export function useBoxingLive({
                 reactToOutcome("opp", outcome);
                 setMessage(outcome.message);
                 bump();
-                if (meRef.current.health <= 0) finish("opp", false);
+                if (meRef.current.health <= 0) endRound("opp", "ko");
               }, stats.windupMs);
             } else {
               oppPunchCdRef.current = now + 400;
@@ -298,28 +375,12 @@ export function useBoxingLive({
           }
         }
 
-        // Five-round match clock. Health carries over, while energy gets
-        // a corner recovery at each bell so later rounds stay playable.
-        const elapsedSeconds = Math.floor((now - startedAtRef.current) / 1000);
-        const currentRound = Math.min(MAX_ROUNDS, Math.floor(elapsedSeconds / ROUND_SECONDS) + 1);
-        if (currentRound !== roundRef.current && elapsedSeconds < MATCH_SECONDS) {
-          roundRef.current = currentRound;
-          meRef.current = { ...meRef.current, stamina: Math.max(meRef.current.stamina, 82), guard: null, guardUntil: 0 };
-          if (mode === "solo") {
-            oppRef.current = { ...oppRef.current, stamina: Math.max(oppRef.current.stamina, 82), guard: null, guardUntil: 0 };
-          }
-          punchCdRef.current = { jab: 0, hook: 0, uppercut: 0 };
-          guardCdRef.current = 0;
-          oppPunchCdRef.current = now + 900;
-          setMessage(`Round ${currentRound} — back to work!`);
-          boxingSfx.fightBell();
-          boxingSfx.announce(`Round ${currentRound}!`);
-        }
-
-        if (elapsedSeconds >= MATCH_SECONDS) {
+        // End this round on the bell if nobody was knocked out.
+        const roundElapsed = Math.floor((now - startedAtRef.current) / 1000);
+        if (roundElapsed >= ROUND_SECONDS) {
           const mine = meRef.current.health;
           const theirs = oppRef.current.health;
-          finish(mine === theirs ? null : mine > theirs ? "me" : "opp", true);
+          endRound(mine === theirs ? null : mine > theirs ? "me" : "opp", "decision");
         }
 
         if (mode === "multiplayer" && now - lastSync > 180) {
@@ -333,13 +394,16 @@ export function useBoxingLive({
     }, 80);
     return () => window.clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, mode, finish]);
+  }, [enabled, mode, endRound]);
 
   /* ---------------- player actions ---------------- */
   const start = useCallback(() => {
     if (phaseRef.current !== "idle") return;
     startedAtRef.current = Date.now();
     roundRef.current = 1;
+    roundWinsRef.current = { me: 0, opp: 0 };
+    roundEndingRef.current = false;
+    setRoundWinner(null);
     phaseRef.current = "fighting";
     setPhase("fighting");
     oppPunchCdRef.current = Date.now() + 900;
@@ -387,10 +451,13 @@ export function useBoxingLive({
         setMessage(outcome.message);
         send({ t: "p", outcome });
         bump();
-        if (oppRef.current.health <= 0) finish("me", false);
+        if (oppRef.current.health <= 0) {
+          send({ t: "round_ko", loser: "receiver", round: roundRef.current });
+          endRound("me", "ko");
+        }
       }, stats.windupMs);
     },
-    [finish],
+    [endRound],
   );
 
   const guard = useCallback((g: Guard) => {
@@ -426,17 +493,15 @@ export function useBoxingLive({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [snapshot]);
 
-  const elapsedSeconds =
+  const round = roundRef.current;
+  const roundElapsed =
     phaseRef.current === "fighting" ? Math.max(0, Math.floor((now - startedAtRef.current) / 1000)) : 0;
-  const round =
-    phaseRef.current === "fighting"
-      ? Math.min(MAX_ROUNDS, Math.floor(elapsedSeconds / ROUND_SECONDS) + 1)
-      : 1;
-  const secondsIntoRound = elapsedSeconds % ROUND_SECONDS;
   const secondsLeft =
     phaseRef.current === "fighting"
-      ? Math.max(0, ROUND_SECONDS - secondsIntoRound)
-      : ROUND_SECONDS;
+      ? Math.max(0, ROUND_SECONDS - roundElapsed)
+      : phaseRef.current === "between"
+        ? 0
+        : ROUND_SECONDS;
 
   return {
     me: meRef.current,
@@ -447,6 +512,8 @@ export function useBoxingLive({
     secondsLeft,
     round,
     maxRounds: MAX_ROUNDS,
+    roundWins: roundWinsRef.current,
+    roundWinner,
     message,
     myAnim: myAnimRef.current.anim,
     oppAnim: oppAnimRef.current.anim,
