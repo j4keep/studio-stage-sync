@@ -36,7 +36,7 @@ export default function GameShellPro({
       className="min-h-[100dvh] pb-24 text-foreground"
       style={{
         background:
-          "radial-gradient(120% 70% at 50% -10%, hsl(150 30% 24%) 0%, hsl(150 32% 13%) 45%, hsl(152 35% 8%) 100%)",
+          "radial-gradient(120% 70% at 50% -10%, hsl(215 38% 18%) 0%, hsl(222 34% 9%) 50%, hsl(225 35% 5%) 100%)",
       }}
     >
 
@@ -45,10 +45,10 @@ export default function GameShellPro({
           <button
             type="button"
             onClick={() => navigate("/games")}
-            aria-label="Back"
-            className="rounded-full bg-white/5 p-2 text-white active:scale-95"
+            aria-label="Exit game"
+            className="flex h-9 items-center gap-1.5 rounded-full border border-white/15 bg-black/35 px-3 text-[11px] font-black text-white/90 active:scale-95"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" /> Exit
           </button>
           <div className="min-w-0 flex-1 text-center">
             <h1 className="truncate text-lg font-black tracking-tight text-white">{title}</h1>
