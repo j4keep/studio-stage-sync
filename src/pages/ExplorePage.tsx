@@ -29,6 +29,18 @@ type ExploreItem = {
   adultsOnly?: boolean;
 };
 
+const FEATURED_DEAL_ITEM: ExploreItem = {
+  id: "deals",
+  label: "Deals",
+  subtitle: "Local savings & limited offers",
+  route: "/deals",
+  icon: BadgePercent,
+  surface: "bg-amber-50 dark:bg-amber-950/30",
+  iconSurface: "bg-amber-100 dark:bg-amber-900/60",
+  iconColor: "text-amber-700 dark:text-amber-300",
+  keywords: ["deal", "coupon", "discount", "offer", "local", "savings"],
+};
+
 const EXPLORE_ITEMS: ExploreItem[] = [
   {
     id: "books",
@@ -62,17 +74,6 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     iconSurface: "bg-cyan-100 dark:bg-cyan-900/60",
     iconColor: "text-cyan-700 dark:text-cyan-300",
     keywords: ["local", "help", "services", "trusted", "people", "repair", "pro"],
-  },
-  {
-    id: "deals",
-    label: "Deals",
-    subtitle: "Local savings & limited offers",
-    route: "/deals",
-    icon: BadgePercent,
-    surface: "bg-amber-50 dark:bg-amber-950/30",
-    iconSurface: "bg-amber-100 dark:bg-amber-900/60",
-    iconColor: "text-amber-700 dark:text-amber-300",
-    keywords: ["deal", "coupon", "discount", "offer", "local", "savings"],
   },
   {
     id: "marketplace",
@@ -130,7 +131,7 @@ const EXPLORE_ITEMS: ExploreItem[] = [
     keywords: ["circle", "community", "friends", "groups", "people", "network"],
   },
 ];
-const ORDER_KEY = "yaj.explore.card-order.v11";
+const ORDER_KEY = "yaj.explore.card-order.v12";
 
 function loadOrder(): string[] {
   try {
@@ -177,7 +178,7 @@ export default function ExplorePage() {
   const filteredItems = useMemo(() => {
     const needle = query.trim().toLowerCase();
     if (!needle) return orderedItems;
-    return orderedItems.filter((item) => {
+    return [FEATURED_DEAL_ITEM, ...orderedItems].filter((item) => {
       const text = [item.label, item.subtitle, ...(item.keywords ?? [])].join(" ").toLowerCase();
       return text.includes(needle);
     });
@@ -267,6 +268,28 @@ export default function ExplorePage() {
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-10 pt-4 lg:max-w-none lg:px-6 lg:pb-14 lg:pt-6">
+        {!query && (
+          <section className="mb-5">
+            <button
+              type="button"
+              onClick={() => navigate("/deals")}
+              className="flex w-full items-center gap-4 rounded-[22px] border border-border/70 bg-card px-4 py-4 text-left shadow-sm transition hover:shadow-md active:scale-[0.99]"
+              aria-label="Open Deals"
+            >
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 shadow-inner dark:bg-amber-900/60 dark:text-amber-300">
+                <BadgePercent className="h-7 w-7" strokeWidth={2.15} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[16px] font-bold tracking-tight text-foreground">Deals</p>
+                <p className="mt-0.5 text-[12px] font-medium leading-relaxed text-muted-foreground">
+                  Local savings & limited offers near you.
+                </p>
+              </div>
+              <span className="text-lg font-semibold text-muted-foreground">›</span>
+            </button>
+          </section>
+        )}
+
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
