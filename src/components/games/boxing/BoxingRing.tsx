@@ -125,6 +125,8 @@ export default function BoxingRing({
   cooldowns,
   guardCooldown,
   secondsLeft,
+  round,
+  maxRounds,
   message,
   interactive,
   finished,
@@ -162,6 +164,8 @@ export default function BoxingRing({
   cooldowns: Record<Punch, number>;
   guardCooldown: number;
   secondsLeft: number;
+  round: number;
+  maxRounds: number;
   message: string | null;
   interactive: boolean;
   finished: boolean;
@@ -372,13 +376,16 @@ export default function BoxingRing({
               {myName}
             </p>
 
-            <StatBar label="HP" value={myHealth} max={100} tone="health" />
+            <StatBar label="Health" value={myHealth} max={100} tone="health" />
             <div className="mt-1">
-              <StatBar label="STA" value={myStamina} max={100} tone="stamina" />
+              <StatBar label="Energy" value={myStamina} max={100} tone="stamina" />
             </div>
           </div>
         </div>
         <div className="mt-0.5 flex flex-col items-center gap-1">
+          <span className="rounded-full bg-black/70 px-3 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-amber-200">
+            Round {round}/{maxRounds}
+          </span>
           <span className="rounded-full bg-black/60 px-3 py-0.5 font-mono text-[11px] font-black tabular-nums text-white">{clock}</span>
           <span className="rounded-full bg-black/45 px-2 py-0.5 text-[9px] font-black uppercase tracking-wider text-white/80">{statusLabel}</span>
         </div>
@@ -389,9 +396,9 @@ export default function BoxingRing({
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: oppAccent }} />
 
             </p>
-            <StatBar label="HP" value={oppHealth} max={100} tone="health" />
+            <StatBar label="Health" value={oppHealth} max={100} tone="health" />
             <div className="mt-1">
-              <StatBar label="STA" value={oppStamina} max={100} tone="stamina" />
+              <StatBar label="Energy" value={oppStamina} max={100} tone="stamina" />
             </div>
           </div>
           <GameMenu
