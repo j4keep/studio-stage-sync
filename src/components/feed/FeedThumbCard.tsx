@@ -54,7 +54,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
     video.setAttribute("webkit-playsinline", "true");
     video.loop = true;
     video.playsInline = true;
-    video.preload = "auto";
+    video.preload = "none";
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -156,7 +156,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               muted
               loop
               playsInline
-              preload="auto"
+              preload="none"
               onLoadedData={() => setVideoReady(true)}
               onCanPlay={() => setVideoReady(true)}
               className="absolute inset-0 h-full w-full object-cover pointer-events-none"
@@ -169,14 +169,15 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               />
             ) : null}
           </>
-        ) : isVideo && post.media_url ? (
-          <VideoPoster
-            src={post.media_url}
-            poster={coverUrl}
+        ) : isVideo && coverUrl ? (
+          <img
+            src={coverUrl}
             alt={title || "Video preview"}
+            loading="lazy"
+            draggable={false}
             className="absolute inset-0 h-full w-full object-cover pointer-events-none"
           />
-        ) : thumbSrc ? (
+        ) : !isVideo && thumbSrc ? (
           <img
             src={thumbSrc}
             alt={title || "Post preview"}
