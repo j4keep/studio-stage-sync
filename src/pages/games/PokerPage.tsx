@@ -253,7 +253,7 @@ export default function PokerPage() {
   const resultDetail = matchOver ? `Final stacks — you $${poker.stacks[mySeat]} · ${oppLabel} $${poker.stacks[oppSeat]}` : undefined;
 
   return (
-    <LandscapeStage auto>
+    <LandscapeStage auto title="Texas Hold'em" onExit={() => navigate("/games")}>
       <div className="relative h-full w-full">
         {seated && (
           <PokerTable
