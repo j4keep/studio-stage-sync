@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Bot, Gamepad2, Play, Trophy, UserRound, X } from "lucide-react";
+import { ArrowLeft, Bot, Play, Trophy, UserRound } from "lucide-react";
 import GameQuickActions, { GameMatchup, GameRecordStats } from "@/components/games/GameQuickActions";
 import CharacterSkinPickerSheet from "@/components/CharacterSkinPickerSheet";
 
@@ -28,7 +28,7 @@ type Props = {
   extraContent?: ReactNode;
 };
 
-const ACCENT = "hsl(275 85% 68%)";
+const ACCENT = "hsl(196 92% 62%)";
 
 function Face({ p }: { p: Player }) {
   return (
@@ -81,7 +81,7 @@ export default function GameIntro({
       className="fixed inset-0 z-[70] flex flex-col items-center justify-between overflow-y-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] animate-fade-in"
       style={{
         background:
-          "radial-gradient(110% 70% at 50% 0%, hsl(268 55% 22%) 0%, hsl(250 45% 10%) 55%, hsl(240 45% 5%) 100%)",
+          "radial-gradient(110% 70% at 50% 0%, hsl(215 38% 18%) 0%, hsl(222 34% 9%) 55%, hsl(225 35% 5%) 100%)",
       }}
     >
       {artUrl && (
@@ -106,10 +106,9 @@ export default function GameIntro({
           onClick={onBack}
           aria-label="Leave game"
           className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[10px] font-black text-white active:scale-95"
-          style={{ borderColor: ACCENT, background: "rgba(10,6,20,0.7)", boxShadow: `0 0 14px ${ACCENT}55` }}
+          style={{ borderColor: ACCENT, background: "rgba(8,12,18,0.82)", boxShadow: `0 0 14px ${ACCENT}55` }}
         >
-          <Gamepad2 className="h-3.5 w-3.5" style={{ color: ACCENT }} /> YAJ Game
-          <X className="ml-1 h-3 w-3 opacity-70" />
+          <ArrowLeft className="h-3.5 w-3.5" /> Exit
         </button>
         <div className="flex items-center gap-2">
           {showCharacterCustomize && (
@@ -145,7 +144,7 @@ export default function GameIntro({
         >
           <div
             className="w-full max-w-xs rounded-2xl border p-4"
-            style={{ borderColor: ACCENT, background: "hsl(255 40% 12%)", boxShadow: `0 0 30px ${ACCENT}55` }}
+            style={{ borderColor: ACCENT, background: "hsl(220 30% 10%)", boxShadow: `0 0 30px ${ACCENT}55` }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-2 flex items-center justify-between">
@@ -184,15 +183,15 @@ export default function GameIntro({
           onClick={onStart}
           className="flex w-full max-w-sm items-center justify-center gap-3 rounded-full px-7 py-3.5 text-white active:scale-95"
           style={{
-            background: "linear-gradient(135deg, hsl(275 75% 52%), hsl(255 80% 46%))",
+            background: "linear-gradient(135deg, hsl(200 88% 52%), hsl(218 82% 54%))",
             border: `2px solid ${ACCENT}`,
             boxShadow: `0 0 30px ${ACCENT}99, 0 6px 14px rgba(0,0,0,0.55)`,
           }}
         >
           <Play className="h-5 w-5" fill="currentColor" />
           <span className="text-left leading-tight">
-            <span className="block text-lg font-black">Tap to Play</span>
-            <span className="block text-[11px] font-semibold opacity-90">and Start the Game</span>
+            <span className="block text-lg font-black">Start Game</span>
+            <span className="block text-[11px] font-semibold opacity-90">Enter the match</span>
           </span>
         </button>
 
