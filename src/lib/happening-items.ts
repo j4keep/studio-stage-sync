@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { listMarketplaceListings, listingCoverUrl } from "@/lib/marketplace-api";
 import { parsePostCaption } from "@/lib/post-editor";
-import { isPurgedFeedVideoPost } from "@/lib/clear-feed-videos";
 
 export type HappeningKind =
   | "post"
@@ -94,7 +93,6 @@ export async function fetchHappeningItems(opts: {
   ]);
 
   for (const post of postsResult.data || []) {
-    if (isPurgedFeedVideoPost(post)) continue;
     const { caption, meta } = parsePostCaption(post.caption);
     const title = safeTitle(meta?.title || caption?.split("\n")[0], "New post");
     items.push({
