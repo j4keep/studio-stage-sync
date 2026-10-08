@@ -4,6 +4,7 @@ import { ArrowLeft, Gauge, Play, RotateCcw, Share2, Sparkles } from "lucide-reac
 import { useAuth } from "@/contexts/AuthContext";
 import { bumpStats, getMyStats } from "@/lib/games";
 import { toast } from "@/hooks/use-toast";
+import { yajDashSfx } from "@/lib/yaj-dash-sfx";
 
 type Item = { id: number; lane: number; y: number; kind: "star" | "rock" };
 
@@ -84,6 +85,8 @@ export default function YajDashPage() {
       setRunning(false);
       setOver(true);
       setFlash("hit");
+      void yajDashSfx.hit();
+      window.setTimeout(() => void yajDashSfx.gameOver(), 120);
       window.setTimeout(() => setFlash(null), 450);
       if (raf.current) cancelAnimationFrame(raf.current);
       raf.current = null;
@@ -121,6 +124,8 @@ export default function YajDashPage() {
               scoreRef.current += 10 + Math.min(streakRef.current * 2, 20);
               setScore(Math.floor(scoreRef.current));
               setFlash("star");
+              void yajDashSfx.pickup(streakRef.current);
+              void yajDashSfx.streak(streakRef.current);
               window.setTimeout(() => setFlash(null), 180);
               continue;
             }
@@ -144,6 +149,7 @@ export default function YajDashPage() {
   );
 
   const start = () => {
+    void yajDashSfx.prime().then(() => yajDashSfx.start());
     scoreRef.current = 0;
     streakRef.current = 0;
     setScore(0);
@@ -166,6 +172,7 @@ export default function YajDashPage() {
 
   const move = (dir: -1 | 1) => {
     if (!running) return;
+    void yajDashSfx.prime().then(() => yajDashSfx.swipe());
     setLane((l) => Math.max(0, Math.min(LANES - 1, l + dir)));
     try {
       navigator.vibrate?.(8);
@@ -242,6 +249,7 @@ export default function YajDashPage() {
       <main
         className="relative h-full w-full overflow-hidden"
         onTouchStart={(e) => {
+          void yajDashSfx.prime();
           touchStartX.current = e.touches[0].clientX;
         }}
         onTouchEnd={(e) => {
