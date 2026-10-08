@@ -8,6 +8,7 @@ import {
   ImagePlus,
   Loader2,
   Sparkles,
+  Trash2,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +48,8 @@ export default function LocalHelpBusinessPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [exists, setExists] = useState(false);
 
   const [businessName, setBusinessName] = useState("");
@@ -225,6 +228,59 @@ export default function LocalHelpBusinessPage() {
       toast.error(e?.message || "Could not save business");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const deleteBusinessProfile = async () => {
+    if (!user || !exists || deleting) return;
+    setDeleting(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("pro_profiles")
+        .delete()
+        .eq("user_id", user.id);
+      if (error) throw error;
+
+      // Best-effort cleanup of Local Help uploads. Deleting the service profile
+      // never deletes the user's main YAJ account, messages, or general profile.
+      try {
+        const folder = `local-help/${user.id}`;
+        const { data: files } = await supabase.storage.from("media").list(folder, { limit: 100 });
+        const paths = (files || [])
+          .filter((file) => file.name && file.name !== ".emptyFolderPlaceholder")
+          .map((file) => `${folder}/${file.name}`);
+        if (paths.length) await supabase.storage.from("media").remove(paths);
+      } catch {
+        /* profile deletion succeeded; storage cleanup is non-blocking */
+      }
+
+      setDeleteOpen(false);
+      setExists(false);
+      setBusinessName("");
+      setAbout("");
+      setHourly("");
+      setArea("");
+      setWebsite("");
+      setHours("Mon–Fri 9am–6pm");
+      setCerts("");
+      setLanguages("English");
+      setInsurance("");
+      setSpecialties("");
+      setLogoUrl(null);
+      setBannerUrl(null);
+      setMedia([]);
+      setCategories(["handyman"]);
+      setProjectTypes(defaultServiceMap(PROJECT_TYPES, false));
+      setWorkFocus(defaultServiceMap(WORK_FOCUS, false));
+      setIsActive(true);
+      setHiredCount(0);
+      setVerified(false);
+      toast.success("Local Help business profile deleted");
+      nav("/local-help", { replace: true });
+    } catch (e: any) {
+      toast.error(e?.message || "Could not delete business profile");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -678,6 +734,54 @@ export default function LocalHelpBusinessPage() {
               className="h-11 w-full rounded-2xl border border-border text-sm font-bold disabled:opacity-60"
             >
               Save draft
+            </button>
+            {exists && (
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setDeleteOpen(true)}
+                className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 text-sm font-bold text-destructive disabled:opacity-60"
+              >
+                <Trash2 className="h-4 w-4" /> Delete Local Help business profile
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {deleteOpen && (
+        <div
+          className="fixed inset-0 z-[90] flex items-end justify-center bg-black/55 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:items-center"
+          onClick={() => !deleting && setDeleteOpen(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-3xl border border-border bg-background p-5 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <h3 className="mt-3 text-lg font-black">Delete business profile?</h3>
+            <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+              This removes your Local Help contractor/business listing, services, portfolio and search visibility.
+              Your main YAJ account will stay active.
+            </p>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void deleteBusinessProfile()}
+              className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-destructive text-sm font-black text-destructive-foreground disabled:opacity-60"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              {deleting ? "Deleting…" : "Yes, delete business profile"}
+            </button>
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => setDeleteOpen(false)}
+              className="mt-2 h-11 w-full rounded-2xl border border-border text-sm font-bold disabled:opacity-60"
+            >
+              Cancel
             </button>
           </div>
         </div>
