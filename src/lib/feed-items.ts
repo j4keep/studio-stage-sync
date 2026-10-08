@@ -1,7 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { parsePostCaption } from "@/lib/post-editor";
 import { listBlockedPeerIds } from "@/lib/blocks";
-import { isPurgedFeedVideoPost } from "@/lib/clear-feed-videos";
 
 /** Classify a post row into the "reel" (short/fast) column or "post" (long) column. */
 export function isReelItem(item: any): boolean {
@@ -51,7 +50,7 @@ export const fetchFeedItems = async ({ currentUserId, userId }: FetchFeedItemsOp
   const visiblePosts = (blockedIds.size
     ? posts.filter((post: any) => !blockedIds.has(post.user_id))
     : posts
-  ).filter((post: any) => !isPurgedFeedVideoPost(post));
+  );
 
   if (visiblePosts.length === 0) return [];
 
