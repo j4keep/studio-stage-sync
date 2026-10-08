@@ -430,8 +430,9 @@ function drawStar(g: CanvasRenderingContext2D, cx: number, cy: number, r: number
 /** The blocky YAJ Adventure character, side-on, with limb animation. */
 function drawPlayer(g: CanvasRenderingContext2D, st: TowerState, x: number, yTopRaw: number, cam: Camera, skinColor?: string) {
   const skin = skinColor || "#FFCC4D";
-  // Art-only upscale so the shared YAJ Adventure character reads as big as in Obby.
-  const ART = 1.45;
+  // Keep the Tower Escape character visually consistent with Neighborhood Adventure.
+  // Physics dimensions stay unchanged; this only affects the rendered art size.
+  const ART = 1.1;
   const s = cam.scale * ART;
   const w = PLAYER_W * s;
   const hh = PLAYER_H * s;
