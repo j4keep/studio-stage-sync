@@ -49,10 +49,10 @@ export function isTouchFeedDevice() {
 }
 
 export function getFeedMountRadius() {
-  // Launch testing: keep the active post plus one adjacent card mounted so the
-  // next video can buffer before the swipe. This restores smooth pre-play
-  // without mounting the entire feed at once.
-  return 1;
+  // iOS Safari has a small decoder budget. Keep only the active fullscreen
+  // video mounted on touch devices so Home previews + feed playback never
+  // compete and freeze the app. Desktop can keep one neighbor for smoother nav.
+  return isTouchFeedDevice() ? 0 : 1;
 }
 
 /** Wait until Safari has enough buffered to start playback — never call load() (resets decoder). */
