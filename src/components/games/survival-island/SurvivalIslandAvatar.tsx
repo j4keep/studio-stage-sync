@@ -47,7 +47,7 @@ function Avatar({ stateRef, cameraRef }: Props) {
   });
 
   return (
-    <group ref={group} scale={36}>
+    <group ref={group} scale={34}>
       <ObbyAvatar color="#5b8cff" skin={skinTone} moving={moving} airborne={false} />
     </group>
   );
