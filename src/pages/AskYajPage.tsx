@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip, Settings2 } from "lucide-react";
+import { ArrowUp, Trash2, X, Music2, Mic, Square, Volume2, Loader2, ImagePlus, Plus, AudioLines, Paperclip, Settings2, Camera, Images, FileText } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import YajAiGeneratorIcon from "@/components/YajAiGeneratorIcon";
 import YajVoiceMode from "@/components/YajVoiceMode";
@@ -27,7 +27,8 @@ import {
 type ContentPart =
   | { type: "text"; text: string }
   | { type: "input_audio"; input_audio: { data: string; format: string } }
-  | { type: "image_url"; image_url: { url: string } };
+  | { type: "image_url"; image_url: { url: string } }
+  | { type: "file"; file: { filename: string; file_data: string } };
 
 type Msg = {
   role: "user" | "assistant";
@@ -37,15 +38,17 @@ type Msg = {
   imageUrl?: string;
   /** Preview of a camera frame the user showed YAJ (also may live in content). */
   cameraPreviewUrl?: string;
+  attachmentName?: string;
+  attachmentKind?: "image" | "file";
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ask-yaj`;
 
 const SUGGESTIONS = [
-  "Help me find a creative collaborator in my community",
-  "Give me a launch plan for my next song",
-  "Write a strong post for a new opportunity",
-  "How can I grow my Circle and keep people engaged?",
+  "How do I use Find Local Help and hire someone?",
+  "Show me where to change my YAJ profile and settings",
+  "How do I contact customer service or report a problem?",
+  "What can I do in Explore and where should I start?",
 ];
 
 // Map a File's MIME type to the format string Lovable AI Gateway expects.
@@ -73,6 +76,15 @@ async function fileToBase64(file: File): Promise<string> {
   });
 }
 
+async function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 // Strip UI-only fields. Keep camera images only on the latest user turn so
 // history stays light; older frames become a short text placeholder.
 function toApiMessages(messages: Msg[]) {
@@ -92,7 +104,10 @@ function toApiMessages(messages: Msg[]) {
     const keepImages = m.role === "user" && i === lastUserIdx;
     const parts = m.content.flatMap((p): ContentPart[] => {
       if (p.type === "image_url" && !keepImages) {
-        return [{ type: "text", text: "[Previously showed a photo from the camera]" }];
+        return [{ type: "text", text: "[Previously attached an image]" }];
+      }
+      if (p.type === "file" && !keepImages) {
+        return [{ type: "text", text: `[Previously attached file: ${p.file.filename}]` }];
       }
       return [p];
     });
@@ -106,6 +121,8 @@ const AskYajPage = () => {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; dataUrl: string; type: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -118,6 +135,9 @@ const AskYajPage = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MicRecorder | null>(null);
   const messagesRef = useRef<Msg[]>([]);
   const wellnessVoiceLaunchRef = useRef(false);
@@ -250,6 +270,52 @@ const AskYajPage = () => {
     setAudioFile(file);
   };
 
+  const handleImageChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Image required", description: "Choose a photo or image file.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      toast({ title: "Image too large", description: "Choose an image under 12MB.", variant: "destructive" });
+      return;
+    }
+    try {
+      setAttachedImage({ name: file.name || "Photo", dataUrl: await fileToDataUrl(file) });
+      setAttachedFile(null);
+      setMenuOpen(false);
+      inputRef.current?.focus();
+    } catch {
+      toast({ title: "Couldn't attach image", variant: "destructive" });
+    }
+  };
+
+  const handleDocumentChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const allowed = /pdf|text|csv|json|xml|html|markdown|msword|officedocument/i.test(file.type) ||
+      /\.(pdf|txt|md|csv|json|xml|html?|docx?)$/i.test(file.name);
+    if (!allowed) {
+      toast({ title: "Unsupported file", description: "Use PDF, Word, text, CSV, JSON, XML, HTML, or Markdown.", variant: "destructive" });
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Keep documents under 10MB.", variant: "destructive" });
+      return;
+    }
+    try {
+      setAttachedFile({ name: file.name, dataUrl: await fileToDataUrl(file), type: file.type || "application/octet-stream" });
+      setAttachedImage(null);
+      setMenuOpen(false);
+      inputRef.current?.focus();
+    } catch {
+      toast({ title: "Couldn't attach file", variant: "destructive" });
+    }
+  };
+
   const generateImage = async (prompt: string) => {
     setMessages((prev) => [...prev, { role: "user", content: prompt }]);
     setInput("");
@@ -272,8 +338,8 @@ const AskYajPage = () => {
     text: string,
     options?: { imageDataUrl?: string },
   ): Promise<string> => {
-    const imageDataUrl = options?.imageDataUrl;
-    if ((!text.trim() && !audioFile && !imageDataUrl) || isLoading) return "";
+    const imageDataUrl = options?.imageDataUrl || attachedImage?.dataUrl;
+    if ((!text.trim() && !audioFile && !imageDataUrl && !attachedFile) || isLoading) return "";
 
     // Camera vision is recognition, not "generate an image".
     if (!audioFile && !imageDataUrl && (imageMode || looksLikeImageRequest(text))) {
@@ -284,6 +350,8 @@ const AskYajPage = () => {
     let userContent: string | ContentPart[];
     let audioName: string | undefined;
     let cameraPreviewUrl: string | undefined;
+    let attachmentName: string | undefined;
+    let attachmentKind: "image" | "file" | undefined;
 
     if (audioFile) {
       const format = audioFormatFromMime(audioFile.type)!;
@@ -293,8 +361,17 @@ const AskYajPage = () => {
         { type: "text", text: text.trim() || "Listen to this clip — analyze it and tell me what you hear." },
         { type: "input_audio", input_audio: { data, format } },
       ];
+    } else if (attachedFile) {
+      attachmentName = attachedFile.name;
+      attachmentKind = "file";
+      userContent = [
+        { type: "text", text: text.trim() || `Read ${attachedFile.name} and summarize the important information for me.` },
+        { type: "file", file: { filename: attachedFile.name, file_data: attachedFile.dataUrl } },
+      ];
     } else if (imageDataUrl) {
       cameraPreviewUrl = imageDataUrl;
+      attachmentName = attachedImage?.name || "Photo";
+      attachmentKind = "image";
       userContent = [
         {
           type: "text",
@@ -308,11 +385,13 @@ const AskYajPage = () => {
       userContent = text.trim();
     }
 
-    const userMsg: Msg = { role: "user", content: userContent, audioName, cameraPreviewUrl };
+    const userMsg: Msg = { role: "user", content: userContent, audioName, cameraPreviewUrl, attachmentName, attachmentKind };
     const allMessages = [...messagesRef.current, userMsg];
     setMessages(allMessages);
     setInput("");
     setAudioFile(null);
+    setAttachedImage(null);
+    setAttachedFile(null);
     setIsLoading(true);
 
     let assistantSoFar = "";
@@ -439,6 +518,12 @@ const AskYajPage = () => {
             <span className="truncate max-w-[180px]">{msg.audioName}</span>
           </div>
         )}
+        {msg.attachmentKind === "file" && msg.attachmentName && (
+          <div className="flex items-center gap-1.5 rounded-lg bg-black/10 px-2 py-1 text-[11px]">
+            <FileText className="h-3.5 w-3.5" />
+            <span className="max-w-[200px] truncate">{msg.attachmentName}</span>
+          </div>
+        )}
         {msg.cameraPreviewUrl && (
           <img
             src={msg.cameraPreviewUrl}
@@ -490,7 +575,7 @@ const AskYajPage = () => {
             <div className="text-center">
               <h2 className="text-lg font-display font-bold text-foreground">Hey! I'm YAJ</h2>
               <p className="text-xs text-muted-foreground mt-1 max-w-[280px]">
-                Your AI community companion for ideas, opportunities, music, and building together. Your space. Your people. Your vibe.
+                Your guide to YAJ and everyday AI help — ask about the app, attach a photo or file, use voice, create ideas, and get pointed to the right place.
               </p>
             </div>
             <div className="grid grid-cols-1 gap-2 w-full max-w-sm mt-2">
@@ -569,6 +654,24 @@ const AskYajPage = () => {
             </button>
           </div>
         )}
+        {attachedImage && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+            <img src={attachedImage.dataUrl} alt="" className="h-10 w-10 rounded-lg object-cover" />
+            <span className="flex-1 truncate">{attachedImage.name}</span>
+            <button onClick={() => setAttachedImage(null)} className="text-muted-foreground hover:text-destructive">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
+        {attachedFile && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+            <FileText className="h-4 w-4 text-primary" />
+            <span className="flex-1 truncate">{attachedFile.name}</span>
+            <button onClick={() => setAttachedFile(null)} className="text-muted-foreground hover:text-destructive">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
         {imageMode && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/30 text-xs text-foreground">
             <ImagePlus className="w-3.5 h-3.5 text-primary" />
@@ -579,26 +682,52 @@ const AskYajPage = () => {
           </div>
         )}
         {menuOpen && (
-          <div className="rounded-2xl bg-card border border-border overflow-hidden">
+          <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+            <div className="grid grid-cols-3 border-b border-border">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                className="flex flex-col items-center gap-1.5 px-2 py-3 text-[11px] font-semibold text-foreground active:bg-muted"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><Camera className="h-4 w-4" /></span>
+                Camera
+              </button>
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="flex flex-col items-center gap-1.5 border-x border-border px-2 py-3 text-[11px] font-semibold text-foreground active:bg-muted"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><Images className="h-4 w-4" /></span>
+                Photos
+              </button>
+              <button
+                type="button"
+                onClick={() => documentInputRef.current?.click()}
+                className="flex flex-col items-center gap-1.5 px-2 py-3 text-[11px] font-semibold text-foreground active:bg-muted"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-muted"><FileText className="h-4 w-4" /></span>
+                Files
+              </button>
+            </div>
             <button
               onClick={() => { setMenuOpen(false); setImageMode(true); inputRef.current?.focus(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors"
+              className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground transition-colors hover:bg-muted"
             >
-              <ImagePlus className="w-4 h-4 text-muted-foreground" />
+              <ImagePlus className="h-4 w-4 text-muted-foreground" />
               Create an image
             </button>
             <button
               onClick={() => { setMenuOpen(false); handlePickAudio(); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+              className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-sm text-foreground transition-colors hover:bg-muted"
             >
-              <Paperclip className="w-4 h-4 text-muted-foreground" />
+              <Paperclip className="h-4 w-4 text-muted-foreground" />
               Attach an audio clip
             </button>
             <button
               onClick={() => { setMenuOpen(false); navigate("/ask-yaj/settings"); }}
-              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted transition-colors border-t border-border"
+              className="flex w-full items-center gap-3 border-t border-border px-4 py-3 text-sm text-foreground transition-colors hover:bg-muted"
             >
-              <Settings2 className="w-4 h-4 text-muted-foreground" />
+              <Settings2 className="h-4 w-4 text-muted-foreground" />
               YAJ AI settings
             </button>
           </div>
@@ -610,6 +739,28 @@ const AskYajPage = () => {
             accept="audio/*,.mp3,.wav,.m4a,.webm,.ogg,.flac,.aac"
             className="hidden"
             onChange={handleAudioChosen}
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => void handleImageChosen(e)}
+          />
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => void handleImageChosen(e)}
+          />
+          <input
+            ref={documentInputRef}
+            type="file"
+            accept=".pdf,.txt,.md,.csv,.json,.xml,.html,.htm,.doc,.docx,application/pdf,text/*,application/json"
+            className="hidden"
+            onChange={(e) => void handleDocumentChosen(e)}
           />
           <button
             onClick={() => setMenuOpen((v) => !v)}
@@ -629,8 +780,8 @@ const AskYajPage = () => {
                 ? "Listening… tap stop when you're done"
                 : imageMode
                   ? "Describe the image you want..."
-                  : audioFile
-                    ? "Add a note (optional)..."
+                  : audioFile || attachedImage || attachedFile
+                    ? "Ask YAJ about this attachment..."
                     : "Ask YAJ anything..."
             }
             rows={1}
@@ -653,7 +804,7 @@ const AskYajPage = () => {
               <Mic className="w-4 h-4" />
             )}
           </button>
-          {input.trim() || audioFile ? (
+          {input.trim() || audioFile || attachedImage || attachedFile ? (
             <button
               onClick={() => void sendAndMaybeSpeak(input)}
               disabled={isLoading}
