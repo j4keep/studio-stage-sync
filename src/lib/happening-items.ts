@@ -45,6 +45,11 @@ function safeTitle(value: string | null | undefined, fallback: string) {
   return t || fallback;
 }
 
+function isVideoMediaType(value: unknown) {
+  const type = String(value || "").toLowerCase();
+  return type === "video" || type.startsWith("video/");
+}
+
 async function withTimeout<T>(value: PromiseLike<T>, fallback: T, ms = 4500): Promise<T> {
   let timer: number | undefined;
   try {
@@ -132,9 +137,9 @@ export async function fetchHappeningItems(opts: {
       kind: "post",
       title,
       subtitle: "Post",
-      coverUrl: meta?.coverUrl || (post.media_type === "image" ? post.media_url || null : null),
-      previewVideoUrl: post.media_type === "video" ? post.media_url || null : null,
-      mediaType: post.media_type === "video" ? "video" : "image",
+      coverUrl: meta?.coverUrl || (!isVideoMediaType(post.media_type) ? post.media_url || null : null),
+      previewVideoUrl: isVideoMediaType(post.media_type) ? post.media_url || null : null,
+      mediaType: isVideoMediaType(post.media_type) ? "video" : "image",
       createdAt: post.created_at,
       route: null,
       openInPostsViewer: true,
@@ -217,9 +222,9 @@ export async function fetchHappeningItems(opts: {
         kind: "event",
         title: safeTitle(row.title, "Event"),
         subtitle: "Event",
-        coverUrl: row.media_type === "video" ? null : row.media_url || null,
-        previewVideoUrl: row.media_type === "video" ? row.media_url || null : null,
-        mediaType: row.media_type === "video" ? "video" : "image",
+        coverUrl: isVideoMediaType(row.media_type) ? null : row.media_url || null,
+        previewVideoUrl: isVideoMediaType(row.media_type) ? row.media_url || null : null,
+        mediaType: isVideoMediaType(row.media_type) ? "video" : "image",
         createdAt: row.created_at,
         route: `/events/${row.id}`,
         sourceId: row.id,
