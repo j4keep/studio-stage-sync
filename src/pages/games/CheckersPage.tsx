@@ -20,6 +20,7 @@ import { bumpStats, createMultiplayerGame, createSoloGame, recordMove, updateGam
 import { gameRoute } from "@/lib/game-routes";
 import GameLiveDock from "@/components/games/live/GameLiveDock";
 import PendingChallengeGate from "@/components/games/PendingChallengeGate";
+import { checkersSfx } from "@/lib/checkers-sfx";
 
 export default function CheckersPage() {
   const { id } = useParams<{ id: string }>();
@@ -63,9 +64,17 @@ export default function CheckersPage() {
   const commit = async (move: Move) => {
     if (!game || !user || thinking) return;
 
+    const movingPiece = board[move.from];
     let { board: next, againFrom } = applyMove(board, move);
+    const promoted =
+      (movingPiece === "r" && next[move.to] === "R") ||
+      (movingPiece === "b" && next[move.to] === "B");
     let n = moveNumber + 1;
     setLastMove({ from: move.from, to: move.to });
+
+    if (move.capture !== null) checkersSfx.capture();
+    else checkersSfx.move();
+    if (promoted) window.setTimeout(() => checkersSfx.king(), 90);
 
     try {
       navigator.vibrate?.(18);
@@ -101,8 +110,15 @@ export default function CheckersPage() {
         let guard = 0;
         let cpu = checkersComputerMove(next, oppSide);
         while (cpu && guard < 12) {
+          const cpuPiece = next[cpu.from];
           const res = applyMove(next, cpu);
+          const cpuPromoted =
+            (cpuPiece === "r" && res.board[cpu.to] === "R") ||
+            (cpuPiece === "b" && res.board[cpu.to] === "B");
           setLastMove({ from: cpu.from, to: cpu.to });
+          if (cpu.capture !== null) checkersSfx.capture();
+          else checkersSfx.move();
+          if (cpuPromoted) window.setTimeout(() => checkersSfx.king(), 90);
           next = res.board;
           n += 1;
           setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: user.id });
@@ -145,6 +161,7 @@ export default function CheckersPage() {
 
     if (sideOf(board[cell]) === mySide && selectable.has(cell)) {
       setSelected(cell);
+      checkersSfx.select();
       try { navigator.vibrate?.(8); } catch { /* optional */ }
       return;
     }
