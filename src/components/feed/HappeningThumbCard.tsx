@@ -19,6 +19,7 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const visibleRef = useRef(false);
   const canPreviewVideo = isVideo && Boolean(item.previewVideoUrl);
 
   useEffect(() => {
@@ -38,7 +39,9 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry?.isIntersecting) {
+        visibleRef.current = Boolean(entry?.isIntersecting);
+        if (visibleRef.current) {
+          video.preload = "auto";
           void video.play().catch(() => {});
         } else {
           video.pause();
@@ -67,11 +70,19 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
             src={item.previewVideoUrl || undefined}
             poster={item.coverUrl || undefined}
             muted
+            defaultMuted
+            autoPlay
             loop
             playsInline
             preload="auto"
-            onLoadedData={() => setVideoReady(true)}
-            onCanPlay={() => setVideoReady(true)}
+            onLoadedData={(e) => {
+              setVideoReady(true);
+              if (visibleRef.current) void e.currentTarget.play().catch(() => {});
+            }}
+            onCanPlay={(e) => {
+              setVideoReady(true);
+              if (visibleRef.current) void e.currentTarget.play().catch(() => {});
+            }}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
           />
           {!videoReady && item.coverUrl ? (
