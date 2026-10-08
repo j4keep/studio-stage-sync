@@ -59,6 +59,7 @@ export default function YajDashPage() {
   const [best, setBest] = useState(0);
   const [streak, setStreak] = useState(0);
   const [flash, setFlash] = useState<"star" | "hit" | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
   const laneRef = useRef(1);
   const scoreRef = useRef(0);
   const streakRef = useRef(0);
@@ -67,6 +68,7 @@ export default function YajDashPage() {
   const spawn = useRef(0);
   const nextId = useRef(1);
   const touchStartX = useRef<number | null>(null);
+  const dragBaseLane = useRef(1);
 
   useEffect(() => {
     laneRef.current = lane;
@@ -156,6 +158,7 @@ export default function YajDashPage() {
     setStreak(0);
     setItems([]);
     setLane(1);
+    setDragOffset(0);
     setOver(false);
     setFlash(null);
     setRunning(true);
@@ -174,6 +177,7 @@ export default function YajDashPage() {
     if (!running) return;
     void yajDashSfx.prime().then(() => yajDashSfx.swipe());
     setLane((l) => Math.max(0, Math.min(LANES - 1, l + dir)));
+    setDragOffset(0);
     try {
       navigator.vibrate?.(8);
     } catch {
@@ -209,8 +213,8 @@ export default function YajDashPage() {
           to { transform: translateY(720px); }
         }
         @keyframes yaj-run-bob {
-          0%,100% { transform: translate(-50%,0) scale(1); }
-          50% { transform: translate(-50%,-4px) scale(1.02); }
+          0%,100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-4px) scale(1.02); }
         }
         @keyframes yaj-pickup-pop {
           0% { opacity: 0; transform: translate(-50%,-50%) scale(.6); }
@@ -247,17 +251,37 @@ export default function YajDashPage() {
       </header>
 
       <main
-        className="relative h-full w-full overflow-hidden"
+        className="relative h-full w-full touch-none overflow-hidden"
         onTouchStart={(e) => {
           void yajDashSfx.prime();
           touchStartX.current = e.touches[0].clientX;
+          dragBaseLane.current = laneRef.current;
+          setDragOffset(0);
+        }}
+        onTouchMove={(e) => {
+          const startX = touchStartX.current;
+          if (startX == null || !running) return;
+          const dx = e.touches[0].clientX - startX;
+          const maxDrag = 78;
+          const atLeftEdge = dragBaseLane.current === 0 && dx < 0;
+          const atRightEdge = dragBaseLane.current === LANES - 1 && dx > 0;
+          const resistance = atLeftEdge || atRightEdge ? 0.22 : 1;
+          setDragOffset(Math.max(-maxDrag, Math.min(maxDrag, dx * resistance)));
         }}
         onTouchEnd={(e) => {
           const startX = touchStartX.current;
           touchStartX.current = null;
-          if (startX == null) return;
+          if (startX == null) {
+            setDragOffset(0);
+            return;
+          }
           const dx = e.changedTouches[0].clientX - startX;
-          if (Math.abs(dx) > 24) move(dx < 0 ? -1 : 1);
+          setDragOffset(0);
+          if (Math.abs(dx) > 28) move(dx < 0 ? -1 : 1);
+        }}
+        onTouchCancel={() => {
+          touchStartX.current = null;
+          setDragOffset(0);
         }}
       >
         {/* dusk skyline */}
@@ -372,11 +396,21 @@ export default function YajDashPage() {
 
         {/* runner */}
         <div
-          className="yaj-runner absolute bottom-[9.5%] z-30 -translate-x-1/2 transition-[left] duration-150 ease-out"
-          style={{ left: `${[34, 50, 66][lane]}%` }}
+          className="absolute bottom-[9.5%] z-30"
+          style={{
+            left: `${[34, 50, 66][lane]}%`,
+            transform: `translateX(calc(-50% + ${dragOffset}px))`,
+            transition:
+              dragOffset !== 0
+                ? "none"
+                : "left 260ms cubic-bezier(0.22, 0.8, 0.2, 1), transform 180ms cubic-bezier(0.22, 0.8, 0.2, 1)",
+            willChange: "left, transform",
+          }}
         >
-          <div className="absolute bottom-[-7px] left-1/2 h-3 w-12 -translate-x-1/2 rounded-full bg-black/45 blur-sm" />
-          <RunnerAvatar boosting={streak >= 3} />
+          <div className="yaj-runner relative">
+            <div className="absolute bottom-[-7px] left-1/2 h-3 w-12 -translate-x-1/2 rounded-full bg-black/45 blur-sm" />
+            <RunnerAvatar boosting={streak >= 3} />
+          </div>
         </div>
 
         {flash === "star" && (
