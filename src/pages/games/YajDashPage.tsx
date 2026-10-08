@@ -6,10 +6,12 @@ import { bumpStats, getMyStats } from "@/lib/games";
 import { toast } from "@/hooks/use-toast";
 import { yajDashSfx } from "@/lib/yaj-dash-sfx";
 
-type Item = { id: number; lane: number; y: number; kind: "star" | "rock" };
+type ItemKind = "star" | "gem" | "rock" | "cone" | "crate";
+type Item = { id: number; lane: number; y: number; kind: ItemKind };
 
 const LANES = 3;
 const SPEED_BASE = 0.5;
+const isPickup = (kind: ItemKind) => kind === "star" || kind === "gem";
 
 function RunnerAvatar({ boosting = false }: { boosting?: boolean }) {
   return (
@@ -27,13 +29,47 @@ function RunnerAvatar({ boosting = false }: { boosting?: boolean }) {
   );
 }
 
-function Obstacle({ kind }: { kind: Item["kind"] }) {
+function Obstacle({ kind }: { kind: ItemKind }) {
   if (kind === "star") {
     return (
       <div className="relative flex h-12 w-12 items-center justify-center">
-        <div className="absolute h-12 w-12 rounded-full bg-amber-300/20 blur-md" />
-        <div className="relative flex h-10 w-10 items-center justify-center rounded-full border border-amber-200/70 bg-[radial-gradient(circle_at_35%_30%,#fff7b0,#facc15_60%,#d97706)] shadow-[0_0_18px_rgba(250,204,21,.75)]">
-          <Sparkles className="h-5 w-5 text-white" />
+        <div className="absolute h-10 w-10 rotate-45 rounded-[9px] border border-amber-100/60 bg-[linear-gradient(145deg,#fff3a6,#facc15_55%,#d97706)] shadow-[0_0_18px_rgba(250,204,21,.72)]" />
+        <Sparkles className="relative h-5 w-5 text-white" />
+      </div>
+    );
+  }
+
+  if (kind === "gem") {
+    return (
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <div
+          className="h-10 w-9 bg-[linear-gradient(145deg,#a5f3fc,#22d3ee_45%,#2563eb)] shadow-[0_0_18px_rgba(34,211,238,.75)]"
+          style={{ clipPath: "polygon(50% 0,100% 35%,78% 100%,22% 100%,0 35%)" }}
+        />
+        <div className="absolute top-[12px] h-3 w-3 rotate-45 border-l border-t border-white/70" />
+      </div>
+    );
+  }
+
+  if (kind === "cone") {
+    return (
+      <div className="relative h-12 w-12">
+        <div className="absolute bottom-[2px] left-1/2 h-2.5 w-11 -translate-x-1/2 rounded-sm bg-[#f97316] shadow-[0_5px_8px_rgba(0,0,0,.35)]" />
+        <div
+          className="absolute bottom-[8px] left-1/2 h-9 w-8 -translate-x-1/2 bg-[linear-gradient(90deg,#c2410c,#fb923c_50%,#c2410c)]"
+          style={{ clipPath: "polygon(50% 0,100% 100%,0 100%)" }}
+        />
+        <div className="absolute bottom-[20px] left-1/2 h-1.5 w-6 -translate-x-1/2 bg-white/90" />
+      </div>
+    );
+  }
+
+  if (kind === "crate") {
+    return (
+      <div className="relative flex h-12 w-12 items-end justify-center">
+        <div className="relative h-10 w-10 rounded-[4px] border-2 border-[#6b3519] bg-[linear-gradient(145deg,#c47a39,#8b4a22)] shadow-[0_7px_10px_rgba(0,0,0,.4)]">
+          <div className="absolute left-1/2 top-[-2px] h-[42px] w-1 -translate-x-1/2 rotate-45 bg-[#6b3519]/85" />
+          <div className="absolute left-1/2 top-[-2px] h-[42px] w-1 -translate-x-1/2 -rotate-45 bg-[#6b3519]/85" />
         </div>
       </div>
     );
@@ -69,6 +105,8 @@ export default function YajDashPage() {
   const nextId = useRef(1);
   const touchStartX = useRef<number | null>(null);
   const dragBaseLane = useRef(1);
+  const playfieldRef = useRef<HTMLElement | null>(null);
+  const runnerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     laneRef.current = lane;
@@ -112,18 +150,48 @@ export default function YajDashPage() {
         const spawnDelay = Math.max(360, 690 - Math.min(scoreRef.current, 180) * 1.4);
         if (spawn.current > spawnDelay) {
           spawn.current = 0;
-          const kind: Item["kind"] = Math.random() < 0.5 ? "star" : "rock";
+          const roll = Math.random();
+          const kind: ItemKind =
+            roll < 0.28 ? "star" :
+            roll < 0.46 ? "gem" :
+            roll < 0.64 ? "rock" :
+            roll < 0.82 ? "cone" :
+            "crate";
           next.push({ id: nextId.current++, lane: Math.floor(Math.random() * LANES), y: -9, kind });
         }
 
         const survivors: Item[] = [];
+        const fieldRect = playfieldRef.current?.getBoundingClientRect();
+        const runnerRect = runnerRef.current?.getBoundingClientRect();
+        const runnerX = runnerRect ? runnerRect.left + runnerRect.width / 2 : null;
+        const runnerY = runnerRect ? runnerRect.top + runnerRect.height * 0.55 : null;
+
         for (const it of next) {
-          const hit = it.y > 77 && it.y < 93 && it.lane === laneRef.current;
-          if (hit) {
-            if (it.kind === "star") {
+          let touching = false;
+
+          if (fieldRect && runnerX !== null && runnerY !== null) {
+            // Use the object's actual perspective position, matching the rendering math below.
+            const roadWidth = 25 + Math.max(0, it.y) * 0.62;
+            const itemX = fieldRect.left + fieldRect.width / 2 + (it.lane - 1) * roadWidth;
+            const itemY = fieldRect.top + fieldRect.height * ((31 + it.y * 0.66) / 100);
+            const dx = Math.abs(itemX - runnerX);
+            const dy = Math.abs(itemY - runnerY);
+
+            // Pickups are intentionally a little forgiving; hazards require a cleaner overlap.
+            const xHit = isPickup(it.kind) ? dx < 34 : dx < 25;
+            const yHit = isPickup(it.kind) ? dy < 35 : dy < 28;
+            touching = xHit && yHit;
+          } else {
+            // Conservative fallback for the first frame before refs are measurable.
+            touching = it.y > 81 && it.y < 89 && it.lane === laneRef.current;
+          }
+
+          if (touching) {
+            if (isPickup(it.kind)) {
               streakRef.current += 1;
               setStreak(streakRef.current);
-              scoreRef.current += 10 + Math.min(streakRef.current * 2, 20);
+              const pickupValue = it.kind === "gem" ? 14 : 10;
+              scoreRef.current += pickupValue + Math.min(streakRef.current * 2, 20);
               setScore(Math.floor(scoreRef.current));
               setFlash("star");
               void yajDashSfx.pickup(streakRef.current);
@@ -176,7 +244,11 @@ export default function YajDashPage() {
   const move = (dir: -1 | 1) => {
     if (!running) return;
     void yajDashSfx.prime().then(() => yajDashSfx.swipe());
-    setLane((l) => Math.max(0, Math.min(LANES - 1, l + dir)));
+    setLane((l) => {
+      const nextLane = Math.max(0, Math.min(LANES - 1, l + dir));
+      laneRef.current = nextLane;
+      return nextLane;
+    });
     setDragOffset(0);
     try {
       navigator.vibrate?.(8);
@@ -251,6 +323,7 @@ export default function YajDashPage() {
       </header>
 
       <main
+        ref={playfieldRef}
         className="relative h-full w-full touch-none overflow-hidden"
         onTouchStart={(e) => {
           void yajDashSfx.prime();
@@ -396,6 +469,7 @@ export default function YajDashPage() {
 
         {/* runner */}
         <div
+          ref={runnerRef}
           className="absolute bottom-[9.5%] z-30"
           style={{
             left: `${[34, 50, 66][lane]}%`,
