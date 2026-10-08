@@ -62,6 +62,41 @@ export const WORK_FOCUS: ServiceOption[] = [
   { id: "furniture", label: "Furniture" },
 ];
 
+
+export const TRADE_CATEGORY_IDS = new Set([
+  "handyman",
+  "electrician",
+  "plumbing",
+  "painting",
+  "contractor",
+  "auto",
+]);
+
+export function usesTradeServiceMatrix(categories: string[] | undefined) {
+  return Boolean(categories?.some((id) => TRADE_CATEGORY_IDS.has(id)));
+}
+
+export function categorySpecialtyPlaceholder(categories: string[] | undefined) {
+  const first = categories?.[0];
+  const examples: Record<string, string> = {
+    handyman: "Drywall repair, TV mounting, furniture assembly",
+    electrician: "Lighting, outlets, switches, troubleshooting",
+    plumbing: "Leaks, faucets, drains, fixture installation",
+    painting: "Interior walls, trim, touch-ups, exterior painting",
+    cleaning: "Deep cleaning, kitchens, bathrooms, move-out cleaning",
+    lawn: "Mowing, edging, cleanup, hedge trimming",
+    moving: "Loading, unloading, packing, furniture moving",
+    photography: "Portraits, events, real estate, editing",
+    dj: "Weddings, parties, playlists, MC services",
+    tech: "Wi-Fi setup, computers, phones, smart-home setup",
+    pets: "Dog walking, pet sitting, feeding, drop-ins",
+    catering: "Parties, trays, setup, serving",
+    auto: "Diagnostics, brakes, battery, mobile repair",
+    contractor: "Renovations, carpentry, repairs, project management",
+  };
+  return examples[first || ""] || "Add the services and specialties you want customers to find you for";
+}
+
 export const TIMELINE_OPTIONS = ["Within 48 hours", "This week", "Within 2 weeks", "Flexible"];
 export const HOURS_OPTIONS = ["Less than 2 hours", "2–4 hours", "Half day", "Full day", "Multi-day"];
 
