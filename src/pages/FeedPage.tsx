@@ -39,6 +39,8 @@ const FeedPage = () => {
   const openedPostDeepLinkRef = useRef<string | null>(null);
   const mobileFeedScrollRef = useRef<HTMLDivElement>(null);
   const desktopFeedScrollRef = useRef<HTMLElement>(null);
+  const happeningRailRef = useRef<HTMLDivElement>(null);
+  const [activeHappeningId, setActiveHappeningId] = useState<string | null>(null);
 
   const { data: items = [], isLoading } = useQuery({
     queryKey: ["feed-posts", user?.id || "public"],
@@ -95,6 +97,38 @@ const FeedPage = () => {
   }, []);
 
   useEffect(() => {
+    const firstVideo = happening.find(
+      (item) => item.mediaType === "video" && Boolean(item.previewVideoUrl),
+    );
+    setActiveHappeningId((current) => {
+      if (current && happening.some((item) => item.id === current)) return current;
+      return firstVideo?.id || null;
+    });
+  }, [happening]);
+
+  const syncHappeningPreview = () => {
+    const rail = happeningRailRef.current;
+    if (!rail) return;
+    const railRect = rail.getBoundingClientRect();
+    const center = railRect.left + railRect.width / 2;
+    let bestId: string | null = null;
+    let bestDistance = Number.POSITIVE_INFINITY;
+
+    rail.querySelectorAll<HTMLElement>("[data-happening-video='true']").forEach((card) => {
+      const rect = card.getBoundingClientRect();
+      if (rect.right <= railRect.left || rect.left >= railRect.right) return;
+      const cardCenter = rect.left + rect.width / 2;
+      const distance = Math.abs(cardCenter - center);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        bestId = card.dataset.happeningId || null;
+      }
+    });
+
+    if (bestId) setActiveHappeningId(bestId);
+  };
+
+  useEffect(() => {
     const scrollTop = () => {
       mobileFeedScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
       desktopFeedScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -123,6 +157,9 @@ const FeedPage = () => {
   }, []);
 
   const openHappeningItem = (item: HappeningItem) => {
+    happeningRailRef.current?.querySelectorAll("video").forEach((video) => {
+      try { video.pause(); } catch { /* ignore */ }
+    });
     if (item.openInPostsViewer) {
       const idx = posts.findIndex((p: any) => p.itemType === "post" && p.id === item.sourceId);
       if (idx >= 0) {
@@ -218,15 +255,37 @@ const FeedPage = () => {
       ) : happening.length === 0 ? (
         <div className="rounded-2xl border border-border bg-card px-4 py-5 text-center text-xs font-medium text-muted-foreground shadow-sm">Nothing happening yet</div>
       ) : compact ? (
-        <div className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide">
+        <div
+          ref={happeningRailRef}
+          className="flex gap-2.5 overflow-x-auto pb-1 scrollbar-hide"
+          onScroll={syncHappeningPreview}
+          onTouchEnd={syncHappeningPreview}
+        >
           {happening.map((item) => (
-            <HappeningThumbCard key={item.id} item={item} compact onOpen={() => openHappeningItem(item)} />
+            <div
+              key={item.id}
+              data-happening-id={item.id}
+              data-happening-video={item.mediaType === "video" && Boolean(item.previewVideoUrl) ? "true" : "false"}
+              className="shrink-0"
+            >
+              <HappeningThumbCard
+                item={item}
+                compact
+                previewActive={item.id === activeHappeningId}
+                onOpen={() => openHappeningItem(item)}
+              />
+            </div>
           ))}
         </div>
       ) : (
         <div className="space-y-2.5">
           {happening.map((item) => (
-            <HappeningThumbCard key={item.id} item={item} onOpen={() => openHappeningItem(item)} />
+            <HappeningThumbCard
+              key={item.id}
+              item={item}
+              previewActive={item.id === activeHappeningId}
+              onOpen={() => openHappeningItem(item)}
+            />
           ))}
         </div>
       )}
