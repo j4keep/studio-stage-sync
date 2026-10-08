@@ -39,51 +39,6 @@ Deno.serve(async (req) => {
     body = {};
   }
 
-  // One-shot homepage cleanup: wipe every video post on Posts/Reels.
-  if (body.action === "clear-feed-videos") {
-    const { data: videos, error: listError } = await supabase
-      .from("posts")
-      .select("id")
-      .eq("media_type", "video");
-    if (listError) {
-      return new Response(JSON.stringify({ error: listError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const ids = (videos || []).map((row: { id: string }) => row.id);
-    if (ids.length === 0) {
-      return new Response(JSON.stringify({ deleted: 0, likesCleared: 0 }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const { error: likesError, count: likesCleared } = await supabase
-      .from("likes")
-      .delete({ count: "exact" })
-      .eq("content_type", "post")
-      .in("content_id", ids);
-    if (likesError) {
-      return new Response(JSON.stringify({ error: likesError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    const { error: postsError, count: deleted } = await supabase
-      .from("posts")
-      .delete({ count: "exact" })
-      .eq("media_type", "video");
-    if (postsError) {
-      return new Response(JSON.stringify({ error: postsError.message }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    return new Response(
-      JSON.stringify({ deleted: deleted ?? ids.length, likesCleared: likesCleared ?? 0 }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
-  }
-
   // Prefer the SECURITY DEFINER RPC when available (handles completed live battles + backfill).
   if (body.battleId) {
     const { data, error } = await supabase.rpc("finalize_battle", { p_battle_id: body.battleId });
