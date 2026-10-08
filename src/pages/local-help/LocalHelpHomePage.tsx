@@ -166,10 +166,7 @@ export default function LocalHelpHomePage() {
               <button
                 key={r}
                 type="button"
-                onClick={() => {
-                  setQ(r);
-                  nav(`/local-help/handyman?q=${encodeURIComponent(r)}`);
-                }}
+                onClick={() => submitSearch(r)}
                 className="rounded-full border border-border bg-card px-3 py-1.5 text-[11px] font-semibold"
               >
                 {r}
