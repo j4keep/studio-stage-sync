@@ -21,10 +21,12 @@ import {
   formatHourly,
   formatResponseTime,
   getLocalHelpCategory,
+  usesTradeServiceMatrix,
 } from "@/lib/local-help";
 import { getLocalHelpPro, listLocalHelpReviews, type LocalHelpPro } from "@/lib/pro-profiles";
 import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
 import RequestHelpSheet from "@/components/local-help/RequestHelpSheet";
+import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
 
 type ReviewRow = {
   id: string;
@@ -97,6 +99,10 @@ export default function LocalHelpProPage() {
   const price = formatHourly(pro?.hourly_rate);
   const primaryCat = pro?.categories?.[0];
   const cat = getLocalHelpCategory(primaryCat);
+  const showTradeServices = usesTradeServiceMatrix(pro?.categories);
+  const specialties = (pro?.skills || []).filter(
+    (skill) => !pro?.categories.some((id) => getLocalHelpCategory(id)?.label.toLowerCase() === skill.toLowerCase()),
+  );
 
   const closeHire = () => {
     setHireOpen(false);
@@ -160,10 +166,7 @@ export default function LocalHelpProPage() {
         {pro.banner_url ? (
           <img src={pro.banner_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
         ) : (
-          <>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
-            <span className="absolute right-4 top-4 text-5xl opacity-80">{cat?.emoji || "🛠"}</span>
-          </>
+          <LocalHelpCategoryVisual categoryId={primaryCat || "handyman"} label={cat?.label || "Local Service"} />
         )}
       </div>
 
@@ -196,6 +199,22 @@ export default function LocalHelpProPage() {
           </div>
         </div>
 
+
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {pro.categories.map((id) => {
+            const category = getLocalHelpCategory(id);
+            return (
+              <span key={id} className="rounded-full border border-border bg-muted/60 px-2.5 py-1 text-[10px] font-bold">
+                {category?.label || id}
+              </span>
+            );
+          })}
+          {specialties.slice(0, 6).map((skill) => (
+            <span key={skill} className="rounded-full border border-primary/15 bg-primary/5 px-2.5 py-1 text-[10px] font-semibold text-primary">
+              {skill}
+            </span>
+          ))}
+        </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button type="button" onClick={openMessage} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold">
@@ -309,31 +328,43 @@ export default function LocalHelpProPage() {
 
         {/* Services */}
         <section className="mt-6">
-          <h2 className="text-base font-bold">Services</h2>
-          <p className="mt-3 text-xs font-semibold text-muted-foreground">Project type</p>
-          <ul className="mt-2 space-y-1.5">
-            {PROJECT_TYPES.map((o) => {
-              const on = pro.project_types[o.id] !== false;
-              return (
-                <li key={o.id} className={`flex items-center gap-2 text-[13px] ${on ? "" : "text-muted-foreground line-through"}`}>
-                  {on ? <Check className="h-4 w-4 text-emerald-500" /> : <XIcon className="h-4 w-4 text-muted-foreground" />}
-                  {o.label}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-4 text-xs font-semibold text-muted-foreground">Work focus</p>
-          <ul className="mt-2 space-y-1.5">
-            {WORK_FOCUS.map((o) => {
-              const on = pro.work_focus[o.id] !== false;
-              return (
-                <li key={o.id} className={`flex items-center gap-2 text-[13px] ${on ? "" : "text-muted-foreground line-through"}`}>
-                  {on ? <Check className="h-4 w-4 text-emerald-500" /> : <XIcon className="h-4 w-4 text-muted-foreground" />}
-                  {o.label}
-                </li>
-              );
-            })}
-          </ul>
+          <h2 className="text-base font-black">Services</h2>
+          {specialties.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {specialties.map((skill) => (
+                <span key={skill} className="rounded-full bg-muted px-3 py-1.5 text-[11px] font-semibold">
+                  {skill}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {showTradeServices ? (
+            <>
+              <p className="mt-4 text-xs font-semibold text-muted-foreground">Project type</p>
+              <ul className="mt-2 grid grid-cols-2 gap-2">
+                {PROJECT_TYPES.filter((o) => pro.project_types[o.id] === true).map((o) => (
+                  <li key={o.id} className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12px] font-semibold">
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    {o.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 text-xs font-semibold text-muted-foreground">Work focus</p>
+              <ul className="mt-2 grid grid-cols-2 gap-2">
+                {WORK_FOCUS.filter((o) => pro.work_focus[o.id] === true).map((o) => (
+                  <li key={o.id} className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-[12px] font-semibold">
+                    <Check className="h-3.5 w-3.5 text-emerald-500" />
+                    {o.label}
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+              Contact {name} for availability, package details and a quote for the services listed above.
+            </p>
+          )}
         </section>
 
         {/* Reviews */}
