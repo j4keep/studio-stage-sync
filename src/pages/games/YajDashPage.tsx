@@ -144,10 +144,12 @@ export default function YajDashPage() {
       spawn.current += dt;
 
       setItems((prev) => {
-        const speed = SPEED_BASE + Math.min(scoreRef.current / 360, 1.2);
+        const runDistance = scoreRef.current * 2.7;
+        const stageLevel = Math.min(5, 1 + Math.floor(runDistance / 250));
+        const speed = SPEED_BASE + Math.min(scoreRef.current / 360, 1.2) + (stageLevel - 1) * 0.06;
         let next = prev.map((it) => ({ ...it, y: it.y + speed * (dt / 16) * 2.35 }));
 
-        const spawnDelay = Math.max(360, 690 - Math.min(scoreRef.current, 180) * 1.4);
+        const spawnDelay = Math.max(300, 690 - Math.min(scoreRef.current, 180) * 1.4 - (stageLevel - 1) * 28);
         if (spawn.current > spawnDelay) {
           spawn.current = 0;
           const roll = Math.random();
@@ -272,6 +274,7 @@ export default function YajDashPage() {
 
   const speedLevel = Math.min(5, 1 + Math.floor(score / 45));
   const distance = Math.floor(score * 2.7);
+  const stageLevel = Math.min(5, 1 + Math.floor(distance / 250));
 
   return (
     <div className="fixed inset-0 z-[100] overflow-hidden bg-[#06101c] text-white">
@@ -312,7 +315,7 @@ export default function YajDashPage() {
         </button>
 
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">YAJ Arcade</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">YAJ Arcade · Stage {stageLevel}</p>
           <h1 className="text-lg font-black leading-none tracking-tight">YAJ Dash</h1>
         </div>
 
@@ -430,7 +433,7 @@ export default function YajDashPage() {
             <p className="text-xl font-black tabular-nums text-white">{Math.floor(score)}</p>
           </div>
           <div className="rounded-2xl border border-cyan-300/15 bg-black/48 px-3 py-2 text-center backdrop-blur-md">
-            <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Distance</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-white/40">Stage {stageLevel}</p>
             <p className="text-xl font-black tabular-nums text-cyan-300">{distance}m</p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/48 px-3 py-2 text-right backdrop-blur-md">
