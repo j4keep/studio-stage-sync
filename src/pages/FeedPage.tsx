@@ -32,7 +32,7 @@ type ViewerState = { rail: "post"; index: number } | null;
 const FeedPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const isDesktop = useIsDesktop();
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openPostId = searchParams.get("post");
@@ -40,20 +40,23 @@ const FeedPage = () => {
   const mobileFeedScrollRef = useRef<HTMLDivElement>(null);
   const desktopFeedScrollRef = useRef<HTMLElement>(null);
 
-  const { data: items = [], isLoading, refetch } = useQuery({
-    queryKey: ["feed-posts"],
+  const { data: items = [], isLoading } = useQuery({
+    queryKey: ["feed-posts", user?.id || "public"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
+    enabled: !authLoading,
   });
 
   const { data: happening = [], isLoading: happeningLoading } = useQuery({
-    queryKey: ["happening-feed"],
+    queryKey: ["happening-feed", user?.id || "public"],
     queryFn: () => fetchHappeningItems({ currentUserId: user?.id }),
+    enabled: !authLoading,
     refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
   });
 
   const { data: trending = [] } = useQuery<TrendingCreator[]>({
-    queryKey: ["trending-creators"],
+    queryKey: ["trending-creators", user?.id || "public"],
+    enabled: !authLoading,
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from("profiles")
