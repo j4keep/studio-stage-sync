@@ -19,6 +19,7 @@ import {
   type MicRecorder,
 } from "@/lib/yaj-media";
 import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
+import { supabase } from "@/integrations/supabase/client";
 import {
   bumpYajAiActivity,
   getYajAiAutoSpeakReplies,
@@ -407,11 +408,15 @@ const AskYajPage = () => {
     };
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken =
+        sessionData.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
       const resp = await fetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          Authorization: `Bearer ${authToken}`,
         },
         body: JSON.stringify({ messages: toApiMessages(allMessages) }),
       });
@@ -537,7 +542,7 @@ const AskYajPage = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)]">
+    <div className="flex h-full min-h-0 max-h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2.5">
@@ -566,7 +571,7 @@ const AskYajPage = () => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-4">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
@@ -644,7 +649,7 @@ const AskYajPage = () => {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-4 pt-2 border-t border-border space-y-2">
+      <div className="shrink-0 px-4 pb-[max(.75rem,env(safe-area-inset-bottom))] pt-2 border-t border-border bg-background space-y-2">
         {audioFile && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/10 border border-primary/30 text-xs text-foreground">
             <Music2 className="w-3.5 h-3.5 text-primary" />
