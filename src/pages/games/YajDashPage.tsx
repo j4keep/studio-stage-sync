@@ -379,28 +379,7 @@ export default function YajDashPage() {
 
         {flash === "hit" && <div className="pointer-events-none absolute inset-0 z-40 bg-red-500/20" />}
 
-        {/* touch help / lane controls */}
-        {running && (
-          <div className="absolute inset-x-0 bottom-[max(18px,env(safe-area-inset-bottom))] z-40 flex items-center justify-center gap-3">
-            <button
-              type="button"
-              onClick={() => move(-1)}
-              className="flex h-12 w-24 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xs font-black text-white/70 backdrop-blur-md active:scale-95"
-            >
-              ← LEFT
-            </button>
-            <div className="rounded-full bg-black/30 px-3 py-2 text-[9px] font-black uppercase tracking-widest text-white/40 backdrop-blur-md">
-              Swipe
-            </div>
-            <button
-              type="button"
-              onClick={() => move(1)}
-              className="flex h-12 w-24 items-center justify-center rounded-full border border-white/15 bg-black/35 text-xs font-black text-white/70 backdrop-blur-md active:scale-95"
-            >
-              RIGHT →
-            </button>
-          </div>
-        )}
+
 
         {!running && (
           <div className="absolute inset-0 z-[60] flex items-center justify-center bg-[#050912]/76 px-6 backdrop-blur-[7px]">
