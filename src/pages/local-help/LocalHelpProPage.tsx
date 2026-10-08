@@ -7,6 +7,7 @@ import {
   Clock,
   MapPin,
   MessageCircle,
+  Pencil,
   Share2,
   Sparkles,
   Star,
@@ -98,6 +99,7 @@ export default function LocalHelpProPage() {
   const price = formatHourly(pro?.hourly_rate);
   const primaryCat = pro?.categories?.[0];
   const cat = getLocalHelpCategory(primaryCat);
+  const isOwner = Boolean(user?.id && pro?.user_id === user.id);
   const showTradeServices = usesTradeServiceMatrix(pro?.categories);
   const specialties = (pro?.skills || []).filter(
     (skill) => !pro?.categories.some((id) => getLocalHelpCategory(id)?.label.toLowerCase() === skill.toLowerCase()),
@@ -215,21 +217,33 @@ export default function LocalHelpProPage() {
           ))}
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={openMessage} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold">
-            <MessageCircle className="h-4 w-4" /> Message
+        {isOwner ? (
+          <button
+            type="button"
+            onClick={() => nav("/local-help/business")}
+            className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-black text-primary-foreground"
+          >
+            <Pencil className="h-4 w-4" /> Edit business profile
           </button>
-          <button type="button" onClick={() => setHireOpen(true)} className="h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
-            Hire
-          </button>
-        </div>
-        <button
-          type="button"
-          onClick={() => setAskOpen(true)}
-          className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary"
-        >
-          <Sparkles className="h-3.5 w-3.5" /> Ask YAJ Buddy about this job
-        </button>
+        ) : (
+          <>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button type="button" onClick={openMessage} className="flex h-11 items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-sm font-bold">
+                <MessageCircle className="h-4 w-4" /> Message
+              </button>
+              <button type="button" onClick={() => setHireOpen(true)} className="h-11 rounded-xl bg-primary text-sm font-bold text-primary-foreground">
+                Hire
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAskOpen(true)}
+              className="mt-2 flex h-10 w-full items-center justify-center gap-1.5 rounded-xl border border-primary/30 bg-primary/5 text-xs font-bold text-primary"
+            >
+              <Sparkles className="h-3.5 w-3.5" /> Ask YAJ Buddy about this job
+            </button>
+          </>
+        )}
 
         {/* Overview */}
         <section className="mt-6">
