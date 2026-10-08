@@ -18,6 +18,8 @@ import {
   PROJECT_TYPES,
   WORK_FOCUS,
   defaultServiceMap,
+  categorySpecialtyPlaceholder,
+  usesTradeServiceMatrix,
 } from "@/lib/local-help";
 import UserRatingStars from "@/components/UserRatingStars";
 import UserReviewsSection from "@/components/UserReviewsSection";
@@ -55,12 +57,13 @@ export default function LocalHelpBusinessPage() {
   const [certs, setCerts] = useState("");
   const [languages, setLanguages] = useState("English");
   const [insurance, setInsurance] = useState("");
+  const [specialties, setSpecialties] = useState("");
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [bannerUrl, setBannerUrl] = useState<string | null>(null);
   const [media, setMedia] = useState<ProMedia[]>([]);
   const [categories, setCategories] = useState<string[]>(["handyman"]);
-  const [projectTypes, setProjectTypes] = useState(defaultServiceMap(PROJECT_TYPES, true));
-  const [workFocus, setWorkFocus] = useState(defaultServiceMap(WORK_FOCUS, true));
+  const [projectTypes, setProjectTypes] = useState(defaultServiceMap(PROJECT_TYPES, false));
+  const [workFocus, setWorkFocus] = useState(defaultServiceMap(WORK_FOCUS, false));
   const [isActive, setIsActive] = useState(true);
   const [hiredCount, setHiredCount] = useState(0);
   const [verified, setVerified] = useState(false);
@@ -88,6 +91,7 @@ export default function LocalHelpBusinessPage() {
           setCerts((existing.certifications || []).join(", "));
           setLanguages((existing.languages || []).join(", ") || "English");
           setInsurance(existing.insurance_note || "");
+          setSpecialties((existing.skills || []).join(", "));
           setLogoUrl(existing.logo_url || existing.avatar_url);
           setBannerUrl(existing.banner_url);
           setMedia(existing.media || []);
@@ -168,6 +172,9 @@ export default function LocalHelpBusinessPage() {
     });
   };
 
+  const showsTradeMatrix = usesTradeServiceMatrix(categories);
+  const specialtiesPlaceholder = categorySpecialtyPlaceholder(categories);
+
   const save = async (goLive?: boolean) => {
     if (!user) return toast.error("Sign in first");
     if (!businessName.trim()) return toast.error("Add a business or display name");
@@ -198,7 +205,15 @@ export default function LocalHelpBusinessPage() {
         project_types: projectTypes,
         work_focus: workFocus,
         media,
-        skills: categories.map((id) => LOCAL_HELP_CATEGORIES.find((c) => c.id === id)?.label || id),
+        skills: Array.from(
+          new Set([
+            ...categories.map((id) => LOCAL_HELP_CATEGORIES.find((c) => c.id === id)?.label || id),
+            ...specialties
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean),
+          ]),
+        ),
         responds_minutes: 45,
         is_active: active,
       });
@@ -280,7 +295,7 @@ export default function LocalHelpBusinessPage() {
               </span>
             </div>
             <p className="mt-1 text-[12px] text-white/90">
-              Handyman, cleaner, DJ, photographer, student side hustle — list what you do and get hired nearby.
+              Build a professional service profile for handyman work, cleaning, DJ services, photography, lawn care and more.
             </p>
             {exists && (
               <p className="mt-2 text-[11px] font-semibold text-white/85">
@@ -376,6 +391,16 @@ export default function LocalHelpBusinessPage() {
                 className="mt-1 w-full rounded-xl border border-border bg-muted p-3 text-sm"
               />
             </label>
+            <label className="block">
+              <span className="text-[11px] font-bold text-muted-foreground">Services &amp; specialties</span>
+              <input
+                value={specialties}
+                onChange={(e) => setSpecialties(e.target.value)}
+                placeholder={specialtiesPlaceholder}
+                className="mt-1 h-11 w-full rounded-xl border border-border bg-muted px-3 text-sm"
+              />
+              <span className="mt-1 block text-[10px] text-muted-foreground">Separate specialties with commas so customers can find you in search.</span>
+            </label>
             <div className="grid grid-cols-2 gap-2">
               <label className="block">
                 <span className="text-[11px] font-bold text-muted-foreground">Hourly rate ($)</span>
@@ -443,37 +468,50 @@ export default function LocalHelpBusinessPage() {
             </label>
           </section>
 
-          {/* Services checklist */}
-          <section>
-            <h3 className="text-sm font-bold">Services you offer</h3>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Customers see ✓ offered / ✕ not offered</p>
-            <p className="mt-3 text-[11px] font-bold text-muted-foreground">Project type</p>
-            <div className="mt-2 space-y-1.5">
-              {PROJECT_TYPES.map((o) => (
-                <label key={o.id} className="flex items-center gap-2 text-[13px]">
-                  <input
-                    type="checkbox"
-                    checked={projectTypes[o.id] !== false}
-                    onChange={(e) => setProjectTypes((p) => ({ ...p, [o.id]: e.target.checked }))}
-                  />
-                  {o.label}
-                </label>
-              ))}
-            </div>
-            <p className="mt-4 text-[11px] font-bold text-muted-foreground">Work focus</p>
-            <div className="mt-2 max-h-48 space-y-1.5 overflow-y-auto">
-              {WORK_FOCUS.map((o) => (
-                <label key={o.id} className="flex items-center gap-2 text-[13px]">
-                  <input
-                    type="checkbox"
-                    checked={workFocus[o.id] !== false}
-                    onChange={(e) => setWorkFocus((p) => ({ ...p, [o.id]: e.target.checked }))}
-                  />
-                  {o.label}
-                </label>
-              ))}
-            </div>
-          </section>
+          {/* Services checklist — only trade categories need handyman-style detail. */}
+          {showsTradeMatrix ? (
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="text-sm font-black">Trade services</h3>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Choose the project types and work areas you actually handle.
+              </p>
+              <p className="mt-4 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Project type</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {PROJECT_TYPES.map((o) => (
+                  <label key={o.id} className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-[12px] font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={projectTypes[o.id] === true}
+                      onChange={(e) => setProjectTypes((p) => ({ ...p, [o.id]: e.target.checked }))}
+                    />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+              <p className="mt-4 text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Work focus</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {WORK_FOCUS.map((o) => (
+                  <label key={o.id} className="flex items-center gap-2 rounded-xl border border-border bg-muted/40 px-3 py-2 text-[12px] font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={workFocus[o.id] === true}
+                      onChange={(e) => setWorkFocus((p) => ({ ...p, [o.id]: e.target.checked }))}
+                    />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+            </section>
+          ) : (
+            <section className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="text-sm font-black">Your service profile</h3>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                For {categories.map((id) => LOCAL_HELP_CATEGORIES.find((c) => c.id === id)?.label || id).join(", ")},
+                customers will see your specialties, rate, service area, hours, portfolio, reviews and business details.
+                Trade-only repair checklists are hidden because they do not apply to this service.
+              </p>
+            </section>
+          )}
 
           {/* Portfolio */}
           <section>
