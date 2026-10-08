@@ -45,6 +45,20 @@ function safeTitle(value: string | null | undefined, fallback: string) {
   return t || fallback;
 }
 
+async function withTimeout<T>(value: PromiseLike<T>, fallback: T, ms = 4500): Promise<T> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(value),
+      new Promise<T>((resolve) => {
+        timer = window.setTimeout(() => resolve(fallback), ms);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+}
+
 /** Aggregate newest activity from Explore destinations + regular posts. */
 export async function fetchHappeningItems(opts: {
   currentUserId?: string;
@@ -61,35 +75,53 @@ export async function fetchHappeningItems(opts: {
     servicesResult,
     eventsResult,
   ] = await Promise.all([
-    (supabase as any)
-      .from("posts")
-      .select("id, caption, media_url, media_type, created_at, user_id")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    listMarketplaceListings({ limit, sort: "newest", status: "active" }).catch(() => []),
-    (supabase as any)
-      .from("job_listings")
-      .select("id, title, description, media, created_at, status")
-      .eq("status", "open")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    (supabase as any)
-      .from("gig_listings")
-      .select("id, title, description, media, created_at, status")
-      .eq("status", "open")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    (supabase as any)
-      .from("service_listings")
-      .select("id, title, description, media_url, phone, created_at")
-      .order("created_at", { ascending: false })
-      .limit(limit),
-    (supabase as any)
-      .from("event_listings")
-      .select("id, title, description, media_url, media_type, address, price_cents, created_at")
-      .eq("status", "active")
-      .order("created_at", { ascending: false })
-      .limit(limit),
+    withTimeout(
+      (supabase as any)
+        .from("posts")
+        .select("id, caption, media_url, media_type, created_at, user_id")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
+    withTimeout(
+      listMarketplaceListings({ limit, sort: "newest", status: "active" }).catch(() => []),
+      [],
+    ),
+    withTimeout(
+      (supabase as any)
+        .from("job_listings")
+        .select("id, title, description, media, created_at, status")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
+    withTimeout(
+      (supabase as any)
+        .from("gig_listings")
+        .select("id, title, description, media, created_at, status")
+        .eq("status", "open")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
+    withTimeout(
+      (supabase as any)
+        .from("service_listings")
+        .select("id, title, description, media_url, phone, created_at")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
+    withTimeout(
+      (supabase as any)
+        .from("event_listings")
+        .select("id, title, description, media_url, media_type, address, price_cents, created_at")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
   ]);
 
   for (const post of postsResult.data || []) {
