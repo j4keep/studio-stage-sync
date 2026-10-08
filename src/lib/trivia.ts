@@ -36,7 +36,7 @@ export const TRIVIA_BANK: TriviaQuestion[] = [
   { q: "What is the chemical symbol for gold?", options: ["Ag", "Go", "Au", "Gd"], a: 2, category: "Science" },
 ];
 
-export const TRIVIA_ROUND = 8;
+export const TRIVIA_ROUND = 12;
 
 export function pickQuestions(count = TRIVIA_ROUND): number[] {
   const ids = TRIVIA_BANK.map((_, i) => i);
@@ -47,10 +47,10 @@ export function pickQuestions(count = TRIVIA_ROUND): number[] {
   return ids.slice(0, count);
 }
 
-/** The computer answers correctly about 65% of the time. */
-export function computerAnswer(questionIndex: number): number {
+/** CPU accuracy can rise across the three-stage battle. */
+export function computerAnswer(questionIndex: number, accuracy = 0.65): number {
   const q = TRIVIA_BANK[questionIndex];
-  if (Math.random() < 0.65) return q.a;
+  if (Math.random() < Math.max(0.2, Math.min(0.9, accuracy))) return q.a;
   const wrong = q.options.map((_, i) => i).filter((i) => i !== q.a);
   return wrong[Math.floor(Math.random() * wrong.length)];
 }
