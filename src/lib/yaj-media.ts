@@ -1,16 +1,21 @@
 import { speakableYajText } from "@/lib/yaj-pronounce";
+import { supabase } from "@/integrations/supabase/client";
 
 const FN = (name: string) => `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${name}`;
 
-const authHeaders = {
-  "Content-Type": "application/json",
-  Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-};
+async function yajAuthHeaders() {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
+}
 
 async function postJson<T>(name: string, body: unknown): Promise<T> {
   const resp = await fetch(FN(name), {
     method: "POST",
-    headers: authHeaders,
+    headers: await yajAuthHeaders(),
     body: JSON.stringify(body),
   });
   const data = await resp.json().catch(() => ({}));
