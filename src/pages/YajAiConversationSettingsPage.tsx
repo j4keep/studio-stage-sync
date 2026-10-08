@@ -64,7 +64,7 @@ export default function YajAiConversationSettingsPage() {
               toast({
                 title: "About YAJ AI",
                 description:
-                  "YAJ is your creative + wellness companion. Voice settings here apply to Ask YAJ conversations and Wellness coaching across the app.",
+                  "YAJ is your built-in guide for the whole YAJ app plus everyday AI help. Ask about navigation, Local Help, Marketplace, Radio, Games, Circles, Profiles, support, writing, images, voice and more. Voice settings here apply to Ask YAJ conversations and Wellness coaching.",
               })
             }
             leading={<Info className="h-4 w-4" />}
