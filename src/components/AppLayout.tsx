@@ -69,6 +69,7 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
   const isMarketplace = location.pathname === "/marketplace" || location.pathname.startsWith("/marketplace/");
   const isWellness = location.pathname === "/wellness" || location.pathname.startsWith("/wellness/");
   const isBookReader = location.pathname.startsWith("/books/read/");
+  const isAskYaj = location.pathname === "/ask-yaj";
 
   useEffect(() => {
     if (location.pathname !== "/wellness/move") workoutMusic.stop();
@@ -149,6 +150,8 @@ const AppLayout = ({ children }: { children: ReactNode }) => {
             className={
               mobileFeed
                 ? "min-h-0 min-w-0 flex-1 overflow-hidden lg:overflow-visible lg:pb-4"
+                : isAskYaj
+                ? "min-h-0 min-w-0 flex-1 overflow-hidden pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-4"
                 : "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y pb-[calc(5rem+env(safe-area-inset-bottom))] [-webkit-overflow-scrolling:touch] lg:overflow-visible lg:pb-4"
             }
           >
