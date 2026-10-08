@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { fetchRatingsByUserIds, type DisplayRating } from "@/lib/ratings";
-import { PROJECT_TYPES, WORK_FOCUS, defaultServiceMap } from "@/lib/local-help";
+import { PROJECT_TYPES, WORK_FOCUS, defaultServiceMap, usesTradeServiceMatrix } from "@/lib/local-help";
 
 export type ProMedia = { url: string; label?: string; category?: string };
 
@@ -49,8 +49,14 @@ function mapRow(row: any, profile: any, rating: DisplayRating): LocalHelpPro {
     hourly_rate: row.hourly_rate != null ? Number(row.hourly_rate) : null,
     service_area: row.service_area,
     categories: row.categories || [],
-    project_types: normalizeMap(row.project_types, defaultServiceMap(PROJECT_TYPES, true)),
-    work_focus: normalizeMap(row.work_focus, defaultServiceMap(WORK_FOCUS, true)),
+    project_types: normalizeMap(
+      row.project_types,
+      defaultServiceMap(PROJECT_TYPES, usesTradeServiceMatrix(row.categories || [])),
+    ),
+    work_focus: normalizeMap(
+      row.work_focus,
+      defaultServiceMap(WORK_FOCUS, usesTradeServiceMatrix(row.categories || [])),
+    ),
     media: Array.isArray(row.media) ? row.media : [],
     skills: row.skills || [],
     responds_minutes: row.responds_minutes,
@@ -139,8 +145,12 @@ export async function upsertLocalHelpPro(userId: string, patch: LocalHelpProUpse
     hourly_rate: patch.hourly_rate ?? null,
     service_area: patch.service_area ?? null,
     categories: patch.categories ?? ["handyman"],
-    project_types: patch.project_types ?? defaultServiceMap(PROJECT_TYPES, true),
-    work_focus: patch.work_focus ?? defaultServiceMap(WORK_FOCUS, true),
+    project_types:
+      patch.project_types ??
+      defaultServiceMap(PROJECT_TYPES, usesTradeServiceMatrix(patch.categories ?? ["handyman"])),
+    work_focus:
+      patch.work_focus ??
+      defaultServiceMap(WORK_FOCUS, usesTradeServiceMatrix(patch.categories ?? ["handyman"])),
     media: patch.media ?? [],
     skills: patch.skills ?? [],
     responds_minutes: patch.responds_minutes ?? 45,
