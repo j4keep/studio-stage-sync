@@ -6,7 +6,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Search, Users } from "lucide-react";
 import { fetchFeedItems } from "@/lib/feed-items";
 import { fetchHappeningItems, type HappeningItem } from "@/lib/happening-items";
-import { clearFeedVideosOnce } from "@/lib/clear-feed-videos";
 import { forceIosAudioSessionToPlayback, initFeedAudioUnlockOnGesture, unlockFeedAudioSession } from "@/lib/feed-video-playback";
 import { stopAllPageMedia } from "@/lib/stop-page-media";
 import { listActivePublicLiveSessions } from "@/lib/circle-live";
@@ -100,12 +99,6 @@ const FeedPage = () => {
     window.addEventListener("feed-scroll-top", scrollTop);
     return () => window.removeEventListener("feed-scroll-top", scrollTop);
   }, []);
-
-  useEffect(() => {
-    void clearFeedVideosOnce(user?.id).then((cleared) => {
-      if (cleared) void refetch();
-    });
-  }, [refetch, user?.id]);
 
   const openPostItem = (index: number) => {
     stopAllPageMedia();
