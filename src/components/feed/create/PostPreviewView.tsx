@@ -160,11 +160,11 @@ export default function PostPreviewView({
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-zinc-950 text-white"
+      className="fixed inset-0 z-[100] flex flex-col overflow-hidden bg-background text-foreground"
       style={{ height: "100dvh", maxHeight: "100dvh" }}
     >
       <header
-        className="shrink-0 border-b border-white/10 bg-zinc-950/95 px-3 backdrop-blur-xl"
+        className="shrink-0 border-b border-border bg-background/95 px-3 backdrop-blur-xl"
         style={{ paddingTop: "max(env(safe-area-inset-top), 0.55rem)", paddingBottom: "0.65rem" }}
       >
         <div className="flex items-center justify-between gap-3">
@@ -172,13 +172,13 @@ export default function PostPreviewView({
             type="button"
             onClick={onBack}
             disabled={busy}
-            className="min-w-[4.7rem] rounded-full border border-white/15 bg-white/8 px-4 py-2.5 text-[13px] font-bold text-white transition active:scale-95 disabled:opacity-40"
+            className="min-w-[4.7rem] rounded-full border border-border bg-card px-4 py-2.5 text-[13px] font-bold text-foreground transition active:scale-95 disabled:opacity-40"
           >
             Back
           </button>
           <div className="min-w-0 text-center">
             <p className="truncate text-[15px] font-black tracking-tight">{isEditing ? "Edit post" : "New post"}</p>
-            <p className="mt-0.5 text-[9.5px] font-medium text-white/40">Review before publishing</p>
+            <p className="mt-0.5 text-[9.5px] font-medium text-muted-foreground">Review before publishing</p>
           </div>
           <button
             type="button"
@@ -195,13 +195,13 @@ export default function PostPreviewView({
         className="min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y px-4 py-5"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        <section className="rounded-[22px] border border-white/10 bg-white/[0.035] p-4 shadow-sm">
+        <section className="rounded-[22px] border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-4">
             <button
               type="button"
               onClick={onEditMedia}
               disabled={!onEditMedia || busy}
-              className="relative flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-zinc-800 shadow-md disabled:opacity-60"
+              className="relative flex h-[92px] w-[92px] shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-muted shadow-md disabled:opacity-60"
               aria-label={previewUrl ? "Edit cover media" : "Text post"}
             >
               {previewUrl ? (
@@ -221,23 +221,23 @@ export default function PostPreviewView({
                 )
               ) : (
                 <div className="flex flex-col items-center gap-1 px-1 text-center">
-                  <Type className="h-7 w-7 text-white/45" strokeWidth={2} />
-                  <span className="text-[9px] font-semibold leading-tight text-white/40">Text only</span>
+                  <Type className="h-7 w-7 text-muted-foreground" strokeWidth={2} />
+                  <span className="text-[9px] font-semibold leading-tight text-muted-foreground">Text only</span>
                 </div>
               )}
-              <span className="absolute left-1.5 top-1.5 rounded-md bg-black/65 px-1.5 py-0.5 text-[9px] font-bold">
+              <span className="absolute left-1.5 top-1.5 rounded-md bg-background/80 px-1.5 py-0.5 text-[9px] font-bold">
                 {previewUrl ? "Cover" : "Text"}
               </span>
               {onEditMedia && previewUrl && (
-                <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-black/65">
-                  <ImageIcon className="h-3.5 w-3.5 text-white" />
+                <span className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-background/80">
+                  <ImageIcon className="h-3.5 w-3.5 text-foreground" />
                 </span>
               )}
             </button>
 
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-bold text-white">{previewUrl ? "Post media" : "Text post"}</p>
-              <p className="mt-1 text-[11px] leading-relaxed text-white/45">
+              <p className="text-[13px] font-bold text-foreground">{previewUrl ? "Post media" : "Text post"}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
                 {previewUrl ? "Make sure your cover looks right before publishing." : "Your title and message will become the post."}
               </p>
               {onEditMedia && previewUrl && (
@@ -254,10 +254,10 @@ export default function PostPreviewView({
           </div>
         </section>
 
-        <section className="mt-4 rounded-[22px] border border-white/10 bg-white/[0.035] p-4">
+        <section className="mt-4 rounded-[22px] border border-border bg-card p-4">
           <div className="flex items-center justify-between gap-3">
-            <label htmlFor="yaj-post-title" className="text-[12px] font-bold text-white/70">Title</label>
-            <span className="text-[10px] font-medium text-white/30">{title.length}/120</span>
+            <label htmlFor="yaj-post-title" className="text-[12px] font-bold text-foreground/75">Title</label>
+            <span className="text-[10px] font-medium text-muted-foreground/70">{title.length}/120</span>
           </div>
           <input
             id="yaj-post-title"
@@ -269,15 +269,15 @@ export default function PostPreviewView({
             placeholder="Add a catchy title"
             maxLength={120}
             aria-invalid={titleError || undefined}
-            className={`mt-2 w-full rounded-xl bg-black/20 px-3 py-3 text-[16px] font-bold text-white outline-none placeholder:text-white/25 ${
+            className={`mt-2 w-full rounded-xl bg-black/20 px-3 py-3 text-[16px] font-bold text-foreground outline-none placeholder:text-muted-foreground/60 ${
               titleError ? "border border-red-500 ring-2 ring-red-500/35" : "border border-white/8 focus:border-primary/45"
             }`}
           />
           {titleError && <p className="mt-1.5 px-1 text-[11px] font-semibold text-red-400">Title is required</p>}
 
           <div className="mt-4 flex items-center justify-between gap-3">
-            <label htmlFor="yaj-post-description" className="text-[12px] font-bold text-white/70">Description</label>
-            <span className="text-[10px] font-medium text-white/30">Optional</span>
+            <label htmlFor="yaj-post-description" className="text-[12px] font-bold text-foreground/75">Description</label>
+            <span className="text-[10px] font-medium text-muted-foreground/70">Optional</span>
           </div>
           <textarea
             id="yaj-post-description"
@@ -286,17 +286,17 @@ export default function PostPreviewView({
             onChange={(e) => onDescriptionChange(e.target.value)}
             placeholder="Tell people what this post is about…"
             rows={5}
-            className="mt-2 min-h-[7rem] w-full resize-none rounded-xl border border-white/8 bg-black/20 px-3 py-3 text-[16px] leading-relaxed text-white/90 outline-none placeholder:text-white/25 focus:border-primary/45"
+            className="mt-2 min-h-[7rem] w-full resize-none rounded-xl border border-border bg-background px-3 py-3 text-[16px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-primary/45"
           />
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-white/8 pt-3">
-            <button type="button" onClick={() => insertToken("#")} disabled={busy} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/7 text-white/70 transition active:scale-95 disabled:opacity-40" aria-label="Add hashtag">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <button type="button" onClick={() => insertToken("#")} disabled={busy} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground/75 transition active:scale-95 disabled:opacity-40" aria-label="Add hashtag">
               <Hash className="h-4.5 w-4.5" />
             </button>
-            <button type="button" onClick={() => insertToken("@")} disabled={busy} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/7 text-white/70 transition active:scale-95 disabled:opacity-40" aria-label="Add mention">
+            <button type="button" onClick={() => insertToken("@")} disabled={busy} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground/75 transition active:scale-95 disabled:opacity-40" aria-label="Add mention">
               <AtSign className="h-4.5 w-4.5" />
             </button>
-            <button type="button" onClick={showTips} className="flex h-9 w-9 items-center justify-center rounded-full bg-white/7 text-white/65 transition active:scale-95" aria-label="Post tips">
+            <button type="button" onClick={showTips} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-foreground/70 transition active:scale-95" aria-label="Post tips">
               <Lightbulb className="h-4.5 w-4.5" />
             </button>
             <button
@@ -315,16 +315,16 @@ export default function PostPreviewView({
           type="button"
           onClick={rewriteTitle}
           disabled={busy}
-          className="mt-4 flex w-full items-center gap-3 rounded-[20px] border border-primary/20 bg-primary/8 px-4 py-3.5 text-left transition active:scale-[0.99] disabled:opacity-40"
+          className="mt-4 flex w-full items-center gap-3 rounded-[20px] border border-primary/20 bg-primary/5 px-4 py-3.5 text-left transition active:scale-[0.99] disabled:opacity-40"
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15">
             <YajAiGeneratorIcon className="h-5 w-5" active />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-white">
+            <p className="text-[13px] font-bold text-foreground">
               {rewriting === "title" ? "YAJ is rewriting your title…" : "Ask YAJ to improve the title"}
             </p>
-            <p className="mt-0.5 truncate text-[10.5px] text-white/45">Create a clearer, stronger hook before you post</p>
+            <p className="mt-0.5 truncate text-[10.5px] text-muted-foreground">Create a clearer, stronger hook before you post</p>
           </div>
           <Wand2 className="h-4 w-4 shrink-0 text-primary" />
         </button>
