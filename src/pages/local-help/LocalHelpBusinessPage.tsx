@@ -29,6 +29,7 @@ import {
   upsertLocalHelpPro,
   type ProMedia,
 } from "@/lib/pro-profiles";
+import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
 
 /**
  * Full business account page for Local Help helpers
@@ -281,28 +282,34 @@ export default function LocalHelpBusinessPage() {
       ) : (
         <div className="px-4 pt-4 space-y-6">
           {/* Intro */}
-          <section className="rounded-2xl bg-gradient-to-br from-teal-500 via-emerald-500 to-cyan-600 p-4 text-white">
-            <div className="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold">
-              <Building2 className="h-3 w-3" /> Business account
-            </div>
-            <h2 className="mt-2 text-xl font-black leading-tight">
-              {exists ? businessName || "Manage your Local Help business" : "Become a helper on YAJ"}
-            </h2>
-            <div className="mt-1 flex items-center gap-2 rounded-full bg-black/20 px-2 py-1 w-fit">
-              <UserRatingStars rating={rating} variant="full" className="[&_span]:text-white" />
-              <span className="text-[10px] font-semibold text-white/85">
-                {rating.isDefault ? "New — starter rating" : `${rating.count} review${rating.count === 1 ? "" : "s"}`}
-              </span>
-            </div>
-            <p className="mt-1 text-[12px] text-white/90">
-              Build a professional service profile for handyman work, cleaning, DJ services, photography, lawn care and more.
-            </p>
-            {exists && (
-              <p className="mt-2 text-[11px] font-semibold text-white/85">
-                Hired {hiredCount} times · {isActive ? "Live in search" : "Hidden from search"}
-                {verified ? " · Verified" : ""}
+          <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-4 shadow-sm">
+            <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full border border-primary/10 bg-primary/5" />
+            <div className="relative">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-primary">
+                <Building2 className="h-3 w-3" /> Local Help business
+              </div>
+              <h2 className="mt-3 text-xl font-black leading-tight">
+                {exists ? businessName || "Manage your Local Help business" : "Create your service profile"}
+              </h2>
+              <div className="mt-2 flex items-center gap-2">
+                <UserRatingStars rating={rating} variant="full" />
+                <span className="text-[10px] font-semibold text-muted-foreground">
+                  {rating.isDefault ? "New on YAJ" : `${rating.count} review${rating.count === 1 ? "" : "s"}`}
+                </span>
+              </div>
+              <p className="mt-2 max-w-[360px] text-[12px] leading-relaxed text-muted-foreground">
+                Show customers what you do, where you work, your rates, portfolio, credentials and reviews.
               </p>
-            )}
+              {exists && (
+                <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-bold">
+                  <span className="rounded-full bg-muted px-2.5 py-1">Hired {hiredCount} times</span>
+                  <span className={`rounded-full px-2.5 py-1 ${isActive ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                    {isActive ? "Live in search" : "Hidden from search"}
+                  </span>
+                  {verified && <span className="rounded-full bg-primary/10 px-2.5 py-1 text-primary">Verified</span>}
+                </div>
+              )}
+            </div>
           </section>
 
           {/* What you do */}
@@ -321,7 +328,9 @@ export default function LocalHelpBusinessPage() {
                       on ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground"
                     }`}
                   >
-                    <span className="text-xl">{c.emoji}</span>
+                    <span className="h-9 w-9 shrink-0 overflow-hidden rounded-xl">
+                      <LocalHelpCategoryVisual categoryId={c.id} compact />
+                    </span>
                     <span className="leading-tight">{c.label}</span>
                   </button>
                 );
