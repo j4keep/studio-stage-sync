@@ -153,7 +153,7 @@ const FeedPage = () => {
   }, [openPostId, isLoading, posts, searchParams, setSearchParams]);
 
   const peopleRow = (trending.length > 0 || liveNow.length > 0) && (
-    <div className="flex max-w-full min-w-0 items-start gap-3 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-hide">
+    <div className="flex max-w-full min-w-0 items-start gap-3 overflow-x-auto overscroll-x-contain touch-pan-x px-1 pt-1.5 pb-2 scrollbar-hide">
       <button
         onClick={() => navigate("/profile")}
         className="flex w-[3.65rem] shrink-0 flex-col items-center gap-1.5"
@@ -295,7 +295,7 @@ const FeedPage = () => {
         <>
           <div ref={mobileFeedScrollRef} className="relative z-10 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-24 pt-[calc(env(safe-area-inset-top)+4.4rem)] scrollbar-hide lg:hidden">
             {(trending.length > 0 || liveNow.length > 0) && (
-              <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-3 py-3 shadow-sm backdrop-blur-sm">
+              <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-3 pb-3 pt-4 shadow-sm backdrop-blur-sm">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <h1 className="text-[15px] font-bold tracking-tight text-foreground">Your community</h1>
@@ -306,7 +306,7 @@ const FeedPage = () => {
               </section>
             )}
 
-            <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 p-3 shadow-sm backdrop-blur-sm">
+            <section className="mb-5 rounded-2xl border border-border/80 bg-card/95 px-3 pb-3 pt-4 shadow-sm backdrop-blur-sm">
               {happeningRail(true)}
             </section>
 
