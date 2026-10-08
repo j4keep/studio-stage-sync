@@ -157,7 +157,7 @@ const FeedPage = () => {
   }, []);
 
   const openHappeningItem = (item: HappeningItem) => {
-    happeningRailRef.current?.querySelectorAll("video").forEach((video) => {
+    happeningRailRef.current?.querySelectorAll<HTMLVideoElement>("video").forEach((video) => {
       try { video.pause(); } catch { /* ignore */ }
     });
     if (item.openInPostsViewer) {
