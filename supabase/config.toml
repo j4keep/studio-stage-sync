@@ -15,6 +15,15 @@ verify_jwt = false
 [functions.ask-yaj]
 verify_jwt = false
 
+[functions.yaj-image]
+verify_jwt = false
+
+[functions.yaj-voice]
+verify_jwt = false
+
+[functions.yaj-transcribe]
+verify_jwt = false
+
 [functions.yaj-food-scan]
 verify_jwt = false
 
