@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { Crown, Loader2, Sparkles, Swords } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import GameShell from "@/components/games/GameShell";
@@ -27,6 +27,8 @@ export default function CheckersPage() {
   const { user } = useAuth();
   const { game, setGame, loading, refresh, me, opponent, opponentName, opponentAvatar } = useTurnGame(id, user?.id);
   const [selected, setSelected] = useState<number | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const [lastMove, setLastMove] = useState<{ from: number; to: number } | null>(null);
   const written = useRef<string | null>(null);
 
   const board: CBoard = (game?.game_state?.board as CBoard) || initialCheckers();
@@ -38,6 +40,8 @@ export default function CheckersPage() {
   const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !finished;
   const moves = myTurn ? legalMoves(board, mySide) : [];
   const targets = selected === null ? [] : moves.filter((m) => m.from === selected);
+  const selectable = new Set(moves.map((m) => m.from));
+  const forcedCapture = moves.some((m) => m.capture !== null);
 
   useEffect(() => {
     if (!game || !user || !finished || written.current === game.id) return;
@@ -57,51 +61,95 @@ export default function CheckersPage() {
   }, [finished, game?.id, game?.status]);
 
   const commit = async (move: Move) => {
-    if (!game || !user) return;
+    if (!game || !user || thinking) return;
+
     let { board: next, againFrom } = applyMove(board, move);
     let n = moveNumber + 1;
-    await recordMove(game.id, user.id, n, move as any);
+    setLastMove({ from: move.from, to: move.to });
 
-    if (againFrom !== null) {
-      setSelected(againFrom);
-      setGame({ ...game, game_state: { board: next, moveNumber: n } });
-      await updateGameState(game.id, { game_state: { board: next, moveNumber: n } });
-      await refresh();
-      return;
+    try {
+      navigator.vibrate?.(18);
+    } catch {
+      /* vibration is optional */
     }
 
-    setSelected(null);
-    let nextTurn = opponent?.user_id ?? null;
+    // Move immediately on-screen; sync afterward so mobile taps never feel frozen.
+    setGame({ ...game, game_state: { board: next, moveNumber: n } });
 
-    if (game.mode === "solo" && !checkersWinner(next)) {
-      let guard = 0;
-      let cpu = checkersComputerMove(next, oppSide);
-      while (cpu && guard < 12) {
-        const res = applyMove(next, cpu);
-        next = res.board;
-        n += 1;
-        await recordMove(game.id, null, n, cpu as any);
-        if (res.againFrom === null) break;
-        cpu = legalMoves(next, oppSide).find((m) => m.from === res.againFrom && m.capture !== null) || null;
-        guard += 1;
+    try {
+      await recordMove(game.id, user.id, n, move as any);
+
+      if (againFrom !== null) {
+        setSelected(againFrom);
+        await updateGameState(game.id, { game_state: { board: next, moveNumber: n } });
+        return;
       }
-      nextTurn = user.id;
-    }
 
-    setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: nextTurn });
-    await updateGameState(game.id, { game_state: { board: next, moveNumber: n }, current_turn_user_id: nextTurn });
-    await refresh();
+      setSelected(null);
+      let nextTurn = opponent?.user_id ?? null;
+
+      if (game.mode === "solo" && !checkersWinner(next)) {
+        setThinking(true);
+        await updateGameState(game.id, {
+          game_state: { board: next, moveNumber: n },
+          current_turn_user_id: user.id,
+        });
+
+        // Keep the player's move visible before the computer answers.
+        await new Promise((resolve) => window.setTimeout(resolve, 520));
+
+        let guard = 0;
+        let cpu = checkersComputerMove(next, oppSide);
+        while (cpu && guard < 12) {
+          const res = applyMove(next, cpu);
+          setLastMove({ from: cpu.from, to: cpu.to });
+          next = res.board;
+          n += 1;
+          setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: user.id });
+          await recordMove(game.id, null, n, cpu as any);
+
+          if (res.againFrom === null) break;
+          await new Promise((resolve) => window.setTimeout(resolve, 320));
+          cpu = legalMoves(next, oppSide).find((m) => m.from === res.againFrom && m.capture !== null) || null;
+          guard += 1;
+        }
+
+        nextTurn = user.id;
+        setThinking(false);
+      }
+
+      setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: nextTurn });
+      await updateGameState(game.id, {
+        game_state: { board: next, moveNumber: n },
+        current_turn_user_id: nextTurn,
+      });
+    } catch (e: any) {
+      setThinking(false);
+      toast({
+        title: "Move could not sync",
+        description: e?.message || "Please try the move again.",
+        variant: "destructive",
+      });
+      await refresh();
+    }
   };
 
   const tap = (cell: number) => {
-    if (!myTurn) return;
+    if (!myTurn || thinking) return;
+
     const target = targets.find((m) => m.to === cell);
     if (target) {
       void commit(target);
       return;
     }
-    if (sideOf(board[cell]) === mySide && moves.some((m) => m.from === cell)) setSelected(cell);
-    else setSelected(null);
+
+    if (sideOf(board[cell]) === mySide && selectable.has(cell)) {
+      setSelected(cell);
+      try { navigator.vibrate?.(8); } catch { /* optional */ }
+      return;
+    }
+
+    setSelected(null);
   };
 
   const rematch = async () => {
@@ -158,11 +206,13 @@ export default function CheckersPage() {
       ? "Challenge declined"
       : w
         ? w === mySide ? "Victory — you win!" : `${opponentName} wins`
-        : myTurn ? "Your turn" : `${opponentName}'s turn`;
+        : thinking ? "Computer is thinking…" : myTurn ? (forcedCapture ? "Your turn — capture required" : "Your turn — choose a glowing piece") : `${opponentName}'s turn`;
 
   const myPieces = board.filter((p) => p && sideOf(p) === mySide).length;
   const oppPieces = board.filter((p) => p && sideOf(p) === oppSide).length;
   const outcome = finished ? (w === mySide ? "win" : "loss") : undefined;
+  const myCaptured = 12 - oppPieces;
+  const oppCaptured = 12 - myPieces;
 
   return (
     <GameShell
@@ -188,70 +238,126 @@ export default function CheckersPage() {
       resultTitle={w === mySide ? "Board cleared — you win!" : `${opponentName} wins`}
       resultDetail={w === mySide ? "Every last piece captured." : "Line up a rematch."}
     >
-      <div
-        className="mx-auto max-w-[380px] rounded-[26px] p-3"
-        style={{
-          background: "linear-gradient(160deg, hsl(24 45% 30%), hsl(20 50% 16%))",
-          boxShadow: "0 26px 54px -22px rgba(0,0,0,0.85), inset 0 2px 0 rgba(255,255,255,0.14)",
-        }}
-      >
-        <div
-          className="grid grid-cols-8 overflow-hidden rounded-xl"
-          style={{ boxShadow: "inset 0 0 0 2px rgba(0,0,0,0.45), inset 0 6px 16px rgba(0,0,0,0.5)" }}
-        >
-          {board.map((piece, i) => {
-            const r = Math.floor(i / 8);
-            const c = i % 8;
-            const dark = (r + c) % 2 === 1;
-            const isTarget = targets.some((m) => m.to === i);
-            const isSelected = selected === i;
-            const side = piece ? sideOf(piece) : null;
-            const isKing = piece === "R" || piece === "B";
-            return (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Square ${i + 1}`}
-                onClick={() => tap(i)}
-                className="relative flex aspect-square items-center justify-center transition active:scale-95"
-                style={{
-                  background: dark
-                    ? "linear-gradient(150deg, hsl(26 42% 34%), hsl(24 44% 26%))"
-                    : "linear-gradient(150deg, hsl(38 58% 84%), hsl(36 48% 74%))",
-                }}
-              >
-                {isTarget && (
-                  <span
-                    className="absolute h-[34%] w-[34%] rounded-full bg-primary/70"
-                    style={{ boxShadow: "0 0 14px hsl(var(--primary) / 0.8)" }}
-                  />
-                )}
-                {isSelected && <span className="absolute inset-0 ring-2 ring-inset ring-primary" />}
-                {piece && (
-                  <span
-                    className={`relative flex h-[76%] w-[76%] items-center justify-center rounded-full game-piece-pop ${
-                      isSelected ? "scale-105" : ""
-                    }`}
-                    style={{
-                      background:
-                        side === "r"
-                          ? "radial-gradient(circle at 36% 28%, #ff8e8e, #a4121f 72%)"
-                          : "radial-gradient(circle at 36% 28%, #5a5f6d, #101318 72%)",
-                      boxShadow:
-                        "inset 0 -4px 7px rgba(0,0,0,0.5), inset 0 3px 5px rgba(255,255,255,0.28), 0 3px 6px rgba(0,0,0,0.5)",
-                    }}
-                  >
-                    {isKing && <span className="text-[11px] font-black text-[#f7e2a0]">♛</span>}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+      <div className="mx-auto mb-3 grid max-w-[420px] grid-cols-3 gap-2">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.055] px-3 py-2 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/45">You captured</p>
+          <p className="mt-0.5 text-xl font-black text-rose-300">{myCaptured}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-300/15 bg-amber-300/[0.06] px-3 py-2 text-center">
+          <Swords className="mx-auto h-4 w-4 text-amber-300" />
+          <p className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-white/55">
+            {forcedCapture && myTurn ? "Capture!" : thinking ? "Thinking…" : "Match"}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.055] px-3 py-2 text-center">
+          <p className="text-[9px] font-black uppercase tracking-widest text-white/45">Rival captured</p>
+          <p className="mt-0.5 text-xl font-black text-slate-300">{oppCaptured}</p>
         </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-white/50">
-        You play {mySide === "r" ? "red (moving up)" : "black (moving down)"} — captures are forced.
-      </p>
+
+      <div
+        className="mx-auto max-w-[420px] rounded-[30px] p-3.5"
+        style={{
+          background: "linear-gradient(145deg,#7a4528 0%,#4c2818 46%,#25130c 100%)",
+          boxShadow:
+            "0 32px 70px -24px rgba(0,0,0,.9), inset 0 2px 1px rgba(255,255,255,.18), inset 0 -4px 10px rgba(0,0,0,.35)",
+        }}
+      >
+        <div className="overflow-hidden rounded-[18px] border-2 border-black/45 shadow-[inset_0_0_24px_rgba(0,0,0,.28)]">
+          <div className="grid grid-cols-8">
+            {board.map((piece, i) => {
+              const r = Math.floor(i / 8);
+              const c = i % 8;
+              const dark = (r + c) % 2 === 1;
+              const isTarget = targets.some((m) => m.to === i);
+              const isSelected = selected === i;
+              const isSelectable = myTurn && selectable.has(i) && sideOf(piece) === mySide;
+              const isLastFrom = lastMove?.from === i;
+              const isLastTo = lastMove?.to === i;
+              const side = piece ? sideOf(piece) : null;
+              const isKing = piece === "R" || piece === "B";
+
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  aria-label={isTarget ? "Legal move" : `Square ${i + 1}`}
+                  onClick={() => tap(i)}
+                  disabled={thinking}
+                  className="relative flex aspect-square items-center justify-center overflow-hidden transition active:scale-[0.96] disabled:cursor-wait"
+                  style={{
+                    background: dark
+                      ? "linear-gradient(145deg,#814d2f 0%,#60351f 100%)"
+                      : "linear-gradient(145deg,#f2dfba 0%,#d9bc88 100%)",
+                    boxShadow:
+                      isLastFrom || isLastTo
+                        ? "inset 0 0 0 3px rgba(250,204,21,.55)"
+                        : "inset 0 0 0 1px rgba(0,0,0,.08)",
+                  }}
+                >
+                  {dark && !piece && isTarget && (
+                    <span className="absolute flex h-[48%] w-[48%] items-center justify-center rounded-full border-2 border-emerald-200 bg-emerald-400/45 shadow-[0_0_18px_rgba(52,211,153,.9)]">
+                      <span className="h-2 w-2 rounded-full bg-white" />
+                    </span>
+                  )}
+
+                  {isSelected && (
+                    <span className="absolute inset-[3px] rounded-md border-[3px] border-cyan-300 shadow-[inset_0_0_14px_rgba(34,211,238,.45),0_0_14px_rgba(34,211,238,.6)]" />
+                  )}
+
+                  {piece && (
+                    <span
+                      className={`relative flex h-[77%] w-[77%] items-center justify-center rounded-full transition-all duration-150 ${
+                        isSelected ? "scale-110" : isSelectable ? "scale-[1.04]" : ""
+                      }`}
+                      style={{
+                        background:
+                          side === "r"
+                            ? "radial-gradient(circle at 34% 25%,#ffb0b6 0%,#ef4b5b 34%,#9e1725 74%,#5d0912 100%)"
+                            : "radial-gradient(circle at 34% 25%,#7d8798 0%,#323a48 35%,#10151e 74%,#02050a 100%)",
+                        border: isSelectable
+                          ? "2px solid rgba(103,232,249,.95)"
+                          : "2px solid rgba(255,255,255,.10)",
+                        boxShadow: isSelectable
+                          ? "inset 0 -6px 9px rgba(0,0,0,.48), inset 0 4px 6px rgba(255,255,255,.34), 0 0 0 3px rgba(34,211,238,.16), 0 0 18px rgba(34,211,238,.48), 0 7px 8px rgba(0,0,0,.46)"
+                          : "inset 0 -6px 9px rgba(0,0,0,.5), inset 0 4px 6px rgba(255,255,255,.28), 0 6px 8px rgba(0,0,0,.5)",
+                      }}
+                    >
+                      <span className="absolute inset-[14%] rounded-full border border-white/10" />
+                      {isKing ? (
+                        <span className="relative flex h-[56%] w-[56%] items-center justify-center rounded-full bg-amber-300/95 text-[#4b250b] shadow-[0_2px_8px_rgba(0,0,0,.45)]">
+                          <Crown className="h-[64%] w-[64%]" strokeWidth={2.8} />
+                        </span>
+                      ) : isSelectable ? (
+                        <Sparkles className="h-[30%] w-[30%] text-cyan-100/90" />
+                      ) : null}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto mt-4 max-w-[420px] rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-center">
+        <p className="text-[12px] font-black text-white/85">
+          {thinking
+            ? "Computer is making its move…"
+            : selected !== null
+              ? targets.length
+                ? "Tap one of the glowing green landing spots."
+                : "Choose another glowing piece."
+              : forcedCapture && myTurn
+                ? "A capture is available — glowing pieces can jump."
+                : myTurn
+                  ? "Tap a glowing piece, then tap a highlighted landing spot."
+                  : `Waiting for ${opponentName}…`}
+        </p>
+        <p className="mt-1 text-[10px] text-white/40">
+          {mySide === "r" ? "Red moves upward" : "Black moves downward"} · Reach the opposite side to become a king.
+        </p>
+      </div>
       <PendingChallengeGate
         gameId={game.id}
         userId={user?.id}
