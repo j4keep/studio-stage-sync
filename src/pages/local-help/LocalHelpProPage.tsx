@@ -11,7 +11,6 @@ import {
   Sparkles,
   Star,
   Trophy,
-  X as XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
