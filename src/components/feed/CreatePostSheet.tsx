@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -39,6 +40,32 @@ cameraStream?: MediaStream | null;
 
 type Step = "camera" | "edit" | "preview";
 
+async function withPublishTimeout<T>(
+  promise: PromiseLike<T>,
+  timeoutMs: number,
+  message: string,
+): Promise<T> {
+  let timer: number | undefined;
+  try {
+    return await Promise.race([
+      Promise.resolve(promise),
+      new Promise<T>((_, reject) => {
+        timer = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+  }
+}
+
+async function fastVideoCover(blob: Blob) {
+  return await withPublishTimeout(
+    captureVideoPosterFromBlob(blob),
+    2600,
+    "Cover generation timed out",
+  ).catch(() => null);
+}
+
 const CreatePostSheet = ({
 open,
 onClose,
@@ -47,6 +74,7 @@ cameraStream = null,
 }: Props) => {
 const { user } = useAuth();
 const queryClient = useQueryClient();
+const navigate = useNavigate();
 
 const [step, setStep] = useState<Step>("camera");
 const [createMode, setCreateMode] = useState<CreateMode>("post");
@@ -271,11 +299,15 @@ if (!user) throw new Error("Not authenticated");
     const ext = musicFile.name.split(".").pop() || "mp3";
     const audioPath = `posts/${user.id}/audio-${Date.now()}.${ext}`;
 
-    const { error: audioErr } = await supabase.storage
-      .from("media")
-      .upload(audioPath, musicFile, {
-        contentType: musicFile.type || "audio/mpeg",
-      });
+    const { error: audioErr } = await withPublishTimeout(
+      supabase.storage
+        .from("media")
+        .upload(audioPath, musicFile, {
+          contentType: musicFile.type || "audio/mpeg",
+        }),
+      45_000,
+      "Audio upload took too long. Check your connection and try again.",
+    );
 
     if (audioErr) throw audioErr;
 
@@ -313,7 +345,7 @@ if (!user) throw new Error("Not authenticated");
   if (uploadFile) {
     let coverFile: File | null = null;
     if (mediaType === "video") {
-      const coverDataUrl = await captureVideoPosterFromBlob(uploadFile);
+      const coverDataUrl = await fastVideoCover(uploadFile);
       if (coverDataUrl) {
         coverFile = dataUrlToFile(coverDataUrl, `cover-${Date.now()}.jpg`);
       }
@@ -333,9 +365,15 @@ if (!user) throw new Error("Not authenticated");
           ? "video/mp4"
           : "image/jpeg";
 
-    const { error: uploadErr } = await supabase.storage
-      .from("media")
-      .upload(path, uploadFile, { contentType });
+    const { error: uploadErr } = await withPublishTimeout(
+      supabase.storage
+        .from("media")
+        .upload(path, uploadFile, { contentType }),
+      mediaType === "video" ? 90_000 : 35_000,
+      mediaType === "video"
+        ? "Video upload took too long. Check your connection and try again."
+        : "Photo upload took too long. Check your connection and try again.",
+    );
 
     if (uploadErr) throw uploadErr;
 
@@ -347,9 +385,13 @@ if (!user) throw new Error("Not authenticated");
 
     if (coverFile) {
       const coverPath = `posts/${user.id}/cover-${Date.now()}.jpg`;
-      const { error: coverErr } = await supabase.storage
-        .from("media")
-        .upload(coverPath, coverFile, { contentType: coverFile.type || "image/jpeg" });
+      const { error: coverErr } = await withPublishTimeout(
+        supabase.storage
+          .from("media")
+          .upload(coverPath, coverFile, { contentType: coverFile.type || "image/jpeg" }),
+        15_000,
+        "Cover upload timed out",
+      ).catch(() => ({ error: new Error("cover timeout") } as any));
 
       if (!coverErr) {
         const { data: coverUrlData } = supabase.storage
@@ -390,7 +432,11 @@ if (!user) throw new Error("Not authenticated");
         .from("posts")
         .insert({ user_id: user.id, ...payload });
 
-  const { error } = await query;
+  const { error } = await withPublishTimeout(
+    query,
+    20_000,
+    "Publishing took too long. Please try again.",
+  );
   if (error) throw error;
 },
 onSuccess: () => {
@@ -398,7 +444,16 @@ onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ["happening-feed"] });
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   toast.success(postToEdit ? "Post updated!" : "Post shared!");
+  const wasEditing = Boolean(postToEdit);
   reset();
+  if (!wasEditing) {
+    navigate("/");
+    window.setTimeout(() => {
+      queryClient.refetchQueries({ queryKey: ["feed-posts"] });
+      queryClient.refetchQueries({ queryKey: ["happening-feed"] });
+      window.dispatchEvent(new Event("feed-scroll-top"));
+    }, 80);
+  }
 },
 onError: (e: any) => {
   setUploading(false);
@@ -554,7 +609,7 @@ return ( <AnimatePresence>
 initial={{ opacity: 0 }}
 animate={{ opacity: 1 }}
 exit={{ opacity: 0 }}
-className="fixed inset-0 z-[100] bg-black overflow-hidden touch-none overscroll-none"
+className="fixed inset-0 z-[100] bg-background text-foreground overflow-hidden touch-none overscroll-none"
 style={{ height: "100dvh", maxHeight: "100dvh" }}
 >
 {step === "camera" && createMode === "post" && (
