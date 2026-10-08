@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { ArrowLeft, MessageCircle, Star, Trophy } from "lucide-react";
+import { ArrowLeft, BadgeCheck, MessageCircle, Star, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { formatHourly, formatResponseTime, getLocalHelpCategory } from "@/lib/local-help";
 import { listLocalHelpPros, type LocalHelpPro } from "@/lib/pro-profiles";
 import { useAuth } from "@/contexts/AuthContext";
+import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
 
 export default function LocalHelpCategoryPage() {
   const { categoryId } = useParams();
@@ -57,12 +58,15 @@ export default function LocalHelpCategoryPage() {
       </header>
 
       <div className="px-4 pt-4">
-        <h2 className="text-2xl font-black tracking-tight">
-          {cat?.emoji} {cat?.label || "Helpers"} near you
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Qualified people on YAJ — neighbors, freelancers, students & pros
-        </p>
+        <div className="relative h-32 overflow-hidden rounded-3xl border border-border shadow-sm">
+          <LocalHelpCategoryVisual categoryId={cat?.id || categoryId || "handyman"} label={cat?.label || "Local Help"} />
+        </div>
+        <div className="mt-4">
+          <h2 className="text-xl font-black tracking-tight">{cat?.label || "Helpers"} near you</h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Compare service details, portfolio, rates and Local Help reviews before you hire.
+          </p>
+        </div>
 
         {loading && <p className="py-10 text-center text-sm text-muted-foreground">Loading…</p>}
         {!loading && pros.length === 0 && (
@@ -85,7 +89,7 @@ export default function LocalHelpCategoryPage() {
             const snippet = pro.gig_experience_bio || pro.about || "Ready to help locally on YAJ.";
             const price = formatHourly(pro.hourly_rate);
             return (
-              <article key={pro.user_id} className="rounded-2xl border border-border bg-card p-3">
+              <article key={pro.user_id} className="rounded-3xl border border-border bg-card p-3 shadow-[0_8px_24px_rgba(0,0,0,.05)]">
                 <button type="button" onClick={() => nav(`/local-help/pro/${pro.user_id}`)} className="flex w-full gap-3 text-left">
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-muted">
                     {pro.avatar_url ? (
@@ -95,7 +99,10 @@ export default function LocalHelpCategoryPage() {
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[15px] font-bold">{name}</p>
+                    <p className="flex items-center gap-1.5 truncate text-[15px] font-black">
+                      <span className="truncate">{name}</span>
+                      {pro.verified && <BadgeCheck className="h-4 w-4 shrink-0 text-primary" />}
+                    </p>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px]">
                       <span className="inline-flex items-center gap-1 font-semibold">
                         <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
@@ -114,6 +121,15 @@ export default function LocalHelpCategoryPage() {
                       {pro.similar_jobs_count || Math.max(pro.hired_count, 1)} similar jobs · {formatResponseTime(pro.responds_minutes)}
                     </p>
                     {price && <p className="mt-0.5 text-[13px] font-bold">From {price}</p>}
+                    {pro.skills.length > 0 && (
+                      <div className="mt-1.5 flex flex-wrap gap-1">
+                        {pro.skills.slice(0, 3).map((skill) => (
+                          <span key={skill} className="rounded-full bg-muted px-2 py-0.5 text-[9px] font-semibold text-muted-foreground">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </button>
                 <div className="mt-3 rounded-xl bg-muted/80 px-3 py-2.5">
