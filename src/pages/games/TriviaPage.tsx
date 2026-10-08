@@ -28,6 +28,9 @@ export default function TriviaPage() {
   const finished = questions.length > 0 && i >= questions.length;
   const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !finished;
   const question = !finished && questions.length ? TRIVIA_BANK[questions[i]] : null;
+  const stage = Math.min(3, Math.floor(i / 4) + 1);
+  const stageQuestion = (i % 4) + 1;
+  const cpuAccuracy = stage === 1 ? 0.58 : stage === 2 ? 0.68 : 0.76;
 
   useEffect(() => {
     if (!game || !user || !finished || written.current === game.id) return;
@@ -61,7 +64,7 @@ export default function TriviaPage() {
     await recordMove(game.id, user.id, n, { q: questions[i], option, correct });
 
     if (game.mode === "solo") {
-      const cpu = computerAnswer(questions[i]);
+      const cpu = computerAnswer(questions[i], cpuAccuracy);
       if (cpu === TRIVIA_BANK[questions[i]].a) nextScores[oppSeat] = (nextScores[oppSeat] ?? 0) + 1;
       n += 1;
       nextI = i + 1;
@@ -144,7 +147,7 @@ export default function TriviaPage() {
             ? `Victory — ${mine} to ${theirs}`
             : `${opponentName} wins — ${theirs} to ${mine}`
         : myTurn
-          ? `Question ${i + 1} of ${questions.length}`
+          ? `Stage ${stage} of 3 · Question ${stageQuestion} of 4`
           : `${opponentName} is answering`;
 
   return (
@@ -174,7 +177,9 @@ export default function TriviaPage() {
       <div className="mx-auto max-w-[420px]">
         <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 p-3 text-sm font-black text-white">
           <span>You {mine}</span>
-          <span className="text-white/45">vs</span>
+          <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-1 text-[10px] uppercase tracking-wider text-primary">
+            Stage {finished ? 3 : stage}/3
+          </span>
           <span>
             {theirs} {opponentName}
           </span>
@@ -189,7 +194,12 @@ export default function TriviaPage() {
               boxShadow: "0 22px 44px -20px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.08)",
             }}
           >
-            <p className="text-[11px] font-bold uppercase tracking-wide text-primary">{question.category}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-primary">{question.category}</p>
+              <p className="text-[10px] font-black uppercase tracking-wider text-white/45">
+                Stage {stage} · {stageQuestion}/4
+              </p>
+            </div>
             <p className="mt-1 text-base font-black leading-snug text-white">{question.q}</p>
             <div className="mt-3 space-y-2">
               {question.options.map((opt, oi) => {
