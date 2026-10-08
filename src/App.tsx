@@ -198,6 +198,8 @@ const STARTUP_TIMEOUT_MS = 2500;
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
+  const publicYajAi = location.pathname === "/ask-yaj" || location.pathname.startsWith("/ask-yaj/");
   const { themeSetupDone } = useTheme();
   const { status: moderation, loading: moderationLoading, refresh: refreshModeration, isLockedOut } =
     useModerationStatus();
@@ -285,6 +287,20 @@ const ProtectedRoutes = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
+    );
+  }
+
+  if (!user && publicYajAi) {
+    return (
+      <AppLayout>
+        <Routes>
+          <Route path="/ask-yaj" element={<AskYajPage />} />
+          <Route path="/ask-yaj/settings" element={<YajAiSettingsPage />} />
+          <Route path="/ask-yaj/conversation-settings" element={<YajAiConversationSettingsPage />} />
+          <Route path="/ask-yaj/avatar" element={<YajAiAvatarPage />} />
+          <Route path="*" element={<Navigate to="/ask-yaj" replace />} />
+        </Routes>
+      </AppLayout>
     );
   }
 
