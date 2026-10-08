@@ -1,4 +1,4 @@
-const SEEK_TIMEOUT_MS = 2500;
+const SEEK_TIMEOUT_MS = 700;
 
 function waitForEvent(target: EventTarget, event: string, timeoutMs = SEEK_TIMEOUT_MS) {
   return new Promise<void>((resolve) => {
@@ -19,7 +19,7 @@ async function waitForVideoFrame(video: HTMLVideoElement) {
   const requestFrame = video.requestVideoFrameCallback?.bind(video);
   if (!requestFrame) return;
   await new Promise<void>((resolve) => {
-    const timeout = window.setTimeout(resolve, 350);
+    const timeout = window.setTimeout(resolve, 180);
     requestFrame(() => {
       window.clearTimeout(timeout);
       resolve();
@@ -46,13 +46,12 @@ export async function captureVideoPoster(src: string, options: { mime?: string; 
 
   await waitForEvent(video, "loadedmetadata");
   const duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 3;
+  // Publishing must never spend several seconds scanning a clip for a cover.
+  // Two early frames are enough; if Safari cannot seek quickly we simply post
+  // without a generated cover and let the video provide its own first frame.
   const targets = Array.from(new Set([
-    0.25,
-    0.6,
-    1.1,
-    2,
-    Math.min(duration - 0.05, Math.max(0.1, duration * 0.12)),
-    Math.min(duration - 0.05, Math.max(0.1, duration * 0.25)),
+    Math.min(duration - 0.05, Math.max(0.08, duration * 0.08)),
+    Math.min(duration - 0.05, Math.max(0.18, duration * 0.18)),
   ].filter((t) => t >= 0 && t < duration)));
 
   const canvas = document.createElement("canvas");
