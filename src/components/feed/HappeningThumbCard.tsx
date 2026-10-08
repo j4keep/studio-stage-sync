@@ -31,7 +31,7 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
     video.defaultMuted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = "metadata";
+    video.preload = "auto";
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
@@ -69,7 +69,7 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
             muted
             loop
             playsInline
-            preload="metadata"
+            preload="auto"
             onLoadedData={() => setVideoReady(true)}
             onCanPlay={() => setVideoReady(true)}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
