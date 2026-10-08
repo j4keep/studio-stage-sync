@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Sparkles, X } from "lucide-react";
+import { ArrowLeft, BriefcaseBusiness, Search, ShieldCheck, Sparkles, X } from "lucide-react";
 import { LOCAL_HELP_CATEGORIES, TRENDING_SERVICES } from "@/lib/local-help";
 import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
+import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
 
 const RECENT_KEY = "yaj_local_help_recent";
 
@@ -55,8 +56,8 @@ export default function LocalHelpHomePage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Create • Connect • Elevate</p>
-            <h1 className="text-lg font-black tracking-tight">Find Local Help</h1>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary">YAJ Local Services</p>
+            <h1 className="text-lg font-black tracking-tight">Find trusted local help</h1>
           </div>
           <button
             type="button"
@@ -89,34 +90,44 @@ export default function LocalHelpHomePage() {
       </header>
 
       <section className="space-y-3 px-4 pt-4">
-        <button
-          type="button"
-          onClick={() => setAskOpen(true)}
-          className="relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-violet-500 to-fuchsia-500 p-4 text-left text-primary-foreground shadow-sm"
-        >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.35),transparent_40%)]" />
-          <div className="relative">
-            <span className="inline-flex items-center gap-1 rounded-full bg-black/25 px-2 py-0.5 text-[10px] font-bold">
-              <Sparkles className="h-3 w-3" /> YAJ Buddy
-            </span>
-            <p className="mt-2 text-base font-black">Need help? Describe it.</p>
-            <p className="mt-1 text-[11px] text-white/90">
-              Upload photos or type what you need — Buddy suggests category, budget, and helpers.
-            </p>
+        <div className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
+          <div className="relative overflow-hidden bg-[linear-gradient(135deg,hsl(var(--primary)/.14),hsl(var(--background)),hsl(var(--muted)))] p-4">
+            <div className="absolute right-[-30px] top-[-35px] h-28 w-28 rounded-full border border-primary/10 bg-primary/5" />
+            <div className="relative">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-primary">
+                <ShieldCheck className="h-3 w-3" /> Hire with confidence
+              </span>
+              <h2 className="mt-3 max-w-[280px] text-xl font-black leading-tight">Find the right person for the job.</h2>
+              <p className="mt-1 max-w-[330px] text-[12px] leading-relaxed text-muted-foreground">
+                Compare local helpers by services, portfolio, rates, reviews and availability.
+              </p>
+            </div>
           </div>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => nav("/local-help/business")}
-          className="w-full rounded-2xl border border-border bg-card p-4 text-left shadow-sm"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-wide text-primary">Offer services</p>
-          <p className="mt-1 text-base font-black">Become a Handyman (or DJ, cleaner…)</p>
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            Create your Local Help business page — logo, rates, services, portfolio — and go live.
-          </p>
-        </button>
+          <div className="grid grid-cols-2 border-t border-border">
+            <button
+              type="button"
+              onClick={() => setAskOpen(true)}
+              className="border-r border-border p-3.5 text-left transition active:bg-muted"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Sparkles className="h-4 w-4" />
+              </span>
+              <p className="mt-2 text-[13px] font-black">Describe the job</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">YAJ can suggest the best service category.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => nav("/local-help/business")}
+              className="p-3.5 text-left transition active:bg-muted"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <BriefcaseBusiness className="h-4 w-4" />
+              </span>
+              <p className="mt-2 text-[13px] font-black">Offer your services</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">Create a professional helper profile.</p>
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <button
@@ -138,7 +149,7 @@ export default function LocalHelpHomePage() {
           <button
             type="button"
             onClick={() => nav("/my-gigs")}
-            className="col-span-2 rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
+            className="col-span-2 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition active:bg-muted"
           >
             <p className="text-[13px] font-black">My gigs dashboard</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Track helpers, completion & ratings</p>
@@ -189,8 +200,8 @@ export default function LocalHelpHomePage() {
       <section className="mt-5 px-4">
         <div className="mb-3 flex items-end justify-between">
           <div>
-            <h2 className="text-base font-bold">Services</h2>
-            <p className="text-[11px] text-muted-foreground">Neighbors, freelancers, students & pros</p>
+            <h2 className="text-base font-black">Browse services</h2>
+            <p className="text-[11px] text-muted-foreground">Local professionals, freelancers and skilled neighbors</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-3">
@@ -199,12 +210,15 @@ export default function LocalHelpHomePage() {
               key={cat.id}
               type="button"
               onClick={() => nav(`/local-help/${cat.id}`)}
-              className="overflow-hidden rounded-2xl border border-border bg-card text-left shadow-sm active:scale-[0.98] transition"
+              className="group overflow-hidden rounded-2xl border border-border bg-card text-left shadow-[0_8px_24px_rgba(0,0,0,.06)] transition active:scale-[0.98]"
             >
-              <div className={`flex aspect-[5/3] items-center justify-center bg-gradient-to-br ${cat.gradient}`}>
-                <span className="text-5xl drop-shadow">{cat.emoji}</span>
+              <div className="aspect-[5/3] overflow-hidden">
+                <LocalHelpCategoryVisual categoryId={cat.id} label={cat.label} />
               </div>
-              <p className="px-3 py-2.5 text-[13px] font-bold leading-snug">{cat.label}</p>
+              <div className="px-3 py-2.5">
+                <p className="text-[13px] font-black leading-snug">{cat.label}</p>
+                <p className="mt-0.5 line-clamp-1 text-[10px] text-muted-foreground">{cat.searchHint}</p>
+              </div>
             </button>
           ))}
         </div>
