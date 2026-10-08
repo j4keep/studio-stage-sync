@@ -6,6 +6,7 @@ import { happeningKindLabel } from "@/lib/happening-items";
 interface Props {
   item: HappeningItem;
   compact?: boolean;
+  previewActive?: boolean;
   onOpen: () => void;
 }
 
@@ -14,45 +15,46 @@ interface Props {
  * Image/video fills the whole tile; metadata floats over the media instead of
  * living in a separate white footer.
  */
-export default function HappeningThumbCard({ item, compact = false, onOpen }: Props) {
+export default function HappeningThumbCard({ item, compact = false, previewActive = false, onOpen }: Props) {
   const isVideo = item.mediaType === "video";
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const [videoReady, setVideoReady] = useState(false);
-  const visibleRef = useRef(false);
   const canPreviewVideo = isVideo && Boolean(item.previewVideoUrl);
 
   useEffect(() => {
-    if (!canPreviewVideo) return;
     const video = videoRef.current;
-    const card = cardRef.current;
-    if (!video || !card) return;
+    if (!video || !canPreviewVideo) return;
 
     video.muted = true;
     video.defaultMuted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = "auto";
     video.setAttribute("muted", "");
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        visibleRef.current = Boolean(entry?.isIntersecting);
-        if (visibleRef.current) {
-          video.preload = "auto";
-          void video.play().catch(() => {});
-        } else {
-          video.pause();
-        }
-      },
-      { threshold: 0.5 },
-    );
+    if (!previewActive) {
+      video.pause();
+      video.preload = "metadata";
+      return;
+    }
 
-    observer.observe(card);
-    return () => observer.disconnect();
-  }, [canPreviewVideo, item.previewVideoUrl]);
+    video.preload = "auto";
+    const tryPlay = () => {
+      if (!previewActive) return;
+      void video.play().catch(() => {});
+    };
+
+    tryPlay();
+    video.addEventListener("loadeddata", tryPlay);
+    video.addEventListener("canplay", tryPlay);
+    return () => {
+      video.removeEventListener("loadeddata", tryPlay);
+      video.removeEventListener("canplay", tryPlay);
+      video.pause();
+    };
+  }, [canPreviewVideo, item.previewVideoUrl, previewActive]);
 
   return (
     <button
@@ -71,18 +73,11 @@ export default function HappeningThumbCard({ item, compact = false, onOpen }: Pr
             poster={item.coverUrl || undefined}
             muted
             defaultMuted
-            autoPlay
             loop
             playsInline
-            preload="auto"
-            onLoadedData={(e) => {
-              setVideoReady(true);
-              if (visibleRef.current) void e.currentTarget.play().catch(() => {});
-            }}
-            onCanPlay={(e) => {
-              setVideoReady(true);
-              if (visibleRef.current) void e.currentTarget.play().catch(() => {});
-            }}
+            preload={previewActive ? "auto" : "metadata"}
+            onLoadedData={() => setVideoReady(true)}
+            onCanPlay={() => setVideoReady(true)}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
           />
           {!videoReady && item.coverUrl ? (
