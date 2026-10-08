@@ -72,9 +72,9 @@ export default function CheckersPage() {
     let n = moveNumber + 1;
     setLastMove({ from: move.from, to: move.to });
 
-    if (move.capture !== null) checkersSfx.capture();
-    else checkersSfx.move();
-    if (promoted) window.setTimeout(() => checkersSfx.king(), 90);
+    if (move.capture !== null) void checkersSfx.capture();
+    else void checkersSfx.move();
+    if (promoted) window.setTimeout(() => void checkersSfx.king(), 90);
 
     try {
       navigator.vibrate?.(18);
@@ -116,9 +116,9 @@ export default function CheckersPage() {
             (cpuPiece === "r" && res.board[cpu.to] === "R") ||
             (cpuPiece === "b" && res.board[cpu.to] === "B");
           setLastMove({ from: cpu.from, to: cpu.to });
-          if (cpu.capture !== null) checkersSfx.capture();
-          else checkersSfx.move();
-          if (cpuPromoted) window.setTimeout(() => checkersSfx.king(), 90);
+          if (cpu.capture !== null) void checkersSfx.capture();
+          else void checkersSfx.move();
+          if (cpuPromoted) window.setTimeout(() => void checkersSfx.king(), 90);
           next = res.board;
           n += 1;
           setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: user.id });
@@ -161,7 +161,7 @@ export default function CheckersPage() {
 
     if (sideOf(board[cell]) === mySide && selectable.has(cell)) {
       setSelected(cell);
-      checkersSfx.select();
+      void checkersSfx.prime().then(() => checkersSfx.select());
       try { navigator.vibrate?.(8); } catch { /* optional */ }
       return;
     }
@@ -274,6 +274,7 @@ export default function CheckersPage() {
 
       <div
         className="mx-auto max-w-[420px] rounded-[30px] p-3.5"
+        onPointerDownCapture={() => { void checkersSfx.prime(); }}
         style={{
           background: "linear-gradient(145deg,#7a4528 0%,#4c2818 46%,#25130c 100%)",
           boxShadow:
