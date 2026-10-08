@@ -32,13 +32,25 @@ export default function ConnectFourPage() {
 
   const board: C4Board = (game?.game_state?.board as C4Board) || C4_EMPTY;
   const moveNumber: number = game?.game_state?.moveNumber ?? 0;
+  const seriesRound: number = game?.game_state?.seriesRound ?? 1;
+  const seriesWins: { R: number; Y: number } = game?.game_state?.seriesWins || { R: 0, Y: 0 };
+  const seriesDraws: number = game?.game_state?.seriesDraws ?? 0;
   const myMark: "R" | "Y" = (me?.seat ?? 1) === 1 ? "R" : "Y";
   const oppMark: "R" | "Y" = myMark === "R" ? "Y" : "R";
   const line = c4WinningLine(board);
   const w = c4Winner(board);
   const draw = c4IsDraw(board);
-  const finished = Boolean(w) || draw;
-  const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !finished;
+  const roundFinished = Boolean(w) || draw;
+  const finished = roundFinished && seriesRound >= 3;
+  const projectedWins = {
+    R: seriesWins.R + (w === "R" ? 1 : 0),
+    Y: seriesWins.Y + (w === "Y" ? 1 : 0),
+  };
+  const mySeriesWins = projectedWins[myMark];
+  const oppSeriesWins = projectedWins[oppMark];
+  const seriesDraw = finished && mySeriesWins === oppSeriesWins;
+  const iWonSeries = finished && mySeriesWins > oppSeriesWins;
+  const myTurn = game?.status === "active" && game.current_turn_user_id === user?.id && !roundFinished;
 
   // Indices added since the last render get the drop animation.
   const fresh = useMemo(() => {
@@ -55,18 +67,24 @@ export default function ConnectFourPage() {
     if (!game || !user || !finished || written.current === game.id) return;
     written.current = game.id;
     if (game.status === "completed") return;
-    const outcome = draw ? "draw" : w === myMark ? "win" : "loss";
+    const outcome = seriesDraw ? "draw" : iWonSeries ? "win" : "loss";
     void (async () => {
       await updateGameState(game.id, {
         status: "completed",
-        is_draw: draw,
-        winner_user_id: draw ? null : w === myMark ? user.id : (opponent?.user_id ?? null),
+        is_draw: seriesDraw,
+        winner_user_id: seriesDraw ? null : iWonSeries ? user.id : (opponent?.user_id ?? null),
         finished_at: new Date().toISOString(),
+        game_state: {
+          ...(game.game_state || {}),
+          seriesRound: 3,
+          seriesWins: projectedWins,
+          seriesDraws: seriesDraws + (draw ? 1 : 0),
+        },
       });
       await bumpStats(user.id, "connect_four", outcome);
       await refresh();
     })();
-  }, [finished, game?.id, game?.status]);
+  }, [finished, game?.id, game?.status, mySeriesWins, oppSeriesWins]);
 
   const play = async (col: number) => {
     if (!game || !user || !myTurn) return;
@@ -79,7 +97,7 @@ export default function ConnectFourPage() {
     let next = drop(board, col, myMark) as C4Board;
     let n = moveNumber + 1;
     let nextTurn = opponent?.user_id ?? null;
-    setGame({ ...game, game_state: { board: next, moveNumber: n }, current_turn_user_id: nextTurn });
+    setGame({ ...game, game_state: { ...(game.game_state || {}), board: next, moveNumber: n }, current_turn_user_id: nextTurn });
     await recordMove(game.id, user.id, n, { col, mark: myMark });
 
     if (game.mode === "solo" && !c4Winner(next) && !c4IsDraw(next)) {
@@ -92,14 +110,41 @@ export default function ConnectFourPage() {
       nextTurn = user.id;
     }
 
-    await updateGameState(game.id, { game_state: { board: next, moveNumber: n }, current_turn_user_id: nextTurn });
+    await updateGameState(game.id, { game_state: { ...(game.game_state || {}), board: next, moveNumber: n }, current_turn_user_id: nextTurn });
+    await refresh();
+  };
+
+  const advanceRound = async () => {
+    if (!game || !user || !roundFinished || seriesRound >= 3) return;
+    const nextWins = {
+      R: seriesWins.R + (w === "R" ? 1 : 0),
+      Y: seriesWins.Y + (w === "Y" ? 1 : 0),
+    };
+    const nextRound = seriesRound + 1;
+    const starter: "R" | "Y" = nextRound % 2 === 0 ? "Y" : "R";
+    const nextTurn =
+      game.mode === "solo"
+        ? user.id
+        : starter === myMark
+          ? user.id
+          : (opponent?.user_id ?? user.id);
+    const nextState = {
+      ...(game.game_state || {}),
+      board: [...C4_EMPTY],
+      moveNumber,
+      seriesRound: nextRound,
+      seriesWins: nextWins,
+      seriesDraws: seriesDraws + (draw ? 1 : 0),
+    };
+    setGame({ ...game, game_state: nextState, current_turn_user_id: nextTurn });
+    await updateGameState(game.id, { game_state: nextState, current_turn_user_id: nextTurn });
     await refresh();
   };
 
   const rematch = async () => {
     if (!user || !game) return;
     try {
-      const state = { board: C4_EMPTY, moveNumber: 0 };
+      const state = { board: [...C4_EMPTY], moveNumber: 0, seriesRound: 1, seriesWins: { R: 0, Y: 0 }, seriesDraws: 0 };
       const g =
         game.mode === "solo"
           ? await createSoloGame("connect_four", user.id, state)
@@ -115,7 +160,13 @@ export default function ConnectFourPage() {
   const challenge = async (opponentId: string, name: string) => {
     if (!user) return;
     try {
-      const g = await createMultiplayerGame("connect_four", user.id, opponentId, { board: C4_EMPTY, moveNumber: 0 });
+      const g = await createMultiplayerGame("connect_four", user.id, opponentId, {
+        board: [...C4_EMPTY],
+        moveNumber: 0,
+        seriesRound: 1,
+        seriesWins: { R: 0, Y: 0 },
+        seriesDraws: 0,
+      });
       toast({ title: `Challenge sent to ${name}` });
       navigate(gameRoute("connect_four", g.id), { replace: true });
     } catch (e: any) {
@@ -145,13 +196,17 @@ export default function ConnectFourPage() {
     ? `Waiting for ${opponentName} to accept`
     : game.status === "cancelled"
       ? "Challenge declined"
-      : draw
-        ? "Draw — board full"
-        : w
-          ? w === myMark ? "Victory — you win!" : `${opponentName} wins`
-          : myTurn ? "Your turn" : `${opponentName}'s turn`;
+      : roundFinished && !finished
+        ? `${draw ? "Round draw" : w === myMark ? "You won the round" : `${opponentName} won the round`} · Round ${seriesRound} of 3`
+        : finished
+          ? seriesDraw
+            ? `Series draw · ${mySeriesWins}-${oppSeriesWins}`
+            : iWonSeries
+              ? `Series won · ${mySeriesWins}-${oppSeriesWins}`
+              : `${opponentName} wins series · ${oppSeriesWins}-${mySeriesWins}`
+          : `Round ${seriesRound} of 3 · ${myTurn ? "Your turn" : `${opponentName}'s turn`}`;
 
-  const outcome = finished ? (draw ? "draw" : w === myMark ? "win" : "loss") : undefined;
+  const outcome = finished ? (seriesDraw ? "draw" : iWonSeries ? "win" : "loss") : undefined;
 
   return (
     <GameShell
@@ -162,7 +217,7 @@ export default function ConnectFourPage() {
       subtitle={game.mode === "solo" ? "Solo vs Computer" : `You vs ${opponentName}`}
       status={status}
       finished={finished}
-      shareText={`I just ${draw ? "tied" : w === myMark ? "won" : "lost"} a game of Connect Four on YAJ 🔴🔵`}
+      shareText={`I just ${seriesDraw ? "tied" : iWonSeries ? "won" : "lost"} a 3-round Connect Four match on YAJ 🔴🔵`}
       onRematch={rematch}
       onChallenge={challenge}
       me={{ name: "You", meta: myMark === "R" ? "Red discs" : "Yellow discs" }}
@@ -174,9 +229,14 @@ export default function ConnectFourPage() {
       }}
       myTurn={myTurn}
       outcome={outcome as any}
-      resultTitle={draw ? "It's a draw" : w === myMark ? "Four in a row!" : `${opponentName} wins`}
-      resultDetail={draw ? "The board filled up." : w === myMark ? "You connected four — clean work." : "Rematch and take it back."}
+      resultTitle={seriesDraw ? "Series draw" : iWonSeries ? "You win the match!" : `${opponentName} wins the match`}
+      resultDetail={`Best of 3 complete · you ${mySeriesWins} — ${oppSeriesWins} ${opponentName}`}
     >
+      <div className="mx-auto mb-3 flex max-w-[380px] items-center justify-center gap-2 text-[10px] font-black uppercase tracking-wider text-white/55">
+        <span>Round {seriesRound}/3</span>
+        <span>·</span>
+        <span>Series {seriesWins[myMark]}-{seriesWins[oppMark]}</span>
+      </div>
       <div
         className="mx-auto max-w-[380px] rounded-[28px] p-3"
         style={{
@@ -223,9 +283,23 @@ export default function ConnectFourPage() {
           })}
         </div>
       </div>
-      <p className="mt-3 text-center text-[11px] text-white/50">
-        You are {myMark === "R" ? "red" : "yellow"} — tap a column to drop.
-      </p>
+      {roundFinished && !finished ? (
+        <div className="mx-auto mt-4 max-w-[380px] rounded-2xl border border-primary/25 bg-primary/10 p-4 text-center">
+          <p className="text-sm font-black text-white">
+            {draw ? `Round ${seriesRound} draw` : w === myMark ? `You won Round ${seriesRound}` : `${opponentName} won Round ${seriesRound}`}
+          </p>
+          <p className="mt-1 text-[11px] text-white/55">
+            Series score {projectedWins[myMark]}-{projectedWins[oppMark]}
+          </p>
+          <button type="button" onClick={() => void advanceRound()} className="mt-3 rounded-full bg-primary px-5 py-2.5 text-xs font-black text-primary-foreground active:scale-95">
+            Start Round {seriesRound + 1}
+          </button>
+        </div>
+      ) : (
+        <p className="mt-3 text-center text-[11px] text-white/50">
+          You are {myMark === "R" ? "red" : "yellow"} — tap a column to drop.
+        </p>
+      )}
       <PendingChallengeGate
         gameId={game.id}
         userId={user?.id}
