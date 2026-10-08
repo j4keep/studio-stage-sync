@@ -218,7 +218,15 @@ export default function EventDetailPage() {
       </header>
       {row.media_url ? (
         row.media_type === "video" ? (
-          <video src={row.media_url} controls playsInline className="max-h-[70vh] w-full bg-black" />
+          <video
+            src={row.media_url}
+            controls
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            className="max-h-[70vh] w-full bg-black"
+          />
         ) : (
           <img src={row.media_url} alt="" className="max-h-[70vh] w-full bg-black object-contain" />
         )
