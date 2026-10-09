@@ -53,7 +53,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
     video.setAttribute("webkit-playsinline", "true");
     video.loop = true;
     video.playsInline = true;
-    video.preload = "none";
+    video.preload = "metadata";
 
     const io = new IntersectionObserver(
       (entries) => {
@@ -155,7 +155,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               muted
               loop
               playsInline
-              preload="none"
+              preload="metadata"
               onLoadedData={() => setVideoReady(true)}
               onCanPlay={() => setVideoReady(true)}
               className="absolute inset-0 h-full w-full object-cover pointer-events-none"

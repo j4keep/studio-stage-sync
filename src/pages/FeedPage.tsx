@@ -42,11 +42,25 @@ const FeedPage = () => {
   const happeningRailRef = useRef<HTMLDivElement>(null);
   const [activeHappeningId, setActiveHappeningId] = useState<string | null>(null);
 
-  const { data: items = [], isLoading } = useQuery({
+  const { data: items = [], isLoading, refetch: refetchFeed } = useQuery({
     queryKey: ["feed-posts", user?.id || "public"],
     queryFn: () => fetchFeedItems({ currentUserId: user?.id }),
     enabled: !authLoading,
+    staleTime: 0,
   });
+
+  useEffect(() => {
+    const refresh = () => void refetchFeed();
+    window.addEventListener("post-created", refresh);
+    const ch = supabase
+      .channel("yaj-feed-posts")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "posts" }, refresh)
+      .subscribe();
+    return () => {
+      window.removeEventListener("post-created", refresh);
+      void supabase.removeChannel(ch);
+    };
+  }, [refetchFeed]);
 
   const { data: happening = [], isLoading: happeningLoading } = useQuery({
     queryKey: ["happening-feed", user?.id || "public"],
@@ -318,6 +332,7 @@ const FeedPage = () => {
             post={item}
             onOpen={() => openPostItem(i)}
             pressHoldMs={isDesktop ? 350 : undefined}
+            autoPlayMuted
           />
         ))
       )}
