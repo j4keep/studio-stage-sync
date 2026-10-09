@@ -16,6 +16,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import ShareEventSheet from "@/components/events/ShareEventSheet";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 import EventFilterSheet, {
   DEFAULT_EVENT_FILTERS,
   EVENT_CATEGORIES,
@@ -68,6 +70,7 @@ function compactWhen(iso: string | null) {
 export default function EventsPage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const [rows, setRows] = useState<EventRow[]>([]);
   const [hosts, setHosts] = useState<Record<string, HostProfile>>({});
   const [goingIds, setGoingIds] = useState<string[]>([]);
@@ -179,6 +182,9 @@ export default function EventsPage() {
 
   const visible = useMemo(() => {
     let list = rows;
+    if (getLocalAreaMode(localArea) === "nearby") {
+      list = list.filter((r) => matchesLocalArea(r.address, localArea));
+    }
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter((r) => {
@@ -204,7 +210,7 @@ export default function EventsPage() {
       );
     }
     return list;
-  }, [rows, query, feedMode, category, filters, hosts, followingIds, goingIds]);
+  }, [rows, query, feedMode, category, filters, hosts, followingIds, goingIds, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   const categoryChoices = [{ id: "all", label: "All" }, ...EVENT_CATEGORIES.slice(0, 8)];
 
@@ -223,6 +229,11 @@ export default function EventsPage() {
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-black uppercase tracking-[0.22em] text-muted-foreground">My Circle</p>
             <h1 className="truncate text-[20px] font-black tracking-[-0.03em]">Events</h1>
+            {user && localArea.address && (
+              <button type="button" onClick={() => nav("/settings")} className="mt-0.5 text-[9.5px] font-semibold text-muted-foreground">
+                {getLocalAreaMode(localArea) === "nearby" ? `Nearby · ${localAreaLabel(localArea)}` : "Any area"} · Change in Settings
+              </button>
+            )}
           </div>
           <button
             type="button"
