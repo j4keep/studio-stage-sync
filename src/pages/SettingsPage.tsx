@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Lock, Trash2, LogOut, Info, ChevronRight, Palette, Crown, XCircle, Coffee, Ban, UserRound, Shield, Sparkles, HelpCircle, Headphones, Briefcase, ShoppingBag, Wrench } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Lock, Trash2, LogOut, Info, ChevronRight, ChevronDown, Palette, Crown, XCircle, Coffee, Ban, UserRound, Shield, Sparkles, HelpCircle, Headphones, Briefcase, ShoppingBag, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -13,6 +13,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useSafetyBalance } from "@/hooks/useSafetyBalance";
 import { isDetoxActive } from "@/lib/safety-balance";
+import {
+  HAPPENING_BALLOON_CATEGORIES,
+  getHappeningBalloonCategories,
+  happeningBalloonsEnabled,
+  setHappeningBalloonCategories,
+  setHappeningBalloonsEnabled,
+} from "@/components/feed/HappeningBalloon";
+import type { HappeningKind } from "@/lib/happening-items";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +41,9 @@ const SettingsPage = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [happeningBalloons, setHappeningBalloons] = useState(happeningBalloonsEnabled);
+  const [happeningCategories, setHappeningCategories] = useState<HappeningKind[]>(getHappeningBalloonCategories);
+  const [happeningCategoriesOpen, setHappeningCategoriesOpen] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("wheuat_theme") !== "light");
   const [privateProfile, setPrivateProfile] = useState(() => {
@@ -163,6 +174,71 @@ const SettingsPage = () => {
           </div>
         </Section>
       )}
+
+      <Section title="Feed Preferences">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <div className="flex items-center gap-3 p-3.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">Happening balloons</p>
+              <p className="text-[10px] text-muted-foreground">Show useful activity while viewing Feed posts</p>
+            </div>
+            <Switch
+              checked={happeningBalloons}
+              onCheckedChange={(enabled) => {
+                setHappeningBalloons(enabled);
+                setHappeningBalloonsEnabled(enabled);
+                if (!enabled) setHappeningCategoriesOpen(false);
+              }}
+            />
+          </div>
+          {happeningBalloons && (
+            <>
+              <button
+                type="button"
+                onClick={() => setHappeningCategoriesOpen((open) => !open)}
+                className="flex w-full items-center justify-between border-t border-border px-3.5 py-3 text-left"
+              >
+                <div>
+                  <p className="text-[12px] font-semibold text-foreground">Happening categories</p>
+                  <p className="text-[10px] text-muted-foreground">
+                    {happeningCategories.length === HAPPENING_BALLOON_CATEGORIES.length
+                      ? "All categories"
+                      : happeningCategories.length === 0
+                        ? "None selected"
+                        : `${happeningCategories.length} selected`}
+                  </p>
+                </div>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${happeningCategoriesOpen ? "rotate-180" : ""}`} />
+              </button>
+              {happeningCategoriesOpen && (
+                <div className="grid gap-2 border-t border-border p-3">
+                  {HAPPENING_BALLOON_CATEGORIES.map(({ kind, label }) => {
+                    const checked = happeningCategories.includes(kind);
+                    return (
+                      <div key={kind} className="flex items-center justify-between rounded-lg bg-muted/45 px-3 py-2">
+                        <span className="text-[12px] font-medium text-foreground">{label}</span>
+                        <Switch
+                          checked={checked}
+                          onCheckedChange={(enabled) => {
+                            const next = enabled
+                              ? Array.from(new Set([...happeningCategories, kind]))
+                              : happeningCategories.filter((value) => value !== kind);
+                            setHappeningCategories(next);
+                            setHappeningBalloonCategories(next);
+                          }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Section>
 
       {/* Privacy & Visibility */}
       <Section title="Privacy & Visibility">
