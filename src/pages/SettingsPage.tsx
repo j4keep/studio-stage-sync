@@ -170,7 +170,11 @@ const SettingsPage = () => {
       {user && (
         <Section title="Local Discovery">
           <div className="px-1 pb-1">
-            <MarketplaceLocationCard userId={user.id} title="Location for Marketplace" compact />
+            <MarketplaceLocationCard userId={user.id} title="YAJ Local Area" compact />
+            <p className="mt-2 px-1 text-[10.5px] leading-relaxed text-muted-foreground">
+              Set this once. Nearby-only mode applies to Marketplace, Deals, Opportunities, Events, Find Local Help and Gigs.
+              Switch it off to browse any area. Change your saved area here in Settings anytime.
+            </p>
           </div>
         </Section>
       )}
