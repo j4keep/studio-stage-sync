@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Moon, Sun, Bell, BellOff, Globe, Lock, Eye, Trash2, LogOut, Info, ChevronRight, Smartphone, Palette, Crown, XCircle, Coffee, Ban, UserRound, Shield } from "lucide-react";
+import { ArrowLeft, Moon, Sun, Lock, Trash2, LogOut, Info, ChevronRight, Palette, Crown, XCircle, Coffee, Ban, UserRound, Shield, Sparkles, HelpCircle, Headphones, Briefcase, ShoppingBag, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import ThemePickerSheet from "@/components/ThemePickerSheet";
@@ -32,18 +32,14 @@ const SettingsPage = () => {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("wheuat_theme") !== "light");
-  const [notifications, setNotifications] = useState(() => localStorage.getItem("wheuat_notifications") !== "false");
-  const [newReleaseAlerts, setNewReleaseAlerts] = useState(() => localStorage.getItem("wheuat_release_alerts") !== "false");
-  const [autoplay, setAutoplay] = useState(() => localStorage.getItem("wheuat_autoplay") !== "false");
-  const [streamingQuality, setStreamingQuality] = useState(() => localStorage.getItem("wheuat_quality") || "high");
   const [privateProfile, setPrivateProfile] = useState(() => {
     if (typeof window === "undefined") return false;
     const youthPrivate = localStorage.getItem("wheuat_private") === "true";
     return youthPrivate;
   });
-  const [showActivity, setShowActivity] = useState(() => localStorage.getItem("wheuat_show_activity") !== "false");
 
   const detoxOn = policy ? isDetoxActive(policy) : localStorage.getItem("wheuat_take_a_break") === "true";
   const youthLockedPrivate = Boolean(policy?.youth_mode);
@@ -59,14 +55,9 @@ const SettingsPage = () => {
     else { root.classList.remove("dark"); root.classList.add("light"); localStorage.setItem("wheuat_theme", "light"); }
   }, [darkMode]);
 
-  useEffect(() => { localStorage.setItem("wheuat_notifications", String(notifications)); }, [notifications]);
-  useEffect(() => { localStorage.setItem("wheuat_release_alerts", String(newReleaseAlerts)); }, [newReleaseAlerts]);
-  useEffect(() => { localStorage.setItem("wheuat_autoplay", String(autoplay)); }, [autoplay]);
-  useEffect(() => { localStorage.setItem("wheuat_quality", streamingQuality); }, [streamingQuality]);
   useEffect(() => {
     localStorage.setItem("wheuat_private", String(privateProfile || youthLockedPrivate));
   }, [privateProfile, youthLockedPrivate]);
-  useEffect(() => { localStorage.setItem("wheuat_show_activity", String(showActivity)); }, [showActivity]);
 
   const onPrivateToggle = (v: boolean) => {
     if (youthLockedPrivate && !v) {
@@ -128,35 +119,40 @@ const SettingsPage = () => {
         )}
       </Section>
 
-      {/* Notifications */}
-      <Section title="Notifications">
-        <SettingRow icon={notifications ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />} label="Push Notifications" description="Get notified about new content">
-          <Switch checked={notifications} onCheckedChange={setNotifications} />
-        </SettingRow>
-        <SettingRow icon={<Bell className="w-4 h-4" />} label="New Release Alerts" description="Get alerts when artists drop new music">
-          <Switch checked={newReleaseAlerts} onCheckedChange={setNewReleaseAlerts} />
-        </SettingRow>
+      <Section title="YAJ AI & Support">
+        <ActionRow
+          icon={<Sparkles className="w-4 h-4" />}
+          label="YAJ AI Settings"
+          onClick={() => navigate("/ask-yaj/settings")}
+        />
+        <ActionRow
+          icon={<HelpCircle className="w-4 h-4" />}
+          label="Help Center"
+          onClick={() => navigate("/help")}
+        />
+        <ActionRow
+          icon={<Headphones className="w-4 h-4" />}
+          label="Contact Support"
+          onClick={() => navigate("/helpdesk")}
+        />
       </Section>
 
-      {/* Playback */}
-      <Section title="Playback">
-        <SettingRow icon={<Smartphone className="w-4 h-4" />} label="Autoplay" description="Automatically play next track">
-          <Switch checked={autoplay} onCheckedChange={setAutoplay} />
-        </SettingRow>
-        <div className="flex items-center gap-3 p-3.5 rounded-xl bg-card border border-border">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary"><Globe className="w-4 h-4" /></div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">Streaming Quality</p>
-            <p className="text-[10px] text-muted-foreground">Affects data usage</p>
-          </div>
-          <div className="flex gap-1">
-            {(["low", "medium", "high"] as const).map((q) => (
-              <button key={q} onClick={() => setStreamingQuality(q)} className={`px-3 py-1 rounded-lg text-[10px] font-semibold capitalize transition-all ${streamingQuality === q ? "gradient-primary text-primary-foreground glow-primary" : "bg-secondary text-muted-foreground"}`}>
-                {q}
-              </button>
-            ))}
-          </div>
-        </div>
+      <Section title="Business & Professional Tools">
+        <ActionRow
+          icon={<Briefcase className="w-4 h-4" />}
+          label="Professional Dashboard"
+          onClick={() => navigate("/pro")}
+        />
+        <ActionRow
+          icon={<ShoppingBag className="w-4 h-4" />}
+          label="Marketplace Seller Dashboard"
+          onClick={() => navigate("/marketplace/store-dashboard")}
+        />
+        <ActionRow
+          icon={<Wrench className="w-4 h-4" />}
+          label="Local Help Business"
+          onClick={() => navigate("/local-help/business")}
+        />
       </Section>
 
       {/* Marketplace location */}
@@ -176,9 +172,6 @@ const SettingsPage = () => {
           description={youthLockedPrivate ? "Required for YAJ Youth accounts" : "Only followers can see your content"}
         >
           <Switch checked={privateProfile || youthLockedPrivate} onCheckedChange={onPrivateToggle} />
-        </SettingRow>
-        <SettingRow icon={<Eye className="w-4 h-4" />} label="Show Activity Status" description="Let others see when you're online">
-          <Switch checked={showActivity} onCheckedChange={setShowActivity} />
         </SettingRow>
         <ActionRow icon={<Ban className="w-4 h-4" />} label="Blocking" onClick={() => navigate("/settings/blocking")} />
         <div className="px-1 pb-2 pt-1">
@@ -207,17 +200,9 @@ const SettingsPage = () => {
         </SettingRow>
       </Section>
 
-      {/* PRO Features Section */}
-      <Section title="PRO Features">
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Earnings Dashboard" onClick={() => isPro ? navigate("/earnings") : requirePro("Earnings")} />
+      <Section title="Advanced Tools">
         <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Analytics" onClick={() => isPro ? navigate("/analytics") : requirePro("Analytics")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Legal Vault" onClick={() => isPro ? navigate("/legal-vault") : requirePro("Legal Vault")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="News Feed Publishing" onClick={() => isPro ? navigate("/news-feed") : requirePro("News Feed")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Messenger" onClick={() => isPro ? navigate("/messages") : requirePro("Messenger")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Studio Listings" onClick={() => isPro ? navigate("/my-studios") : requirePro("Studio Listings")} />
-        <ActionRow icon={<Crown className="w-4 h-4" />} label="Add Song / My Songs" onClick={() => navigate("/my-songs?upload=1")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Upload Videos" onClick={() => isPro ? navigate("/my-videos") : requirePro("Upload Videos")} />
-        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Store Management" onClick={() => isPro ? navigate("/my-store") : requirePro("Store")} />
+        <ProActionRow isPro={isPro} icon={<Crown className="w-4 h-4" />} label="Earnings Dashboard" onClick={() => isPro ? navigate("/earnings") : requirePro("Earnings")} />
       </Section>
 
       {/* Account */}
@@ -232,7 +217,8 @@ const SettingsPage = () => {
       {/* About */}
       <Section title="About">
         <ActionRow icon={<Info className="w-4 h-4" />} label="Terms & Conditions" onClick={() => navigate("/terms")} />
-        <ActionRow icon={<Info className="w-4 h-4" />} label="Help & Support" onClick={() => navigate("/help")} />
+        <ActionRow icon={<Info className="w-4 h-4" />} label="Help Center" onClick={() => navigate("/help")} />
+        <ActionRow icon={<Headphones className="w-4 h-4" />} label="Help Desk" onClick={() => navigate("/helpdesk")} />
       </Section>
 
       <p className="text-center text-[10px] text-muted-foreground mt-6">YAJ v1.0.0</p>
@@ -244,7 +230,7 @@ const SettingsPage = () => {
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle>Cancel PRO Subscription?</DialogTitle>
-            <DialogDescription>You'll lose access to all PRO features including analytics, earnings, store management, battles, YAJ Buddy, and the ad-free experience.</DialogDescription>
+            <DialogDescription>You'll lose access to paid PRO tools such as advanced analytics and earnings features at the end of your current access period.</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex gap-2">
             <button onClick={() => setShowCancelDialog(false)} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Keep PRO</button>
@@ -258,7 +244,7 @@ const SettingsPage = () => {
         <DialogContent className="max-w-sm rounded-xl">
           <DialogHeader>
             <DialogTitle>Delete Account?</DialogTitle>
-            <DialogDescription>This action is permanent. All your songs, videos, projects, and data will be permanently deleted. Type "DELETE" to confirm.</DialogDescription>
+            <DialogDescription>This permanently deletes your YAJ account and account data. This cannot be undone. Type "DELETE" to confirm.</DialogDescription>
           </DialogHeader>
           <input
             value={deleteConfirmText}
@@ -269,14 +255,28 @@ const SettingsPage = () => {
           <DialogFooter className="flex gap-2">
             <button onClick={() => { setShowDeleteDialog(false); setDeleteConfirmText(""); }} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Cancel</button>
             <button
-              disabled={deleteConfirmText !== "DELETE"}
+              disabled={deleteConfirmText !== "DELETE" || deletingAccount}
               onClick={async () => {
-                toast({ title: "Account deletion requested", description: "Your account will be deleted. You will be signed out." });
-                await signOut();
-                navigate("/auth");
+                if (deletingAccount) return;
+                setDeletingAccount(true);
+                try {
+                  const { error } = await supabase.functions.invoke("delete-account", { body: {} });
+                  if (error) throw error;
+                  toast({ title: "Account deleted", description: "Your YAJ account has been permanently deleted." });
+                  await signOut();
+                  navigate("/auth", { replace: true });
+                } catch (e: any) {
+                  toast({
+                    title: "Could not delete account",
+                    description: e?.message || "Please try again or contact the Help Desk.",
+                    variant: "destructive",
+                  });
+                } finally {
+                  setDeletingAccount(false);
+                }
               }}
               className="flex-1 py-2.5 rounded-xl bg-destructive text-destructive-foreground text-sm font-semibold disabled:opacity-40"
-            >Delete</button>
+            >{deletingAccount ? "Deleting…" : "Delete"}</button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
