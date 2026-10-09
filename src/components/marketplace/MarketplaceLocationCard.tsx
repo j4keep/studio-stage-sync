@@ -17,13 +17,14 @@ type Props = {
   /** Shown above the card */
   title?: string;
   onChanged?: () => void;
+  compact?: boolean;
 };
 
 /**
  * One small card that handles "my location" for the marketplace: a toggle plus
  * either the phone's GPS or a picked address. Delivery prices come out automatically.
  */
-export default function MarketplaceLocationCard({ userId, title = "Your location", onChanged }: Props) {
+export default function MarketplaceLocationCard({ userId, title = "Your location", onChanged, compact = false }: Props) {
   const { location, loading, save, setSharing } = useMyMarketplaceLocation(userId);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -83,7 +84,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
   const hasPoint = location.lat != null && location.lng != null;
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-3">
+    <section className={`rounded-2xl border border-border bg-card ${compact ? "p-3" : "p-3"}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-[12.5px] font-black">
@@ -111,7 +112,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
         </button>
       </div>
 
-      <div className="mt-2.5 flex gap-2">
+      <div className={compact ? "mt-2 grid grid-cols-[1fr_auto_auto] gap-2" : "mt-2.5 flex gap-2"}>
         <AddressAutocomplete
           value={draft}
           onChange={setDraft}
@@ -122,7 +123,7 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
           type="button"
           disabled={busy}
           onClick={() => void saveTyped()}
-          className="h-11 shrink-0 rounded-xl bg-foreground px-3.5 text-[12px] font-black text-background disabled:opacity-60"
+          className={`${compact ? "h-10 px-3" : "h-11 px-3.5"} shrink-0 rounded-xl bg-foreground text-[12px] font-black text-background disabled:opacity-60`}
         >
           Save
         </button>
@@ -131,12 +132,12 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
           disabled={busy}
           onClick={() => void useGps()}
           aria-label="Use my current location"
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-60"
+          className={`flex ${compact ? "h-10 w-10" : "h-11 w-11"} shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-60`}
         >
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
         </button>
       </div>
-      <p className="mt-1.5 text-[11px] text-muted-foreground">
+      <p className={`${compact ? "mt-1 text-[10px]" : "mt-1.5 text-[11px]"} text-muted-foreground`}>
         {location.sharing && hasPoint
           ? "Location on — you'll see how far away each item is, plus the delivery price."
           : "Turn this on to see distance and delivery prices automatically."}
