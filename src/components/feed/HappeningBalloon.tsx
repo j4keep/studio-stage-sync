@@ -14,6 +14,7 @@ import { happeningKindLabel } from "@/lib/happening-items";
 const SETTING_KEY = "yaj_happening_balloons";
 const CATEGORY_KEY = "yaj_happening_balloon_categories";
 const SETTING_EVENT = "yaj-happening-balloon-setting";
+const DEAL_CATEGORY_MIGRATION_KEY = "yaj_happening_balloon_deal_category_v1";
 
 export const HAPPENING_BALLOON_CATEGORIES: Array<{ kind: HappeningKind; label: string }> = [
   { kind: "job", label: "Jobs" },
@@ -66,7 +67,17 @@ export function getHappeningBalloonCategories(): HappeningKind[] {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_CATEGORIES;
     const valid = new Set(DEFAULT_CATEGORIES);
-    return parsed.filter((kind): kind is HappeningKind => valid.has(kind));
+    const next = parsed.filter((kind): kind is HappeningKind => valid.has(kind));
+
+    // Existing users saved their category list before Deals existed.
+    // Add Deals once on upgrade; after that their explicit on/off choice is preserved.
+    if (!window.localStorage.getItem(DEAL_CATEGORY_MIGRATION_KEY)) {
+      if (!next.includes("deal")) next.push("deal");
+      window.localStorage.setItem(CATEGORY_KEY, JSON.stringify(next));
+      window.localStorage.setItem(DEAL_CATEGORY_MIGRATION_KEY, "1");
+    }
+
+    return next;
   } catch {
     return DEFAULT_CATEGORIES;
   }
