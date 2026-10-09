@@ -445,7 +445,7 @@ onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ["happening-feed"] });
   window.dispatchEvent(new Event("post-created"));
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
-  toast.success(postToEdit ? "Post updated!" : "Post shared!");
+  toast.success(postToEdit ? "Post updated!" : "Post shared!", { id: "yaj-posting" });
   const wasEditing = Boolean(postToEdit);
   reset();
   if (!wasEditing) {
@@ -459,7 +459,7 @@ onSuccess: () => {
 },
 onError: (e: any) => {
   setUploading(false);
-  toast.error(e?.message || "Failed to post");
+  toast.error(e?.message || "Failed to post", { id: "yaj-posting", description: "Tap + to try again — your post is saved." });
 },
 
 });
@@ -677,7 +677,16 @@ initialStream={cameraStream}
         onTitleChange={setTitle}
         onDescriptionChange={setCaption}
         onBack={() => (postToEdit ? reset() : hasMedia ? setStep("edit") : undoToCamera())}
-        onPost={() => postMutation.mutate()}
+        onPost={() => {
+          if (postMutation.isPending) return;
+          postMutation.mutate();
+          if (!postToEdit) {
+            // Social-app style: close right away, upload continues in the background.
+            toast.loading("Posting…", { id: "yaj-posting" });
+            onClose();
+            navigate("/");
+          }
+        }}
         onEditMedia={() => setStep("edit")}
         onDelete={postToEdit ? () => deleteMutation.mutate() : undefined}
         posting={postMutation.isPending || uploading}

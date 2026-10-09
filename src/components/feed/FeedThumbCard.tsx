@@ -156,13 +156,13 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               loop
               playsInline
               preload="metadata"
-              onLoadedData={() => setVideoReady(true)}
-              onCanPlay={() => setVideoReady(true)}
+              onPlaying={() => setVideoReady(true)}
+              onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
               className="absolute inset-0 h-full w-full object-cover pointer-events-none"
             />
-            {!videoReady && coverUrl ? (
+            {!videoReady && (coverUrl || post.media_url) ? (
               <img
-                src={coverUrl}
+                src={coverUrl || undefined}
                 alt={title || "Video preview"}
                 className="absolute inset-0 h-full w-full object-cover pointer-events-none"
               />
