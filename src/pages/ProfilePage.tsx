@@ -56,6 +56,7 @@ const ProfilePage = () => {
   const { counts: notifCounts, clearSection } = useSectionNotifications();
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showFollowers, setShowFollowers] = useState(false);
+  const [peopleMode, setPeopleMode] = useState<"followers" | "following">("followers");
   const [followerCount, setFollowerCount] = useState("0");
   const [followingCount, setFollowingCount] = useState("0");
   const [postCount, setPostCount] = useState("0");
@@ -160,7 +161,6 @@ const ProfilePage = () => {
 
   const quickActions = [
     { icon: Briefcase, label: "Professional Dashboard", sub: "Manage jobs, deals, listings and events", action: () => navigate("/pro"), pro: false, section: null as NotifSection | null },
-    { icon: Sparkles, label: "YAJ AI", sub: `Voice · ${getYajAiVoiceLabel()}`, action: () => navigate("/ask-yaj/settings"), pro: false, section: null as NotifSection | null },
     { icon: Bookmark, label: "Saved Deals", sub: "Offers you bookmarked", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
     { icon: Ticket, label: "My Coupons", sub: "Claimed and ready to use", action: () => navigate("/deals/my"), pro: false, section: null as NotifSection | null },
     ...(isDealBusiness
@@ -171,7 +171,7 @@ const ProfilePage = () => {
     { icon: Wrench, label: "My Gigs", sub: "Posted, working and completed gigs", action: () => goSection("gigs", "/my-gigs"), pro: false, section: "gigs" as NotifSection | null },
     { icon: BarChart3, label: "Analytics", sub: "View account insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
     { icon: Rocket, label: "My Boosts", sub: "Manage promotions", action: () => proGatedNav("Boosts", "/my-boosts"), pro: true, section: null as NotifSection | null },
-    { icon: HelpCircle, label: "Help & Support", sub: "Tickets and FAQs", action: () => goSection("support", "/help"), pro: false, section: "support" as NotifSection | null },
+    { icon: HelpCircle, label: "Contact Support", sub: "Help desk, complaints and support tickets", action: () => goSection("support", "/helpdesk"), pro: false, section: "support" as NotifSection | null },
     ...(isAdmin
       ? [
           { icon: Shield, label: "Trust & Safety", sub: "Admin · warnings, timeouts and bans", action: () => navigate("/admin/trust-safety"), pro: false, section: null as NotifSection | null },
@@ -236,8 +236,8 @@ const ProfilePage = () => {
             <div className="mt-5 grid grid-cols-4 overflow-hidden rounded-2xl border border-border/70 bg-background/55">
               {[
                 { label: "Posts", value: postCount },
-                { label: "Followers", value: followerCount, action: () => setShowFollowers(true) },
-                { label: "Following", value: followingCount },
+                { label: "Followers", value: followerCount, action: () => { setPeopleMode("followers"); setShowFollowers(true); } },
+                { label: "Following", value: followingCount, action: () => { setPeopleMode("following"); setShowFollowers(true); } },
                 { label: "Views", value: totalViews },
               ].map((stat, index) => (
                 <button
@@ -480,7 +480,15 @@ const ProfilePage = () => {
         }}
       />
 
-      {user && <FollowersSheet open={showFollowers} onClose={() => setShowFollowers(false)} userId={user.id} isOwner={true} />}
+      {user && (
+        <FollowersSheet
+          open={showFollowers}
+          onClose={() => setShowFollowers(false)}
+          userId={user.id}
+          isOwner={true}
+          mode={peopleMode}
+        />
+      )}
       <ProGateModal open={showProModal} onClose={closeProModal} featureName={gatedFeature} onSubscribe={activatePro} />
     </div>
   );
