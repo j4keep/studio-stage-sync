@@ -161,7 +161,7 @@ export default function MarketplaceLocationCard({ userId, title = "YAJ Local Are
       <p className={`${compact ? "mt-1 text-[10px]" : "mt-1.5 text-[11px]"} text-muted-foreground`}>
         {hasPoint
           ? mode === "nearby"
-            ? "Nearby only — Marketplace, Opportunities, Events, Local Help and Gigs use this area."
+            ? "Nearby only — Marketplace, Deals, Opportunities, Events, Local Help and Gigs use this area."
             : "Any area — local sections can show activity outside your saved area."
           : "Save a ZIP code or address to turn on local discovery."}
       </p>
