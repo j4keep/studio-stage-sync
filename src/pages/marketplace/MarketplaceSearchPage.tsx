@@ -12,7 +12,7 @@ import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-
 export default function MarketplaceSearchPage() {
   const nav = useNavigate();
   const { user } = useAuth();
-  const { location: localArea } = useMyMarketplaceLocation(user?.id);
+  const { location: localArea, loading: localAreaLoading } = useMyMarketplaceLocation(user?.id);
   const [params, setParams] = useSearchParams();
   const initial = params.get("q") || "";
   const [q, setQ] = useState(initial);
@@ -51,9 +51,12 @@ export default function MarketplaceSearchPage() {
   };
 
   useEffect(() => {
+    if (localAreaLoading) return;
     void runSearch(initial);
+    // Refresh search when the account's saved YAJ Local Area finishes loading
+    // or when the Nearby / Any Area setting changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [localAreaLoading, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   const catMatches = useMemo(() => {
     const n = q.trim().toLowerCase();
