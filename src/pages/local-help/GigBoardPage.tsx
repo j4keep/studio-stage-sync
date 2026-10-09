@@ -9,6 +9,8 @@ import { formatGigBudget } from "@/lib/gigs";
 import { LOCAL_HELP_CATEGORIES } from "@/lib/local-help";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
 import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 type GigRow = {
   id: string;
@@ -33,6 +35,7 @@ function gigPhotos(media: any): string[] {
 export default function GigBoardPage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const [gigs, setGigs] = useState<GigRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
@@ -61,6 +64,9 @@ export default function GigBoardPage() {
   const filtered = useMemo(() => {
     const n = q.trim().toLowerCase();
     let items = gigs;
+    if (getLocalAreaMode(localArea) === "nearby") {
+      items = items.filter((g) => matchesLocalArea(g.location, localArea));
+    }
     if (cat !== "all") items = items.filter((g) => g.category === cat);
     if (n) {
       items = items.filter(
@@ -72,7 +78,7 @@ export default function GigBoardPage() {
       );
     }
     return items;
-  }, [gigs, q, cat]);
+  }, [gigs, q, cat, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   return (
     <div className="min-h-screen bg-background pb-28 text-foreground">
@@ -89,6 +95,11 @@ export default function GigBoardPage() {
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Post it • Fix it • Rate it</p>
             <h1 className="text-lg font-black tracking-tight">Gigs</h1>
+            {user && localArea.address && (
+              <button type="button" onClick={() => nav("/settings")} className="text-[9.5px] font-semibold text-muted-foreground">
+                {getLocalAreaMode(localArea) === "nearby" ? `Nearby · ${localAreaLabel(localArea)}` : "Any area"} · Change in Settings
+              </button>
+            )}
           </div>
           <button
             type="button"
