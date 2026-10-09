@@ -11,6 +11,7 @@ interface Props {
   onClose: () => void;
   userId: string;
   isOwner: boolean;
+  mode?: "followers" | "following";
 }
 
 interface Follower {
@@ -20,7 +21,7 @@ interface Follower {
   avatar_url: string | null;
 }
 
-const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
+const FollowersSheet = ({ open, onClose, userId, isOwner, mode = "followers" }: Props) => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [followers, setFollowers] = useState<Follower[]>([]);
@@ -30,10 +31,11 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
     if (!open) return;
     const load = async () => {
       setLoading(true);
+      const showingFollowers = mode === "followers";
       const { data: followRows } = await (supabase as any)
         .from("follows")
-        .select("id, follower_id")
-        .eq("following_id", userId);
+        .select("id, follower_id, following_id")
+        .eq(showingFollowers ? "following_id" : "follower_id", userId);
 
       if (!followRows || followRows.length === 0) {
         setFollowers([]);
@@ -41,17 +43,18 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
         return;
       }
 
-      const ids = followRows.map((f: any) => f.follower_id);
+      const ids = followRows.map((f: any) => showingFollowers ? f.follower_id : f.following_id);
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, display_name, avatar_url")
         .in("user_id", ids);
 
       const merged = followRows.map((f: any) => {
-        const p = profiles?.find((pr) => pr.user_id === f.follower_id);
+        const personId = showingFollowers ? f.follower_id : f.following_id;
+        const p = profiles?.find((pr) => pr.user_id === personId);
         return {
           id: f.id,
-          follower_id: f.follower_id,
+          follower_id: personId,
           display_name: p?.display_name || "Artist",
           avatar_url: p?.avatar_url || null,
         };
@@ -60,7 +63,7 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
       setLoading(false);
     };
     load();
-  }, [open, userId]);
+  }, [open, userId, mode]);
 
   const handleRemoveFollower = async (followId: string, followerId: string) => {
     await (supabase as any).from("follows").delete().eq("id", followId);
@@ -81,7 +84,7 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
     <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
       <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl bg-background">
         <SheetHeader>
-          <SheetTitle className="text-foreground">Followers</SheetTitle>
+          <SheetTitle className="text-foreground">{mode === "followers" ? "Followers" : "Following"}</SheetTitle>
         </SheetHeader>
         <div className="mt-4 space-y-2 overflow-y-auto max-h-[calc(70vh-80px)]">
           {loading ? (
@@ -89,7 +92,9 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
               <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             </div>
           ) : followers.length === 0 ? (
-            <p className="text-center text-muted-foreground text-sm py-10">No followers yet</p>
+            <p className="text-center text-muted-foreground text-sm py-10">
+              {mode === "followers" ? "No followers yet" : "Not following anyone yet"}
+            </p>
           ) : (
             followers.map((f) => (
               <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border">
@@ -105,7 +110,7 @@ const FollowersSheet = ({ open, onClose, userId, isOwner }: Props) => {
                   </div>
                   <p className="text-sm font-medium text-foreground truncate">{f.display_name}</p>
                 </button>
-                {isOwner && (
+                {isOwner && mode === "followers" && (
                   <button
                     onClick={() => handleRemoveFollower(f.id, f.follower_id)}
                     className="px-3 py-1.5 rounded-lg bg-destructive/10 text-destructive text-xs font-semibold flex items-center gap-1"
