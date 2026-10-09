@@ -6,11 +6,14 @@ import { getCategory } from "@/lib/marketplace";
 import { listMarketplaceListings, toggleSaveListing, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
 import { toast } from "sonner";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 export default function MarketplaceCategoryPage() {
   const { slug = "" } = useParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const cat = getCategory(slug);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,14 +21,23 @@ export default function MarketplaceCategoryPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const rows = await listMarketplaceListings({ category: slug, viewerId: user?.id, limit: 60, excludeFiveUnder: true });
+      let rows = await listMarketplaceListings({ category: slug, viewerId: user?.id, limit: 60, excludeFiveUnder: true });
+      if (getLocalAreaMode(localArea) === "nearby") {
+        rows = rows.filter((l) =>
+          matchesLocalArea(
+            [l.location_approx, l.city, l.state].filter(Boolean).join(", "),
+            localArea,
+            l.zip,
+          ),
+        );
+      }
       setListings(rows);
     } catch (e: any) {
       toast.error(e?.message || "Failed to load");
     } finally {
       setLoading(false);
     }
-  }, [slug, user?.id]);
+  }, [slug, user?.id, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   useEffect(() => {
     void load();
@@ -50,7 +62,9 @@ export default function MarketplaceCategoryPage() {
         </button>
         <div>
           <h1 className="text-lg font-bold">{cat?.label || slug}</h1>
-          <p className="text-[11px] text-muted-foreground">{listings.length} listings</p>
+          <p className="text-[11px] text-muted-foreground">
+            {listings.length} listings · {getLocalAreaMode(localArea) === "nearby" ? `Nearby ${localAreaLabel(localArea)}` : "Any area"}
+          </p>
         </div>
       </header>
 
