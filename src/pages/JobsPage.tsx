@@ -29,6 +29,8 @@ import {
 } from "@/lib/jobs";
 import { listBlockedPeerIds } from "@/lib/blocks";
 import PostJobSheet from "@/components/jobs/PostJobSheet";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 type JobRow = {
   id: string;
@@ -75,6 +77,7 @@ function loadSavedRole(): OpportunityRole | null {
 export default function JobsPage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
 
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string>("featured");
@@ -194,6 +197,10 @@ export default function JobsPage() {
     const needle = query.trim().toLowerCase();
     let items = listings;
 
+    if (getLocalAreaMode(localArea) === "nearby") {
+      items = items.filter((item) => matchesLocalArea(item.location, localArea));
+    }
+
     if (activeCategory === "remote") {
       items = items.filter((item) => item.remote_mode === "remote");
     } else if (activeCategory === "near-you") {
@@ -216,7 +223,7 @@ export default function JobsPage() {
     }
 
     return items;
-  }, [activeCategory, employerBrands, listings, prefs, query]);
+  }, [activeCategory, employerBrands, listings, prefs, query, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   const displayed = useMemo(() => {
     if (!forYou || !prefs) return filtered;
@@ -248,13 +255,20 @@ export default function JobsPage() {
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowWelcome(true)}
-              className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-700 dark:border-border dark:bg-muted dark:text-foreground"
-            >
-              {roleLabel}
-            </button>
+            <div className="flex shrink-0 flex-col items-end gap-1.5">
+              <button
+                type="button"
+                onClick={() => setShowWelcome(true)}
+                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-700 dark:border-border dark:bg-muted dark:text-foreground"
+              >
+                {roleLabel}
+              </button>
+              {user && localArea.address && (
+                <button type="button" onClick={() => nav("/settings")} className="text-[9.5px] font-semibold text-slate-500 dark:text-muted-foreground">
+                  {getLocalAreaMode(localArea) === "nearby" ? `Nearby · ${localAreaLabel(localArea)}` : "Any area"} · Change
+                </button>
+              )}
+            </div>
           </div>
 
           {role !== "employer" ? (
