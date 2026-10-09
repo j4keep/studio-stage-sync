@@ -160,9 +160,9 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
               className="absolute inset-0 h-full w-full object-cover pointer-events-none"
             />
-            {!videoReady && (coverUrl || post.media_url) ? (
+            {!videoReady && coverUrl ? (
               <img
-                src={coverUrl || undefined}
+                src={coverUrl}
                 alt={title || "Video preview"}
                 className="absolute inset-0 h-full w-full object-cover pointer-events-none"
               />
