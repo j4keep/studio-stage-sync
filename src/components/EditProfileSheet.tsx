@@ -106,7 +106,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-[80] mx-auto flex max-h-[90vh] max-w-lg flex-col rounded-t-2xl border-t border-border bg-background"
+            className="fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-[90] mx-auto flex max-h-[calc(100dvh-5.25rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-w-lg flex-col rounded-2xl border border-border bg-background shadow-2xl lg:bottom-4"
           >
             <div className="flex justify-center pt-3 pb-1">
               <div className="h-1 w-10 rounded-full bg-muted" />
@@ -214,7 +214,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
               </div>
             </div>
 
-            <div className="border-t border-border bg-background px-4 pb-6 pt-4">
+            <div className="shrink-0 border-t border-border bg-background px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4">
               <button
                 onClick={handleSave}
                 className="w-full rounded-xl gradient-primary py-3 text-sm font-semibold text-primary-foreground glow-primary"
