@@ -170,7 +170,7 @@ const SettingsPage = () => {
       {user && (
         <Section title="Marketplace location">
           <div className="px-1 pb-1">
-            <MarketplaceLocationCard userId={user.id} title="Location for Marketplace" />
+            <MarketplaceLocationCard userId={user.id} title="Location for Marketplace" compact />
           </div>
         </Section>
       )}
@@ -361,8 +361,8 @@ const SettingsPage = () => {
 };
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="mb-5">
-    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">{title}</p>
+  <div className="mb-4">
+    <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.13em] text-muted-foreground">{title}</p>
     <div className="flex flex-col gap-1.5">{children}</div>
   </div>
 );
