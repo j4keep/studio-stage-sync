@@ -14,10 +14,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   DEAL_CATEGORIES,
   DEAL_FILTERS,
-  formatDealLocationLabel,
   formatDistance,
-  getDealLocationPrefs,
-  setDealLocationPrefs,
   type DealFilterId,
   type DealLocationPrefs,
 } from "@/lib/deals";
@@ -35,6 +32,8 @@ import { toast } from "sonner";
 import emptyHero from "@/assets/deals/deals-empty-hero.jpg";
 import lifestyleDining from "@/assets/deals/deals-lifestyle-dining.jpg";
 import lifestyleShop from "@/assets/deals/deals-lifestyle-shop.jpg";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { extractZip, getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 /** Showcase slides when no live featured deals exist — marketing examples only. */
 const SHOWCASE = [
@@ -94,6 +93,7 @@ const SEARCH_HINTS = [
 export default function DealsHomePage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea, loading: localAreaLoading } = useMyMarketplaceLocation(user?.id);
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<DealFilterId>("for-you");
   const [category, setCategory] = useState<string | null>(null);
@@ -103,9 +103,17 @@ export default function DealsHomePage() {
   const [loading, setLoading] = useState(true);
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [offline, setOffline] = useState(!navigator.onLine);
-  const [loc, setLoc] = useState<DealLocationPrefs>(() => getDealLocationPrefs());
-  const [showLoc, setShowLoc] = useState(false);
-  const [locDraft, setLocDraft] = useState(loc);
+  const loc = useMemo<DealLocationPrefs>(
+    () => ({
+      city: "",
+      state: "",
+      postalCode: extractZip(localArea.address) || "",
+      radiusMiles: 15,
+      lat: localArea.lat,
+      lng: localArea.lng,
+    }),
+    [localArea.address, localArea.lat, localArea.lng],
+  );
   const [heroIdx, setHeroIdx] = useState(0);
   const [hintIdx, setHintIdx] = useState(0);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -162,25 +170,39 @@ export default function DealsHomePage() {
           limit: 16,
         }),
       ]);
-      setDeals(all);
+      const localOnly = getLocalAreaMode(localArea) === "nearby";
+      const keepDeal = (deal: Deal) =>
+        !localOnly ||
+        (filter === "online" && (deal.location_type === "online" || deal.location_type === "both")) ||
+        matchesLocalArea(
+          [deal.city, deal.state, deal.postal_code].filter(Boolean).join(", "),
+          localArea,
+          deal.postal_code,
+        );
+
+      const visibleAll = all.filter(keepDeal);
+      const visibleFeatured = feat.filter(keepDeal);
+      const visibleTrending = trend.filter(keepDeal);
+
+      setDeals(visibleAll);
       const liveFeatured =
-        feat.length > 0
-          ? feat
-          : all.filter((d) => d.is_sponsored || d.is_featured).slice(0, 5);
+        visibleFeatured.length > 0
+          ? visibleFeatured
+          : visibleAll.filter((d) => d.is_sponsored || d.is_featured).slice(0, 5);
       // If still empty, rotate popular active deals in the banner so it feels live.
       setFeatured(
         liveFeatured.length
           ? liveFeatured
-          : [...all].sort((a, b) => (b.claims_count || 0) - (a.claims_count || 0)).slice(0, 5),
+          : [...visibleAll].sort((a, b) => (b.claims_count || 0) - (a.claims_count || 0)).slice(0, 5),
       );
-      const trendSorted = [...trend]
+      const trendSorted = [...visibleTrending]
         .sort((a, b) => {
           const dist = (a.distance_miles ?? 99) - (b.distance_miles ?? 99);
           if (Math.abs(dist) > 0.2) return dist;
           return (b.claims_count || 0) - (a.claims_count || 0);
         })
         .slice(0, 12);
-      setTrending(trendSorted.length ? trendSorted : all.slice(0, 12));
+      setTrending(trendSorted.length ? trendSorted : visibleAll.slice(0, 12));
     } catch (e: any) {
       const msg = e?.message || "Could not load deals";
       if (e?.setupNeeded || isMissingTableError(msg)) {
@@ -194,11 +216,12 @@ export default function DealsHomePage() {
     } finally {
       setLoading(false);
     }
-  }, [q, filter, category, user?.id, loc]);
+  }, [q, filter, category, user?.id, loc, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   useEffect(() => {
+    if (localAreaLoading) return;
     void load();
-  }, [load]);
+  }, [load, localAreaLoading]);
 
   const hasLiveFeatured = featured.length > 0;
   const bannerCount = hasLiveFeatured ? featured.length : SHOWCASE.length;
@@ -277,32 +300,6 @@ export default function DealsHomePage() {
     }
   };
 
-  const saveLocation = () => {
-    const next = setDealLocationPrefs(locDraft);
-    setLoc(next);
-    setShowLoc(false);
-    toast.success("Location updated");
-  };
-
-  const useDeviceLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error("Location unavailable on this device");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setLocDraft((d) => ({
-          ...d,
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }));
-        toast.success("Using your current location");
-      },
-      () => toast.error("Location unavailable. Enter a city or ZIP instead."),
-      { enableHighAccuracy: false, timeout: 8000 },
-    );
-  };
-
   const liveHero = hasLiveFeatured ? featured[heroIdx % featured.length] : null;
   const showcase = SHOWCASE[heroIdx % SHOWCASE.length];
   const bannerBadge = liveHero?.badge || showcase.badge;
@@ -323,8 +320,14 @@ export default function DealsHomePage() {
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-lg font-black tracking-tight">DEALS NEAR YOU</h1>
-            <p className="truncate text-[11px] text-muted-foreground">Save locally. Discover something new.</p>
+            <h1 className="text-lg font-black tracking-tight">
+              {getLocalAreaMode(localArea) === "nearby" ? "DEALS NEAR YOU" : "DEALS"}
+            </h1>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {getLocalAreaMode(localArea) === "nearby"
+                ? `Nearby · ${localAreaLabel(localArea)}`
+                : "Any area · discover something new"}
+            </p>
           </div>
           <button
             type="button"
@@ -440,14 +443,16 @@ export default function DealsHomePage() {
 
         <button
           type="button"
-          onClick={() => {
-            setLocDraft(loc);
-            setShowLoc(true);
-          }}
+          onClick={() => nav("/settings")}
           className="mb-2 inline-flex max-w-full items-center gap-1.5 rounded-full bg-orange-500/10 px-3 py-1.5 text-xs font-semibold text-orange-700 shadow-sm dark:text-orange-300"
         >
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{formatDealLocationLabel(loc)}</span>
+          <span className="truncate">
+            {getLocalAreaMode(localArea) === "nearby"
+              ? `Nearby · ${localAreaLabel(localArea)}`
+              : "Any area"}
+            {" · Change in Settings"}
+          </span>
         </button>
 
         <div className="relative">
@@ -559,10 +564,7 @@ export default function DealsHomePage() {
           <EmptyState
             q={q}
             filter={filter}
-            onExpand={() => {
-              setLocDraft({ ...loc, radiusMiles: Math.min(50, (loc.radiusMiles || 15) + 10) });
-              setShowLoc(true);
-            }}
+            onExpand={() => nav("/settings")}
             onOnline={() => setFilter("online")}
             onBecomeBusiness={() => nav("/deals/become-business")}
             isDealBusiness={isDealBusiness}
@@ -610,72 +612,6 @@ export default function DealsHomePage() {
         ) : null}
       </main>
 
-      {showLoc ? (
-        <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center">
-          <div className="w-full max-w-md rounded-t-2xl bg-background p-4 shadow-xl sm:rounded-2xl">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold">Change location</h3>
-              <button type="button" onClick={() => setShowLoc(false)} aria-label="Close">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="space-y-3">
-              <label className="block text-xs font-semibold">
-                City
-                <input
-                  value={locDraft.city}
-                  onChange={(e) => setLocDraft({ ...locDraft, city: e.target.value })}
-                  className="mt-1 h-10 w-full rounded-xl border border-border bg-muted px-3 text-sm"
-                />
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <label className="block text-xs font-semibold">
-                  State
-                  <input
-                    value={locDraft.state}
-                    onChange={(e) => setLocDraft({ ...locDraft, state: e.target.value })}
-                    className="mt-1 h-10 w-full rounded-xl border border-border bg-muted px-3 text-sm"
-                  />
-                </label>
-                <label className="block text-xs font-semibold">
-                  ZIP
-                  <input
-                    value={locDraft.postalCode}
-                    onChange={(e) => setLocDraft({ ...locDraft, postalCode: e.target.value })}
-                    className="mt-1 h-10 w-full rounded-xl border border-border bg-muted px-3 text-sm"
-                  />
-                </label>
-              </div>
-              <label className="block text-xs font-semibold">
-                Radius: {locDraft.radiusMiles} miles
-                <input
-                  type="range"
-                  min={5}
-                  max={50}
-                  step={5}
-                  value={locDraft.radiusMiles}
-                  onChange={(e) => setLocDraft({ ...locDraft, radiusMiles: Number(e.target.value) })}
-                  className="mt-2 w-full"
-                />
-              </label>
-              <button
-                type="button"
-                onClick={useDeviceLocation}
-                className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold"
-              >
-                Use current location
-              </button>
-              <button
-                type="button"
-                onClick={saveLocation}
-                className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 py-2.5 text-sm font-bold text-white"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -739,10 +675,10 @@ function EmptyState({
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/25 to-transparent" />
           <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/25 bg-white/15 p-4 text-white shadow-lg backdrop-blur-xl">
             <p className="text-base font-black">No deals nearby yet.</p>
-            <p className="mt-1 text-xs text-white/85">Expand your distance or browse online offers.</p>
+            <p className="mt-1 text-xs text-white/85">Change your YAJ Local Area in Settings or browse online offers.</p>
             <div className="mt-3 flex gap-2">
               <button type="button" onClick={onExpand} className="rounded-full bg-white/20 px-3 py-2 text-xs font-bold backdrop-blur">
-                Expand distance
+                Change area
               </button>
               <button type="button" onClick={onOnline} className="rounded-full bg-white px-3 py-2 text-xs font-bold text-orange-600">
                 Browse online
