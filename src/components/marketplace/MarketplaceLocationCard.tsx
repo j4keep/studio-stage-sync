@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Loader2, LocateFixed, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -10,6 +11,7 @@ import {
 } from "@/lib/marketplace-delivery";
 
 import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel } from "@/lib/local-area";
 import AddressAutocomplete from "@/components/marketplace/AddressAutocomplete";
 
 type Props = {
@@ -24,7 +26,9 @@ type Props = {
  * One small card that handles "my location" for the marketplace: a toggle plus
  * either the phone's GPS or a picked address. Delivery prices come out automatically.
  */
-export default function MarketplaceLocationCard({ userId, title = "Your location", onChanged, compact = false }: Props) {
+export default function MarketplaceLocationCard({ userId, title = "YAJ Local Area", onChanged, compact = false }: Props) {
+  const nav = useNavigate();
+  const route = useLocation();
   const { location, loading, save, setSharing } = useMyMarketplaceLocation(userId);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -82,6 +86,8 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
   };
 
   const hasPoint = location.lat != null && location.lng != null;
+  const editingAllowed = route.pathname === "/settings";
+  const mode = getLocalAreaMode(location);
 
   return (
     <section className={`rounded-2xl border border-border bg-card ${compact ? "p-3" : "p-3"}`}>
@@ -92,14 +98,18 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
             {title}
           </p>
           <p className="mt-0.5 line-clamp-2 text-[11.5px] text-muted-foreground">
-            {loading ? "Loading…" : hasPoint ? location.address : "Set it once — distance and delivery prices fill in for you."}
+            {loading
+              ? "Loading…"
+              : hasPoint
+                ? `${localAreaLabel(location)} · ${mode === "nearby" ? "Nearby only" : "Any area"}`
+                : "Set your ZIP code or address once. YAJ uses it for local discovery."}
           </p>
         </div>
         <button
           type="button"
-          disabled={!hasPoint || busy}
+          disabled={!hasPoint || busy || !editingAllowed}
           onClick={() => void setSharing(!location.sharing)}
-          aria-label="Share my location"
+          aria-label="Show nearby activity only"
           className={`relative h-7 w-12 shrink-0 rounded-full transition-colors disabled:opacity-40 ${
             location.sharing && hasPoint ? "bg-primary" : "bg-muted"
           }`}
@@ -112,35 +122,48 @@ export default function MarketplaceLocationCard({ userId, title = "Your location
         </button>
       </div>
 
-      <div className={compact ? "mt-2 grid grid-cols-[1fr_auto_auto] gap-2" : "mt-2.5 flex gap-2"}>
-        <AddressAutocomplete
-          value={draft}
-          onChange={setDraft}
-          onPick={(s) => void pick(s)}
-          placeholder={hasPoint ? "Change address" : "Start typing your address"}
-        />
+      {editingAllowed ? (
+        <div className={compact ? "mt-2 grid grid-cols-[1fr_auto_auto] gap-2" : "mt-2.5 flex gap-2"}>
+          <AddressAutocomplete
+            value={draft}
+            onChange={setDraft}
+            onPick={(s) => void pick(s)}
+            placeholder={hasPoint ? "Change ZIP code or address" : "Enter ZIP code or address"}
+          />
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void saveTyped()}
+            className={`${compact ? "h-10 px-3" : "h-11 px-3.5"} shrink-0 rounded-xl bg-foreground text-[12px] font-black text-background disabled:opacity-60`}
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void useGps()}
+            aria-label="Use my current location"
+            className={`flex ${compact ? "h-10 w-10" : "h-11 w-11"} shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-60`}
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+          </button>
+        </div>
+      ) : (
         <button
           type="button"
-          disabled={busy}
-          onClick={() => void saveTyped()}
-          className={`${compact ? "h-10 px-3" : "h-11 px-3.5"} shrink-0 rounded-xl bg-foreground text-[12px] font-black text-background disabled:opacity-60`}
+          onClick={() => nav("/settings")}
+          className="mt-2.5 h-10 w-full rounded-xl border border-border bg-muted text-[12px] font-bold text-foreground"
         >
-          Save
+          Change local area in Settings
         </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void useGps()}
-          aria-label="Use my current location"
-          className={`flex ${compact ? "h-10 w-10" : "h-11 w-11"} shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground disabled:opacity-60`}
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-        </button>
-      </div>
+      )}
+
       <p className={`${compact ? "mt-1 text-[10px]" : "mt-1.5 text-[11px]"} text-muted-foreground`}>
-        {location.sharing && hasPoint
-          ? "Location on — you'll see how far away each item is, plus the delivery price."
-          : "Turn this on to see distance and delivery prices automatically."}
+        {hasPoint
+          ? mode === "nearby"
+            ? "Nearby only — Marketplace, Opportunities, Events, Local Help and Gigs use this area."
+            : "Any area — local sections can show activity outside your saved area."
+          : "Save a ZIP code or address to turn on local discovery."}
       </p>
     </section>
   );
