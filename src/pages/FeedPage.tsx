@@ -20,6 +20,7 @@ import NotificationBell from "@/components/NotificationBell";
 import IncognitoHeaderButton from "@/components/IncognitoHeaderButton";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
 import yajLogo from "@/assets/yaj-logo.png";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
 
 interface TrendingCreator {
   user_id: string;
@@ -33,6 +34,7 @@ const FeedPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { user, loading: authLoading } = useAuth();
+  const { location: localArea, loading: localAreaLoading } = useMyMarketplaceLocation(user?.id);
   const isDesktop = useIsDesktop();
   const [viewer, setViewer] = useState<ViewerState>(null);
   const openPostId = searchParams.get("post");
@@ -63,9 +65,14 @@ const FeedPage = () => {
   }, [refetchFeed]);
 
   const { data: happening = [], isLoading: happeningLoading } = useQuery({
-    queryKey: ["happening-feed", user?.id || "public"],
-    queryFn: () => fetchHappeningItems({ currentUserId: user?.id }),
-    enabled: !authLoading,
+    queryKey: [
+      "happening-feed",
+      user?.id || "public",
+      localArea.address || "",
+      localArea.sharing ? "nearby" : "anywhere",
+    ],
+    queryFn: () => fetchHappeningItems({ currentUserId: user?.id, localArea }),
+    enabled: !authLoading && !localAreaLoading,
     refetchInterval: 5 * 60_000,
     refetchIntervalInBackground: false,
   });
