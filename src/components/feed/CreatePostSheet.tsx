@@ -275,6 +275,7 @@ if (!user || !postToEdit) throw new Error("Not authenticated");
 onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
+  window.dispatchEvent(new Event("post-created"));
   toast.success("Post deleted");
   reset();
 },
@@ -369,7 +370,7 @@ if (!user) throw new Error("Not authenticated");
       supabase.storage
         .from("media")
         .upload(path, uploadFile, { contentType }),
-      mediaType === "video" ? 90_000 : 35_000,
+      mediaType === "video" ? 300_000 : 90_000,
       mediaType === "video"
         ? "Video upload took too long. Check your connection and try again."
         : "Photo upload took too long. Check your connection and try again.",
@@ -434,7 +435,7 @@ if (!user) throw new Error("Not authenticated");
 
   const { error } = await withPublishTimeout(
     query,
-    20_000,
+    45_000,
     "Publishing took too long. Please try again.",
   );
   if (error) throw error;
