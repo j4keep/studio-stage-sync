@@ -1,10 +1,12 @@
 import { supabase } from "@/integrations/supabase/client";
 import { listMarketplaceListings, listingCoverUrl } from "@/lib/marketplace-api";
 import { parsePostCaption } from "@/lib/post-editor";
+import { getLocalAreaMode, matchesLocalArea } from "@/lib/local-area";
 
 export type HappeningKind =
   | "post"
   | "marketplace"
+  | "deal"
   | "job"
   | "gig"
   | "service"
@@ -30,6 +32,7 @@ export type HappeningItem = {
 const KIND_LABEL: Record<HappeningKind, string> = {
   post: "Post",
   marketplace: "Marketplace",
+  deal: "Deal",
   job: "Job",
   gig: "Gig",
   service: "Service",
@@ -68,6 +71,12 @@ async function withTimeout<T>(value: PromiseLike<T>, fallback: T, ms = 4500): Pr
 export async function fetchHappeningItems(opts: {
   currentUserId?: string;
   limitPerSource?: number;
+  localArea?: {
+    address: string | null;
+    lat: number | null;
+    lng: number | null;
+    sharing: boolean;
+  };
 }): Promise<HappeningItem[]> {
   const limit = opts.limitPerSource ?? 12;
   const items: HappeningItem[] = [];
@@ -79,6 +88,7 @@ export async function fetchHappeningItems(opts: {
     gigsResult,
     servicesResult,
     eventsResult,
+    dealsResult,
   ] = await Promise.all([
     withTimeout(
       (supabase as any)
@@ -122,6 +132,15 @@ export async function fetchHappeningItems(opts: {
       (supabase as any)
         .from("event_listings")
         .select("id, title, description, media_url, media_type, address, price_cents, created_at")
+        .eq("status", "active")
+        .order("created_at", { ascending: false })
+        .limit(limit),
+      { data: [], error: null } as any,
+    ),
+    withTimeout(
+      (supabase as any)
+        .from("deals")
+        .select("id, title, cover_url, created_at, city, state, postal_code, location_type, discount_badge")
         .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(limit),
@@ -227,6 +246,35 @@ export async function fetchHappeningItems(opts: {
         mediaType: isVideoMediaType(row.media_type) ? "video" : "image",
         createdAt: row.created_at,
         route: `/events/${row.id}`,
+        sourceId: row.id,
+      });
+    }
+  }
+
+  if (!dealsResult.error) {
+    for (const row of dealsResult.data || []) {
+      const isOnlineOnly = row.location_type === "online";
+      const allowedByArea =
+        !opts.localArea ||
+        getLocalAreaMode(opts.localArea) === "anywhere" ||
+        isOnlineOnly ||
+        matchesLocalArea(
+          [row.city, row.state, row.postal_code].filter(Boolean).join(", "),
+          opts.localArea,
+          row.postal_code,
+        );
+
+      if (!allowedByArea) continue;
+
+      items.push({
+        id: `deal-${row.id}`,
+        kind: "deal",
+        title: safeTitle(row.title, "Local deal"),
+        subtitle: row.discount_badge ? `Deal · ${row.discount_badge}` : "Deal",
+        coverUrl: row.cover_url || null,
+        mediaType: "image",
+        createdAt: row.created_at,
+        route: `/deals/${row.id}`,
         sourceId: row.id,
       });
     }
