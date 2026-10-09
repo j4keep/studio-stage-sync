@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 interface EditProfileSheetProps {
   open: boolean;
@@ -79,7 +80,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
       .limit(1);
 
     if (existing && existing.length > 0) {
-      setNameError("This username is already taken. Choose a unique name.");
+      setNameError("This display name is already in use. Choose another one.");
       return;
     }
 
@@ -154,7 +155,7 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                 </div>
 
                 <div>
-                  <Label htmlFor="edit-name" className="text-xs text-muted-foreground mb-1.5 block">Artist Name</Label>
+                  <Label htmlFor="edit-name" className="text-xs text-muted-foreground mb-1.5 block">Display name</Label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
@@ -198,6 +199,9 @@ const EditProfileSheet = ({ open, onClose, profileData, onSave }: EditProfileShe
                       });
                       if (error) {
                         setPasswordResetSent(false);
+                        toast.error(error.message || "Could not send password reset email");
+                      } else {
+                        toast.success("Password reset email sent");
                       }
                     }}
                     disabled={passwordResetSent || !email}
