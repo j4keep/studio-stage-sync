@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { ArrowLeft, BadgeCheck, MessageCircle, Star, Trophy } from "lucide-react";
 import { toast } from "sonner";
@@ -6,16 +6,26 @@ import { formatHourly, formatResponseTime, getLocalHelpCategory } from "@/lib/lo
 import { listLocalHelpPros, type LocalHelpPro } from "@/lib/pro-profiles";
 import { useAuth } from "@/contexts/AuthContext";
 import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 export default function LocalHelpCategoryPage() {
   const { categoryId } = useParams();
   const [params] = useSearchParams();
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const cat = getLocalHelpCategory(categoryId);
   const [pros, setPros] = useState<LocalHelpPro[]>([]);
   const [loading, setLoading] = useState(true);
   const q = params.get("q") || "";
+  const visiblePros = useMemo(
+    () =>
+      getLocalAreaMode(localArea) === "nearby"
+        ? pros.filter((pro) => matchesLocalArea(pro.service_area, localArea))
+        : pros,
+    [pros, localArea.address, localArea.lat, localArea.lng, localArea.sharing],
+  );
 
   useEffect(() => {
     if (!categoryId) return;
@@ -62,14 +72,21 @@ export default function LocalHelpCategoryPage() {
           <LocalHelpCategoryVisual categoryId={cat?.id || categoryId || "handyman"} label={cat?.label || "Local Help"} />
         </div>
         <div className="mt-4">
-          <h2 className="text-xl font-black tracking-tight">{cat?.label || "Helpers"} near you</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-xl font-black tracking-tight">{cat?.label || "Helpers"} near you</h2>
+            {user && localArea.address && (
+              <button type="button" onClick={() => nav("/settings")} className="shrink-0 text-[9.5px] font-semibold text-primary">
+                {getLocalAreaMode(localArea) === "nearby" ? `${localAreaLabel(localArea)} · Nearby` : "Any area"} · Change
+              </button>
+            )}
+          </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             Compare service details, portfolio, rates and Local Help reviews before you hire.
           </p>
         </div>
 
         {loading && <p className="py-10 text-center text-sm text-muted-foreground">Loading…</p>}
-        {!loading && pros.length === 0 && (
+        {!loading && visiblePros.length === 0 && (
           <div className="mt-8 rounded-2xl border border-dashed border-border p-6 text-center">
             <p className="text-sm font-semibold">No helpers in this category yet</p>
             <p className="mt-1 text-xs text-muted-foreground">Be the first — offer your skills, or ask YAJ Buddy to post a need.</p>
@@ -84,7 +101,7 @@ export default function LocalHelpCategoryPage() {
         )}
 
         <div className="mt-5 space-y-4">
-          {pros.map((pro) => {
+          {visiblePros.map((pro) => {
             const name = pro.business_name || pro.display_name || "Helper";
             const snippet = pro.gig_experience_bio || pro.about || "Ready to help locally on YAJ.";
             const price = formatHourly(pro.hourly_rate);
