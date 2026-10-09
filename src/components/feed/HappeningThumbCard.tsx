@@ -72,7 +72,6 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
             src={item.previewVideoUrl || undefined}
             poster={item.coverUrl || undefined}
             muted
-            defaultMuted
             loop
             playsInline
             preload={previewActive ? "auto" : "metadata"}

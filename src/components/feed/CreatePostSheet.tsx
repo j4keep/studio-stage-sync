@@ -276,7 +276,6 @@ onSuccess: () => {
   window.dispatchEvent(new Event("post-created"));
   queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
-  window.dispatchEvent(new Event("post-created"));
   toast.success("Post deleted");
   reset();
 },
@@ -434,7 +433,7 @@ if (!user) throw new Error("Not authenticated");
         .from("posts")
         .insert({ user_id: user.id, ...payload });
 
-  const { error } = await withPublishTimeout(
+  const { error } = await withPublishTimeout<any>(
     query,
     45_000,
     "Publishing took too long. Please try again.",
@@ -444,6 +443,7 @@ if (!user) throw new Error("Not authenticated");
 onSuccess: () => {
   queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
   queryClient.invalidateQueries({ queryKey: ["happening-feed"] });
+  window.dispatchEvent(new Event("post-created"));
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   toast.success(postToEdit ? "Post updated!" : "Post shared!");
   const wasEditing = Boolean(postToEdit);
