@@ -6,10 +6,13 @@ import { MARKETPLACE_CATEGORIES, getRecentSearches, pushRecentSearch, removeRece
 import { listMarketplaceListings, toggleSaveListing, type MarketplaceListing } from "@/lib/marketplace-api";
 import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/ListingCard";
 import { toast } from "sonner";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 export default function MarketplaceSearchPage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const [params, setParams] = useSearchParams();
   const initial = params.get("q") || "";
   const [q, setQ] = useState(initial);
@@ -29,7 +32,17 @@ export default function MarketplaceSearchPage() {
     }
     setLoading(true);
     try {
-      setListings(await listMarketplaceListings({ q: t || undefined, viewerId: user?.id, limit: 60, excludeFiveUnder: true }));
+      let rows = await listMarketplaceListings({ q: t || undefined, viewerId: user?.id, limit: 60, excludeFiveUnder: true });
+      if (getLocalAreaMode(localArea) === "nearby") {
+        rows = rows.filter((l) =>
+          matchesLocalArea(
+            [l.location_approx, l.city, l.state].filter(Boolean).join(", "),
+            localArea,
+            l.zip,
+          ),
+        );
+      }
+      setListings(rows);
     } catch (e: any) {
       toast.error(e?.message || "Search failed");
     } finally {
@@ -66,7 +79,14 @@ export default function MarketplaceSearchPage() {
           <button type="button" onClick={() => nav("/marketplace")} className="flex h-9 w-9 items-center justify-center rounded-full bg-muted">
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h1 className="text-lg font-bold">Search</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold">Search</h1>
+            {user && localArea.address && (
+              <button type="button" onClick={() => nav("/settings")} className="text-[9.5px] font-semibold text-muted-foreground">
+                {getLocalAreaMode(localArea) === "nearby" ? `Nearby · ${localAreaLabel(localArea)}` : "Any area"} · Change
+              </button>
+            )}
+          </div>
         </div>
         <form
           onSubmit={(e) => {
