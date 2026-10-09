@@ -166,9 +166,9 @@ const SettingsPage = () => {
         />
       </Section>
 
-      {/* Marketplace location */}
+      {/* Shared local discovery area */}
       {user && (
-        <Section title="Marketplace location">
+        <Section title="Local Discovery">
           <div className="px-1 pb-1">
             <MarketplaceLocationCard userId={user.id} title="Location for Marketplace" compact />
           </div>
