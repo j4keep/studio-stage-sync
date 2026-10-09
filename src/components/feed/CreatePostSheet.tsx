@@ -273,6 +273,7 @@ if (!user || !postToEdit) throw new Error("Not authenticated");
   if (error) throw error;
 },
 onSuccess: () => {
+  window.dispatchEvent(new Event("post-created"));
   queryClient.invalidateQueries({ queryKey: ["feed-posts"] });
   queryClient.invalidateQueries({ queryKey: ["profile-posts"] });
   window.dispatchEvent(new Event("post-created"));
