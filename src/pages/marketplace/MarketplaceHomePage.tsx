@@ -14,6 +14,8 @@ import ListingCard, { ListingCardSkeleton } from "@/components/marketplace/Listi
 import MarketplaceSafetyTips from "@/components/marketplace/MarketplaceSafetyTips";
 import MessagesInboxButton from "@/components/MessagesInboxButton";
 import { toast } from "sonner";
+import { useMyMarketplaceLocation } from "@/hooks/use-marketplace-location";
+import { getLocalAreaMode, localAreaLabel, matchesLocalArea } from "@/lib/local-area";
 
 type FilterId = "mine" | "all" | "free" | "newest";
 
@@ -32,6 +34,7 @@ function isMissingTableError(msg: string) {
 export default function MarketplaceHomePage() {
   const nav = useNavigate();
   const { user } = useAuth();
+  const { location: localArea } = useMyMarketplaceLocation(user?.id);
   const [listings, setListings] = useState<MarketplaceListing[]>([]);
   const [sellerRatings, setSellerRatings] = useState<Record<string, DisplayRating>>({});
   const [loading, setLoading] = useState(true);
@@ -58,6 +61,15 @@ export default function MarketplaceHomePage() {
       if (q.trim()) opts.q = q.trim();
       let rows = await listMarketplaceListings(opts);
       if (filter === "free") rows = rows.filter((l) => l.listing_type === "free" || Number(l.price) === 0);
+      if (getLocalAreaMode(localArea) === "nearby") {
+        rows = rows.filter((l) =>
+          matchesLocalArea(
+            [l.location_approx, l.city, l.state].filter(Boolean).join(", "),
+            localArea,
+            l.zip,
+          ),
+        );
+      }
       setListings(rows);
       const sellerIds = [...new Set(rows.map((r) => r.seller_id).filter(Boolean))];
       if (sellerIds.length) {
@@ -74,7 +86,7 @@ export default function MarketplaceHomePage() {
     } finally {
       setLoading(false);
     }
-  }, [user, filter, category, q]);
+  }, [user, filter, category, q, localArea.address, localArea.lat, localArea.lng, localArea.sharing]);
 
   useEffect(() => {
     void load();
@@ -140,7 +152,14 @@ export default function MarketplaceHomePage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <h1 className="flex-1 text-lg font-bold tracking-tight">Marketplace</h1>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg font-bold tracking-tight">Marketplace</h1>
+            {user && localArea.address && (
+              <button type="button" onClick={() => nav("/settings")} className="text-[10px] font-semibold text-muted-foreground">
+                {getLocalAreaMode(localArea) === "nearby" ? `Nearby · ${localAreaLabel(localArea)}` : "Any area"} · Change in Settings
+              </button>
+            )}
+          </div>
           <MessagesInboxButton />
           <button
             type="button"
