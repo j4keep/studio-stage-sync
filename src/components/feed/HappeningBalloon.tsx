@@ -3,6 +3,7 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   Handshake,
+  BadgePercent,
   ShoppingBag,
   Sparkles,
   Wrench,
@@ -17,6 +18,7 @@ const SETTING_EVENT = "yaj-happening-balloon-setting";
 export const HAPPENING_BALLOON_CATEGORIES: Array<{ kind: HappeningKind; label: string }> = [
   { kind: "job", label: "Jobs" },
   { kind: "marketplace", label: "Marketplace" },
+  { kind: "deal", label: "Deals" },
   { kind: "gig", label: "Gigs" },
   { kind: "service", label: "Services" },
   { kind: "event", label: "Events" },
@@ -28,6 +30,7 @@ const DEFAULT_CATEGORIES = HAPPENING_BALLOON_CATEGORIES.map((item) => item.kind)
 const ICONS: Record<HappeningKind, typeof Sparkles> = {
   post: Sparkles,
   marketplace: ShoppingBag,
+  deal: BadgePercent,
   job: BriefcaseBusiness,
   gig: Handshake,
   service: Wrench,
@@ -37,6 +40,7 @@ const ICONS: Record<HappeningKind, typeof Sparkles> = {
 const ACCENTS: Record<HappeningKind, string> = {
   post: "from-violet-500 to-fuchsia-500",
   marketplace: "from-emerald-400 to-teal-500",
+  deal: "from-orange-500 to-amber-400",
   job: "from-blue-500 to-cyan-400",
   gig: "from-orange-400 to-rose-500",
   service: "from-amber-400 to-orange-500",
