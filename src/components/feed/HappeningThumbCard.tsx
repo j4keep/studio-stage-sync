@@ -75,8 +75,8 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
             loop
             playsInline
             preload={previewActive ? "auto" : "metadata"}
-            onLoadedData={() => setVideoReady(true)}
-            onCanPlay={() => setVideoReady(true)}
+            onPlaying={() => setVideoReady(true)}
+            onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
           />
           {!videoReady && item.coverUrl ? (
