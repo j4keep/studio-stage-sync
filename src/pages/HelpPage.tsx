@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, Phone, Mail, MessageCircle, Headphones, Shield, BadgeCheck } from "lucide-react";
+import { ArrowLeft, FileText, MessageCircle, Headphones, Shield, BadgeCheck, Sparkles, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,26 +23,32 @@ const HelpPage = () => {
     {
       icon: MessageCircle,
       label: "Help Desk",
-      description: "Submit a support ticket or ask a question",
+      description: "Support tickets, complaints, bugs and account help",
       action: () => navigate("/helpdesk"),
     },
     {
+      icon: Sparkles,
+      label: "Ask YAJ",
+      description: "Get help using features and finding the right section",
+      action: () => navigate("/ask-yaj"),
+    },
+    {
+      icon: Shield,
+      label: "Safety Center",
+      description: "Safety tools, blocking and digital balance",
+      action: () => navigate("/safety"),
+    },
+    {
+      icon: Settings,
+      label: "Settings",
+      description: "Account, privacy, local area and app preferences",
+      action: () => navigate("/settings"),
+    },
+    {
       icon: FileText,
-      label: "Terms of Use",
-      description: "Read our terms and conditions",
+      label: "Terms & Privacy",
+      description: "Read YAJ terms and privacy information",
       action: () => navigate("/terms"),
-    },
-    {
-      icon: Phone,
-      label: "Call Support",
-      description: "954-607",
-      action: () => window.open("tel:954607", "_self"),
-    },
-    {
-      icon: Mail,
-      label: "Email Support",
-      description: "Get help via email",
-      action: () => {},
     },
   ];
 
