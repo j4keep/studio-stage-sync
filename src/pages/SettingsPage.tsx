@@ -274,7 +274,7 @@ const SettingsPage = () => {
         <SettingRow
           icon={<Coffee className="w-4 h-4" />}
           label="Social Detox"
-          description="Pause Feed, Battles & social discovery. Marketplace, Jobs & Profile stay on."
+          description="Pause Feed and social discovery. Marketplace, Jobs and Profile stay available."
         >
           <Switch checked={detoxOn} onCheckedChange={onDetoxToggle} />
         </SettingRow>
