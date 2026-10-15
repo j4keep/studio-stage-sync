@@ -41,6 +41,7 @@ const SettingsPage = () => {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const deleteConfirmed = deleteConfirmText.trim().toUpperCase() === "DELETE";
   const [happeningBalloons, setHappeningBalloons] = useState(happeningBalloonsEnabled);
   const [happeningCategories, setHappeningCategories] = useState<HappeningKind[]>(getHappeningBalloonCategories);
   const [happeningCategoriesOpen, setHappeningCategoriesOpen] = useState(false);
@@ -335,14 +336,36 @@ const SettingsPage = () => {
           <DialogFooter className="flex gap-2">
             <button onClick={() => { setShowDeleteDialog(false); setDeleteConfirmText(""); }} className="flex-1 py-2.5 rounded-xl bg-card border border-border text-foreground text-sm font-semibold">Cancel</button>
             <button
-              disabled={deleteConfirmText !== "DELETE" || deletingAccount}
+              disabled={!deleteConfirmed || deletingAccount}
               onClick={async () => {
-                if (deletingAccount) return;
+                if (deletingAccount || !deleteConfirmed) return;
                 setDeletingAccount(true);
                 try {
-                  const { error } = await supabase.functions.invoke("delete-account", { body: {} });
-                  if (error) throw error;
+                  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+                  if (sessionError) throw sessionError;
+                  const token = sessionData.session?.access_token;
+                  if (!token) throw new Error("Your session expired. Please log in again and retry.");
+
+                  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+                  const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+                  const response = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+                    method: "POST",
+                    headers: {
+                      Authorization: `Bearer ${token}`,
+                      apikey: anonKey,
+                      "Content-Type": "application/json",
+                    },
+                    body: "{}",
+                  });
+
+                  const result = await response.json().catch(() => null);
+                  if (!response.ok || !result?.ok) {
+                    throw new Error(result?.error || `Account deletion failed (${response.status})`);
+                  }
+
                   toast({ title: "Account deleted", description: "Your YAJ account has been permanently deleted." });
+                  setShowDeleteDialog(false);
+                  setDeleteConfirmText("");
                   await signOut();
                   navigate("/auth", { replace: true });
                 } catch (e: any) {
