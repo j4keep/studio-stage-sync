@@ -153,7 +153,7 @@ const ProfilePage = () => {
     ...(isDealBusiness
       ? [{ icon: Store, label: "Business Dashboard", sub: "Deals, analytics and verification", action: () => navigate("/deals/business"), pro: false, section: null as NotifSection | null }]
       : [{ icon: Store, label: "Become a Business", sub: "Reach local shoppers with Deals", action: () => navigate("/deals/become-business"), pro: false, section: null as NotifSection | null }]),
-    { icon: ShoppingBag, label: "Purchases", sub: "Marketplace purchase history", action: () => goSection("purchases", "/purchases"), pro: false, section: "purchases" as NotifSection | null },
+    { icon: ShoppingBag, label: "Purchases", sub: "Marketplace purchase history", action: () => goSection("purchases", "/marketplace/purchases"), pro: false, section: "purchases" as NotifSection | null },
     { icon: Building2, label: "Local Help Business", sub: "Manage your local services", action: () => goSection("localHelp", "/local-help/business"), pro: false, section: "localHelp" as NotifSection | null },
     { icon: Wrench, label: "My Gigs", sub: "Posted, working and completed gigs", action: () => goSection("gigs", "/my-gigs"), pro: false, section: "gigs" as NotifSection | null },
     { icon: BarChart3, label: "Analytics", sub: "View account insights", action: () => proGatedNav("Analytics", "/analytics"), pro: true, section: null as NotifSection | null },
