@@ -1,7 +1,7 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "yaj-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,12 +11,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "supabase:ship:wstudio": "bash scripts/wstudio-backend-ship.sh",
-    "supabase:verify:session-lookup": "bash scripts/wstudio-verify-session-lookup.sh",
-    "wstudio:plugin:au": "bash scripts/build-wstudio-au.sh",
-    "wstudio:plugin:fix-xcode-scripts": "bash scripts/fix-wstudio-xcode-copy-scripts.sh",
-    "wstudio:bridge": "cargo run --manifest-path native/wstudio-desktop-bridge/Cargo.toml",
-    "wstudio:bridge:app": "bash scripts/build-wstudio-bridge-app.sh"
+    "supabase:verify:session-lookup": "bash scripts/wstudio-verify-session-lookup.sh"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",
