@@ -1,0 +1,40 @@
+name: YAJ native scaffold validation
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-scaffold:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+      - name: Install Capacitor toolchain for validation
+        run: |
+          npm install --no-save --no-package-lock --legacy-peer-deps @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/ios@7
+      - name: Build web assets
+        run: npm run build
+      - name: Generate native projects
+        run: |
+          npx cap add android
+          npx cap add ios
+          npx cap sync
+          test -f android/app/build.gradle
+          test -f ios/App/App.xcodeproj/project.pbxproj
+      - name: Archive scaffold for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaj-native-scaffold
+          path: |
+            android/
+            ios/
+          retention-days: 7
+          if-no-files-found: error
