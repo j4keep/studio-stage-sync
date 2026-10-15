@@ -16,6 +16,7 @@ import {
   unlockYajAudio,
   acquireMicStream,
   describeMicError,
+  canUseLiveMic,
   type MicRecorder,
 } from "@/lib/yaj-media";
 import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
@@ -314,6 +315,12 @@ const AskYajPage = () => {
       return;
     }
 
+    if (!canUseLiveMic()) {
+      // Fallback: let the phone record or pick a clip; YAJ listens to it.
+      toast({ title: "Live mic unavailable", description: "Record or pick a voice clip instead — YAJ will listen to it." });
+      fileInputRef.current?.click();
+      return;
+    }
     try {
       stopSpeaking();
       unlockYajAudio();
