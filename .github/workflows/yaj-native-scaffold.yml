@@ -2,6 +2,10 @@ name: YAJ native scaffold validation
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/yaj-native-scaffold.yml'
 
 permissions:
   contents: read
