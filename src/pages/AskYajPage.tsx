@@ -365,10 +365,16 @@ const AskYajPage = () => {
     } else if (attachedFile) {
       attachmentName = attachedFile.name;
       attachmentKind = "file";
-      userContent = [
-        { type: "text", text: text.trim() || `Read ${attachedFile.name} and summarize the important information for me.` },
-        { type: "file", file: { filename: attachedFile.name, file_data: attachedFile.dataUrl } },
-      ];
+      // The gateway accepts text and image content parts reliably, but its
+      // chat-completions endpoint does not consistently support "file" parts.
+      // Send text-based documents as text; PDFs/Word need server extraction.
+      const isPlainText = /\.(txt|md|csv|json|xml|html?)$/i.test(attachedFile.name);
+      if (isPlainText) {
+        const decoded = await fetch(attachedFile.dataUrl).then((response) => response.text());
+        userContent = `${text.trim() || `Read ${attachedFile.name} and summarize it.`}\n\nDocument: ${attachedFile.name}\n\n${decoded.slice(0, 45000)}`;
+      } else {
+        throw new Error("PDF and Word documents need document extraction before YAJ can read them. Please use TXT or paste the text for now.");
+      }
     } else if (imageDataUrl) {
       cameraPreviewUrl = imageDataUrl;
       attachmentName = attachedImage?.name || "Photo";
