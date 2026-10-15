@@ -173,8 +173,26 @@ export async function startMicRecording(options: MicOptions = {}): Promise<MicRe
 
   const AudioCtx: typeof AudioContext =
     (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? window.AudioContext;
-  const ctx = new AudioCtx();
-  if (ctx.state === "suspended") await ctx.resume();
+  // iOS Safari can leave the page in a playback-only session after AI speech.
+  // Switch to capture-compatible mode before constructing the recording graph.
+  const audioSession = (navigator as Navigator & {
+    audioSession?: { type: string };
+  }).audioSession;
+  if (audioSession) {
+    try {
+      audioSession.type = "play-and-record";
+    } catch {
+      // Older browsers do not expose a writable audio-session type.
+    }
+  }
+  let ctx: AudioContext;
+  try {
+    ctx = new AudioCtx();
+    if (ctx.state === "suspended") await ctx.resume();
+  } catch (error) {
+    stream.getTracks().forEach((track) => track.stop());
+    throw error;
+  }
   const source = ctx.createMediaStreamSource(stream);
   // ScriptProcessor must connect somewhere; use a muted gain so we don't play the mic
   // through speakers (echo) or trip browser autoplay/permission quirks.
