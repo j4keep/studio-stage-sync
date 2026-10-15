@@ -29,3 +29,8 @@ jobs:
         run: npm test -- --passWithNoTests
       - name: Production build
         run: npm run build
+      - name: Check generated web assets
+        run: |
+          test -f dist/index.html
+          test -d dist/assets
+          echo "Production assets ready for native packaging"
