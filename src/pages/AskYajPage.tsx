@@ -116,10 +116,47 @@ function toApiMessages(messages: Msg[]) {
   });
 }
 
+type SavedChat = { id: string; title: string; updatedAt: number; messages: Msg[] };
+const CHAT_STORAGE_KEY = "yaj-ai-local-conversations-v1";
+function loadSavedChats(): SavedChat[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CHAT_STORAGE_KEY) || "[]");
+    return Array.isArray(raw) ? raw.slice(0, 50) : [];
+  } catch {
+    return [];
+  }
+}
+function safeChatMessages(messages: Msg[]): Msg[] {
+  // Never persist large base64 attachments or camera images in localStorage.
+  return messages.map((message) => ({
+    role: message.role,
+    content: typeof message.content === "string" ? message.content :
+      message.content.map((part) => part.type === "text" ? part : {
+        type: "text" as const,
+        text: part.type === "file" ? "[Document attached]" : part.type === "input_audio" ? "[Audio attached]" : "[Image attached]",
+      }),
+    attachmentName: message.attachmentName,
+    attachmentKind: message.attachmentKind,
+    audioName: message.audioName,
+  }));
+}
+function chatTitle(messages: Msg[]): string {
+  const first = messages.find((m) => m.role === "user");
+  const content = first?.content;
+  const text = typeof content === "string" ? content : content?.find((p) => p.type === "text")?.text || "";
+  return text.trim().slice(0, 65) || "New conversation";
+}
+
 const AskYajPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [savedChats, setSavedChats] = useState<SavedChat[]>(loadSavedChats);
+  const [activeChatId, setActiveChatId] = useState<string>(() => localStorage.getItem("yaj-ai-active-chat") || crypto.randomUUID());
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [messages, setMessages] = useState<Msg[]>(() => {
+    const id = localStorage.getItem("yaj-ai-active-chat");
+    return loadSavedChats().find((chat) => chat.id === id)?.messages || [];
+  });
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
@@ -147,6 +184,43 @@ const AskYajPage = () => {
     messagesRef.current = messages;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    localStorage.setItem("yaj-ai-active-chat", activeChatId);
+    if (!messages.length) return;
+    const timer = window.setTimeout(() => {
+      setSavedChats((previous) => {
+        const existing = previous.find((chat) => chat.id === activeChatId);
+        const updated = [{
+          id: activeChatId,
+          title: existing?.title || chatTitle(messages),
+          updatedAt: Date.now(),
+          messages: safeChatMessages(messages),
+        }, ...previous.filter((chat) => chat.id !== activeChatId)].slice(0, 50);
+        try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(updated)); }
+        catch { toast({ title: "Storage full", description: "Conversation could not be saved on this device.", variant: "destructive" }); }
+        return updated;
+      });
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [messages, activeChatId]);
+
+  const openSavedChat = (chat: SavedChat) => {
+    if (isLoading) return;
+    setActiveChatId(chat.id);
+    messagesRef.current = chat.messages;
+    setMessages(chat.messages);
+    setHistoryOpen(false);
+  };
+
+  const newConversation = () => {
+    if (isLoading) return;
+    const id = crypto.randomUUID();
+    setActiveChatId(id);
+    messagesRef.current = [];
+    setMessages([]);
+    setHistoryOpen(false);
+  };
 
   useEffect(() => () => {
     stopYajAudio();
@@ -560,6 +634,8 @@ const AskYajPage = () => {
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          <button type="button" onClick={() => setHistoryOpen((open) => !open)} className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs font-semibold" aria-label="Conversation history">Chats</button>
+          <button type="button" onClick={newConversation} disabled={isLoading} className="w-8 h-8 rounded-full border border-border bg-card flex items-center justify-center" aria-label="New conversation"><Plus className="h-4 w-4" /></button>
           <button
             type="button"
             onClick={() => navigate("/ask-yaj/settings")}
@@ -575,6 +651,25 @@ const AskYajPage = () => {
           )}
         </div>
       </div>
+
+      {historyOpen && (
+        <div className="max-h-64 overflow-y-auto border-b border-border bg-card px-4 py-3 space-y-2">
+          <p className="text-xs font-semibold text-muted-foreground">Conversations saved on this device</p>
+          {savedChats.length === 0 && <p className="text-xs text-muted-foreground">No saved conversations yet.</p>}
+          {savedChats.map((chat) => (
+            <div key={chat.id} className="flex items-center gap-2">
+              <button type="button" disabled={isLoading} onClick={() => openSavedChat(chat)} className="min-w-0 flex-1 truncate rounded-lg px-2 py-2 text-left text-sm hover:bg-muted">{chat.title}</button>
+              <button type="button" aria-label="Delete conversation" onClick={() => {
+                if (isLoading) return;
+                const next = savedChats.filter((item) => item.id !== chat.id);
+                setSavedChats(next);
+                localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(next));
+                if (activeChatId === chat.id) newConversation();
+              }} className="p-2 text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4">
