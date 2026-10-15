@@ -12,6 +12,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ success: false, error: 'POST required' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Allow': 'POST, OPTIONS' },
+    });
+  }
+
   try {
     const accessKeyId = Deno.env.get('R2_ACCESS_KEY_ID')?.trim();
     const secretAccessKey = Deno.env.get('R2_SECRET_ACCESS_KEY')?.trim();
@@ -23,7 +30,19 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { key, contentType } = await req.json();
+    let body: { key?: unknown; contentType?: unknown };
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(JSON.stringify({ success: false, error: 'Valid JSON body is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const key = typeof body.key === 'string' ? body.key.trim() : '';
+    const contentType = typeof body.contentType === 'string' ? body.contentType.trim() : '';
+
     if (!key) {
       return new Response(JSON.stringify({ success: false, error: 'key is required' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
