@@ -20,7 +20,24 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
   const videoRef = useRef<HTMLVideoElement>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [inViewport, setInViewport] = useState(false);
   const canPreviewVideo = isVideo && Boolean(item.previewVideoUrl);
+  const shouldPreview = previewActive && inViewport;
+
+  useEffect(() => {
+    const card = cardRef.current;
+    if (!card || !canPreviewVideo) {
+      setInViewport(false);
+      return;
+    }
+
+    const io = new IntersectionObserver(
+      ([entry]) => setInViewport(Boolean(entry?.isIntersecting)),
+      { threshold: 0.2 },
+    );
+    io.observe(card);
+    return () => io.disconnect();
+  }, [canPreviewVideo, item.previewVideoUrl]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -34,7 +51,7 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
     video.setAttribute("playsinline", "");
     video.setAttribute("webkit-playsinline", "");
 
-    if (!previewActive) {
+    if (!shouldPreview) {
       video.pause();
       video.preload = "metadata";
       return;
@@ -42,7 +59,7 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
 
     video.preload = "auto";
     const tryPlay = () => {
-      if (!previewActive) return;
+      if (!shouldPreview) return;
       void video.play().catch(() => {});
     };
 
@@ -54,7 +71,7 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
       video.removeEventListener("canplay", tryPlay);
       video.pause();
     };
-  }, [canPreviewVideo, item.previewVideoUrl, previewActive]);
+  }, [canPreviewVideo, item.previewVideoUrl, shouldPreview]);
 
   return (
     <button
@@ -74,7 +91,7 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
             muted
             loop
             playsInline
-            preload={previewActive ? "auto" : "metadata"}
+            preload={shouldPreview ? "auto" : "metadata"}
             onPlaying={() => setVideoReady(true)}
             onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
