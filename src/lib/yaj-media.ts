@@ -55,6 +55,8 @@ export function looksLikeImageRequest(text: string): boolean {
 // Microphone recording → complete WAV file (works on iOS Safari & Chrome)
 // ---------------------------------------------------------------------------
 
+let sharedAudio: HTMLAudioElement | null = null;
+
 function encodeWav(chunks: Float32Array[], sampleRate: number): Blob {
   const length = chunks.reduce((n, c) => n + c.length, 0);
   const samples = new Float32Array(length);
@@ -151,18 +153,54 @@ export function describeMicError(err: unknown): string {
   return msg || "Couldn't start the microphone. Tap Try again.";
 }
 
-/** Open the mic during a click/tap so permission stays tied to a user gesture. */
-export async function acquireMicStream(): Promise<MediaStream> {
-  return navigator.mediaDevices.getUserMedia({
-    audio: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
-  });
+type IosAudioSession = { type: string };
+function setIosAudioSession(type: "play-and-record" | "playback" | "auto") {
+  const session = (navigator as Navigator & { audioSession?: IosAudioSession }).audioSession;
+  if (!session) return;
+  try {
+    session.type = type;
+  } catch {
+    /* not writable on this browser */
+  }
 }
 
-/** Start recording the mic. Resolves with a recorder whose stop() returns a WAV data URL. */
+/** True when this browser can capture the mic at all. */
+export function canUseLiveMic(): boolean {
+  return typeof navigator !== "undefined" && !!navigator.mediaDevices?.getUserMedia;
+}
+
+/** Open the mic during a click/tap so permission stays tied to a user gesture. */
+export async function acquireMicStream(): Promise<MediaStream> {
+  if (!canUseLiveMic()) throw new Error("Live microphone isn't supported in this browser.");
+  // iOS: release any playback-only session from YAJ speech BEFORE capture starts,
+  // otherwise WebKit throws "AudioSession category is not compatible with audio capture".
+  sharedAudio?.pause();
+  setIosAudioSession("play-and-record");
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (err) {
+    if (err instanceof Error && /AudioSession|not compatible with audio capture/i.test(err.message)) {
+      // Retry once with a plain constraint after resetting the session.
+      setIosAudioSession("auto");
+      await new Promise((r) => setTimeout(r, 150));
+      setIosAudioSession("play-and-record");
+      return navigator.mediaDevices.getUserMedia({ audio: true });
+    }
+    throw err;
+  }
+}
+
+function pickRecorderMime(): string | undefined {
+  if (typeof MediaRecorder === "undefined") return undefined;
+  for (const m of ["audio/mp4", "audio/webm;codecs=opus", "audio/webm", "audio/ogg"]) {
+    if (MediaRecorder.isTypeSupported?.(m)) return m;
+  }
+  return "";
+}
+
+/** Start recording the mic. Resolves with a recorder whose stop() returns an audio data URL. */
 export async function startMicRecording(options: MicOptions = {}): Promise<MicRecorder> {
   const { onSilence, silenceMs = 1300, onLevel, existingStream } = options;
 
@@ -171,96 +209,113 @@ export async function startMicRecording(options: MicOptions = {}): Promise<MicRe
       ? existingStream
       : await acquireMicStream();
 
-  const AudioCtx: typeof AudioContext =
-    (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? window.AudioContext;
-  // iOS Safari can leave the page in a playback-only session after AI speech.
-  // Switch to capture-compatible mode before constructing the recording graph.
-  const audioSession = (navigator as Navigator & {
-    audioSession?: { type: string };
-  }).audioSession;
-  if (audioSession) {
-    try {
-      audioSession.type = "play-and-record";
-    } catch {
-      // Older browsers do not expose a writable audio-session type.
-    }
-  }
-  let ctx: AudioContext;
+  // Optional level/silence meter. If iOS refuses an AudioContext, recording still works.
+  let ctx: AudioContext | null = null;
+  let source: MediaStreamAudioSourceNode | null = null;
+  let node: ScriptProcessorNode | null = null;
+  let mute: GainNode | null = null;
+  const pcm: Float32Array[] = [];
   try {
+    const AudioCtx: typeof AudioContext =
+      (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext ?? window.AudioContext;
     ctx = new AudioCtx();
     if (ctx.state === "suspended") await ctx.resume();
-  } catch (error) {
-    stream.getTracks().forEach((track) => track.stop());
-    throw error;
-  }
-  const source = ctx.createMediaStreamSource(stream);
-  // ScriptProcessor must connect somewhere; use a muted gain so we don't play the mic
-  // through speakers (echo) or trip browser autoplay/permission quirks.
-  const mute = ctx.createGain();
-  mute.gain.value = 0;
-  const node = ctx.createScriptProcessor(4096, 1, 1);
-  const chunks: Float32Array[] = [];
-  let heardSpeech = false;
-  let quietSince = 0;
-  let silenceFired = false;
-
-  node.onaudioprocess = (e) => {
-    const data = e.inputBuffer.getChannelData(0);
-    chunks.push(new Float32Array(data));
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
-    const rms = Math.sqrt(sum / data.length);
-    onLevel?.(Math.min(1, rms * 8));
-    const now = performance.now();
-    if (rms > 0.02) {
-      heardSpeech = true;
-      quietSince = 0;
-    } else if (heardSpeech) {
-      if (!quietSince) quietSince = now;
-      else if (!silenceFired && now - quietSince > silenceMs) {
-        silenceFired = true;
-        onSilence?.();
+    source = ctx.createMediaStreamSource(stream);
+    mute = ctx.createGain();
+    mute.gain.value = 0;
+    node = ctx.createScriptProcessor(4096, 1, 1);
+    let heardSpeech = false;
+    let quietSince = 0;
+    let silenceFired = false;
+    node.onaudioprocess = (e) => {
+      const data = e.inputBuffer.getChannelData(0);
+      if (!recorder) pcm.push(new Float32Array(data));
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i] * data[i];
+      const rms = Math.sqrt(sum / data.length);
+      onLevel?.(Math.min(1, rms * 8));
+      const now = performance.now();
+      if (rms > 0.02) {
+        heardSpeech = true;
+        quietSince = 0;
+      } else if (heardSpeech) {
+        if (!quietSince) quietSince = now;
+        else if (!silenceFired && now - quietSince > silenceMs) {
+          silenceFired = true;
+          onSilence?.();
+        }
       }
+    };
+    source.connect(node);
+    node.connect(mute);
+    mute.connect(ctx.destination);
+  } catch (err) {
+    console.warn("YAJ mic meter unavailable, recording without it", err);
+    ctx?.close().catch(() => undefined);
+    ctx = null;
+    node = null;
+  }
+
+  // Preferred capture: MediaRecorder (native on iOS 14.3+, Chrome, Firefox).
+  const mime = pickRecorderMime();
+  let recorder: MediaRecorder | null = null;
+  const blobs: Blob[] = [];
+  if (mime !== undefined) {
+    try {
+      recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => { if (e.data.size) blobs.push(e.data); };
+      recorder.start(250);
+    } catch (err) {
+      console.warn("MediaRecorder failed, using PCM capture", err);
+      recorder = null;
     }
-  };
-  source.connect(node);
-  node.connect(mute);
-  mute.connect(ctx.destination);
+  }
+  if (!recorder && !node) {
+    stream.getTracks().forEach((t) => t.stop());
+    throw new Error("Couldn't start audio capture in this browser.");
+  }
 
   const teardown = () => {
-    node.onaudioprocess = null;
-    try {
-      node.disconnect();
-    } catch {
-      /* ignore */
-    }
-    try {
-      mute.disconnect();
-    } catch {
-      /* ignore */
-    }
-    try {
-      source.disconnect();
-    } catch {
-      /* ignore */
+    if (node) node.onaudioprocess = null;
+    for (const n of [node, mute, source]) {
+      try { n?.disconnect(); } catch { /* ignore */ }
     }
     stream.getTracks().forEach((t) => t.stop());
+    ctx?.close().catch(() => undefined);
+    setIosAudioSession("auto");
   };
 
   return {
     stop: async () => {
+      if (recorder) {
+        const rec = recorder;
+        await new Promise<void>((resolve) => {
+          rec.onstop = () => resolve();
+          try { rec.state !== "inactive" ? rec.stop() : resolve(); } catch { resolve(); }
+        });
+        teardown();
+        const type = (rec.mimeType || mime || "audio/mp4").split(";")[0];
+        const blob = new Blob(blobs, { type });
+        if (blob.size < 2048) return null;
+        return blobToDataUrl(blob);
+      }
+      const rate = ctx?.sampleRate ?? 48000;
       teardown();
-      const rate = ctx.sampleRate;
-      await ctx.close().catch(() => undefined);
-      const blob = encodeWav(chunks, rate);
+      const blob = encodeWav(pcm, rate);
       if (blob.size < 2048) return null;
       return blobToDataUrl(blob);
     },
     cancel: () => {
+      try { if (recorder && recorder.state !== "inactive") recorder.stop(); } catch { /* ignore */ }
       teardown();
-      ctx.close().catch(() => undefined);
     },
   };
+}
+
+/** Fallback for browsers without live mic: turn a picked/recorded audio file into a data URL. */
+export async function audioFileToDataUrl(file: File): Promise<string> {
+  const type = (file.type || "audio/mp4").split(";")[0];
+  return blobToDataUrl(new Blob([await file.arrayBuffer()], { type }));
 }
 
 // ---------------------------------------------------------------------------
@@ -268,7 +323,6 @@ export async function startMicRecording(options: MicOptions = {}): Promise<MicRe
 // replies later in the conversation.
 // ---------------------------------------------------------------------------
 
-let sharedAudio: HTMLAudioElement | null = null;
 
 function getSharedAudio(): HTMLAudioElement {
   if (!sharedAudio) {
