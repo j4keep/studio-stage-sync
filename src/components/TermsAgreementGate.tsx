@@ -26,22 +26,20 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
           Please review and accept our terms before continuing.
         </p>
 
-        <div className="w-full max-h-48 overflow-y-auto rounded-xl bg-card border border-border p-4 mb-6 text-xs text-muted-foreground leading-relaxed space-y-3">
+        <div className="mb-6 max-h-52 w-full space-y-3 overflow-y-auto rounded-xl border border-border bg-card p-4 text-xs leading-relaxed text-muted-foreground">
           <p>By using YAJ, you agree to the following:</p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>YAJ is a unified platform: creator app, TV, and the Catch Up Circle (community savings & fundraisers).</li>
-            <li>One account works across the entire platform.</li>
-            <li>The Catch Up Circle (savings rotations, fundraisers, payouts) is restricted to users aged 18 and over.</li>
-            <li>Artists must upload only original or properly licensed content. No external copyrighted music on Radio.</li>
-            <li>Platform fees: 8% project funding, 15% downloads, plus Circle/Stripe processing fees where applicable.</li>
-            <li>Pro tier is $10/month with DMs, Store, Analytics, Legal Vault, Boosts, YAJ AI, and Zero Ads.</li>
-            <li>Payments processed through Stripe and Stripe Connect.</li>
-            <li>False reporting, fraud, or false accusations may result in suspension or permanent deactivation.</li>
-            <li>Prohibited: harmful content, impersonation, fraud, harassment.</li>
-            <li>YAJ provides the platform "as is" with no warranties.</li>
+          <ul className="list-disc space-y-1 pl-4">
+            <li>One YAJ account works across the app's social, local discovery, Marketplace, Radio, Games, wellness, and AI features.</li>
+            <li>You may only post or upload content you have the right to use.</li>
+            <li>Harassment, scams, impersonation, illegal activity, spam, and other harmful conduct are prohibited.</li>
+            <li>Marketplace sellers, service providers, employers, event hosts, and other users are responsible for the accuracy of their own listings and offers.</li>
+            <li>Location information you choose to provide may be used to show nearby Deals, Marketplace items, Jobs, Events, Local Help, and Gigs.</li>
+            <li>YAJ AI may make mistakes and should not replace qualified professional advice for important decisions.</li>
+            <li>YAJ may moderate content or restrict accounts when needed for safety, fraud prevention, legal compliance, or enforcement of the Terms.</li>
+            <li>You can manage privacy, blocking, local discovery, support, and account deletion from Settings and Help.</li>
           </ul>
           <p>
-            For full terms, view the{" "}
+            For full details, view the{" "}
             <button onClick={() => navigate("/terms")} className="text-primary underline">
               complete Terms of Use & Privacy Policy
             </button>
