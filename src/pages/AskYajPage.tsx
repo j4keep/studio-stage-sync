@@ -160,7 +160,8 @@ const AskYajPage = () => {
   const [input, setInput] = useState("");
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [attachedImage, setAttachedImage] = useState<{ name: string; dataUrl: string } | null>(null);
-  const [attachedFile, setAttachedFile] = useState<{ name: string; dataUrl: string; type: string } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<{ name: string; text: string; truncated: boolean; type: string } | null>(null);
+  const [isExtracting, setIsExtracting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [imageMode, setImageMode] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -371,23 +372,29 @@ const AskYajPage = () => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    const allowed = /pdf|text|csv|json|xml|html|markdown|msword|officedocument/i.test(file.type) ||
-      /\.(pdf|txt|md|csv|json|xml|html?|docx?)$/i.test(file.name);
-    if (!allowed) {
-      toast({ title: "Unsupported file", description: "Use PDF, Word, text, CSV, JSON, XML, HTML, or Markdown.", variant: "destructive" });
+    if (!isSupportedYajDocument(file)) {
+      toast({ title: "Unsupported file", description: "Use PDF, Word (.docx), text, CSV, JSON, XML, HTML, or Markdown.", variant: "destructive" });
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Keep documents under 10MB.", variant: "destructive" });
+    if (file.size > 15 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Keep documents under 15MB.", variant: "destructive" });
       return;
     }
+    setMenuOpen(false);
+    setIsExtracting(true);
     try {
-      setAttachedFile({ name: file.name, dataUrl: await fileToDataUrl(file), type: file.type || "application/octet-stream" });
+      const { text, truncated } = await extractYajDocumentText(file);
+      setAttachedFile({ name: file.name, text, truncated, type: file.type || "application/octet-stream" });
       setAttachedImage(null);
-      setMenuOpen(false);
       inputRef.current?.focus();
-    } catch {
-      toast({ title: "Couldn't attach file", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: `Couldn't read ${file.name}`,
+        description: err instanceof Error ? err.message : "Try another file.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExtracting(false);
     }
   };
 
@@ -439,16 +446,14 @@ const AskYajPage = () => {
     } else if (attachedFile) {
       attachmentName = attachedFile.name;
       attachmentKind = "file";
-      // The gateway accepts text and image content parts reliably, but its
-      // chat-completions endpoint does not consistently support "file" parts.
-      // Send text-based documents as text; PDFs/Word need server extraction.
-      const isPlainText = /\.(txt|md|csv|json|xml|html?)$/i.test(attachedFile.name);
-      if (isPlainText) {
-        const decoded = await fetch(attachedFile.dataUrl).then((response) => response.text());
-        userContent = `${text.trim() || `Read ${attachedFile.name} and summarize it.`}\n\nDocument: ${attachedFile.name}\n\n${decoded.slice(0, 45000)}`;
-      } else {
-        throw new Error("PDF and Word documents need document extraction before YAJ can read them. Please use TXT or paste the text for now.");
-      }
+      // Text was already extracted in the browser — only plain text reaches the AI.
+      userContent = [
+        { type: "text", text: text.trim() || `Read ${attachedFile.name} and summarize it.` },
+        {
+          type: "text",
+          text: `Attached document: ${attachedFile.name}${attachedFile.truncated ? " (truncated)" : ""}\n\n${attachedFile.text}`,
+        },
+      ];
     } else if (imageDataUrl) {
       cameraPreviewUrl = imageDataUrl;
       attachmentName = attachedImage?.name || "Photo";
