@@ -20,6 +20,7 @@ import {
 } from "@/lib/yaj-media";
 import { getWellnessCoachVoice } from "@/lib/wellness-coach-prefs";
 import { supabase } from "@/integrations/supabase/client";
+import { extractYajDocumentText, isSupportedYajDocument, YAJ_DOC_ACCEPT } from "@/lib/yaj-document-text";
 import {
   bumpYajAiActivity,
   getYajAiAutoSpeakReplies,
@@ -774,6 +775,12 @@ const AskYajPage = () => {
             </button>
           </div>
         )}
+        {isExtracting && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
+            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <span className="flex-1">Reading document…</span>
+          </div>
+        )}
         {attachedFile && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-foreground">
             <FileText className="h-4 w-4 text-primary" />
@@ -869,7 +876,7 @@ const AskYajPage = () => {
           <input
             ref={documentInputRef}
             type="file"
-            accept=".pdf,.txt,.md,.csv,.json,.xml,.html,.htm,.doc,.docx,application/pdf,text/*,application/json"
+            accept={YAJ_DOC_ACCEPT}
             className="hidden"
             onChange={(e) => void handleDocumentChosen(e)}
           />
