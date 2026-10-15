@@ -142,8 +142,11 @@ export function describeMicError(err: unknown): string {
   if (name === "SecurityError") {
     return "Microphone needs a secure (HTTPS) connection.";
   }
+  if (/AudioSession|audio session|not compatible with audio capture/i.test(msg)) {
+    return "This in-app browser cannot start microphone capture with its current iPhone audio session. Open YAJ directly in Safari and try again.";
+  }
   if (/AudioContext|audio context/i.test(msg)) {
-    return "Couldn't start audio capture. Tap Try again.";
+    return "Couldn't start audio capture. Try opening YAJ directly in Safari.";
   }
   return msg || "Couldn't start the microphone. Tap Try again.";
 }
