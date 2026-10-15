@@ -5,129 +5,165 @@ const TermsPage = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="px-4 pt-6 pb-24 max-w-2xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
+      <div className="mb-6 flex items-center gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="w-8 h-8 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-card text-muted-foreground"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="h-4 w-4" />
         </button>
-        <h1 className="text-xl font-display font-bold text-foreground">Terms of Use & Privacy Policy</h1>
+        <div>
+          <h1 className="text-xl font-display font-bold text-foreground">Terms of Use & Privacy Policy</h1>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Last updated October 14, 2026</p>
+        </div>
       </div>
 
-      <div className="space-y-6 text-sm text-muted-foreground leading-relaxed">
+      <div className="space-y-6 text-sm leading-relaxed text-muted-foreground">
         <section>
-          <p className="italic">
-            YAJ is a unified platform that combines the creator app (Feed, TV, music, projects, store) and the <strong className="text-foreground">Catch Up Circle</strong> (community savings rotations & fundraisers). One account, one set of terms — these apply across the entire platform.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">1. Acceptance of Terms</h2>
           <p>
-            By accessing or using YAJ ("App"), you agree to be bound by these Terms of Use and Privacy Policy. If you do not agree, you may not use the App.
+            YAJ is a community and discovery platform with social posts, messaging, local services, opportunities,
+            events, Marketplace, Deals, Radio, Games, wellness tools, books, AI assistance, and other connected
+            features. These Terms and this Privacy Policy apply to your use of YAJ.
           </p>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">2. Eligibility</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">1. Acceptance of Terms</h2>
           <p>
-            You must be at least 13 years old to create a YAJ account. The <strong className="text-foreground">Catch Up Circle (savings rotations, fundraisers, payouts, donations)</strong> is restricted to users <strong className="text-foreground">18 years of age or older</strong>. By entering the Circle area you confirm you meet this age requirement. We may require identity verification before releasing funds.
+            By creating an account or using YAJ, you agree to these Terms and our Privacy Policy. If you do not agree,
+            do not use the service.
           </p>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">3. Unified Account</h2>
-          <p>
-            One YAJ account works across the platform — Feed, TV, Circle, and creator tools. There is no separate Circle login or profile picture. Your display name, avatar, and credentials are shared across all features.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">4. Catch Up Circle</h2>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Circles are community savings rotations organised by a host. Members contribute on a schedule and receive payouts in turn.</li>
-            <li>Fundraisers allow members to raise money for causes, projects, or individuals.</li>
-            <li>Members are responsible for honoring contribution commitments. Missed contributions may result in removal and account review.</li>
-            <li>YAJ is not a bank or licensed money transmitter. We provide tooling to coordinate community savings; funds are held and moved by our payment processor (Stripe).</li>
-            <li>Identity verification (KYC) may be required for hosts and high-value participants.</li>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">2. Eligibility & Accounts</h2>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>You must meet the minimum age required by applicable law to create an account.</li>
+            <li>You are responsible for the accuracy of your account information and for protecting your login credentials.</li>
+            <li>One YAJ account may be used across the app, including Profile, Feed, Marketplace, Local Help, Jobs, Events, Deals, Radio, Games, and YAJ AI.</li>
+            <li>Some features may have additional eligibility, verification, or payment requirements.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">5. Creator Content (Feed, TV, Music)</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">3. Community Content</h2>
           <p>
-            Creators must upload only original or properly licensed content (audio, video, podcasts, short films, music videos). No external copyrighted music is allowed on Radio. Creators retain ownership of their content and grant YAJ a non-exclusive license to display, stream, and promote it within the App.
+            Users may create posts, photos, videos, comments, messages, listings, events, audio, books, business
+            profiles, opportunities, and other content. You keep ownership of content you create, but you grant YAJ a
+            limited license to host, display, process, and distribute that content as needed to operate the service.
           </p>
-        </section>
-
-        <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">6. Payments & Fees</h2>
-          <p>All payments are processed through Stripe. Fees:</p>
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>8% project funding fee</li>
-            <li>15% digital download fee</li>
-            <li>Standard Stripe processing fees on Circle contributions, fundraisers, and donations</li>
-          </ul>
           <p className="mt-2">
-            Creator payouts are handled via Stripe Connect. YAJ is not responsible for payment disputes outside of the platform's dispute resolution process.
+            You may only upload content you have the right to use. Copyright infringement, impersonation, harassment,
+            threats, scams, spam, unlawful content, and attempts to abuse or manipulate the platform are prohibited.
           </p>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">7. Pro Subscription</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">4. Marketplace, Local Help, Jobs, Gigs, Events & Deals</h2>
           <p>
-            The Pro tier is <strong className="text-foreground">$10/month</strong> and unlocks Direct Messaging, Store management, Analytics & Earnings, Legal Vault, Boosts & Promotions, the Ask YAJ AI assistant, and an ad-free experience. Subscriptions auto-renew and may be cancelled at any time.
+            YAJ helps users discover and communicate with buyers, sellers, employers, service providers, event hosts,
+            and businesses. Unless YAJ expressly states otherwise, users and businesses are responsible for the
+            accuracy of their listings, qualifications, prices, availability, work, goods, services, events, and
+            agreements with one another.
+          </p>
+          <p className="mt-2">
+            Use reasonable care when meeting, hiring, selling, buying, or exchanging information with another user.
+            Report suspicious activity through the available reporting tools or Help Desk.
           </p>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">8. Prohibited Conduct</h2>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Uploading harmful, hateful, illegal, or copyrighted content.</li>
-            <li>Impersonation, harassment, fraud, or spamming.</li>
-            <li>Circumventing platform fees, payment systems, or the 18+ Circle requirement.</li>
-            <li>False reporting, false accusations, or manipulating disputes.</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">9. Account Suspension</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">5. Location & Local Discovery</h2>
           <p>
-            YAJ may suspend or permanently deactivate accounts for any violation of these Terms, fraudulent activity, or repeated abuse. Deactivated accounts are permanent and associated data may be deleted after 90 days, subject to legal retention requirements.
+            If you provide a ZIP code, address, or device location, YAJ may use it to show nearby Marketplace items,
+            Deals, Opportunities, Events, Local Help, Gigs, and other local activity. You can change your saved local
+            area or choose broader discovery from Settings where available.
           </p>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">10. Limitation of Liability</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">6. YAJ AI</h2>
           <p>
-            YAJ provides the platform "as is" with no warranties regarding uptime, content accuracy, or transaction outcomes. We are not liable for losses arising from use of the App.
+            YAJ AI can help with app navigation, writing, ideas, images, files, voice, and other supported requests.
+            AI responses may be incomplete or incorrect and should not be treated as professional legal, financial,
+            medical, or other expert advice. Do not rely on AI output for emergencies or high-stakes decisions without
+            appropriate independent review.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">7. Payments, Purchases & Subscriptions</h2>
+          <p>
+            Some YAJ features may involve purchases, seller transactions, paid services, subscriptions, or third-party
+            payment providers. Prices, fees, renewal terms, refund rules, and payment methods are shown at the point of
+            purchase where applicable. Purchases made through an app store may also be subject to that store's terms.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">8. Safety, Moderation & Enforcement</h2>
+          <p>
+            YAJ may remove content, limit features, issue warnings, temporarily restrict activity, suspend accounts, or
+            permanently disable accounts when needed to protect users, enforce these Terms, prevent fraud, or comply
+            with law. Users may use available Report, Block, Safety, and Help Desk tools to raise concerns.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">9. Account Deletion</h2>
+          <p>
+            You can initiate account deletion from Settings. Deletion is permanent once completed. Some limited records
+            may be retained when required for security, fraud prevention, dispute handling, legal compliance, or other
+            legitimate obligations.
+          </p>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">10. Service Availability</h2>
+          <p>
+            YAJ is provided on an "as available" basis. Features may change, pause, or be removed, and uninterrupted
+            availability is not guaranteed. We may update the app and these Terms as the service evolves.
           </p>
         </section>
 
         <section id="privacy">
-          <h2 className="text-base font-display font-bold text-foreground mb-2">11. Privacy Policy</h2>
-          <p>
-            YAJ collects and processes personal data necessary to provide platform services, including account information, uploaded content metadata, Circle membership and contribution records, payment information, and usage analytics.
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">11. Privacy Policy</h2>
+          <p>YAJ may process information needed to provide and protect the service, including:</p>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Account and profile information.</li>
+            <li>Content you upload, post, send, save, or attach.</li>
+            <li>Messages, support requests, reports, and moderation records.</li>
+            <li>Marketplace, Deal, Local Help, Job, Gig, Event, Radio, Game, and other feature activity.</li>
+            <li>Saved ZIP code, approximate location, or precise location when you choose to provide it.</li>
+            <li>Device, usage, performance, security, and diagnostic information.</li>
+            <li>AI prompts and attachments needed to provide YAJ AI features.</li>
+            <li>Payment or transaction information handled by payment providers where applicable.</li>
+          </ul>
+          <p className="mt-2">
+            YAJ uses this information to operate features, personalize discovery, maintain security, prevent abuse,
+            provide support, improve performance, and comply with legal obligations. YAJ does not sell personal
+            information to advertisers.
           </p>
-          <ul className="list-disc list-inside mt-2 space-y-1">
-            <li>Personal information is used solely for providing platform services and is never sold to third parties.</li>
-            <li>Payment data is processed securely through Stripe and is not stored on YAJ servers.</li>
-            <li>Identity verification documents submitted for the Circle are stored encrypted and used only for KYC/anti-fraud purposes.</li>
-            <li>Circle contribution history and dispute records are retained for accountability and legal compliance.</li>
-            <li>You may request data export or account deletion by contacting support, subject to legal retention requirements.</li>
-            <li>YAJ may share data with law enforcement when required by law or to prevent fraud.</li>
+        </section>
+
+        <section>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">12. Your Choices</h2>
+          <ul className="list-disc space-y-1 pl-5">
+            <li>Manage profile, privacy, blocking, local discovery, and app preferences from Settings.</li>
+            <li>Use Report and Block tools where available.</li>
+            <li>Contact the Help Desk for support, complaints, privacy questions, or account issues.</li>
+            <li>Initiate account deletion from Settings.</li>
           </ul>
         </section>
 
         <section>
-          <h2 className="text-base font-display font-bold text-foreground mb-2">12. Contact</h2>
+          <h2 className="mb-2 text-base font-display font-bold text-foreground">13. Contact</h2>
           <p>
-            For questions about these Terms or your data, contact us through the app's Help section or the Ask YAJ assistant.
+            For support, complaints, safety concerns, privacy questions, or account issues, use the in-app Help Desk.
           </p>
           <p className="mt-2">
-            By using YAJ, you acknowledge that you have read, understood, and agree to these Terms of Use and Privacy Policy.
+            By continuing to use YAJ, you acknowledge that you have read and understood these Terms of Use and Privacy Policy.
           </p>
         </section>
       </div>
