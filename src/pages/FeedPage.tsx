@@ -339,7 +339,7 @@ const FeedPage = () => {
             post={item}
             onOpen={() => openPostItem(i)}
             pressHoldMs={isDesktop ? 350 : undefined}
-            autoPlayMuted
+            autoPlayMuted={isDesktop}
           />
         ))
       )}
