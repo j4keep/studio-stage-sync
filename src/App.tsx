@@ -187,13 +187,6 @@ import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 const queryClient = new QueryClient();
 
-const ComingSoonPage = ({ title }: { title: string }) => (
-  <div className="px-6 pt-20 pb-24 max-w-md mx-auto text-center">
-    <div className="w-14 h-14 rounded-2xl bg-primary/10 mx-auto mb-4 flex items-center justify-center text-2xl">✨</div>
-    <h1 className="text-xl font-display font-bold text-foreground mb-2">{title}</h1>
-    <p className="text-sm text-muted-foreground">Coming soon.</p>
-  </div>
-);
 const STARTUP_TIMEOUT_MS = 2500;
 
 const ProtectedRoutes = () => {
@@ -515,7 +508,7 @@ const ProtectedRoutes = () => {
         <Route path="/battle/:battleId" element={<Navigate to="/explore" replace />} />
         <Route path="/feed" element={<FeedPage />} />
         <Route path="/artist/:userId" element={<ArtistProfilePage />} />
-        <Route path="/dollar-club" element={<div className="px-4 pt-4 pb-4 text-center"><h1 className="text-lg font-display font-bold text-foreground mb-2">Dollar Club</h1><p className="text-sm text-muted-foreground">Sell your products for $1 and build your fanbase. Coming soon!</p></div>} />
+        <Route path="/dollar-club" element={<Navigate to="/marketplace" replace />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </AppLayout>
