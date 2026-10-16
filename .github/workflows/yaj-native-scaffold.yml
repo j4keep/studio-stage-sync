@@ -63,9 +63,10 @@ jobs:
           script: |
             adb install android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -W -n com.yaj.app/.MainActivity
-            sleep 8
+            sleep 15
             adb shell pidof com.yaj.app
             adb exec-out screencap -p > "$RUNNER_TEMP/yaj-android-launch.png"
+            python3 -c 'import os,pathlib,struct; p=pathlib.Path(os.environ["RUNNER_TEMP"])/"yaj-android-launch.png"; b=p.read_bytes(); assert b[:8] == bytes.fromhex("89504e470d0a1a0a"), "Invalid PNG"; w,h=struct.unpack(">II",b[16:24]); print(f"Android screenshot: {w}x{h}, {len(b)} bytes"); assert w>=320 and h>=480 and len(b)>8000, "Screenshot suspiciously small or blank; inspect emulator rendering"'
       - name: Archive Android launch screenshot
         uses: actions/upload-artifact@v4
         with:
