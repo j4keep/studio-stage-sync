@@ -59,3 +59,32 @@ jobs:
             ios/
           retention-days: 7
           if-no-files-found: error
+  ios-simulator-build:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web dependencies
+        run: npm install --no-package-lock --no-audit --no-fund
+      - name: Install Capacitor toolchain for validation
+        run: npm install --no-save --no-package-lock --legacy-peer-deps @capacitor/core@7 @capacitor/cli@7 @capacitor/android@7 @capacitor/ios@7
+      - name: Build web assets
+        run: npm run build
+      - name: Generate iOS project
+        run: |
+          npx cap add ios
+          npx cap sync ios
+      - name: Compile iOS simulator app (no signing)
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/yaj-ios-build" CODE_SIGNING_ALLOWED=NO build
+          test -d "$RUNNER_TEMP/yaj-ios-build/Build/Products/Debug-iphonesimulator/App.app"
+      - name: Archive iOS simulator app
+        uses: actions/upload-artifact@v4
+        with:
+          name: yaj-ios-simulator-app
+          path: ${{ runner.temp }}/yaj-ios-build/Build/Products/Debug-iphonesimulator/App.app/
+          retention-days: 7
+          if-no-files-found: error
