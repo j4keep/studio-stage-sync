@@ -124,8 +124,9 @@ jobs:
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/yaj-launch.png"
       - name: Validate iOS screenshot
         run: |
-          python3 -m pip install --quiet pillow
-          python3 - <<'PY'
+          python3 -m venv "$RUNNER_TEMP/yaj-image-venv"
+          "$RUNNER_TEMP/yaj-image-venv/bin/python" -m pip install --quiet pillow
+          "$RUNNER_TEMP/yaj-image-venv/bin/python" - <<'PY'
           import os
           from pathlib import Path
           from PIL import Image, ImageStat
