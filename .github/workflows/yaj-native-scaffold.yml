@@ -13,7 +13,7 @@ permissions:
 jobs:
   native-scaffold:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,11 +53,13 @@ jobs:
       - name: Smoke test Android emulator launch
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35
-          target: google_apis
+          api-level: 33
+          target: default
           arch: x86_64
           profile: pixel_6
           disable-animations: true
+          emulator-boot-timeout: 900
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
             adb install android/app/build/outputs/apk/debug/app-debug.apk
             adb shell am start -W -n com.yaj.app/.MainActivity
