@@ -77,9 +77,10 @@ jobs:
         run: |
           npx cap add ios
           npx cap sync ios
+          test -d ios/App/App.xcworkspace
       - name: Compile iOS simulator app (no signing)
         run: |
-          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/yaj-ios-build" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Debug -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath "$RUNNER_TEMP/yaj-ios-build" CODE_SIGNING_ALLOWED=NO build
           test -d "$RUNNER_TEMP/yaj-ios-build/Build/Products/Debug-iphonesimulator/App.app"
       - name: Archive iOS simulator app
         uses: actions/upload-artifact@v4
