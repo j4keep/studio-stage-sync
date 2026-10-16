@@ -120,7 +120,25 @@ jobs:
           xcrun simctl install "$DEVICE_ID" "$APP_PATH"
           BUNDLE_ID=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$APP_PATH/Info.plist")
           xcrun simctl launch "$DEVICE_ID" "$BUNDLE_ID"
+          sleep 15
           xcrun simctl io "$DEVICE_ID" screenshot "$RUNNER_TEMP/yaj-launch.png"
+      - name: Validate iOS screenshot
+        run: |
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          from PIL import Image, ImageStat
+          path = Path(os.environ["RUNNER_TEMP"]) / "yaj-launch.png"
+          with Image.open(path) as image:
+              image.load()
+              rgb = image.convert("RGB")
+              width, height = rgb.size
+              stddev = ImageStat.Stat(rgb.resize((100, 100))).stddev
+              print(f"iOS screenshot: {width}x{height}, {path.stat().st_size} bytes; RGB standard deviation: {stddev}")
+              assert width >= 320 and height >= 480, "Invalid screenshot dimensions"
+              assert max(stddev) >= 4, "Screenshot appears uniformly blank"
+          PY
       - name: Archive iOS launch screenshot
         uses: actions/upload-artifact@v4
         with:
