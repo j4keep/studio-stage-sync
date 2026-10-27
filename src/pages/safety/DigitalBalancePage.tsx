@@ -44,10 +44,10 @@ const DigitalBalancePage = () => {
   }, [policy]);
 
   const setLimit = async (value: number | null) => {
-    if (youth && (value == null || value <= 0)) {
+    if (youth) {
       toast({
         title: "Parent required",
-        description: "Teen daily social limits stay on. A connected parent can adjust them.",
+        description: "Only a connected parent or guardian can change a teen’s daily social time.",
       });
       return;
     }
@@ -133,13 +133,14 @@ const DigitalBalancePage = () => {
 
       <Section title="Daily Social Limit" icon={<Timer className="w-4 h-4" />}>
         <div className="flex flex-wrap gap-2">
-          {LIMIT_OPTIONS.filter((o) => !(youth && o.value === null)).map((o) => {
+          {LIMIT_OPTIONS.filter((o) => !youth || o.value === policy?.daily_social_limit_minutes).map((o) => {
             const active = (policy?.daily_social_limit_minutes ?? null) === o.value;
             return (
               <button
                 key={o.label}
                 type="button"
                 onClick={() => void setLimit(o.value)}
+                disabled={youth}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
                   active ? "gradient-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
                 }`}
@@ -174,7 +175,7 @@ const DigitalBalancePage = () => {
         )}
         {youth && (
           <p className="text-[10px] text-muted-foreground mt-2">
-            Default {TEEN_DEFAULT_DAILY_LIMIT_MINUTES} minutes. A verified parent can extend time from their dashboard.
+            Default {TEEN_DEFAULT_DAILY_LIMIT_MINUTES} minutes (2 hours). Only a linked parent or guardian can adjust the limit or approve more time.
           </p>
         )}
       </Section>
