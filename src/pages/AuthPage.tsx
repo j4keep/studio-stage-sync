@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { ageBandFromDob } from "@/lib/safety-balance";
+import { ageBandFromDob, ageFromDob } from "@/lib/safety-balance";
+import { signupAgeDecision, SUPPORTED_SIGNUP_COUNTRIES } from "@/lib/youth-jurisdiction";
 import { formatAuthError, isAuthNetworkError, probeSupabaseAuthReachable } from "@/lib/auth-errors";
 import yajLogo from "@/assets/yaj-logo.png";
 
@@ -17,6 +18,7 @@ const AuthPage = () => {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [dob, setDob] = useState("");
+  const [country, setCountry] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendDown, setBackendDown] = useState(false);
@@ -80,8 +82,13 @@ const AuthPage = () => {
   };
 
   const handleSignup = async () => {
-    if (!email || !password || !fullName || !dob) {
+    if (!email || !password || !fullName || !dob || !country) {
       toast({ title: "All fields required", description: "Please fill in all fields.", variant: "destructive" });
+      return;
+    }
+    const decision = signupAgeDecision(ageFromDob(dob), country);
+    if (!decision.allowed) {
+      toast({ title: "Age or location requirement", description: decision.message, variant: "destructive" });
       return;
     }
     const band = ageBandFromDob(dob);
@@ -109,6 +116,7 @@ const AuthPage = () => {
           full_name: fullName,
           display_name: fullName,
           date_of_birth: dob,
+          country_code: country,
           age_band: band,
         },
       },
@@ -306,8 +314,13 @@ const AuthPage = () => {
                   className="pl-10 bg-card border-border"
                 />
               </div>
+              <label className="text-xs text-muted-foreground" htmlFor="yaj-signup-country">Country or territory of residence</label>
+              <select id="yaj-signup-country" value={country} onChange={(e) => setCountry(e.target.value)} required className="w-full rounded-md border border-border bg-card px-3 py-3 text-sm text-foreground">
+                <option value="">Select your country</option>
+                {SUPPORTED_SIGNUP_COUNTRIES.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
               <p className="text-[10px] text-muted-foreground -mt-2">
-                Required for YAJ Youth / Safety Mode. Accounts under 13 are not available at launch.
+                Minimum signup age depends on where you live. Teens receive YAJ Youth protections and parental time controls.
               </p>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
