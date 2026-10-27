@@ -35,7 +35,7 @@ export type AccountSafetyPolicy = {
   updated_at?: string;
 };
 
-export const TEEN_DEFAULT_DAILY_LIMIT_MINUTES = 90;
+export const TEEN_DEFAULT_DAILY_LIMIT_MINUTES = 120;
 export const TEEN_DEFAULT_REMINDER_MINUTES = 45;
 export const TEEN_DEFAULT_QUIET_START = "22:00";
 export const TEEN_DEFAULT_QUIET_END = "06:00";
