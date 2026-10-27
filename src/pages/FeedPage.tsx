@@ -12,6 +12,7 @@ import { listActivePublicLiveSessions } from "@/lib/circle-live";
 import FeedThumbCard from "@/components/feed/FeedThumbCard";
 import LiveNowCard from "@/components/feed/LiveNowCard";
 import HappeningThumbCard from "@/components/feed/HappeningThumbCard";
+import HappeningFullscreenViewer from "@/components/feed/HappeningFullscreenViewer";
 import FeedFullscreenViewer from "@/components/feed/FeedFullscreenViewer";
 import DesktopPostDetail from "@/components/feed/DesktopPostDetail";
 import LiveGamesRail from "@/components/games/live/LiveGamesRail";
@@ -43,6 +44,7 @@ const FeedPage = () => {
   const desktopFeedScrollRef = useRef<HTMLElement>(null);
   const happeningRailRef = useRef<HTMLDivElement>(null);
   const [activeHappeningId, setActiveHappeningId] = useState<string | null>(null);
+  const [happeningViewerIndex, setHappeningViewerIndex] = useState<number | null>(null);
 
   const { data: items = [], isLoading, refetch: refetchFeed } = useQuery({
     queryKey: ["feed-posts", user?.id || "public"],
@@ -181,14 +183,8 @@ const FeedPage = () => {
     happeningRailRef.current?.querySelectorAll<HTMLVideoElement>("video").forEach((video) => {
       try { video.pause(); } catch { /* ignore */ }
     });
-    if (item.openInPostsViewer) {
-      const idx = posts.findIndex((p: any) => p.itemType === "post" && p.id === item.sourceId);
-      if (idx >= 0) {
-        openPostItem(idx);
-        return;
-      }
-    }
-    if (item.route) navigate(item.route);
+    const idx = happening.findIndex((entry) => entry.id === item.id);
+    if (idx >= 0) setHappeningViewerIndex(idx);
   };
 
   useEffect(() => {
@@ -430,6 +426,14 @@ const FeedPage = () => {
             </div>
           </div>
         </>
+      )}
+
+      {happeningViewerIndex !== null && happening.length > 0 && (
+        <HappeningFullscreenViewer
+          items={happening}
+          startIndex={happeningViewerIndex}
+          onClose={() => setHappeningViewerIndex(null)}
+        />
       )}
 
       {viewer && posts.length > 0 && (
