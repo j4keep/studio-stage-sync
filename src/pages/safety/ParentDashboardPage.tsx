@@ -167,7 +167,7 @@ const ParentDashboardPage = () => {
       <div className="space-y-4">
         {teens.map((teen) => {
           const used = effectiveSocialMinutesUsed(teen);
-          const limit = teen.daily_social_limit_minutes ?? 90;
+          const limit = teen.daily_social_limit_minutes ?? 120;
           return (
             <div key={teen.user_id} className="p-4 rounded-2xl bg-card border border-border">
               <p className="text-sm font-bold text-foreground mb-1">{teen.display_name} — YAJ Youth</p>
@@ -177,7 +177,7 @@ const ParentDashboardPage = () => {
 
               <Control label="Daily Limit">
                 <div className="flex flex-wrap gap-2">
-                  {[60, 90, 120, 180].map((m) => (
+                  {[30, 60, 90, 120, 180].map((m) => (
                     <button
                       key={m}
                       type="button"
