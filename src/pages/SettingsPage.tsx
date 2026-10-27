@@ -131,6 +131,22 @@ const SettingsPage = () => {
         )}
       </Section>
 
+      <Section title="Family & Youth Safety">
+        <ActionRow
+          icon={<Shield className="w-4 h-4" />}
+          label="Parent & Guardian Controls"
+          onClick={() => navigate("/safety/parent")}
+        />
+        <ActionRow
+          icon={<Coffee className="w-4 h-4" />}
+          label="Youth Screen Time & Daily Limits"
+          onClick={() => navigate("/settings/balance")}
+        />
+        <p className="px-3 pb-2 text-[11px] text-muted-foreground">
+          Teens start with a two-hour daily social limit. Linked parents can shorten it or approve more time.
+        </p>
+      </Section>
+
       <Section title="YAJ AI & Support">
         <ActionRow
           icon={<Sparkles className="w-4 h-4" />}
