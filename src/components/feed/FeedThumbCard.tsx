@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { parsePostCaption } from "@/lib/post-editor";
@@ -163,7 +164,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
                 const video = e.currentTarget;
                 if (video.currentTime > 0.05) setVideoReady(true);
                 if (video.paused || document.visibilityState !== "visible" ||
-                    video.currentTime < 2 || !shouldAutoPlay ||
+                    !hasMeaningfulPlayback(video.currentTime, video.duration) || !shouldAutoPlay ||
                     viewedPostRef.current === post.id) return;
                 viewedPostRef.current = post.id;
                 void recordUniqueVideoView(post.id, "post");
