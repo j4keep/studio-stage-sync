@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { CalendarPlus, Eye, Heart, HeartHandshake, MessageCircle, Pin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 import {
   ACTIVITY_META,
   COMMUNITY_SUBTYPE_META,
@@ -8,7 +9,6 @@ import {
   buildEventCalendarUrl,
   donateToCircleContent,
   listCircleContentComments,
-  recordCircleContentView,
   setCircleContentRsvp,
   setCirclePollVote,
   toggleCircleContentLike,
@@ -27,7 +27,7 @@ type Props = {
 };
 
 export default function CircleContentCard({ item, userId, canInteract, onChanged }: Props) {
-  const viewed = useRef(false);
+  const countedVideoIdRef = useRef<string | null>(null);
   const [liked, setLiked] = useState(Boolean(item.liked_by_me));
   const [likes, setLikes] = useState(item.like_count);
   const [views, setViews] = useState(item.view_count);
@@ -47,11 +47,14 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
     setPollVote(item.my_poll_vote ?? null);
   }, [item]);
 
-  useEffect(() => {
-    if (viewed.current) return;
-    viewed.current = true;
-    void recordCircleContentView(item.id, item.circle_id).then(() => setViews((v) => v + 1));
-  }, [item.id, item.circle_id]);
+  const onVideoProgress = (video: HTMLVideoElement) => {
+    if (!userId || video.paused || document.visibilityState !== "visible" ||
+        video.currentTime < 2 || countedVideoIdRef.current === item.id) return;
+    countedVideoIdRef.current = item.id;
+    void recordUniqueVideoView(item.id, "circle").then((added) => {
+      if (added) setViews((v) => v + 1);
+    });
+  };
 
   const activityLabel =
     item.activity_type === "video"
@@ -263,6 +266,7 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
       {item.media_type === "video" && item.media_urls[0] && (
         <video
           src={item.media_urls[0]}
+          onTimeUpdate={(e) => onVideoProgress(e.currentTarget)}
           className="mt-3 max-h-80 w-full bg-black object-contain"
           controls
           playsInline
