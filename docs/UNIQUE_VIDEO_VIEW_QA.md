@@ -9,7 +9,7 @@ database migrations automatically, and no Supabase project was exposed to this
 session during implementation.
 
 ## Definition
-- Video view: an authenticated viewer watches a video for at least 2 seconds in a visible active playback surface.
+- Video view: an authenticated viewer watches a video for at least 2 seconds in a visible active playback surface (or half the duration for very short clips).
 - One authenticated account is counted at most once for each video, across sessions and devices.
 - Rewatches on the same account do **not** increase counts.
 - A creator's own plays do not increase their view counts.
@@ -31,12 +31,15 @@ session during implementation.
 5. Using account C, watch A's video through Happening or profile. Total increases by 1.
 6. Watch a Circle video for >= 2 seconds as another authorized member; its creator's
    profile view total increases exactly once. Retest as an unauthorized nonmember.
-7. Check follower/following counters from two accounts: follow, unfollow, and reopen both
+7. As account B, watch A's video uploaded to the standalone Videos library,
+   including Browse Videos. A's profile view total increases exactly once and
+   does not grow if B replays. A's own plays from My Videos never add views.
+8. Check follower/following counters from two accounts: follow, unfollow, and reopen both
    profiles; counts should refresh without an app restart.
-8. Confirm profile **Posts** includes posts in the general Feed and My Circle.
-9. Confirm previews shorter than 2 seconds, off-screen previews and own-video plays
+9. Confirm profile **Posts** includes content in the general Feed, My Circle and uploaded Videos.
+10. Confirm previews shorter than the qualifying playback threshold, off-screen previews and own-video plays
    do not increase counts.
-10. Run YAJ release checks (typecheck, unit tests, build), then validate iOS Safari,
+11. Run YAJ release checks (typecheck, unit tests, build), then validate iOS Safari,
    Android Chrome and native builds.
 
 Note: for the first version counts refresh on Supabase realtime events when configured,
