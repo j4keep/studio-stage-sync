@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Play, Image as ImageIcon } from "lucide-react";
 import type { HappeningItem } from "@/lib/happening-items";
 import { happeningKindLabel } from "@/lib/happening-items";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 
 interface Props {
   item: HappeningItem;
@@ -18,6 +19,7 @@ interface Props {
 export default function HappeningThumbCard({ item, compact = false, previewActive = false, onOpen }: Props) {
   const isVideo = item.mediaType === "video";
   const videoRef = useRef<HTMLVideoElement>(null);
+  const recordedPreviewRef = useRef<string | null>(null);
   const cardRef = useRef<HTMLButtonElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [inViewport, setInViewport] = useState(false);
@@ -93,7 +95,15 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
             playsInline
             preload={shouldPreview ? "auto" : "metadata"}
             onPlaying={() => setVideoReady(true)}
-            onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
+            onTimeUpdate={(e) => {
+              const video = e.currentTarget;
+              if (video.currentTime > 0.05) setVideoReady(true);
+              if (item.kind !== "post" || !shouldPreview || video.paused ||
+                  document.visibilityState !== "visible" || video.currentTime < 2 ||
+                  recordedPreviewRef.current === item.id) return;
+              recordedPreviewRef.current = item.id;
+              void recordUniqueVideoView(item.sourceId, "post");
+            }}
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]"
           />
           {!videoReady && item.coverUrl ? (
