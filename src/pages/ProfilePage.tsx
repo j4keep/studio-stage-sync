@@ -75,7 +75,7 @@ const ProfilePage = () => {
   const refreshProfile = useCallback(async () => {
     if (!user) return;
 
-    const [{ data: profile }, followers, following, posts, circlePosts, standaloneVideos, { data: postViews }, { data: circleViews }, { data: standaloneViews }] = await Promise.all([
+    const [{ data: profile }, followers, following, posts, circlePosts, { data: postViews }, { data: circleViews }, standaloneVideos, { data: standaloneViews }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, avatar_url, banner_url")
