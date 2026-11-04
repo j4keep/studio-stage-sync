@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useRef, useState } from "react";
 import { CalendarPlus, Eye, Heart, HeartHandshake, MessageCircle, Pin } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -49,7 +50,7 @@ export default function CircleContentCard({ item, userId, canInteract, onChanged
 
   const onVideoProgress = (video: HTMLVideoElement) => {
     if (!userId || video.paused || document.visibilityState !== "visible" ||
-        video.currentTime < 2 || countedVideoIdRef.current === item.id) return;
+        !hasMeaningfulPlayback(video.currentTime, video.duration) || countedVideoIdRef.current === item.id) return;
     countedVideoIdRef.current = item.id;
     void recordUniqueVideoView(item.id, "circle").then((added) => {
       if (added) setViews((v) => v + 1);
