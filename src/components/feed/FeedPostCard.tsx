@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import type { CSSProperties } from "react";
 import {
@@ -718,7 +719,7 @@ const FeedPostCard = ({
   // The database deduplicates per authenticated viewer across Feed / Profile / My Circle.
   const maybeRecordView = useCallback((video: HTMLVideoElement) => {
     if (!isActive || document.visibilityState !== "visible" || video.paused ||
-        video.currentTime < 2 || post.media_type !== "video" ||
+        !hasMeaningfulPlayback(video.currentTime, video.duration) || post.media_type !== "video" ||
         countedVideoIdRef.current === post.id) return;
     countedVideoIdRef.current = post.id;
     void recordUniqueVideoView(post.id, "post");
