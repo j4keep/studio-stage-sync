@@ -160,3 +160,19 @@ revoke execute on function public.record_unique_standalone_video_view(uuid) from
 grant execute on function public.record_unique_post_video_view(uuid) to authenticated;
 grant execute on function public.record_unique_circle_video_view(uuid) to authenticated;
 grant execute on function public.record_unique_standalone_video_view(uuid) to authenticated;
+
+-- Stop legacy, non-deduplicated counter RPCs from inflating views after rollout.
+-- Existing callers must use the unique-view RPC after qualifying playback.
+do $migration$
+begin
+  if to_regprocedure('public.increment_post_views(uuid)') is not null then
+    execute 'revoke execute on function public.increment_post_views(uuid) from public, anon, authenticated';
+  end if;
+  if to_regprocedure('public.increment_video_views(uuid)') is not null then
+    execute 'revoke execute on function public.increment_video_views(uuid) from public, anon, authenticated';
+  end if;
+  if to_regprocedure('public.increment_circle_content_views(uuid)') is not null then
+    execute 'revoke execute on function public.increment_circle_content_views(uuid) from public, anon, authenticated';
+  end if;
+end;
+$migration$;
