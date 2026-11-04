@@ -42,8 +42,8 @@ const ArtistProfilePage = () => {
     if (!userId) return;
 
     let alive = true;
+    setLoading(true);
     const load = async () => {
-      setLoading(true);
 
       if (user && user.id !== userId) {
         const blocked = await isBlockedBetween(user.id, userId);
@@ -56,7 +56,7 @@ const ArtistProfilePage = () => {
         setBlockedPeer(false);
       }
 
-      const [{ data: profile }, followers, following, posts, { data: postViews }] = await Promise.all([
+      const [{ data: profile }, followers, following, posts, circlePosts, { data: postViews }, { data: circleViews }] = await Promise.all([
         supabase
           .from("profiles")
           .select("display_name, avatar_url, banner_url")
@@ -65,7 +65,9 @@ const ArtistProfilePage = () => {
         (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("following_id", userId),
         (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("follower_id", userId),
         (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
-        (supabase as any).from("posts").select("views").eq("user_id", userId),
+        (supabase as any).from("circle_contents").select("id", { count: "exact", head: true }).eq("author_id", userId),
+        (supabase as any).from("posts").select("views").eq("user_id", userId).eq("media_type", "video"),
+        (supabase as any).from("circle_contents").select("view_count").eq("author_id", userId).eq("media_type", "video"),
       ]);
 
       if (!alive) return;
@@ -80,11 +82,14 @@ const ArtistProfilePage = () => {
 
       setFollowerCount(compactNumber(followers.count || 0));
       setFollowingCount(compactNumber(following.count || 0));
-      setPostCount(compactNumber(posts.count || 0));
+      setPostCount(compactNumber((posts.count || 0) + (circlePosts.count || 0)));
 
       let views = 0;
       (postViews || []).forEach((post: any) => {
         views += Number(post.views) || 0;
+      });
+      (circleViews || []).forEach((content: any) => {
+        views += Number(content.view_count) || 0;
       });
       setTotalViews(compactNumber(views));
 
@@ -102,8 +107,24 @@ const ArtistProfilePage = () => {
     };
 
     void load();
+    const onRefresh = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    const channel = supabase.channel(`artist-profile-stats-${userId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `user_id=eq.${userId}` }, onRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "circle_contents", filter: `author_id=eq.${userId}` }, onRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `following_id=eq.${userId}` }, onRefresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `follower_id=eq.${userId}` }, onRefresh)
+      .subscribe();
+    const interval = window.setInterval(onRefresh, 15_000);
+    window.addEventListener("focus", onRefresh);
+    window.addEventListener("yaj-video-view-recorded", onRefresh);
     return () => {
       alive = false;
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
+      window.removeEventListener("focus", onRefresh);
+      window.removeEventListener("yaj-video-view-recorded", onRefresh);
     };
   }, [userId, user]);
 
