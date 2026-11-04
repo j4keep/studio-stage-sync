@@ -7,7 +7,7 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { uploadToR2, getR2DownloadUrl, deleteFromR2 } from "@/lib/r2-storage";
-import { useLikes, incrementVideoViews } from "@/hooks/use-likes";
+import { useLikes } from "@/hooks/use-likes";
 import musicvideo1 from "@/assets/musicvideo-1.jpg";
 
 interface VideoItem {
@@ -144,7 +144,7 @@ const MyVideosPage = () => {
       setPlayingId(null);
     } else {
       setPlayingId(video.id);
-      incrementVideoViews(video.id);
+      // Own video playback never increases public view totals.
     }
   };
 
