@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useRef, useState } from "react";
 import { Play, Image as ImageIcon } from "lucide-react";
 import type { HappeningItem } from "@/lib/happening-items";
@@ -99,7 +100,7 @@ export default function HappeningThumbCard({ item, compact = false, previewActiv
               const video = e.currentTarget;
               if (video.currentTime > 0.05) setVideoReady(true);
               if (item.kind !== "post" || !shouldPreview || video.paused ||
-                  document.visibilityState !== "visible" || video.currentTime < 2 ||
+                  document.visibilityState !== "visible" || !hasMeaningfulPlayback(video.currentTime, video.duration) ||
                   recordedPreviewRef.current === item.id) return;
               recordedPreviewRef.current = item.id;
               void recordUniqueVideoView(item.sourceId, "post");
