@@ -6,10 +6,14 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export async function recordUniqueVideoView(
   contentId: string,
-  surface: "post" | "circle",
+  surface: "post" | "circle" | "standalone",
 ): Promise<boolean> {
-  const rpc = surface === "post" ? "record_unique_post_video_view" : "record_unique_circle_video_view";
-  const idArg = surface === "post" ? "p_post_id" : "p_content_id";
+  const rpc = surface === "post" ? "record_unique_post_video_view"
+    : surface === "circle" ? "record_unique_circle_video_view"
+    : "record_unique_standalone_video_view";
+  const idArg = surface === "post" ? "p_post_id"
+    : surface === "circle" ? "p_content_id"
+    : "p_video_id";
   const { data, error } = await (supabase as any).rpc(rpc, { [idArg]: contentId });
   if (error) {
     console.warn("[video-views] Unique-view recording unavailable:", error.message);
