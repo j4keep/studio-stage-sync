@@ -75,7 +75,7 @@ const ProfilePage = () => {
   const refreshProfile = useCallback(async () => {
     if (!user) return;
 
-    const [{ data: profile }, followers, following, posts, circlePosts, { data: postViews }, { data: circleViews }] = await Promise.all([
+    const [{ data: profile }, followers, following, posts, circlePosts, standaloneVideos, { data: postViews }, { data: circleViews }, { data: standaloneViews }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, avatar_url, banner_url")
@@ -87,6 +87,8 @@ const ProfilePage = () => {
       (supabase as any).from("circle_contents").select("id", { count: "exact", head: true }).eq("author_id", user.id),
       (supabase as any).from("posts").select("views").eq("user_id", user.id).eq("media_type", "video"),
       (supabase as any).from("circle_contents").select("view_count").eq("author_id", user.id).eq("media_type", "video"),
+      (supabase as any).from("videos").select("id", { count: "exact", head: true }).eq("user_id", user.id),
+      (supabase as any).from("videos").select("views").eq("user_id", user.id),
     ]);
 
     if (profile) {
@@ -100,7 +102,7 @@ const ProfilePage = () => {
 
     setFollowerCount(compactNumber(followers.count || 0));
     setFollowingCount(compactNumber(following.count || 0));
-    setPostCount(compactNumber((posts.count || 0) + (circlePosts.count || 0)));
+    setPostCount(compactNumber((posts.count || 0) + (circlePosts.count || 0) + (standaloneVideos.count || 0)));
 
     let views = 0;
     (postViews || []).forEach((post: any) => {
@@ -108,6 +110,9 @@ const ProfilePage = () => {
     });
     (circleViews || []).forEach((content: any) => {
       views += Number(content.view_count) || 0;
+    });
+    (standaloneViews || []).forEach((video: any) => {
+      views += Number(video.views) || 0;
     });
     setTotalViews(compactNumber(views));
   }, [user]);
@@ -124,6 +129,7 @@ const ProfilePage = () => {
     const channel = supabase.channel(`profile-stats-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `user_id=eq.${user.id}` }, onFocus)
       .on("postgres_changes", { event: "*", schema: "public", table: "circle_contents", filter: `author_id=eq.${user.id}` }, onFocus)
+      .on("postgres_changes", { event: "*", schema: "public", table: "videos", filter: `user_id=eq.${user.id}` }, onFocus)
       .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `following_id=eq.${user.id}` }, onFocus)
       .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `follower_id=eq.${user.id}` }, onFocus)
       .subscribe();
