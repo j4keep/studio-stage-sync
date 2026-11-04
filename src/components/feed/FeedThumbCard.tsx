@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { parsePostCaption } from "@/lib/post-editor";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 import { unlockFeedAudioSession, forceIosAudioSessionToPlayback } from "@/lib/feed-video-playback";
 
 interface Props {
@@ -17,6 +18,7 @@ interface Props {
 export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayMuted = false, pressHoldMs }: Props) {
   const cardRef = useRef<HTMLButtonElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const viewedPostRef = useRef<string | null>(null);
   const holdTimer = useRef<number | null>(null);
   const holdReady = useRef(false);
   const holdOpened = useRef(false);
@@ -157,7 +159,15 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               playsInline
               preload="metadata"
               onPlaying={() => setVideoReady(true)}
-              onTimeUpdate={(e) => { if (e.currentTarget.currentTime > 0.05) setVideoReady(true); }}
+              onTimeUpdate={(e) => {
+                const video = e.currentTarget;
+                if (video.currentTime > 0.05) setVideoReady(true);
+                if (video.paused || document.visibilityState !== "visible" ||
+                    video.currentTime < 2 || !shouldAutoPlay ||
+                    viewedPostRef.current === post.id) return;
+                viewedPostRef.current = post.id;
+                void recordUniqueVideoView(post.id, "post");
+              }}
               className="absolute inset-0 h-full w-full object-cover pointer-events-none"
             />
             {!videoReady && coverUrl ? (
