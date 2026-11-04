@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ExternalLink, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -51,7 +52,7 @@ export default function HappeningFullscreenViewer({
                 onTimeUpdate={(e) => {
                   const video = e.currentTarget;
                   if (i !== index || item.kind !== "post" || video.paused ||
-                      video.currentTime < 2 || document.visibilityState !== "visible" ||
+                      !hasMeaningfulPlayback(video.currentTime, video.duration) || document.visibilityState !== "visible" ||
                       recordedIdsRef.current.has(item.id)) return;
                   recordedIdsRef.current.add(item.id);
                   void recordUniqueVideoView(item.sourceId, "post");
