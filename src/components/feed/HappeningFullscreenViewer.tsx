@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ExternalLink, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { happeningKindLabel, type HappeningItem } from "@/lib/happening-items";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 
 /** Dedicated Happening-only vertical viewer; never mixes in regular feed items. */
 export default function HappeningFullscreenViewer({
@@ -9,6 +10,7 @@ export default function HappeningFullscreenViewer({
 }: { items: HappeningItem[]; startIndex: number; onClose: () => void }) {
   const navigate = useNavigate();
   const railRef = useRef<HTMLDivElement>(null);
+  const recordedIdsRef = useRef<Set<string>>(new Set());
   const [index, setIndex] = useState(startIndex);
 
   useEffect(() => {
@@ -45,7 +47,16 @@ export default function HappeningFullscreenViewer({
         {items.map((item, i) => (
           <section key={item.id} className="relative flex h-full w-full snap-start snap-always flex-col items-center justify-center overflow-hidden bg-black">
             {item.previewVideoUrl && Math.abs(i - index) <= 1 ? (
-              <video key={item.id} src={item.previewVideoUrl} poster={item.coverUrl || undefined} controls playsInline loop autoPlay={i === index} className="absolute inset-0 h-full w-full object-contain" />
+              <video key={item.id} src={item.previewVideoUrl} poster={item.coverUrl || undefined} controls playsInline loop autoPlay={i === index}
+                onTimeUpdate={(e) => {
+                  const video = e.currentTarget;
+                  if (i !== index || item.kind !== "post" || video.paused ||
+                      video.currentTime < 2 || document.visibilityState !== "visible" ||
+                      recordedIdsRef.current.has(item.id)) return;
+                  recordedIdsRef.current.add(item.id);
+                  void recordUniqueVideoView(item.sourceId, "post");
+                }}
+                className="absolute inset-0 h-full w-full object-contain" />
             ) : item.coverUrl ? (
               <img src={item.coverUrl} alt={item.title} className="absolute inset-0 h-full w-full object-contain" />
             ) : <div className="text-7xl opacity-30">YAJ</div>}
