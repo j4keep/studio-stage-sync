@@ -1,3 +1,4 @@
+import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Heart, Eye, Video, Rocket } from "lucide-react";
@@ -96,7 +97,7 @@ const BrowseVideosPage = () => {
                   <video src={v.video_url} className="w-full h-full object-cover" autoPlay playsInline controls
                     onTimeUpdate={(e) => {
                       const video = e.currentTarget;
-                      if (video.paused || video.currentTime < 2 ||
+                      if (video.paused || !hasMeaningfulPlayback(video.currentTime, video.duration) ||
                           document.visibilityState !== "visible" ||
                           recordedVideoIdsRef.current.has(v.id)) return;
                       recordedVideoIdsRef.current.add(v.id);
