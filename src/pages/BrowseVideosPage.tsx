@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, Play, Heart, Eye, Video, Rocket } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useLikes, incrementVideoViews } from "@/hooks/use-likes";
+import { useLikes } from "@/hooks/use-likes";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 import { getR2DownloadUrl } from "@/lib/r2-storage";
 import { useActiveBoosts } from "@/hooks/use-boosts";
 import PromotedBadge from "@/components/PromotedBadge";
@@ -45,8 +46,9 @@ const fetchVideos = async (): Promise<VideoItem[]> => {
 const BrowseVideosPage = () => {
   const navigate = useNavigate();
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const recordedVideoIdsRef = useRef<Set<string>>(new Set());
 
-  const { data: videos = [], isLoading } = useQuery({
+  const { data: videos = [], isLoading, refetch } = useQuery({
     queryKey: ["browse-videos"],
     queryFn: fetchVideos,
     staleTime: 30_000,
@@ -62,7 +64,7 @@ const BrowseVideosPage = () => {
       setPlayingId(null);
     } else {
       setPlayingId(video.id);
-      incrementVideoViews(video.id);
+
     }
   };
 
@@ -91,7 +93,18 @@ const BrowseVideosPage = () => {
               {isBoosted(v.id) && <div className="absolute top-1.5 left-1.5 z-10"><PromotedBadge /></div>}
               <div className="relative aspect-video">
                 {playingId === v.id && v.video_url ? (
-                  <video src={v.video_url} className="w-full h-full object-cover" autoPlay playsInline controls onEnded={() => setPlayingId(null)} />
+                  <video src={v.video_url} className="w-full h-full object-cover" autoPlay playsInline controls
+                    onTimeUpdate={(e) => {
+                      const video = e.currentTarget;
+                      if (video.paused || video.currentTime < 2 ||
+                          document.visibilityState !== "visible" ||
+                          recordedVideoIdsRef.current.has(v.id)) return;
+                      recordedVideoIdsRef.current.add(v.id);
+                      void recordUniqueVideoView(v.id, "standalone").then((added) => {
+                        if (added) void refetch();
+                      });
+                    }}
+                    onEnded={() => setPlayingId(null)} />
                 ) : (
                   <>
                     <img src={v.cover_url} alt={v.title} className="w-full h-full object-cover" />
