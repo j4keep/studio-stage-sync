@@ -14,7 +14,7 @@ import {
   Users,
   HandHeart,
 } from "lucide-react";
-import { incrementPostViews } from "@/hooks/use-likes";
+import { recordUniqueVideoView } from "@/lib/unique-video-views";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -96,7 +96,7 @@ const FeedPostCard = ({
       scroller.style.touchAction = prevTouch;
     };
   }, [showComments]);
-  const [viewCounted, setViewCounted] = useState(false);
+  const countedVideoIdRef = useRef<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showHeart, setShowHeart] = useState(false);
@@ -714,12 +714,15 @@ const FeedPostCard = ({
     };
   }, [isActive, post.media_type, showComments, getVideoMuted, playWhenActive, startAudiblePlayback]);
 
-  useEffect(() => {
-    if (!viewCounted && isActive && post.id) {
-      setViewCounted(true);
-      incrementPostViews(post.id);
-    }
-  }, [isActive, post.id, viewCounted]);
+  // Only record a view once this active video has actually played for 2 seconds.
+  // The database deduplicates per authenticated viewer across Feed / Profile / My Circle.
+  const maybeRecordView = useCallback((video: HTMLVideoElement) => {
+    if (!isActive || document.visibilityState !== "visible" || video.paused ||
+        video.currentTime < 2 || post.media_type !== "video" ||
+        countedVideoIdRef.current === post.id) return;
+    countedVideoIdRef.current = post.id;
+    void recordUniqueVideoView(post.id, "post");
+  }, [isActive, post.id, post.media_type]);
 
   // Video progress — throttled timer (rAF setState was freezing phones on long sessions).
   useEffect(() => {
@@ -1198,6 +1201,7 @@ const FeedPostCard = ({
                 if (videoRef.current) markVideoFrameReady(videoRef.current);
               }}
               onPlaying={(e) => markVideoFrameReady(e.currentTarget)}
+              onTimeUpdate={(e) => maybeRecordView(e.currentTarget)}
               onPause={() => setIsPlaying(false)}
               onEnded={(event) => {
                 const video = event.currentTarget;
