@@ -1,87 +1,162 @@
--- Unique authenticated video viewers across Feed, Happening, profile and My Circle.
--- This migration must be applied to the connected Supabase project before the client will record views.
--- Historical unidentifiable 'views' counts cannot be retroactively deduplicated.
+-- YAJ: authenticated unique video viewers, shared by Feed, Happening, Profile,
+-- standalone Videos and Circle. Apply to YAJ Supabase before shipping the UI.
+-- Historic views cannot be deduplicated without old viewer identities.
+--
+-- The unique-view tables have RLS; users may only insert their own viewer ID
+-- for videos they can read, never an arbitrary count. Security-invoker RPCs
+-- cannot update someone else's video totals. Internal AFTER INSERT triggers
+-- update the counters exactly once per new (content, viewer) pair.
 
 create table if not exists public.post_unique_video_views (
   post_id uuid not null references public.posts(id) on delete cascade,
   viewer_id uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  primary key (post_id, viewer_id)
+  primary key(post_id, viewer_id)
 );
-create index if not exists post_unique_video_views_viewer_idx on public.post_unique_video_views(viewer_id);
-alter table public.post_unique_video_views enable row level security;
--- No direct public inserts or updates: authenticated identity is enforced by an RPC.
-
 create table if not exists public.circle_unique_video_views (
   content_id uuid not null references public.circle_contents(id) on delete cascade,
   viewer_id uuid not null references auth.users(id) on delete cascade,
   created_at timestamptz not null default now(),
-  primary key (content_id, viewer_id)
+  primary key(content_id, viewer_id)
 );
-create index if not exists circle_unique_video_views_viewer_idx on public.circle_unique_video_views(viewer_id);
+create table if not exists public.standalone_unique_video_views (
+  video_id uuid not null references public.videos(id) on delete cascade,
+  viewer_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key(video_id, viewer_id)
+);
+alter table public.post_unique_video_views enable row level security;
 alter table public.circle_unique_video_views enable row level security;
+alter table public.standalone_unique_video_views enable row level security;
+
+create policy "View own unique post views" on public.post_unique_video_views
+  for select to authenticated using (viewer_id = (select auth.uid()));
+create policy "Create a unique view on an accessible post video"
+  on public.post_unique_video_views for insert to authenticated
+  with check (
+    viewer_id = (select auth.uid())
+    and exists (select 1 from public.posts p where p.id = post_id
+                and p.user_id <> (select auth.uid()) and p.media_type = 'video')
+  );
+
+create policy "View own unique Circle views" on public.circle_unique_video_views
+  for select to authenticated using (viewer_id = (select auth.uid()));
+create policy "Create a unique view on an accessible Circle video"
+  on public.circle_unique_video_views for insert to authenticated
+  with check (
+    viewer_id = (select auth.uid())
+    and exists (select 1 from public.circle_contents c where c.id = content_id
+                and c.author_id <> (select auth.uid()) and c.media_type = 'video'
+                and (
+                  c.visibility = 'public_in_circle'
+                  or (c.visibility = 'circle_members' and
+                      public.is_social_circle_member(c.circle_id, auth.uid()))
+                  or (c.visibility = 'paid_members' and exists (
+                    select 1 from public.circle_members m
+                    where m.circle_id = c.circle_id
+                      and m.user_id = auth.uid()
+                      and m.status = 'approved'
+                      and m.role in ('owner', 'admin', 'paid_member')
+                  ))
+                ))
+  );
+
+create policy "View own standalone video views" on public.standalone_unique_video_views
+  for select to authenticated using (viewer_id = (select auth.uid()));
+create policy "Create a unique view on an accessible standalone video"
+  on public.standalone_unique_video_views for insert to authenticated
+  with check (
+    viewer_id = (select auth.uid())
+    and exists (select 1 from public.videos v
+                where v.id = video_id and v.user_id <> (select auth.uid()))
+  );
+
+grant select, insert on public.post_unique_video_views to authenticated;
+grant select, insert on public.circle_unique_video_views to authenticated;
+grant select, insert on public.standalone_unique_video_views to authenticated;
+
+-- Trigger-only functions are not callable as direct RPCs.
+create or replace function public.add_post_unique_video_view()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.posts set views = coalesce(views, 0) + 1 where id = new.post_id;
+  return new;
+end;
+$$;
+create trigger add_post_unique_video_view_trigger
+  after insert on public.post_unique_video_views
+  for each row execute function public.add_post_unique_video_view();
+
+create or replace function public.add_circle_unique_video_view()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.circle_contents set view_count = coalesce(view_count, 0) + 1 where id = new.content_id;
+  return new;
+end;
+$$;
+create trigger add_circle_unique_video_view_trigger
+  after insert on public.circle_unique_video_views
+  for each row execute function public.add_circle_unique_video_view();
+
+create or replace function public.add_standalone_unique_video_view()
+returns trigger language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.videos set views = coalesce(views, 0) + 1 where id = new.video_id;
+  return new;
+end;
+$$;
+create trigger add_standalone_unique_video_view_trigger
+  after insert on public.standalone_unique_video_views
+  for each row execute function public.add_standalone_unique_video_view();
 
 create or replace function public.record_unique_post_video_view(p_post_id uuid)
-returns boolean
-language plpgsql security definer set search_path = public
+returns boolean language plpgsql security invoker set search_path = ''
 as $$
-declare v_viewer uuid := auth.uid();
-declare v_added integer;
+declare v_inserted integer;
 begin
-  if v_viewer is null then return false; end if;
-  -- Refuse non-video posts, own posts and deleted posts.
-  if not exists (
-    select 1 from public.posts p
-    where p.id = p_post_id and p.media_type = 'video' and p.user_id <> v_viewer
-  ) then return false; end if;
-
+  if (select auth.uid()) is null then return false; end if;
   insert into public.post_unique_video_views(post_id, viewer_id)
-  values (p_post_id, v_viewer)
-  on conflict do nothing;
-  get diagnostics v_added = row_count;
-  if v_added > 0 then
-    update public.posts set views = coalesce(views, 0) + 1 where id = p_post_id;
-    return true;
-  end if;
-  return false;
+    values (p_post_id, (select auth.uid()))
+    on conflict do nothing;
+  get diagnostics v_inserted = row_count;
+  return v_inserted = 1;
 end;
 $$;
 
 create or replace function public.record_unique_circle_video_view(p_content_id uuid)
-returns boolean
-language plpgsql security definer set search_path = public
+returns boolean language plpgsql security invoker set search_path = ''
 as $$
-declare v_viewer uuid := auth.uid();
-declare v_added integer;
+declare v_inserted integer;
 begin
-  if v_viewer is null then return false; end if;
-  -- Enforce visibility and exclude self-views. Do not expose the member list.
-  if not exists (
-    select 1 from public.circle_contents c
-    where c.id = p_content_id
-      and c.media_type = 'video'
-      and c.author_id <> v_viewer
-      and (
-        c.visibility = 'public_in_circle'
-        or (c.visibility in ('circle_members','paid_members')
-            and public.is_social_circle_member(c.circle_id, v_viewer))
-      )
-  ) then return false; end if;
-
+  if (select auth.uid()) is null then return false; end if;
   insert into public.circle_unique_video_views(content_id, viewer_id)
-  values (p_content_id, v_viewer)
-  on conflict do nothing;
-  get diagnostics v_added = row_count;
-  if v_added > 0 then
-    update public.circle_contents set view_count = coalesce(view_count, 0) + 1
-    where id = p_content_id;
-    return true;
-  end if;
-  return false;
+    values (p_content_id, (select auth.uid()))
+    on conflict do nothing;
+  get diagnostics v_inserted = row_count;
+  return v_inserted = 1;
 end;
 $$;
 
-revoke all on function public.record_unique_post_video_view(uuid) from public;
-revoke all on function public.record_unique_circle_video_view(uuid) from public;
+create or replace function public.record_unique_standalone_video_view(p_video_id uuid)
+returns boolean language plpgsql security invoker set search_path = ''
+as $$
+declare v_inserted integer;
+begin
+  if (select auth.uid()) is null then return false; end if;
+  insert into public.standalone_unique_video_views(video_id, viewer_id)
+    values (p_video_id, (select auth.uid()))
+    on conflict do nothing;
+  get diagnostics v_inserted = row_count;
+  return v_inserted = 1;
+end;
+$$;
+
+revoke execute on function public.record_unique_post_video_view(uuid) from public, anon;
+revoke execute on function public.record_unique_circle_video_view(uuid) from public, anon;
+revoke execute on function public.record_unique_standalone_video_view(uuid) from public, anon;
 grant execute on function public.record_unique_post_video_view(uuid) to authenticated;
 grant execute on function public.record_unique_circle_video_view(uuid) to authenticated;
+grant execute on function public.record_unique_standalone_video_view(uuid) to authenticated;
