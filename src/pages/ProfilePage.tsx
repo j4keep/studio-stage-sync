@@ -75,7 +75,7 @@ const ProfilePage = () => {
   const refreshProfile = useCallback(async () => {
     if (!user) return;
 
-    const [{ data: profile }, followers, following, posts, { data: postViews }] = await Promise.all([
+    const [{ data: profile }, followers, following, posts, circlePosts, { data: postViews }, { data: circleViews }] = await Promise.all([
       supabase
         .from("profiles")
         .select("display_name, avatar_url, banner_url")
@@ -84,7 +84,9 @@ const ProfilePage = () => {
       (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("following_id", user.id),
       (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("follower_id", user.id),
       (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
-      (supabase as any).from("posts").select("views").eq("user_id", user.id),
+      (supabase as any).from("circle_contents").select("id", { count: "exact", head: true }).eq("author_id", user.id),
+      (supabase as any).from("posts").select("views").eq("user_id", user.id).eq("media_type", "video"),
+      (supabase as any).from("circle_contents").select("view_count").eq("author_id", user.id).eq("media_type", "video"),
     ]);
 
     if (profile) {
@@ -98,29 +100,47 @@ const ProfilePage = () => {
 
     setFollowerCount(compactNumber(followers.count || 0));
     setFollowingCount(compactNumber(following.count || 0));
-    setPostCount(compactNumber(posts.count || 0));
+    setPostCount(compactNumber((posts.count || 0) + (circlePosts.count || 0)));
 
     let views = 0;
     (postViews || []).forEach((post: any) => {
       views += Number(post.views) || 0;
     });
+    (circleViews || []).forEach((content: any) => {
+      views += Number(content.view_count) || 0;
+    });
     setTotalViews(compactNumber(views));
   }, [user]);
 
   useEffect(() => {
+    if (!user) return;
     void refreshProfile();
     const onFocus = () => void refreshProfile();
     const onVisibility = () => {
       if (document.visibilityState === "visible") void refreshProfile();
     };
-
+    // Realtime if these tables are in the Supabase publication; polling is a
+    // fallback so counts still update if realtime is disabled or an event is missed.
+    const channel = supabase.channel(`profile-stats-${user.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "posts", filter: `user_id=eq.${user.id}` }, onFocus)
+      .on("postgres_changes", { event: "*", schema: "public", table: "circle_contents", filter: `author_id=eq.${user.id}` }, onFocus)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `following_id=eq.${user.id}` }, onFocus)
+      .on("postgres_changes", { event: "*", schema: "public", table: "follows", filter: `follower_id=eq.${user.id}` }, onFocus)
+      .subscribe();
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshProfile();
+    }, 15_000);
     window.addEventListener("focus", onFocus);
+    window.addEventListener("yaj-video-view-recorded", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
+      window.clearInterval(interval);
+      void supabase.removeChannel(channel);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("yaj-video-view-recorded", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refreshProfile]);
+  }, [refreshProfile, user]);
 
   const handleShare = async () => {
     const shareUrl = window.location.href;
