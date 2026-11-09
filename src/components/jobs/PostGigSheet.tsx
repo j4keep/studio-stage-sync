@@ -343,7 +343,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             </button>
             <button
               onClick={analyze}
-              disabled={analyzing || !photos.length}
+              disabled={analyzing || (!photos.length && !videoFrames.length)}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -351,11 +351,29 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             </button>
           </div>
 
+          <label className="flex cursor-pointer items-center justify-center rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold">
+            Add short repair video (up to 90 sec / 40 MB)
+            <input type="file" accept="video/*" className="hidden"
+              onChange={(e) => { void addEstimateVideo(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          {videoFrames.length > 0 && <p className="text-xs text-muted-foreground">
+            Three video stills ready for AI. This video is for analysis only; attach photos for the published gig.
+          </p>}
           {aiTip && (
             <p className="text-[11px] text-primary bg-primary/10 rounded-lg px-2 py-1.5 leading-snug">
               💡 {aiTip}
             </p>
           )}
+        </div>
+        {aiReport && <GigEstimateDetails result={aiReport} />}
+        <div className="space-y-2">
+          <button type="button" onClick={() => setShowConcrete((v) => !v)}
+            className="w-full rounded-xl border border-border p-3 text-left text-sm font-semibold">
+            {showConcrete ? "Hide" : "Open"} concrete repair materials + labor calculator
+          </button>
+          {showConcrete && <ConcreteRepairEstimate onUseBudget={(low, high) => setForm((v) => ({
+            ...v, budget_min: String(low), budget_max: String(high),
+          }))} />}
         </div>
 
         <Field label="Gig Title *">
