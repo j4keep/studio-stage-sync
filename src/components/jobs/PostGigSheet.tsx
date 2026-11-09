@@ -4,7 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { URGENCY_OPTIONS } from "@/lib/jobs";
-import { analyzeGigPhotos, fileToDataUrl } from "@/lib/yaj-jobs-ai";
+import { analyzeGigPhotos, fileToDataUrl, type GigAiResult } from "@/lib/yaj-jobs-ai";
+import { estimateMediaFrames } from "@/lib/estimate-attachments";
+import ConcreteRepairEstimate from "@/components/local-help/ConcreteRepairEstimate";
+import GigEstimateDetails from "@/components/local-help/GigEstimateDetails";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
 type GigEdit = {
@@ -41,6 +44,9 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   const [analyzing, setAnalyzing] = useState(false);
   const [photos, setPhotos] = useState<GigPhoto[]>([]);
   const [aiTip, setAiTip] = useState<string | null>(null);
+  const [aiReport, setAiReport] = useState<GigAiResult | null>(null);
+  const [videoFrames, setVideoFrames] = useState<string[]>([]);
+  const [showConcrete, setShowConcrete] = useState(false);
   const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
   const [hideYajProfile, setHideYajProfile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -130,6 +136,20 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setPhotos((p) => [...p, ...added]);
   };
 
+  const addEstimateVideo = async (file: File | undefined) => {
+    if (!file) return;
+    setAnalyzing(true);
+    try {
+      if (!file.type.startsWith("video/")) throw new Error("Choose a video file");
+      setVideoFrames(await estimateMediaFrames(file));
+      setAiReport(null);
+      toast.success("Three video frames ready for estimate; video is not added to the gig");
+    } catch (error) {
+      setVideoFrames([]);
+      toast.error(error instanceof Error ? error.message : "Could not read video");
+    } finally { setAnalyzing(false); }
+  };
+
   const uploadPhotos = async (): Promise<{ url: string }[]> => {
     if (!user) return [];
     const out: { url: string }[] = [];
@@ -150,14 +170,16 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   };
 
   const analyze = async () => {
-    if (!photos.length) {
-      toast.error("Add at least one photo first");
+    if (!photos.length && !videoFrames.length) {
+      toast.error("Add a photo or short video first");
       return;
     }
     setAnalyzing(true);
     setAiTip(null);
     try {
-      const r = await analyzeGigPhotos(photos.map((p) => p.preview), form.description || form.title);
+      const r = await analyzeGigPhotos([...photos.map((p) => p.preview), ...videoFrames], [form.description || form.title, form.location ? `Location: ${form.location}` : ""].filter(Boolean).join("\n"));
+      setAiReport(r);
+      if (/concrete|cement|spall|crack/i.test([r.title, r.description].join(" "))) setShowConcrete(true);
       setForm((f) => ({
         ...f,
         title: r.title || f.title,
@@ -168,7 +190,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
         budget_max: r.budget_max ? String(r.budget_max) : f.budget_max,
       }));
       if (r.tips) setAiTip(r.tips);
-      toast.success("YAJ Buddy filled in your gig details!");
+      toast.success("Preliminary AI scope ready — check materials and prices before posting");
     } catch (e: any) {
       toast.error(e.message || "AI analysis failed");
     } finally {
