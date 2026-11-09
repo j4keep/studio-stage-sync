@@ -57,15 +57,14 @@ const ArtistProfilePage = () => {
         setBlockedPeer(false);
       }
 
-      const [{ data: profile }, followers, following, posts, circlePosts, { data: postViews }, { data: circleViews }, standaloneVideos, { data: standaloneViews }] = await Promise.all([
+      const [{ data: profile }, followers, posts, circlePosts, { data: postViews }, { data: circleViews }, standaloneVideos, { data: standaloneViews }] = await Promise.all([
         supabase
           .from("profiles")
           .select("display_name, avatar_url, banner_url")
           .eq("user_id", userId)
           .single(),
         countActiveSocialFollows(userId),
-        Promise.resolve(null),
-        (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
+          (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", userId),
         (supabase as any).from("circle_contents").select("id", { count: "exact", head: true }).eq("author_id", userId),
         (supabase as any).from("posts").select("views").eq("user_id", userId).eq("media_type", "video"),
         (supabase as any).from("circle_contents").select("view_count").eq("author_id", userId).eq("media_type", "video"),
