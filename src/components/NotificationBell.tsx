@@ -27,17 +27,20 @@ const NotificationBell = () => {
     queryKey: ["notifications", user?.id, showJobNotifs],
     queryFn: async () => {
       if (!user) return [];
-      const { data } = await (supabase as any)
+      const { data, error } = await (supabase as any)
         .from("notifications")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(50);
+      if (error) throw error;
       const rows = data || [];
       if (showJobNotifs) return rows;
       return rows.filter((n: any) => !isJobNotification(n));
     },
     enabled: !!user && notificationsEnabled,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
 
   const unreadCount = notifications.filter((n: any) => !(n.is_read || n.read)).length;
@@ -62,23 +65,29 @@ const NotificationBell = () => {
   const markAllRead = useMutation({
     mutationFn: async () => {
       if (!user) return;
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true, read: true })
         .eq("user_id", user.id)
         .eq("is_read", false);
+      if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["notifications", user?.id] }),
+    onError: (error) => console.error("[notifications] Could not mark all as read:", error),
   });
 
   const handleNotificationClick = async (notification: any) => {
     if (user && !(notification.is_read || notification.read)) {
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from("notifications")
         .update({ is_read: true, read: true })
         .eq("id", notification.id)
         .eq("user_id", user.id);
-      queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+      if (error) {
+        console.error("[notifications] Could not mark as read:", error.message);
+      } else {
+        void queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+      }
     }
     if (notification.reference_type === "circle_request" || notification.reference_type === "circle_approved") {
       if (notification.reference_id) navigate(`/circle/c/${notification.reference_id}`);
