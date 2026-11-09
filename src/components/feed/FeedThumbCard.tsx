@@ -147,9 +147,17 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
           )}
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-bold leading-tight text-foreground">
+          <button
+            type="button"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(user?.id === post.user_id ? "/profile" : `/artist/${post.user_id}`);
+            }}
+            className="block max-w-full truncate text-left text-[13px] font-bold leading-tight text-foreground hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          >
             {profile.display_name || "Artist"}
-          </p>
+          </button>
           <p className="mt-0.5 text-[10px] font-medium text-muted-foreground">YAJ community</p>
         </div>
       </div>
