@@ -1,5 +1,7 @@
 import { hasMeaningfulPlayback } from "@/lib/video-view-eligibility";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Heart, MessageCircle, Play, Image as ImageIcon } from "lucide-react";
 import { parsePostCaption } from "@/lib/post-editor";
 import { recordUniqueVideoView } from "@/lib/unique-video-views";
@@ -17,7 +19,9 @@ interface Props {
 
 /** Home-feed post card with clear social-app hierarchy and all chrome contained in-card. */
 export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayMuted = false, pressHoldMs }: Props) {
-  const cardRef = useRef<HTMLButtonElement>(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const cardRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const viewedPostRef = useRef<string | null>(null);
   const holdTimer = useRef<number | null>(null);
@@ -82,9 +86,11 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
   };
 
   return (
-    <button
+    <div
       ref={cardRef}
-      type="button"
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); openWithAudio(); } }}
       onClick={(e) => {
         if (holdOpened.current) {
           e.preventDefault();
@@ -118,7 +124,15 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
       className="w-full overflow-hidden rounded-2xl border border-border/80 bg-card text-left shadow-[0_1px_2px_rgba(0,0,0,0.08),0_8px_24px_rgba(0,0,0,0.06)] transition duration-150 active:scale-[0.992] cursor-pointer"
     >
       <div className="flex items-center gap-2.5 px-3 py-2.5">
-        <div className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border">
+        <button
+          type="button"
+          aria-label={`View ${profile.display_name || "member"} profile`}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate(user?.id === post.user_id ? "/profile" : `/artist/${post.user_id}`);
+          }}
+          className="h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted ring-1 ring-border focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary">
           {profile.avatar_url && !avatarFailed ? (
             <img
               src={profile.avatar_url}
@@ -131,7 +145,7 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
               {(profile.display_name || "?")[0]?.toUpperCase()}
             </div>
           )}
-        </div>
+        </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13px] font-bold leading-tight text-foreground">
             {profile.display_name || "Artist"}
@@ -223,6 +237,6 @@ export default function FeedThumbCard({ post, compact = false, onOpen, autoPlayM
         </span>
         <span className="ml-auto text-[10px] font-medium text-muted-foreground/80">Tap to open</span>
       </div>
-    </button>
+    </div>
   );
 }
