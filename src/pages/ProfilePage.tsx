@@ -1,3 +1,4 @@
+import { countActiveSocialFollows } from "@/lib/active-social-follows";
 import { useCallback, useEffect, useState } from "react";
 import {
   BadgeCheck,
@@ -81,8 +82,8 @@ const ProfilePage = () => {
         .select("display_name, avatar_url, banner_url")
         .eq("user_id", user.id)
         .single(),
-      (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("following_id", user.id),
-      (supabase as any).from("follows").select("id", { count: "exact", head: true }).eq("follower_id", user.id),
+      countActiveSocialFollows(user.id),
+      Promise.resolve(null),
       (supabase as any).from("posts").select("id", { count: "exact", head: true }).eq("user_id", user.id),
       (supabase as any).from("circle_contents").select("id", { count: "exact", head: true }).eq("author_id", user.id),
       (supabase as any).from("posts").select("views").eq("user_id", user.id).eq("media_type", "video"),
@@ -100,8 +101,8 @@ const ProfilePage = () => {
       });
     }
 
-    setFollowerCount(compactNumber(followers.count || 0));
-    setFollowingCount(compactNumber(following.count || 0));
+    setFollowerCount(compactNumber(followers.followers));
+    setFollowingCount(compactNumber(followers.following));
     setPostCount(compactNumber((posts.count || 0) + (circlePosts.count || 0) + (standaloneVideos.count || 0)));
 
     let views = 0;
