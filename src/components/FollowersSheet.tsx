@@ -49,7 +49,9 @@ const FollowersSheet = ({ open, onClose, userId, isOwner, mode = "followers" }: 
         .select("user_id, display_name, avatar_url")
         .in("user_id", ids);
 
-      const merged = followRows.map((f: any) => {
+      // Auth deletion may leave historical follow rows; never show deleted users.
+      const existingIds = new Set((profiles || []).map((p) => p.user_id));
+      const merged = followRows.filter((f: any) => existingIds.has(showingFollowers ? f.follower_id : f.following_id)).map((f: any) => {
         const personId = showingFollowers ? f.follower_id : f.following_id;
         const p = profiles?.find((pr) => pr.user_id === personId);
         return {
@@ -66,7 +68,11 @@ const FollowersSheet = ({ open, onClose, userId, isOwner, mode = "followers" }: 
   }, [open, userId, mode]);
 
   const handleRemoveFollower = async (followId: string, followerId: string) => {
-    await (supabase as any).from("follows").delete().eq("id", followId);
+    const { error } = await (supabase as any).from("follows").delete().eq("id", followId);
+    if (error) {
+      toast.error("Could not remove follower");
+      return;
+    }
     setFollowers((prev) => prev.filter((f) => f.id !== followId));
     toast.success("Follower removed");
   };
