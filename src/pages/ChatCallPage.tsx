@@ -26,6 +26,7 @@ export default function ChatCallPage() {
   const [camOn, setCamOn] = useState(kind === "video");
   const [remoteJoined, setRemoteJoined] = useState(false);
   const [remoteVideoOn, setRemoteVideoOn] = useState(false);
+  const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
   const roomRef = useRef<Room | null>(null);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
@@ -59,6 +60,24 @@ export default function ChatCallPage() {
     })();
   }, [user, conversationId]);
 
+  const playRemoteAudio = async () => {
+    const audio = remoteAudioRef.current;
+    if (!audio) return;
+    // stopAllPageMedia() mutes every pre-existing media element and sets its
+    // volume to zero. Restore output on BOTH ends of a call, especially iOS.
+    audio.muted = false;
+    audio.volume = 1;
+    audio.autoplay = true;
+    try {
+      await audio.play();
+      setAudioPlaybackBlocked(false);
+    } catch (error) {
+      // iOS/Safari can block autoplay; let the user unlock playback by tapping.
+      setAudioPlaybackBlocked(true);
+      console.warn("[chat-call] Remote audio playback needs user interaction", error);
+    }
+  };
+
   const attachRemote = (room: Room) => {
     let sawVideo = false;
     room.remoteParticipants.forEach((p) => {
@@ -75,7 +94,7 @@ export default function ChatCallPage() {
         if (track.kind === Track.Kind.Audio && remoteAudioRef.current) {
           try {
             track.attach(remoteAudioRef.current);
-            void remoteAudioRef.current.play?.().catch(() => {});
+            void playRemoteAudio();
           } catch { /* ignore */ }
         }
       });
@@ -90,6 +109,10 @@ export default function ChatCallPage() {
     setError(null);
     try {
       stopAllPageMedia();
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.muted = false;
+        remoteAudioRef.current.volume = 1;
+      }
       const { data: profile } = await supabase
         .from("profiles")
         .select("display_name")
@@ -108,6 +131,7 @@ export default function ChatCallPage() {
       const room = new Room({ adaptiveStream: true, dynacast: true });
       roomRef.current = room;
       room.on(RoomEvent.TrackSubscribed, () => attachRemote(room));
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => { void playRemoteAudio(); });
       room.on(RoomEvent.TrackUnsubscribed, () => attachRemote(room));
       room.on(RoomEvent.ParticipantConnected, () => attachRemote(room));
       room.on(RoomEvent.ParticipantDisconnected, () => attachRemote(room));
@@ -142,6 +166,7 @@ export default function ChatCallPage() {
         setCamOn(false);
       }
       attachRemote(room);
+      if (room.remoteParticipants.size > 0) void playRemoteAudio();
       setConn("connected");
     } catch (e: any) {
       setConn("error");
@@ -174,6 +199,7 @@ export default function ChatCallPage() {
     setConn("idle");
     setRemoteJoined(false);
     setRemoteVideoOn(false);
+    setAudioPlaybackBlocked(false);
     if (leavePage) nav("/messages", { replace: true });
   };
 
@@ -294,6 +320,12 @@ export default function ChatCallPage() {
           )}
           <audio ref={remoteAudioRef} autoPlay />
         </div>
+        {audioPlaybackBlocked && conn === "connected" && (
+          <button type="button" onClick={() => void playRemoteAudio()}
+            className="rounded-xl bg-amber-500 px-4 py-3 text-sm font-bold text-black">
+            Tap to enable incoming call audio
+          </button>
+        )}
         {error && <p className="text-xs text-rose-400">{error}</p>}
       </div>
 
