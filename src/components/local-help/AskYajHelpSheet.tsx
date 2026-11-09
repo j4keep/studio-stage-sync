@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { Camera, Film, ImagePlus } from "lucide-react";
+import { analyzeGigPhotos, type GigAiResult } from "@/lib/yaj-jobs-ai";
+import { estimateMediaFrames } from "@/lib/estimate-attachments";
+import ConcreteRepairEstimate from "@/components/local-help/ConcreteRepairEstimate";
+import GigEstimateDetails from "@/components/local-help/GigEstimateDetails";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
@@ -20,6 +25,12 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
   const [text, setText] = useState("");
   const [estimate, setEstimate] = useState<ReturnType<typeof estimateLocalHelpNeed> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [frames, setFrames] = useState<string[]>([]);
+  const [mediaLabel, setMediaLabel] = useState("");
+  const [aiAssessment, setAiAssessment] = useState<GigAiResult | null>(null);
+  const [reviewedBudget, setReviewedBudget] = useState<{ low: number; high: number } | null>(null);
+  const [showConcrete, setShowConcrete] = useState(false);
 
   if (!open) return null;
 
@@ -28,20 +39,56 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
     setEstimate(estimateLocalHelpNeed(text));
   };
 
+  const attachMedia = async (file: File | undefined) => {
+    if (!file) return;
+    setAnalyzing(true);
+    setAiAssessment(null);
+    setReviewedBudget(null);
+    try {
+      setFrames(await estimateMediaFrames(file));
+      setMediaLabel(file.name);
+      toast.success(file.type.startsWith("video/") ? "Three sample video frames ready" : "Photo ready");
+    } catch (error) {
+      setFrames([]);
+      setMediaLabel("");
+      toast.error(error instanceof Error ? error.message : "Could not read attachment");
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const analyzeMedia = async () => {
+    if (!frames.length) return toast.error("Attach a photo or short video first");
+    setAnalyzing(true);
+    try {
+      const result = await analyzeGigPhotos(frames, text);
+      setAiAssessment(result);
+      if (/concrete|cement|spall|crack|sidewalk/i.test([result.title, result.description, text].join(" "))) setShowConcrete(true);
+      toast.success("Preliminary work scope ready — confirm measurements and pricing");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Photo analysis failed");
+    } finally { setAnalyzing(false); }
+  };
+
   const postNeed = async () => {
     if (!user) return toast.error("Sign in first");
     const e = estimate || estimateLocalHelpNeed(text);
+    const title = aiAssessment?.title || e.title;
+    const description = aiAssessment?.description || e.description;
+    const categoryId = aiAssessment?.category || e.categoryId;
+    const budgetLow = reviewedBudget?.low ?? (aiAssessment ? aiAssessment.budget_min : e.budgetLow);
+    const budgetHigh = reviewedBudget?.high ?? (aiAssessment ? aiAssessment.budget_max : e.budgetHigh);
     setSaving(true);
     try {
       if (preferredHelperId) {
         const gig = await hireLocalHelper({
           customerId: user.id,
           helperId: preferredHelperId,
-          title: e.title,
-          description: e.description,
-          category: e.categoryId,
-          budgetMin: e.budgetLow,
-          budgetMax: e.budgetHigh,
+          title,
+          description,
+          category: categoryId,
+          budgetMin: budgetLow ?? undefined,
+          budgetMax: budgetHigh ?? undefined,
         });
         toast.success("Request sent");
         onClose();
@@ -64,13 +111,13 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
         .from("gig_listings")
         .insert({
           poster_id: user.id,
-          title: e.title,
-          description: e.description,
-          category: e.categoryId,
+          title,
+          description,
+          category: categoryId,
           status: "open",
           urgency: "flexible",
-          budget_min: e.budgetLow,
-          budget_max: e.budgetHigh,
+          budget_min: budgetLow,
+          budget_max: budgetHigh,
         })
         .select("id")
         .single();
@@ -88,7 +135,7 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
   const browseCategory = () => {
     const e = estimate || estimateLocalHelpNeed(text || "help");
     onClose();
-    nav(`/local-help/${e.categoryId}`);
+    nav(`/local-help/${aiAssessment?.category || e.categoryId}`);
   };
 
   return (
@@ -104,7 +151,7 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
           </button>
         </div>
         <p className="text-[12px] text-muted-foreground">
-          Describe the job in your own words. Buddy suggests category, budget, and next steps.
+          Describe a repair or attach a photo/short video. AI suggests the visible scope; you confirm measurements, materials and prices before using any estimate.
         </p>
 
         <textarea
@@ -112,12 +159,35 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
           onChange={(e) => {
             setText(e.target.value);
             setEstimate(null);
+            setAiAssessment(null);
+            setReviewedBudget(null);
           }}
           rows={4}
           placeholder="e.g. Hole in my drywall from moving a TV mount…"
           className="mt-3 w-full rounded-2xl border border-border bg-muted p-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
         />
 
+        <div className="mt-3 flex flex-wrap gap-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-bold">
+            <ImagePlus className="h-4 w-4" /> Add photo
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { void attachMedia(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-bold">
+            <Camera className="h-4 w-4" /> Camera
+            <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { void attachMedia(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-border bg-muted px-3 py-2 text-xs font-bold">
+            <Film className="h-4 w-4" /> Short video
+            <input type="file" accept="video/*" className="hidden" onChange={(e) => { void attachMedia(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
+        </div>
+        {mediaLabel && <p className="mt-2 text-xs text-muted-foreground">Selected: {mediaLabel}. Video analysis uses three sampled frames, not the entire recording.</p>}
+        {frames.length > 0 && (
+          <button type="button" onClick={() => void analyzeMedia()} disabled={analyzing}
+            className="mt-2 w-full rounded-xl bg-primary px-3 py-3 text-sm font-bold text-primary-foreground disabled:opacity-50">
+            {analyzing ? "Analyzing…" : "Analyze photo / video with YAJ AI"}
+          </button>
+        )}
         <button
           type="button"
           onClick={runEstimate}
@@ -125,6 +195,8 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
         >
           Analyze with Buddy
         </button>
+
+        {aiAssessment && <div className="mt-3"><GigEstimateDetails result={aiAssessment} /></div>}
 
         {estimate && (
           <div className="mt-4 space-y-2 rounded-2xl border border-border bg-card p-3">
@@ -154,10 +226,21 @@ export default function AskYajHelpSheet({ open, onClose, preferredHelperId, pref
           </div>
         )}
 
+        <div className="mt-4 space-y-2">
+          <button type="button" onClick={() => setShowConcrete((v) => !v)}
+            className="w-full rounded-xl border border-border p-3 text-left text-sm font-semibold">
+            {showConcrete ? "Hide" : "Open"} concrete crack / patch material calculator
+          </button>
+          {showConcrete && <ConcreteRepairEstimate onUseBudget={(low, high) => {
+            setReviewedBudget({ low, high });
+            toast.success("Measured budget range applied");
+          }} />}
+          {reviewedBudget && <p className="text-xs font-bold">Reviewed proposal range: ${reviewedBudget.low}–${reviewedBudget.high}</p>}
+        </div>
         <div className="mt-4 grid gap-2">
           <button
             type="button"
-            disabled={saving || !text.trim()}
+            disabled={saving || (!text.trim() && !aiAssessment)}
             onClick={() => void postNeed()}
             className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-60"
           >
