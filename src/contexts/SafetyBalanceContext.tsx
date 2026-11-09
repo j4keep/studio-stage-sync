@@ -128,6 +128,24 @@ export function SafetyBalanceProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       let next = await fetchPolicy(user.id);
+      // Signup already collected DOB. Initialize the safety policy from that
+      // verified signup flow rather than requesting DOB a second time after Terms.
+      // Older accounts without signup DOB still use AgeAssuranceGate.
+      if (!next?.date_of_birth || next.age_band === "unknown") {
+        const signupDob = user.user_metadata?.date_of_birth;
+        if (typeof signupDob === "string" &&
+            ageBandFromDob(signupDob) !== "unknown") {
+          next = await upsertPolicy({
+            ...(next || {}),
+            ...policyForDob(user.id, signupDob),
+            user_id: user.id,
+            parent_account_id: next?.parent_account_id ?? null,
+            social_minutes_used_today: next?.social_minutes_used_today ?? 0,
+            social_usage_date: next?.social_usage_date ?? localDateString(),
+            youth_welcome_seen_at: next?.youth_welcome_seen_at ?? null,
+          });
+        }
+      }
       if (next && !next.detox_until && localStorage.getItem(LEGACY_BREAK_KEY) === "true") {
         const until = new Date();
         until.setDate(until.getDate() + 1);
