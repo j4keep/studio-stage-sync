@@ -1400,7 +1400,15 @@ const FeedPostCard = ({
 
         <div className="feed-caption-stack absolute left-3 right-[4.25rem] feed-bottom-offset z-40 max-w-[calc(100%-5rem)] overflow-y-auto pb-1 pr-1 pointer-events-auto scrollbar-hide">
           <div className="relative z-50 mb-1.5">
-            <div className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40">
+            <button
+              type="button"
+              aria-label={`View ${profile.display_name || "member"} profile`}
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(user?.id === post.user_id ? "/profile" : `/artist/${post.user_id}`);
+              }}
+              className="block w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/40 cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
+            >
               {profile.avatar_url && !avatarFailed ? (
                 <img
                   src={profile.avatar_url}
@@ -1413,7 +1421,7 @@ const FeedPostCard = ({
                   {(profile.display_name || "A")[0].toUpperCase()}
                 </div>
               )}
-            </div>
+            </button>
             {user?.id !== post.user_id && !isFollowing && (
               <button
                 onClick={(event) => {
@@ -1428,7 +1436,7 @@ const FeedPostCard = ({
           </div>
           <div className="mb-2 flex items-center gap-2">
             <button
-              onClick={() => navigate(`/artist/${post.user_id}`)}
+              onClick={() => navigate(user?.id === post.user_id ? "/profile" : `/artist/${post.user_id}`)}
               className="z-50 text-[15px] font-extrabold text-white drop-shadow-lg hover:underline"
             >
               @{profile.display_name || "Artist"}
