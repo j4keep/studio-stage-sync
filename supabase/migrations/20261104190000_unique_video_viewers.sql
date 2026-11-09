@@ -104,7 +104,11 @@ create or replace function public.add_standalone_unique_video_view()
 returns trigger language plpgsql security definer set search_path = ''
 as $$
 begin
-  update public.videos set views = coalesce(views, 0) + 1 where id = new.video_id;
+  -- Existing YAJ videos.views is TEXT (unlike the integer counters on posts/Circle).
+  -- Preserve the prior numeric string; don't silently overwrite malformed legacy data.
+  update public.videos
+  set views = ((coalesce(nullif(btrim(views), ''), '0')::bigint + 1)::text)
+  where id = new.video_id;
   return new;
 end;
 $$;
