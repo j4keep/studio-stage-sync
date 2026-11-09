@@ -42,8 +42,26 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(url, service, { auth: { persistSession: false } });
-    const { error: deleteErr } = await admin.auth.admin.deleteUser(userData.user.id);
+    const accountId = userData.user.id;
+
+    // Remove stale follow edges and public profile *before* deleting Auth.
+    // This prevents a newly registered account with the same email from being
+    // shown alongside the deleted identity in follower lists and statistics.
+    // Fail closed: don't claim successful deletion if cleanup is blocked.
+    const { error: followingErr } = await admin.from("follows").delete().eq("follower_id", accountId);
+    if (followingErr) throw new Error("Could not clean up outgoing follows: " + followingErr.message);
+    const { error: followerErr } = await admin.from("follows").delete().eq("following_id", accountId);
+    if (followerErr) throw new Error("Could not clean up incoming follows: " + followerErr.message);
+
+    const { error: deleteErr } = await admin.auth.admin.deleteUser(accountId);
     if (deleteErr) throw deleteErr;
+
+    // Profiles might be cascaded by the Auth FK; make sure any standalone
+    // profile row is removed even if that foreign key doesn't cascade.
+    const { error: profileErr } = await admin.from("profiles").delete().eq("user_id", accountId);
+    if (profileErr) {
+      console.error("[delete-account] Orphan profile cleanup needed:", profileErr.message);
+    }
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
