@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { X, Sparkles, ImagePlus, Loader2, Camera } from "lucide-react";
+import { X, Sparkles, ImagePlus, Loader2, Camera, RotateCcw } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -37,6 +37,11 @@ type Props = {
 };
 
 const MAX_GIG_PHOTOS = 6;
+const EMPTY_GIG_FORM = {
+  title: "", description: "", category: "general", location: "",
+  budget_min: "", budget_max: "", urgency: "flexible",
+  preferred_date: "", preferred_time: "",
+};
 
 export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, autoOpenPhotos }: Props) {
   const { user } = useAuth();
@@ -51,17 +56,62 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   const [hideYajProfile, setHideYajProfile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    category: "general",
-    location: "",
-    budget_min: "",
-    budget_max: "",
-    urgency: "flexible",
-    preferred_date: "",
-    preferred_time: "",
-  });
+  const [form, setForm] = useState({ ...EMPTY_GIG_FORM });
+  const [estimateRevision, setEstimateRevision] = useState(0);
+  const analysisVersionRef = useRef(0);
+  const lastAiFieldsRef = useRef<Partial<typeof EMPTY_GIG_FORM> | null>(null);
+
+  const clearAnalysis = () => {
+    analysisVersionRef.current += 1;
+    setAiTip(null);
+    setAiReport(null);
+    setShowConcrete(false);
+    setEstimateRevision((revision) => revision + 1);
+    setForm((current) => {
+      const previous = lastAiFieldsRef.current;
+      lastAiFieldsRef.current = null;
+      if (!previous) return { ...current, budget_min: "", budget_max: "" };
+      const next = { ...current, budget_min: "", budget_max: "" };
+      for (const field of ["title", "description", "category", "urgency"] as const) {
+        if (previous[field] != null && next[field] === previous[field]) {
+          next[field] = EMPTY_GIG_FORM[field];
+        }
+      }
+      return next;
+    });
+  };
+
+  const resetDraft = () => {
+    analysisVersionRef.current += 1;
+    lastAiFieldsRef.current = null;
+    setPhotos([]);
+    setVideoFrames([]);
+    setAiTip(null);
+    setAiReport(null);
+    setShowConcrete(false);
+    setEstimateRevision((revision) => revision + 1);
+    setForm({ ...EMPTY_GIG_FORM });
+    if (fileRef.current) fileRef.current.value = "";
+    if (cameraRef.current) cameraRef.current.value = "";
+  };
+
+  const closeDraft = () => {
+    if (saving) return;
+    const hasUnsaved = photos.length > 0 || videoFrames.length > 0 ||
+      Boolean(form.title.trim() || form.description.trim() || form.budget_min || form.budget_max);
+    if (hasUnsaved && !window.confirm("Discard this unsaved gig?")) return;
+    resetDraft();
+    onClose();
+  };
+
+  const startNewGig = () => {
+    if (saving || analyzing) return;
+    const hasUnsaved = photos.length > 0 || videoFrames.length > 0 ||
+      Boolean(form.title.trim() || form.description.trim() || form.budget_min || form.budget_max);
+    if (hasUnsaved && !window.confirm("Clear the photos, AI estimate and all gig details to start over?")) return;
+    resetDraft();
+    toast.success("Ready for a new gig");
+  };
 
   useEffect(() => {
     if (!open || !gigToEdit) return;
@@ -133,6 +183,8 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     const added = await Promise.all(
       chosen.map(async (file) => ({ preview: await fileToDataUrl(file), file })),
     );
+    clearAnalysis();
+    setVideoFrames([]);
     setPhotos((p) => [...p, ...added]);
   };
 
@@ -141,8 +193,10 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setAnalyzing(true);
     try {
       if (!file.type.startsWith("video/")) throw new Error("Choose a video file");
-      setVideoFrames(await estimateMediaFrames(file));
-      setAiReport(null);
+      const nextFrames = await estimateMediaFrames(file);
+      clearAnalysis();
+      setPhotos([]);
+      setVideoFrames(nextFrames);
       toast.success("Three video frames ready for estimate; video is not added to the gig");
     } catch (error) {
       setVideoFrames([]);
@@ -175,24 +229,32 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       return;
     }
     setAnalyzing(true);
+    const analysisVersion = ++analysisVersionRef.current;
     setAiTip(null);
+    setAiReport(null);
+    setShowConcrete(false);
     try {
       const r = await analyzeGigPhotos([...photos.map((p) => p.preview), ...videoFrames], [form.description || form.title, form.location ? `Location: ${form.location}` : ""].filter(Boolean).join("\n"));
+      if (analysisVersion !== analysisVersionRef.current) return;
       setAiReport(r);
-      if (/concrete|cement|spall|crack/i.test([r.title, r.description].join(" "))) setShowConcrete(true);
+      const concreteJob = /concrete|cement|spall|sidewalk|driveway/i.test([r.title, r.description].join(" "));
+      setShowConcrete(concreteJob);
+      setEstimateRevision((revision) => revision + 1);
+      lastAiFieldsRef.current = { title: r.title || "", description: r.description || "", category: r.category || "general", urgency: r.urgency || "flexible" };
       setForm((f) => ({
         ...f,
         title: r.title || f.title,
         description: r.description || f.description,
         category: r.category || f.category,
         urgency: r.urgency || f.urgency,
-        budget_min: r.budget_min ? String(r.budget_min) : f.budget_min,
-        budget_max: r.budget_max ? String(r.budget_max) : f.budget_max,
+        // Photos cannot validate labor/material prices: never reuse an old quote.
+        budget_min: "",
+        budget_max: "",
       }));
       if (r.tips) setAiTip(r.tips);
       toast.success("Preliminary AI scope ready — check materials and prices before posting");
     } catch (e: any) {
-      toast.error(e.message || "AI analysis failed");
+      if (analysisVersion === analysisVersionRef.current) toast.error(e.message || "AI analysis failed");
     } finally {
       setAnalyzing(false);
     }
@@ -253,6 +315,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       return;
     }
     toast.success(gigToEdit ? "Gig updated!" : "Gig posted!");
+    resetDraft();
     onCreated?.();
     onClose();
   };
@@ -261,10 +324,16 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     <div className="fixed inset-0 z-[70] flex flex-col bg-background md:items-center md:justify-center md:bg-black/60">
       <div className="flex h-[100dvh] min-h-0 w-full flex-col bg-background md:h-[92dvh] md:max-w-2xl md:overflow-hidden md:rounded-2xl">
       <header className="relative z-10 flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+        <button type="button" aria-label="Close gig editor" onClick={closeDraft} disabled={saving} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center disabled:opacity-40">
           <X className="w-4 h-4" />
         </button>
         <h2 className="text-sm font-bold">{gigToEdit ? "Edit gig" : "Post a Gig"}</h2>
+        {!gigToEdit && (
+          <button type="button" onClick={startNewGig} disabled={saving || analyzing}
+            className="flex items-center gap-1 rounded-full border border-border px-3 py-2 text-xs font-semibold disabled:opacity-40">
+            <RotateCcw className="h-3.5 w-3.5" /> Start over
+          </button>
+        )}
         <button
           onClick={submit}
           disabled={saving}
@@ -298,7 +367,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
                   <img src={p.preview} className="w-full h-full object-cover" alt="" />
                   <button
-                    onClick={() => setPhotos((ph) => ph.filter((_, j) => j !== i))}
+                    onClick={() => { clearAnalysis(); setPhotos((ph) => ph.filter((_, j) => j !== i)); }}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
                   >
                     <X className="w-3 h-3" />
@@ -369,9 +438,9 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
         <div className="space-y-2">
           <button type="button" onClick={() => setShowConcrete((v) => !v)}
             className="w-full rounded-xl border border-border p-3 text-left text-sm font-semibold">
-            {showConcrete ? "Hide" : "Open"} concrete repair materials + labor calculator
+            {showConcrete ? "Hide" : "Open"} concrete repair materials + labor calculator (concrete jobs only)
           </button>
-          {showConcrete && <ConcreteRepairEstimate onUseBudget={(low, high) => setForm((v) => ({
+          {showConcrete && <ConcreteRepairEstimate key={estimateRevision} onUseBudget={(low, high) => setForm((v) => ({
             ...v, budget_min: String(low), budget_max: String(high),
           }))} />}
         </div>
