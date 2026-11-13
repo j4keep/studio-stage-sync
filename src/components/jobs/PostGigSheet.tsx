@@ -258,9 +258,9 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   };
 
   return (
-    <div className="fixed inset-0 z-[70] bg-background flex flex-col md:items-center md:justify-center md:bg-black/60">
-      <div className="w-full h-full md:h-[92vh] md:max-w-2xl md:rounded-2xl md:overflow-hidden bg-background flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border">
+    <div className="fixed inset-0 z-[70] flex flex-col bg-background md:items-center md:justify-center md:bg-black/60">
+      <div className="flex h-[100dvh] min-h-0 w-full flex-col bg-background md:h-[92dvh] md:max-w-2xl md:overflow-hidden md:rounded-2xl">
+      <header className="relative z-10 flex shrink-0 items-center justify-between border-b border-border bg-background px-4 py-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <button onClick={onClose} className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
           <X className="w-4 h-4" />
         </button>
@@ -274,7 +274,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
         </button>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-40">
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 pb-8">
 
         <GigProfileCard
           label="Your profile on this gig"
@@ -421,8 +421,17 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           </Field>
         </div>
 
-        <div className="h-8" />
       </div>
+      <footer className="shrink-0 border-t border-border bg-background/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={saving}
+          className="flex h-12 w-full items-center justify-center rounded-xl bg-primary text-sm font-bold text-primary-foreground disabled:opacity-50"
+        >
+          {saving ? (gigToEdit ? "Saving…" : "Posting…") : gigToEdit ? "Save gig" : "Post this Gig"}
+        </button>
+      </footer>
       </div>
     </div>
   );
