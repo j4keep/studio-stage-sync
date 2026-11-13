@@ -182,6 +182,7 @@ import DealBecomeBusinessPage from "./pages/deals/DealBecomeBusinessPage";
 
 
 import TermsAgreementGate from "./components/TermsAgreementGate";
+import { toast } from "sonner";
 import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 
@@ -198,6 +199,8 @@ const ProtectedRoutes = () => {
     useModerationStatus();
   const [termsAccepted, setTermsAccepted] = useState<boolean | null>(null);
   const [termsLoading, setTermsLoading] = useState(true);
+  const [termsCheckError, setTermsCheckError] = useState(false);
+  const [termsCheckAttempt, setTermsCheckAttempt] = useState(0);
   const [showThemePicker, setShowThemePicker] = useState(false);
 
   // Initialize theme – default to light mode
@@ -214,17 +217,23 @@ const ProtectedRoutes = () => {
     }
   }, []);
 
-  // Check terms acceptance from database
+  // Terms acceptance is stored on the profile. A network failure / timeout is
+  // NOT evidence that consent is missing and must never reopen the agreement.
   useEffect(() => {
     if (!user) {
       setTermsAccepted(null);
+      setTermsCheckError(false);
       setTermsLoading(false);
       return;
     }
 
-    let isActive = true;
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    setTermsLoading(true);
+    setTermsCheckError(false);
+    setTermsAccepted(null);
 
-    const checkTerms = async () => {
+    const check = async () => {
       try {
         const result = await Promise.race([
           supabase
@@ -232,32 +241,29 @@ const ProtectedRoutes = () => {
             .select("terms_accepted_at")
             .eq("user_id", user.id)
             .maybeSingle(),
-          new Promise<null>((resolve) => window.setTimeout(() => resolve(null), STARTUP_TIMEOUT_MS)),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => reject(new Error("Terms lookup timed out")), 10000);
+          }),
         ]);
-
-        if (!isActive) return;
-
-        if (result && "data" in result) {
-          setTermsAccepted(!!result.data?.terms_accepted_at);
-        } else {
-          setTermsAccepted(false);
-        }
-      } catch {
-        if (!isActive) return;
-        setTermsAccepted(false);
+        if (!active) return;
+        if (result.error) throw result.error;
+        // Only a successful DB response can establish a missing acceptance.
+        setTermsAccepted(Boolean(result.data?.terms_accepted_at));
+      } catch (error) {
+        if (!active) return;
+        console.error("[terms] Could not load acceptance status", error);
+        setTermsCheckError(true);
       } finally {
-        if (isActive) {
-          setTermsLoading(false);
-        }
+        if (timer !== undefined) clearTimeout(timer);
+        if (active) setTermsLoading(false);
       }
     };
-
-    checkTerms();
-
+    void check();
     return () => {
-      isActive = false;
+      active = false;
+      if (timer !== undefined) clearTimeout(timer);
     };
-  }, [user]);
+  }, [user?.id, termsCheckAttempt]);
 
   // Show theme picker after terms accepted if not set up
   useEffect(() => {
@@ -268,12 +274,19 @@ const ProtectedRoutes = () => {
 
   const handleAcceptTerms = useCallback(async () => {
     if (!user) return;
-    await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .update({ terms_accepted_at: new Date().toISOString() })
-      .eq("user_id", user.id);
+      .eq("user_id", user.id)
+      .select("terms_accepted_at")
+      .maybeSingle();
+    if (error || !data?.terms_accepted_at) {
+      console.error("[terms] Acceptance could not be saved", error);
+      toast.error("Could not save your acceptance. Please try again.");
+      throw error || new Error("Terms acceptance was not saved");
+    }
     setTermsAccepted(true);
-  }, [user]);
+  }, [user?.id]);
 
   if (loading || termsLoading || (user && moderationLoading)) {
     return (
@@ -299,6 +312,22 @@ const ProtectedRoutes = () => {
 
   if (!user) {
     return <AuthPage />;
+  }
+
+  if (termsCheckError) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-lg font-bold">Could not verify your account settings</h1>
+        <p className="text-sm text-muted-foreground">
+          Your previous Terms acceptance may already be saved. Check your connection and retry;
+          you don't need to accept the agreement again.
+        </p>
+        <button type="button" onClick={() => setTermsCheckAttempt((n) => n + 1)}
+          className="rounded-xl bg-primary px-5 py-3 font-semibold text-primary-foreground">
+          Retry
+        </button>
+      </div>
+    );
   }
 
   if (!termsAccepted) {
