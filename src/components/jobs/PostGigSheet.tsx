@@ -8,6 +8,7 @@ import { analyzeGigPhotos, fileToDataUrl, type GigAiResult } from "@/lib/yaj-job
 import { estimateMediaFrames } from "@/lib/estimate-attachments";
 import ConcreteRepairEstimate from "@/components/local-help/ConcreteRepairEstimate";
 import GigEstimateDetails from "@/components/local-help/GigEstimateDetails";
+import PhotoMeasureSheet from "@/components/jobs/PhotoMeasureSheet";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
 type GigEdit = {
@@ -52,6 +53,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   const [aiReport, setAiReport] = useState<GigAiResult | null>(null);
   const [videoFrames, setVideoFrames] = useState<string[]>([]);
   const [showConcrete, setShowConcrete] = useState(false);
+  const [measurePhotoIndex, setMeasurePhotoIndex] = useState<number | null>(null);
   const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
   const [hideYajProfile, setHideYajProfile] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -85,6 +87,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     analysisVersionRef.current += 1;
     lastAiFieldsRef.current = null;
     setPhotos([]);
+    setMeasurePhotoIndex(null);
     setVideoFrames([]);
     setAiTip(null);
     setAiReport(null);
@@ -198,6 +201,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     );
     clearAnalysis();
     setVideoFrames([]);
+    setMeasurePhotoIndex(null);
     setPhotos((p) => [...p, ...added]);
   };
 
@@ -209,6 +213,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       const nextFrames = await estimateMediaFrames(file);
       clearAnalysis();
       setPhotos([]);
+      setMeasurePhotoIndex(null);
       setVideoFrames(nextFrames);
       toast.success("Three video frames ready for estimate; video is not added to the gig");
     } catch (error) {
@@ -381,7 +386,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
                 <div key={i} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
                   <img src={p.preview} className="w-full h-full object-cover" alt="" />
                   <button
-                    onClick={() => { clearAnalysis(); setPhotos((ph) => ph.filter((_, j) => j !== i)); }}
+                    onClick={() => { clearAnalysis(); setMeasurePhotoIndex(null); setPhotos((ph) => ph.filter((_, j) => j !== i)); }}
                     className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center"
                   >
                     <X className="w-3 h-3" />
@@ -433,6 +438,29 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
               {analyzing ? "Analyzing…" : "Estimate with YAJ AI"}
             </button>
           </div>
+
+          {photos.length > 0 && (
+            <div className="space-y-2 rounded-xl border border-border bg-card p-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-xs font-semibold">YAJ Smart Measure (photo)</p>
+                <select aria-label="Choose photo to measure"
+                  value={measurePhotoIndex ?? ""}
+                  onChange={e => setMeasurePhotoIndex(e.target.value === "" ? null : Number(e.target.value))}
+                  className="max-w-full rounded-lg border border-border bg-background px-2 py-2 text-xs">
+                  <option value="">Choose photo to measure</option>
+                  {photos.map((_, i) => <option key={i} value={i}>Photo {i + 1}</option>)}
+                </select>
+              </div>
+              {measurePhotoIndex !== null && photos[measurePhotoIndex] && (
+                <PhotoMeasureSheet key={measurePhotoIndex + ":" + photos[measurePhotoIndex].preview.slice(0, 40)}
+                  photo={photos[measurePhotoIndex].preview}
+                  onAddMeasurement={measurement => {
+                    update("description", [form.description.trim(), measurement].filter(Boolean).join("\n"));
+                    toast.success("Approximate measurement added — review before estimating");
+                  }} />
+              )}
+            </div>
+          )}
 
           <label className="flex cursor-pointer items-center justify-center rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold">
             Add short repair video (up to 90 sec / 40 MB)
