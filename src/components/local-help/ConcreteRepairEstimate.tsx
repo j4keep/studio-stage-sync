@@ -44,14 +44,23 @@ export default function ConcreteRepairEstimate({ onUseBudget, description = "" }
   const [reviewed, setReviewed] = useState(false);
   const parsed = useMemo(() => parseWrittenConcreteMeasurements(description), [description]);
   useEffect(() => {
-    // Explicit dimensions/rates typed in the description become editable values.
+    // Use stated measurements and prices first. For planning only, offer
+    // clearly labelled sample inputs when geometry is supplied. Never turn
+    // these examples into an actual contractor/supplier quote.
+    const area = parsed.areaSqFt ?? (
+      parsed.lengthIn && parsed.widthIn
+        ? parsed.lengthIn * parsed.widthIn / 144
+        : undefined
+    );
     setValues((current) => ({
       ...current,
-      ...Object.fromEntries(
-        (["lengthIn", "widthIn", "depthIn", "pricePerBag", "laborHours", "laborRatePerHour"] as const)
-          .filter((key) => parsed[key] !== undefined)
-          .map((key) => [key, parsed[key]]),
-      ),
+      ...(parsed.lengthIn !== undefined ? { lengthIn: parsed.lengthIn } : {}),
+      ...(parsed.widthIn !== undefined ? { widthIn: parsed.widthIn } : {}),
+      depthIn: parsed.depthIn ?? (area && !Number.isFinite(current.depthIn) ? 2 : current.depthIn),
+      pricePerBag: parsed.pricePerBag ?? (area && !Number.isFinite(current.pricePerBag) ? 8 : current.pricePerBag),
+      laborHours: parsed.laborHours ?? (area && !Number.isFinite(current.laborHours)
+        ? Math.max(2, Math.ceil(area / 10)) : current.laborHours),
+      laborRatePerHour: parsed.laborRatePerHour ?? (area && !Number.isFinite(current.laborRatePerHour) ? 65 : current.laborRatePerHour),
     }));
     setReviewed(false);
   }, [parsed]);
@@ -76,6 +85,16 @@ export default function ConcreteRepairEstimate({ onUseBudget, description = "" }
         </p>
       )}
       {parsed.ambiguity && <p role="alert" className="text-xs text-destructive">{parsed.ambiguity}</p>}
+      {(parsed.areaSqFt || (parsed.lengthIn && parsed.widthIn)) && (
+        <p className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+          <strong>Provisional example, not a local quote:</strong>{" "}
+          {parsed.depthIn == null ? "2-inch depth assumed; " : ""}
+          {parsed.pricePerBag == null ? "$8/bag assumed; " : ""}
+          {parsed.laborHours == null ? "labor hours based on a rough area allowance; " : ""}
+          {parsed.laborRatePerHour == null ? "$65/hour assumed. " : ""}
+          Review all assumptions, actual thickness, materials and local rates before posting a budget.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         {FIELDS.map(({ key, label, unit, step }) => (
           <label key={key} className="text-xs">
@@ -98,10 +117,10 @@ export default function ConcreteRepairEstimate({ onUseBudget, description = "" }
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Enter measured dimensions, expected hours, and actual local bag and labor prices before a dollar estimate appears.
+        When a written description includes dimensions, a preliminary total can use clearly identified example prices and labor assumptions. Replace them with actual supplier and contractor rates.
         The initial 0.6 cu ft/bag yield and optional supply/disposal allowances are examples only; verify or replace them for the selected product and job.
       </p>
-      {!result ? <p role="alert" className="text-xs text-destructive">For a priced concrete estimate, include area or length × width, repair depth, bag price, labor hours and hourly rate in the description, or enter the missing fields here. No exact local rate is inferred from photos.</p> : (
+      {!result ? <p role="alert" className="text-xs text-destructive">Include square footage or length × width in your description, or enter measured dimensions here. The calculation needs dimensions and cannot use a photo alone.</p> : (
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3">
             <p>Calculated fill volume: <strong>{result.volumeCuFt} cu ft</strong></p>
