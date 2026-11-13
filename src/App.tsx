@@ -188,7 +188,6 @@ import { unlockFeedAudioSession } from "@/lib/feed-video-playback";
 
 const queryClient = new QueryClient();
 
-const STARTUP_TIMEOUT_MS = 2500;
 
 const ProtectedRoutes = () => {
   const { user, loading } = useAuth();
