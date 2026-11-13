@@ -10,6 +10,7 @@ import ConcreteRepairEstimate from "@/components/local-help/ConcreteRepairEstima
 import GigEstimateDetails from "@/components/local-help/GigEstimateDetails";
 import PhotoMeasureSheet from "@/components/jobs/PhotoMeasureSheet";
 import CarAudioEstimate from "@/components/jobs/CarAudioEstimate";
+import DuctCleaningEstimate from "@/components/jobs/DuctCleaningEstimate";
 import { classifyGigEstimate } from "@/lib/gig-estimate-kind";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
@@ -436,6 +437,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
               {photos.length ? `Upload (${photos.length}/${MAX_GIG_PHOTOS})` : "Upload"}
             </button>
             <button
+              type="button"
               onClick={analyze}
               disabled={analyzing || (!photos.length && !videoFrames.length && !form.title.trim() && !form.description.trim())}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
@@ -483,6 +485,20 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           )}
         </div>
         {aiReport && <GigEstimateDetails result={aiReport} />}
+        <Field label="Gig Title *">
+          <input value={form.title} onChange={(e) => update("title", e.target.value)}
+            placeholder="e.g. Need my TV mounted" className={inputCls} />
+        </Field>
+
+        <p className="text-xs text-muted-foreground">
+          Describe the work in plain language. Measurements are optional and only requested when relevant.
+          Tap <strong>Estimate with YAJ AI</strong> for project analysis.
+        </p>
+        <Field label="Description *">
+          <textarea value={form.description} onChange={(e) => update("description", e.target.value)}
+            rows={5} placeholder="What needs to be done, size, materials, access, etc." className={inputCls} />
+        </Field>
+
         {(() => {
           const estimateKind = classifyGigEstimate([form.title, form.description, aiReport?.title, aiReport?.description].filter(Boolean).join(" "));
           const useBudget = (low: number, high: number) => setForm(v => ({
@@ -491,10 +507,10 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           return (
             <div className="space-y-2">
               <button type="button" onClick={() => setShowCalculator(v => !v)}
-                className="flex w-full items-center justify-between rounded-xl border-2 border-emerald-500/60 bg-emerald-500/15 p-4 text-left shadow-sm">
+                className="flex w-full items-center justify-between rounded-xl border-2 border-emerald-500/70 bg-emerald-500/20 p-4 text-left shadow-sm">
                 <span className="flex items-center gap-2 text-sm font-bold text-foreground">
                   <Sparkles className="h-5 w-5 text-emerald-600" />
-                  YAJ Smart Estimate — {estimateKind === "concrete" ? "Concrete repair" : estimateKind === "car_audio" ? "Car audio installation" : "AI job assessment"}
+                  YAJ Smart Estimate — {estimateKind === "concrete" ? "Concrete repair" : estimateKind === "car_audio" ? "Car audio installation" : estimateKind === "duct_cleaning" ? "Duct cleaning" : "Other services"}
                 </span>
                 <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{showCalculator ? "Hide" : "Open"}</span>
               </button>
@@ -508,34 +524,23 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
                   description={[form.title, form.description].filter(Boolean).join(" ")}
                   onUseBudget={useBudget} />
               )}
+              {showCalculator && estimateKind === "duct_cleaning" && (
+                <DuctCleaningEstimate key={estimateRevision}
+                  description={[form.title, form.description].filter(Boolean).join(" ")}
+                  onUseBudget={useBudget} />
+              )}
               {showCalculator && estimateKind === "general" && (
                 <div className="rounded-xl border border-border bg-card p-3 text-xs">
-                  <p className="font-semibold">No measurements needed for this job type.</p>
+                  <p className="font-semibold">Job estimate</p>
                   <p className="mt-1 text-muted-foreground">
-                    Describe the work and tap Estimate with YAJ AI. YAJ Buddy can outline tasks,
-                    parts and labor. A reliable dollar quote requires actual service and local pricing;
-                    the app will not invent measurements or reuse another job’s cost.
+                    Describe your job, then tap Estimate with YAJ AI above for work scope and possible materials.
+                    There is no verified price source for this service yet. You can set an optional budget below.
                   </p>
                 </div>
               )}
             </div>
           );
         })()}
-
-        <Field label="Gig Title *">
-          <input value={form.title} onChange={(e) => update("title", e.target.value)}
-            placeholder="e.g. Need my TV mounted" className={inputCls} />
-        </Field>
-
-        <p className="text-xs text-muted-foreground">
-          Type your project size, material and expected work here (for example: "Repair 24 sq ft of concrete, 2 inches deep; $9 per bag; 4 labor hours at $70/hr").
-          Tap <strong>Estimate with YAJ AI</strong> for a suggested scope, or open the calculator to see measurements filled from your text.
-          AI requests may use credits; typing and local calculations do not.
-        </p>
-                <Field label="Description *">
-          <textarea value={form.description} onChange={(e) => update("description", e.target.value)}
-            rows={5} placeholder="What needs to be done, size, materials, access, etc." className={inputCls} />
-        </Field>
 
         <Field label="Category">
           <input value={form.category} onChange={(e) => update("category", e.target.value)}
