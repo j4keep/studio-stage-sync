@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BriefcaseBusiness, Search, ShieldCheck, Sparkles, X } from "lucide-react";
 import { LOCAL_HELP_CATEGORIES, TRENDING_SERVICES } from "@/lib/local-help";
-import AskYajHelpSheet from "@/components/local-help/AskYajHelpSheet";
 import PostGigSheet from "@/components/jobs/PostGigSheet";
 import { LocalHelpCategoryVisual } from "@/components/local-help/LocalHelpCategoryVisual";
 
@@ -12,7 +11,6 @@ const RECENT_KEY = "yaj_local_help_recent";
 export default function LocalHelpHomePage() {
   const nav = useNavigate();
   const [q, setQ] = useState("");
-  const [askOpen, setAskOpen] = useState(false);
   const [postOpen, setPostOpen] = useState(false);
   const [recents, setRecents] = useState<string[]>(() => {
     try {
@@ -106,14 +104,14 @@ export default function LocalHelpHomePage() {
           <div className="grid grid-cols-2 border-t border-border">
             <button
               type="button"
-              onClick={() => setAskOpen(true)}
+              onClick={() => setPostOpen(true)}
               className="border-r border-border p-3.5 text-left transition active:bg-muted"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Sparkles className="h-4 w-4" />
               </span>
-              <p className="mt-2 text-[13px] font-black">Describe the job</p>
-              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">YAJ can suggest the best service category.</p>
+              <p className="mt-2 text-[13px] font-black">Post a Gig</p>
+              <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground">Describe it, add photos or video, and get an AI estimate in one place.</p>
             </button>
             <button
               type="button"
@@ -129,15 +127,7 @@ export default function LocalHelpHomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => setPostOpen(true)}
-            className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm"
-          >
-            <p className="text-[13px] font-black">Post a gig</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">Let local helpers come to you</p>
-          </button>
+        <div className="grid grid-cols-1 gap-3">
           <button
             type="button"
             onClick={() => nav("/gigs")}
@@ -149,7 +139,7 @@ export default function LocalHelpHomePage() {
           <button
             type="button"
             onClick={() => nav("/my-gigs")}
-            className="col-span-2 rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition active:bg-muted"
+            className="rounded-2xl border border-border bg-card p-3 text-left shadow-sm transition active:bg-muted"
           >
             <p className="text-[13px] font-black">My gigs dashboard</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">Track helpers, completion & ratings</p>
@@ -221,7 +211,6 @@ export default function LocalHelpHomePage() {
         </div>
       </section>
 
-      <AskYajHelpSheet open={askOpen} onClose={() => setAskOpen(false)} />
       <PostGigSheet open={postOpen} onClose={() => setPostOpen(false)} onCreated={() => setPostOpen(false)} />
     </div>
   );
