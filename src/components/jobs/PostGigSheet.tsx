@@ -9,6 +9,8 @@ import { estimateMediaFrames } from "@/lib/estimate-attachments";
 import ConcreteRepairEstimate from "@/components/local-help/ConcreteRepairEstimate";
 import GigEstimateDetails from "@/components/local-help/GigEstimateDetails";
 import PhotoMeasureSheet from "@/components/jobs/PhotoMeasureSheet";
+import CarAudioEstimate from "@/components/jobs/CarAudioEstimate";
+import { classifyGigEstimate } from "@/lib/gig-estimate-kind";
 import GigProfileCard, { type GigProfileInfo } from "@/components/jobs/GigProfileCard";
 
 type GigEdit = {
@@ -52,6 +54,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   const [aiTip, setAiTip] = useState<string | null>(null);
   const [aiReport, setAiReport] = useState<GigAiResult | null>(null);
   const [videoFrames, setVideoFrames] = useState<string[]>([]);
+  const [showCalculator, setShowCalculator] = useState(true);
   const [showConcrete, setShowConcrete] = useState(false);
   const [measurePhotoIndex, setMeasurePhotoIndex] = useState<number | null>(null);
   const [myProfile, setMyProfile] = useState<GigProfileInfo | null>(null);
@@ -68,6 +71,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setAiTip(null);
     setAiReport(null);
     setShowConcrete(false);
+    setShowCalculator(true);
     setEstimateRevision((revision) => revision + 1);
     setForm((current) => {
       const previous = lastAiFieldsRef.current;
@@ -92,6 +96,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setAiTip(null);
     setAiReport(null);
     setShowConcrete(false);
+    setShowCalculator(true);
     setEstimateRevision((revision) => revision + 1);
     setForm({ ...EMPTY_GIG_FORM });
     if (fileRef.current) fileRef.current.value = "";
@@ -183,7 +188,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       setForm((f) => ({ ...f, budget_min: "", budget_max: "" }));
       if (k === "description" || k === "title") {
         const prospective = k === "description" ? v : [v, form.description].join(" ");
-        setShowConcrete(/concrete|cement|spall|sidewalk|driveway/i.test(prospective));
+        setShowConcrete(classifyGigEstimate(prospective) === "concrete");
       }
     }
   };
@@ -255,8 +260,9 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
       const r = await analyzeGigPhotos([...photos.map((p) => p.preview), ...videoFrames], [form.title, form.description, form.location ? `Location: ${form.location}` : ""].filter(Boolean).join("\n"));
       if (analysisVersion !== analysisVersionRef.current) return;
       setAiReport(r);
-      const concreteJob = /concrete|cement|spall|sidewalk|driveway/i.test([r.title, r.description].join(" "));
+      const concreteJob = classifyGigEstimate([r.title, r.description, form.title, form.description].join(" ")) === "concrete";
       setShowConcrete(concreteJob);
+      setShowCalculator(true);
       setEstimateRevision((revision) => revision + 1);
       lastAiFieldsRef.current = { title: r.title || "", description: form.description.trim() ? form.description : (r.description || ""), category: r.category || "general", urgency: r.urgency || "flexible" };
       setForm((f) => ({
@@ -477,15 +483,44 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           )}
         </div>
         {aiReport && <GigEstimateDetails result={aiReport} />}
-        <div className="space-y-2">
-          <button type="button" onClick={() => setShowConcrete((v) => !v)}
-            className="w-full rounded-xl border border-border p-3 text-left text-sm font-semibold">
-            {showConcrete ? "Hide" : "Open"} concrete repair materials + labor calculator (concrete jobs only)
-          </button>
-          {showConcrete && <ConcreteRepairEstimate key={estimateRevision} description={[form.title, form.description].filter(Boolean).join(" ")} onUseBudget={(low, high) => setForm((v) => ({
+        {(() => {
+          const estimateKind = classifyGigEstimate([form.title, form.description, aiReport?.title, aiReport?.description].filter(Boolean).join(" "));
+          const useBudget = (low: number, high: number) => setForm(v => ({
             ...v, budget_min: String(low), budget_max: String(high),
-          }))} />}
-        </div>
+          }));
+          return (
+            <div className="space-y-2">
+              <button type="button" onClick={() => setShowCalculator(v => !v)}
+                className="flex w-full items-center justify-between rounded-xl border-2 border-emerald-500/60 bg-emerald-500/15 p-4 text-left shadow-sm">
+                <span className="flex items-center gap-2 text-sm font-bold text-foreground">
+                  <Sparkles className="h-5 w-5 text-emerald-600" />
+                  YAJ Smart Estimate — {estimateKind === "concrete" ? "Concrete repair" : estimateKind === "car_audio" ? "Car audio installation" : "AI job assessment"}
+                </span>
+                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">{showCalculator ? "Hide" : "Open"}</span>
+              </button>
+              {showCalculator && estimateKind === "concrete" && (
+                <ConcreteRepairEstimate key={estimateRevision}
+                  description={[form.title, form.description].filter(Boolean).join(" ")}
+                  onUseBudget={useBudget} />
+              )}
+              {showCalculator && estimateKind === "car_audio" && (
+                <CarAudioEstimate key={estimateRevision}
+                  description={[form.title, form.description].filter(Boolean).join(" ")}
+                  onUseBudget={useBudget} />
+              )}
+              {showCalculator && estimateKind === "general" && (
+                <div className="rounded-xl border border-border bg-card p-3 text-xs">
+                  <p className="font-semibold">No measurements needed for this job type.</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Describe the work and tap Estimate with YAJ AI. YAJ Buddy can outline tasks,
+                    parts and labor. A reliable dollar quote requires actual service and local pricing;
+                    the app will not invent measurements or reuse another job’s cost.
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <Field label="Gig Title *">
           <input value={form.title} onChange={(e) => update("title", e.target.value)}
