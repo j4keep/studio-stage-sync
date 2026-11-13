@@ -14,8 +14,12 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
   const [unit, setUnit] = useState<"in" | "ft">("in");
   const [role, setRole] = useState<MeasurementRole>("length");
   const [added, setAdded] = useState(false);
+  const [measuring, setMeasuring] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState(1);
 
-  const result = useMemo(() => measureFromPhoto(points, Number(reference)), [points, reference]);
+  const possibleResult = useMemo(() => measureFromPhoto(points, Number(reference), aspectRatio), [points, reference, aspectRatio]);
+  const result = measuring ? possibleResult : null;
+  const validReference = reference.trim().length > 0 && Number.isFinite(Number(reference)) && Number(reference) > 0;
 
   const mark = (e: MouseEvent<SVGSVGElement>) => {
     if (points.length === 4) return;
@@ -25,6 +29,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
     const y = (e.clientY - bounds.top) / bounds.height;
     setPoints(prev => [...prev, { x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)) }]);
     setAdded(false);
+    setMeasuring(false);
   };
 
   const save = () => {
@@ -43,7 +48,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
     "Tap its second end, then enter its real length.",
     "Tap the first end of the project area.",
     "Tap the second end of the project area.",
-    "Confirm and add the approximate measurement.",
+    "Enter the reference length and tap Measure to calculate.",
   ][points.length];
 
   return (
@@ -57,7 +62,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
         </p>
       </div>
       <div className="relative overflow-hidden rounded-xl bg-muted">
-        <img src={photo} alt="Project to measure" className="block h-auto w-full select-none" draggable={false} />
+        <img src={photo} alt="Project to measure" onLoad={e => { const img = e.currentTarget; if (img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight); }} className="block h-auto w-full select-none" draggable={false} />
         <svg
           viewBox="0 0 100 100"
           preserveAspectRatio="none"
@@ -82,18 +87,27 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
       </div>
       <p className="text-xs font-semibold" aria-live="polite">{nextStep}</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => { setPoints([]); setAdded(false); }}>Reset points</button>
-        {points.length > 0 && <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => { setPoints(p => p.slice(0, -1)); setAdded(false); }}>Undo last point</button>}
+        <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => { setPoints([]); setAdded(false); setMeasuring(false); }}>Reset points</button>
+        {points.length > 0 && <button type="button" className="rounded-lg border border-border px-3 py-2 text-xs" onClick={() => { setPoints(p => p.slice(0, -1)); setAdded(false); setMeasuring(false); }}>Undo last point</button>}
+        <button type="button" disabled={points.length !== 4 || !validReference}
+          onClick={() => { setMeasuring(true); setAdded(false); }}
+          className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground disabled:opacity-40">
+          Measure
+        </button>
       </div>
+      <p className="text-xs text-muted-foreground" aria-live="polite">
+        {points.length}/4 points marked. First two define the known reference; the next two define the target.
+        {points.length === 4 && !validReference ? " Enter the real reference length to enable Measure." : ""}
+      </p>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <label className="space-y-1">
           <span className="block font-semibold">Real reference length</span>
-          <input type="number" value={reference} min="0.01" step="any" onChange={e => { setReference(e.target.value); setAdded(false); }}
+          <input type="number" value={reference} min="0.01" step="any" onChange={e => { setReference(e.target.value); setAdded(false); setMeasuring(false); }}
             placeholder="e.g. 12" className="w-full rounded-lg border border-border bg-background p-2" />
         </label>
         <label className="space-y-1">
           <span className="block font-semibold">Reference units</span>
-          <select value={unit} onChange={e => { setUnit(e.target.value as "in" | "ft"); setAdded(false); }}
+          <select value={unit} onChange={e => { setUnit(e.target.value as "in" | "ft"); setAdded(false); setMeasuring(false); }}
             className="w-full rounded-lg border border-border bg-background p-2">
             <option value="in">inches</option>
             <option value="ft">feet</option>
@@ -120,7 +134,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
             {added ? "Added to gig description" : "Add approximate measurement to gig description"}
           </button>
         </div>
-      ) : <p className="text-xs text-muted-foreground">A real-world measurement is only shown after all four points and a valid reference length are provided.</p>}
+      ) : <p className="text-xs text-muted-foreground">Mark four points, enter the real reference length, then tap Measure. Two dots alone cannot determine real-world distance without a scale.</p>}
     </section>
   );
 }
