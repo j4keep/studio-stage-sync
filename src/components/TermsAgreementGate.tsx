@@ -4,8 +4,9 @@ import { Shield } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useNavigate } from "react-router-dom";
 
-const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
+const TermsAgreementGate = ({ onAccept }: { onAccept: () => Promise<void> }) => {
   const [agreed, setAgreed] = useState(false);
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   return (
@@ -59,15 +60,20 @@ const TermsAgreementGate = ({ onAccept }: { onAccept: () => void }) => {
         </label>
 
         <button
-          onClick={onAccept}
-          disabled={!agreed}
+          onClick={async () => {
+            if (saving) return;
+            setSaving(true);
+            try { await onAccept(); } catch { /* Parent shows save error. */ }
+            finally { setSaving(false); }
+          }}
+          disabled={!agreed || saving}
           className={`w-full py-3 rounded-xl font-display font-bold text-sm transition-all ${
             agreed
               ? "gradient-primary text-primary-foreground glow-primary"
               : "bg-muted text-muted-foreground cursor-not-allowed"
           }`}
         >
-          Continue to YAJ
+          {saving ? "Saving acceptance…" : "Continue to YAJ"}
         </button>
       </motion.div>
     </div>
