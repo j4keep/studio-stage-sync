@@ -28,7 +28,17 @@ const usd = (value: number) => new Intl.NumberFormat("en-US", {
 }).format(value);
 
 export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
-  const [values, setValues] = useState<ConcreteRepairInputs>({ ...INITIAL_CONCRETE_REPAIR });
+  // A photo cannot supply dimensions or current prices. Requiring real inputs
+  // prevents the example $258 subtotal from appearing on unrelated projects.
+  const [values, setValues] = useState<ConcreteRepairInputs>({
+    ...INITIAL_CONCRETE_REPAIR,
+    lengthIn: Number.NaN,
+    widthIn: Number.NaN,
+    depthIn: Number.NaN,
+    pricePerBag: Number.NaN,
+    laborHours: Number.NaN,
+    laborRatePerHour: Number.NaN,
+  });
   const [reviewed, setReviewed] = useState(false);
   const result = useMemo(() => calculateConcreteRepair(values), [values]);
   return (
@@ -49,7 +59,8 @@ export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
               type="number"
               min="0"
               step={step || "1"}
-              value={values[key]}
+              value={Number.isFinite(values[key]) ? values[key] : ""}
+              placeholder={key === "lengthIn" || key === "widthIn" || key === "depthIn" ? "Measure first" : key === "pricePerBag" || key === "laborRatePerHour" ? "Local quote" : key === "laborHours" ? "Estimate hours" : undefined}
               onChange={(e) => {
                 const next = e.target.value === "" ? Number.NaN : Number(e.target.value);
                 setValues((v) => ({ ...v, [key]: next }));
@@ -61,10 +72,10 @@ export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">
-        Initial $8/bag, $65/hour and 0.6 cu ft/bag are <strong>examples, not verified local quotations</strong>.
-        Concrete patch products have different yields and minimum thickness requirements.
+        Enter measured dimensions, expected hours, and actual local bag and labor prices before a dollar estimate appears.
+        The initial 0.6 cu ft/bag yield and optional supply/disposal allowances are examples only; verify or replace them for the selected product and job.
       </p>
-      {!result ? <p role="alert" className="text-xs text-destructive">Enter valid, positive dimensions and yield; use nonnegative prices.</p> : (
+      {!result ? <p role="alert" className="text-xs text-destructive">A project-specific estimate needs measured length, width and depth, supplier price per bag, labor hours and hourly rate. No cost is calculated from the photo alone.</p> : (
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3">
             <p>Calculated fill volume: <strong>{result.volumeCuFt} cu ft</strong></p>
