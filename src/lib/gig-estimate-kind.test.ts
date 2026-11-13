@@ -9,6 +9,8 @@ describe("trade-specific gig estimating", () => {
     expect(classifyGigEstimate("Install a car stereo and rearview camera")).toBe("car_audio");
     expect(classifyGigEstimate("Repair 24 sq ft of cracked concrete sidewalk")).toBe("concrete");
     expect(classifyGigEstimate("Install a TV on the wall")).toBe("general");
+    expect(classifyGigEstimate("Air Conditioning Ceiling Vent & Duct Cleaning")).toBe("duct_cleaning");
+    expect(classifyGigEstimate("I need the AC clean ducks")).toBe("duct_cleaning");
   });
   it("recognizes vehicle year and hardware options", () => {
     expect(parseVehicleAudioJob("1990 Honda Accord car radio with backup camera")).toMatchObject({
