@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { parseWrittenConcreteMeasurements } from "@/lib/written-repair-measurements";
 import {
   calculateConcreteRepair, INITIAL_CONCRETE_REPAIR,
   type ConcreteRepairInputs,
@@ -7,6 +8,7 @@ import {
 type Props = {
   /** A parent can use the calculated range as the proposed gig budget. */
   onUseBudget?: (low: number, high: number) => void;
+  description?: string;
 };
 
 const FIELDS: { key: keyof ConcreteRepairInputs; label: string; unit: string; step?: string }[] = [
@@ -27,7 +29,7 @@ const usd = (value: number) => new Intl.NumberFormat("en-US", {
   style: "currency", currency: "USD", maximumFractionDigits: 2,
 }).format(value);
 
-export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
+export default function ConcreteRepairEstimate({ onUseBudget, description = "" }: Props) {
   // A photo cannot supply dimensions or current prices. Requiring real inputs
   // prevents the example $258 subtotal from appearing on unrelated projects.
   const [values, setValues] = useState<ConcreteRepairInputs>({
@@ -40,7 +42,20 @@ export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
     laborRatePerHour: Number.NaN,
   });
   const [reviewed, setReviewed] = useState(false);
-  const result = useMemo(() => calculateConcreteRepair(values), [values]);
+  const parsed = useMemo(() => parseWrittenConcreteMeasurements(description), [description]);
+  useEffect(() => {
+    // Explicit dimensions/rates typed in the description become editable values.
+    setValues((current) => ({
+      ...current,
+      ...Object.fromEntries(
+        (["lengthIn", "widthIn", "depthIn", "pricePerBag", "laborHours", "laborRatePerHour"] as const)
+          .filter((key) => parsed[key] !== undefined)
+          .map((key) => [key, parsed[key]]),
+      ),
+    }));
+    setReviewed(false);
+  }, [parsed]);
+  const result = useMemo(() => parsed.ambiguity ? null : calculateConcreteRepair(values), [values, parsed.ambiguity]);
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-card p-3">
       <div>
@@ -50,6 +65,17 @@ export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
           Enter actual measurements and supplier/contractor prices below.
         </p>
       </div>
+      {(parsed.areaSqFt || parsed.lengthIn || parsed.depthIn) && (
+        <p className="rounded-lg bg-muted px-3 py-2 text-xs">
+          <strong>Read from your written description:</strong>{" "}
+          {parsed.areaSqFt ? `${parsed.areaSqFt} sq ft; ` : ""}
+          {parsed.lengthIn ? `${parsed.lengthIn} in long; ` : ""}
+          {parsed.widthIn ? `${parsed.widthIn} in wide; ` : ""}
+          {parsed.depthIn ? `${parsed.depthIn} in deep` : "depth not specified"}.
+          {" "}Check and correct the values before using the total.
+        </p>
+      )}
+      {parsed.ambiguity && <p role="alert" className="text-xs text-destructive">{parsed.ambiguity}</p>}
       <div className="grid grid-cols-2 gap-2">
         {FIELDS.map(({ key, label, unit, step }) => (
           <label key={key} className="text-xs">
@@ -75,7 +101,7 @@ export default function ConcreteRepairEstimate({ onUseBudget }: Props) {
         Enter measured dimensions, expected hours, and actual local bag and labor prices before a dollar estimate appears.
         The initial 0.6 cu ft/bag yield and optional supply/disposal allowances are examples only; verify or replace them for the selected product and job.
       </p>
-      {!result ? <p role="alert" className="text-xs text-destructive">A project-specific estimate needs measured length, width and depth, supplier price per bag, labor hours and hourly rate. No cost is calculated from the photo alone.</p> : (
+      {!result ? <p role="alert" className="text-xs text-destructive">For a priced concrete estimate, include area or length × width, repair depth, bag price, labor hours and hourly rate in the description, or enter the missing fields here. No exact local rate is inferred from photos.</p> : (
         <div className="space-y-2 text-xs">
           <div className="grid grid-cols-2 gap-2 rounded-lg bg-muted p-3">
             <p>Calculated fill volume: <strong>{result.volumeCuFt} cu ft</strong></p>
