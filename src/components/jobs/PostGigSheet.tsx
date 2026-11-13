@@ -170,7 +170,20 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
 
   if (!open) return null;
 
-  const update = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const update = (k: string, v: string) => {
+    setForm((f) => ({ ...f, [k]: v }));
+    if (k === "description" || k === "title" || k === "location") {
+      // A changed scope invalidates an older AI proposal and its budget.
+      analysisVersionRef.current += 1;
+      setAiReport(null);
+      setAiTip(null);
+      setForm((f) => ({ ...f, budget_min: "", budget_max: "" }));
+      if (k === "description" || k === "title") {
+        const prospective = k === "description" ? v : [v, form.description].join(" ");
+        setShowConcrete(/concrete|cement|spall|sidewalk|driveway/i.test(prospective));
+      }
+    }
+  };
 
   const addPhotos = async (files: FileList | null) => {
     if (!files || !files.length) return;
@@ -224,8 +237,8 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
   };
 
   const analyze = async () => {
-    if (!photos.length && !videoFrames.length) {
-      toast.error("Add a photo or short video first");
+    if (!photos.length && !videoFrames.length && !form.description.trim() && !form.title.trim()) {
+      toast.error("Describe the work or attach a photo/video first");
       return;
     }
     setAnalyzing(true);
@@ -234,17 +247,18 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
     setAiReport(null);
     setShowConcrete(false);
     try {
-      const r = await analyzeGigPhotos([...photos.map((p) => p.preview), ...videoFrames], [form.description || form.title, form.location ? `Location: ${form.location}` : ""].filter(Boolean).join("\n"));
+      const r = await analyzeGigPhotos([...photos.map((p) => p.preview), ...videoFrames], [form.title, form.description, form.location ? `Location: ${form.location}` : ""].filter(Boolean).join("\n"));
       if (analysisVersion !== analysisVersionRef.current) return;
       setAiReport(r);
       const concreteJob = /concrete|cement|spall|sidewalk|driveway/i.test([r.title, r.description].join(" "));
       setShowConcrete(concreteJob);
       setEstimateRevision((revision) => revision + 1);
-      lastAiFieldsRef.current = { title: r.title || "", description: r.description || "", category: r.category || "general", urgency: r.urgency || "flexible" };
+      lastAiFieldsRef.current = { title: r.title || "", description: form.description.trim() ? form.description : (r.description || ""), category: r.category || "general", urgency: r.urgency || "flexible" };
       setForm((f) => ({
         ...f,
         title: r.title || f.title,
-        description: r.description || f.description,
+        // Preserve the user\'s dimensions, scope and prices in their own words.
+        description: f.description.trim() ? f.description : (r.description || ""),
         category: r.category || f.category,
         urgency: r.urgency || f.urgency,
         // Photos cannot validate labor/material prices: never reuse an old quote.
@@ -357,7 +371,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
           <div className="flex items-start gap-2">
             <Sparkles className="w-4 h-4 text-primary mt-0.5 shrink-0" />
             <p className="text-xs text-muted-foreground leading-relaxed">
-              <span className="font-semibold text-foreground">Photos of the job</span> — add up to {MAX_GIG_PHOTOS} pictures so helpers can see the work. Buddy can also suggest a title, description, category, and price range.
+              <span className="font-semibold text-foreground">Describe the job or add pictures</span> — YAJ Buddy can assess written measurements without a photo. Add up to {MAX_GIG_PHOTOS} photos for more context. Prices need local rates.
             </p>
           </div>
 
@@ -412,11 +426,11 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             </button>
             <button
               onClick={analyze}
-              disabled={analyzing || (!photos.length && !videoFrames.length)}
+              disabled={analyzing || (!photos.length && !videoFrames.length && !form.title.trim() && !form.description.trim())}
               className="flex-1 h-10 rounded-xl bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center gap-1.5 disabled:opacity-40"
             >
               {analyzing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              {analyzing ? "Analyzing…" : "Analyze with AI"}
+              {analyzing ? "Analyzing…" : "Estimate with YAJ AI"}
             </button>
           </div>
 
@@ -440,7 +454,7 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             className="w-full rounded-xl border border-border p-3 text-left text-sm font-semibold">
             {showConcrete ? "Hide" : "Open"} concrete repair materials + labor calculator (concrete jobs only)
           </button>
-          {showConcrete && <ConcreteRepairEstimate key={estimateRevision} onUseBudget={(low, high) => setForm((v) => ({
+          {showConcrete && <ConcreteRepairEstimate key={estimateRevision} description={[form.title, form.description].filter(Boolean).join(" ")} onUseBudget={(low, high) => setForm((v) => ({
             ...v, budget_min: String(low), budget_max: String(high),
           }))} />}
         </div>
@@ -450,7 +464,12 @@ export default function PostGigSheet({ open, onClose, onCreated, gigToEdit, auto
             placeholder="e.g. Need my TV mounted" className={inputCls} />
         </Field>
 
-        <Field label="Description *">
+        <p className="text-xs text-muted-foreground">
+          Type your project size, material and expected work here (for example: "Repair 24 sq ft of concrete, 2 inches deep; $9 per bag; 4 labor hours at $70/hr").
+          Tap <strong>Estimate with YAJ AI</strong> for a suggested scope, or open the calculator to see measurements filled from your text.
+          AI requests may use credits; typing and local calculations do not.
+        </p>
+                <Field label="Description *">
           <textarea value={form.description} onChange={(e) => update("description", e.target.value)}
             rows={5} placeholder="What needs to be done, size, materials, access, etc." className={inputCls} />
         </Field>
