@@ -18,7 +18,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
   const [aspectRatio, setAspectRatio] = useState(1);
 
   const possibleResult = useMemo(() => measureFromPhoto(points, Number(reference), aspectRatio), [points, reference, aspectRatio]);
-  const result = measuring ? possibleResult : null;
+  const result = possibleResult;
   const validReference = reference.trim().length > 0 && Number.isFinite(Number(reference)) && Number(reference) > 0;
 
   const mark = (e: MouseEvent<SVGSVGElement>) => {
@@ -48,7 +48,7 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
     "Tap its second end, then enter its real length.",
     "Tap the first end of the project area.",
     "Tap the second end of the project area.",
-    "Enter the reference length and tap Measure to calculate.",
+    "Your approximate measurement is ready below. Tap Measure to confirm.",
   ][points.length];
 
   return (
@@ -56,11 +56,23 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
       <div>
         <h3 className="text-sm font-bold">YAJ Smart Measure — calibrated photo</h3>
         <p className="mt-1 text-xs text-muted-foreground">
+          Four points are needed: 2 for the ruler, then 2 for the area. Enter the ruler length above the picture.
           Put a ruler, measuring tape, or another object of known length beside the project,
           on the <strong>same flat surface and at the same distance</strong> from the camera.
           Tap both ends of the reference, then both ends of the area to measure.
         </p>
       </div>
+      <label className="block text-xs font-semibold">Known reference length (required)
+        <div className="mt-1 flex gap-2">
+          <input type="number" value={reference} min="0.01" step="any"
+            onChange={e => { setReference(e.target.value); setAdded(false); setMeasuring(false); }}
+            placeholder="e.g. 12" className="min-w-0 flex-1 rounded-lg border border-border bg-background p-2"/>
+          <select value={unit} onChange={e => { setUnit(e.target.value as "in" | "ft"); setAdded(false); setMeasuring(false); }}
+            className="rounded-lg border border-border bg-background p-2">
+            <option value="in">inches</option><option value="ft">feet</option>
+          </select>
+        </div>
+      </label>
       <div className="relative overflow-hidden rounded-xl bg-muted">
         <img src={photo} alt="Project to measure" onLoad={e => { const img = e.currentTarget; if (img.naturalHeight > 0) setAspectRatio(img.naturalWidth / img.naturalHeight); }} className="block h-auto w-full select-none" draggable={false} />
         <svg
@@ -100,19 +112,6 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
         {points.length === 4 && !validReference ? " Enter the real reference length to enable Measure." : ""}
       </p>
       <div className="grid grid-cols-2 gap-2 text-xs">
-        <label className="space-y-1">
-          <span className="block font-semibold">Real reference length</span>
-          <input type="number" value={reference} min="0.01" step="any" onChange={e => { setReference(e.target.value); setAdded(false); setMeasuring(false); }}
-            placeholder="e.g. 12" className="w-full rounded-lg border border-border bg-background p-2" />
-        </label>
-        <label className="space-y-1">
-          <span className="block font-semibold">Reference units</span>
-          <select value={unit} onChange={e => { setUnit(e.target.value as "in" | "ft"); setAdded(false); setMeasuring(false); }}
-            className="w-full rounded-lg border border-border bg-background p-2">
-            <option value="in">inches</option>
-            <option value="ft">feet</option>
-          </select>
-        </label>
         <label className="col-span-2 space-y-1">
           <span className="block font-semibold">What are you measuring?</span>
           <select value={role} onChange={e => { setRole(e.target.value as MeasurementRole); setAdded(false); }}
@@ -126,10 +125,11 @@ export default function PhotoMeasureSheet({ photo, onAddMeasurement }: Props) {
         </label>
       </div>
       {result ? (
-        <div className="space-y-2 rounded-lg bg-muted p-3">
+        <div aria-live="polite" className="space-y-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/10 p-3">
           <p className="text-base font-bold">Approx. {role}: {result.measuredLength} {unit}</p>
+          {!measuring && <p className="text-xs">Tap Measure above to confirm, then add it to the job description.</p>}
           <p className="text-xs">Photo-calibrated estimate; perspective, lens distortion, point placement and uneven surfaces can cause substantial error. Not a survey, area scan, or structural measurement.</p>
-          <button type="button" disabled={added} onClick={save}
+          <button type="button" disabled={added || !measuring} onClick={save}
             className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-primary-foreground disabled:opacity-50">
             {added ? "Added to gig description" : "Add approximate measurement to gig description"}
           </button>
