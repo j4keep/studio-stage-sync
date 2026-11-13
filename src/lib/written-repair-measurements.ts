@@ -58,7 +58,8 @@ export function parseWrittenConcreteMeasurements(text: string): WrittenConcreteM
   const bags = input.match(/\$\s*(\d+(?:\.\d+)?)\s*(?:per|\/)\s*bag/i)
     || input.match(/(?:bag|concrete mix)\s*(?:costs?|price|at|is|:)\s*\$\s*(\d+(?:\.\d+)?)/i);
   out.pricePerBag = amount(bags);
-  const hours = input.match(/(\d+(?:\.\d+)?)\s*(?:hours|hrs|hr)\s*(?:of\s*)?labor/i)
+  const hours = input.match(/(\d+(?:\.\d+)?)\s*(?:labor\s*)?(?:hours|hrs|hr)\s*(?:of\s*)?labor?/i)
+    || input.match(/(\d+(?:\.\d+)?)\s*labor\s*(?:hours|hrs|hr)/i)
     || input.match(/(?:labor|work)\s*(?:takes?|time|hours?|:)\s*(\d+(?:\.\d+)?)\s*(?:hours|hrs|hr)?/i);
   out.laborHours = amount(hours);
   const rate = input.match(/\$\s*(\d+(?:\.\d+)?)\s*(?:per|\/)\s*(?:hour|hr)/i);
